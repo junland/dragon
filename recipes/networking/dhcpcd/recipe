@@ -1,0 +1,87 @@
+# Build recipe for dhcpcd
+#
+# Copyright (C) 2017 MMPG, <mmpg@vp.pl>
+# Copyright (C) 2017 Selkfoster, <selk@dragora.org>
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=dhcpcd
+version=7.0.0-rc1
+release=1
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=http://roy.marples.name/downloads/dhcpcd/$tarname
+
+description="
+dhcpcd is an implementation of the DHCP client specified in RFC2131.
+
+A DHCP client is useful for connecting your computer to a network
+which uses DHCP to assign network addresses. dhcpcd strives to be
+a fully featured, yet very lightweight DHCP client. 
+"
+
+homepage=http://roy.marples.name/projects/dhcpcd
+license="2-clause BSD"
+
+# Source documentation
+docs="LICENSE README.md"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+    
+    unpack "${tardir}/$tarname"
+    
+    cd "$srcdir"
+    
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --libdir=/usr/lib${libSuffix} \
+    --libexecdir=/usr/libexecdir/dhcpcd \
+    --dbdir=/var/lib/dhcpcd \
+    --build="$(cc -dumpmachine)"
+    
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Install dhcpcd perp service(s)
+
+    mkdir -p "${destdir}/etc/perp/dhcpcd"
+
+    cp -p "${worktree}/archive/dhcpcd/rc.log" \
+          "${worktree}/archive/dhcpcd/rc.main" \
+          "${destdir}/etc/perp/dhcpcd/"
+
+    chmod 755 "${destdir}"/etc/perp/dhcpcd/rc.*
+
+    # Be an active service by default
+    chmod +t "${destdir}/etc/perp/dhcpcd"
+
+    # Manage (dot) new files via graft(1)
+
+    touch "${destdir}/etc/.graft-config" \
+          "${destdir}/etc/perp/dhcpcd/.graft-config"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+    
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+

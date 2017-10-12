@@ -1,0 +1,35 @@
+#! /bin/sh -
+# /etc/rc.d/rc.alsa - Start ALSA (Advanced Linux Sound Architecture).
+#
+# Version:  (#)1.00  2009-01-04 (MAF)
+#           (#)1.01  2010-06-21 (MAF)
+#           (#)1.02  2010-12-09 (MAF)
+#           (#)1.03  2011-03-31 (MAF)
+#           (#)1.04  2017-07-27 (MAF)
+#
+# Written by Matias Fonzo for Dragora GNU/Linux-Libre.
+# Under the terms of the GNU General Public License.
+
+type alsactl > /dev/null 2>&1 || exit 2;
+type amixer > /dev/null 2>&1 || exit 2;
+
+if test -d /proc/asound
+then
+    if test -r /var/lib/alsa/asound.state
+    then
+        echo "Restoring ALSA mixer from /var/lib/alsa/asound.state ..."
+        alsactl restore
+    else
+        echo "Setting values for the ALSA mixer ..."
+        amixer set Master 90% unmute       > /dev/null 2>&1
+        amixer set Front 80% unmute        > /dev/null 2>&1
+        amixer set PCM 80% unmute          > /dev/null 2>&1
+        amixer set Side 80% unmute         > /dev/null 2>&1
+        amixer set CD 90% unmute           > /dev/null 2>&1
+        amixer set Headphone unmute        > /dev/null 2>&1
+        amixer set Mic 90% unmute          > /dev/null 2>&1
+        amixer set 'Front Mic' 90% unmute  > /dev/null 2>&1
+        alsactl store
+    fi
+fi
+

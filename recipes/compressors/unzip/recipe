@@ -1,0 +1,106 @@
+# Build recipe for unzip.
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=unzip
+version=60
+pkgversion=6.0
+release=1
+
+tarname=${program}${version}.tar.gz
+
+# Remote source(s)
+fetch=http://downloads.sourceforge.net/infozip/$tarname
+
+description="
+A utility for extracting ZIP files.
+
+UnZip is an extraction utility for archives compressed in .zip format
+(also called \"zipfiles\").  Although highly compatible both with
+PKWARE's PKZIP and PKUNZIP utilities for MS-DOS and with Info-ZIP's own
+Zip program, our primary objectives have been portability and non-MSDOS
+functionality.
+"
+
+homepage=http://www.info-zip.org/UnZip.html
+license="Custom, Info-Zip"
+
+# Source documentation
+docs="BUGS LICENSE README ToDo WHERE"
+docsdir="${docdir}/${program}-${pkgversion}"
+
+# Source directory for this software
+srcdir=${program}${version}
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Apply patches from the Fedora project, thanks!
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-bzip2-configure.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-exec-shield.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-close.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-attribs-overflow.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-configure.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-manpage-fix.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-fix-recmatch.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-symlink.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-caseinsensitive.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-format-secure.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-valgrind.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-x-option.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-overflow.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-cve-2014-8139.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-cve-2014-8140.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-cve-2014-8141.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-overflow-long-fsize.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-heap-overflow-infloop.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-alt-iconv-utf8.patch"
+    patch -p1 < "${worktree}/patches/unzip/unzip-6.0-alt-iconv-utf8-print.patch"
+    patch -p1 < "${worktree}/patches/unzip/0001-Fix-CVE-2016-9844-rhbz-1404283.patch"
+
+    make -f unix/Makefile \
+      CF_NOOPT="-I. -DUNIX -DNOMEMCPY -DIZ_HAVE_UXUIDGID -DNO_LCHMOD" \
+      LFLAGS2="$QILDFLAGS -static" generic_gcc
+
+    make -f unix/Makefile \
+      prefix="${destdir}/usr" \
+      MANDIR="${destdir}/${mandir}/man1" \
+      INSTALL="cp -p" \
+      install
+
+    # Reinclude zipgrep fixing its ownerships
+    rm -f "${destdir}/usr/bin/zipgrep"
+    cat unix/zipgrep > "${destdir}/usr/bin/zipgrep"
+    chmod 755 "${destdir}/usr/bin/zipgrep"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

@@ -1,0 +1,69 @@
+# Build recipe for libz.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=libz
+version=1.2.8.2015.12.26
+release=1
+
+pkgversion=1.2.8
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://sortix.org/libz/release/libz-1.2.8.2015.12.26.tar.gz
+
+description="
+A general purpose data compression library.
+
+libz is a general purpose data compression library.  The data format
+used by libz is described by RFC 1950 (zlib format), RFC 1951 (deflate
+format), and RFC 1952 (gzip format).
+
+Sortix libz is developed as part of the Sortix operating system by
+Jonas 'Sortie' Termansen (sortie@maxsi.org) and contributors.
+"
+
+homepage=https://sortix.org/libz
+license="Custom, zlib"
+
+# Source documentation
+docs="CHANGES FAQ README TODO"
+docsdir="${docdir}/${program}-${pkgversion}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --enable-shared \
+     --enable-static
+
+    make -j${jobs}
+    make -j${jobs} install DESTDIR="$destdir"
+
+    # Strip manually
+    strip -g "${destdir}/usr/lib${libSuffix}/libz.a"
+
+    # Compress man pages
+    lzip -9 "${destdir}/${mandir}"/man?/*.?
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

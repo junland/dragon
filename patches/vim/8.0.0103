@@ -1,0 +1,156 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0103
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0103
+Problem:    May not process channel readahead. (skywind)
+Solution:   If there is readahead don't block on input.
+Files:      src/channel.c, src/proto/channel.pro, src/os_unix.c,
+            src/os_win32.c, src/misc2.c
+
+
+*** ../vim-8.0.0102/src/channel.c	2016-11-24 17:22:46.154837060 +0100
+--- src/channel.c	2016-11-26 15:03:44.386121667 +0100
+***************
+*** 3900,3905 ****
+--- 3900,3930 ----
+  }
+  
+  /*
++  * Return TRUE if any channel has readahead.  That means we should not block on
++  * waiting for input.
++  */
++     int
++ channel_any_readahead(void)
++ {
++     channel_T	*channel = first_channel;
++     ch_part_T	part = PART_SOCK;
++ 
++     while (channel != NULL)
++     {
++ 	if (channel_has_readahead(channel, part))
++ 	    return TRUE;
++ 	if (part < PART_ERR)
++ 	    ++part;
++ 	else
++ 	{
++ 	    channel = channel->ch_next;
++ 	    part = PART_SOCK;
++ 	}
++     }
++     return FALSE;
++ }
++ 
++ /*
+   * Mark references to lists used in channels.
+   */
+      int
+*** ../vim-8.0.0102/src/proto/channel.pro	2016-10-09 17:27:56.863388510 +0200
+--- src/proto/channel.pro	2016-11-26 15:03:47.522100708 +0100
+***************
+*** 44,49 ****
+--- 44,50 ----
+  int channel_select_setup(int maxfd_in, void *rfds_in, void *wfds_in);
+  int channel_select_check(int ret_in, void *rfds_in, void *wfds_in);
+  int channel_parse_messages(void);
++ int channel_any_readahead(void);
+  int set_ref_in_channel(int copyID);
+  ch_part_T channel_part_send(channel_T *channel);
+  ch_part_T channel_part_read(channel_T *channel);
+*** ../vim-8.0.0102/src/os_unix.c	2016-11-24 17:22:46.146837112 +0100
+--- src/os_unix.c	2016-11-26 15:06:11.005142143 +0100
+***************
+*** 462,467 ****
+--- 462,471 ----
+  	/* Checking if a job ended requires polling.  Do this every 100 msec. */
+  	if (has_pending_job() && (wait_time < 0 || wait_time > 100L))
+  	    wait_time = 100L;
++ 	/* If there is readahead then parse_queued_messages() timed out and we
++ 	 * should call it again soon. */
++ 	if ((wait_time < 0 || wait_time > 100L) && channel_any_readahead())
++ 	    wait_time = 10L;
+  #endif
+  
+  	/*
+*** ../vim-8.0.0102/src/os_win32.c	2016-11-24 17:22:46.150837087 +0100
+--- src/os_win32.c	2016-11-26 15:09:12.055933715 +0100
+***************
+*** 1351,1359 ****
+  	    DWORD dwWaitTime = dwEndTime - dwNow;
+  
+  #ifdef FEAT_JOB_CHANNEL
+! 	    /* Check channel while waiting input. */
+  	    if (dwWaitTime > 100)
+  		dwWaitTime = 100;
+  #endif
+  #ifdef FEAT_MZSCHEME
+  	    if (mzthreads_allowed() && p_mzq > 0
+--- 1351,1365 ----
+  	    DWORD dwWaitTime = dwEndTime - dwNow;
+  
+  #ifdef FEAT_JOB_CHANNEL
+! 	    /* Check channel while waiting for input. */
+  	    if (dwWaitTime > 100)
++ 	    {
+  		dwWaitTime = 100;
++ 		/* If there is readahead then parse_queued_messages() timed out
++ 		 * and we should call it again soon. */
++ 		if (channel_any_readahead())
++ 		    dwWaitTime = 10;
++ 	    }
+  #endif
+  #ifdef FEAT_MZSCHEME
+  	    if (mzthreads_allowed() && p_mzq > 0
+*** ../vim-8.0.0102/src/misc2.c	2016-11-24 17:22:46.150837087 +0100
+--- src/misc2.c	2016-11-26 14:52:17.202709633 +0100
+***************
+*** 6264,6270 ****
+  }
+  #endif
+  
+! #ifdef ELAPSED_TIMEVAL  /* proto is defined in vim.h */
+  /*
+   * Return time in msec since "start_tv".
+   */
+--- 6264,6270 ----
+  }
+  #endif
+  
+! #ifdef ELAPSED_TIMEVAL  /* no PROTO here, proto is defined in vim.h */
+  /*
+   * Return time in msec since "start_tv".
+   */
+***************
+*** 6288,6296 ****
+  {
+      DWORD	now = GetTickCount();
+  
+-     if (now < start_tick)
+- 	/* overflow */
+- 	return (long)now;
+      return (long)now - (long)start_tick;
+  }
+  #endif
+--- 6288,6293 ----
+*** ../vim-8.0.0102/src/version.c	2016-11-25 22:04:09.607397081 +0100
+--- src/version.c	2016-11-26 15:02:23.754660704 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     103,
+  /**/
+
+-- 
+CVS sux, men don't like commitment
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

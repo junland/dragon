@@ -1,0 +1,48 @@
+# Build recipe for util-macros.
+#
+# Copyright (C) 2016 Mateus P. Rodrigues <mprodrigues@dragora.org>.
+# Copyright (C) 2017 Matias A. Fonzo <selk@dragora.org>.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=util-macros
+version=1.19.1
+arch=noarch
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://www.x.org/releases/individual/util/$tarname
+
+description="
+Autoconf macros used in X modular configure.ac files.
+
+The util-macros package contains the m4 macros used
+by all of the Xorg packages.
+"
+
+homepage=http://www.x.org
+license="MIT X Consortium"
+
+# Source documentation
+docs="COPYING README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure $configure_args
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+

@@ -1,0 +1,76 @@
+# Build recipe for utmpset
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=runit
+version=2.1.2
+pkgname=utmpset
+pkgversion=2.1.2
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://smarden.org/runit/$tarname
+
+description="
+Logout a line from utmp and wtmp file.
+
+The utmpset program modifies the user accounting database utmp(5) and
+optionally wtmp(5) to indicate that the user on the terminal line has
+logged out.
+"
+
+homepage=http://smarden.org/runit/utmpset.8.html
+license=BSD
+
+# Source documentation
+docs="COPYING README"
+docsdir="${docdir}/${pkgname}-${pkgversion}"
+
+# Where the source resides
+srcdir=admin/${program}-${version}
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    cd src
+
+    # Pick up Qi's CFLAGS, LDFLAGS
+    sed -i "s|gcc -O2|gcc $QICFLAGS|" ./conf-cc
+    sed -i "s|gcc -s|gcc $QILDFLAGS -static|" ./conf-ld
+
+    make utmpset
+
+    # Install the program and the documentation
+
+    mkdir -p "${destdir}/usr/sbin" "${destdir}/${mandir}/man8"
+
+    cp -p utmpset "${destdir}/usr/sbin/"
+    chmod 755 "${destdir}/usr/sbin/utmpset"
+
+    cd ..
+
+    cp -p man/utmpset.8 "${destdir}/${mandir}/man8/"
+    chmod 644 "${destdir}/${mandir}/man8/utmpset.8"
+
+    # Compress man page
+    lzip -9 "${destdir}/${mandir}/man8/utmpset.8"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        ( cd package && cp -p $file "${destdir}${docsdir}" )
+    done
+}
+

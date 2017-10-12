@@ -1,0 +1,68 @@
+# Recipe file for freetype.
+#
+# Maintainers: (C) 2017 Mateus P. Rodrigues, mprodrigues@dragora.org.
+#
+# Under the terms of the GNU General Public License.
+
+program=freetype
+version=2.8
+release=1
+
+description="
+A font engine.
+
+FreeType is a software font engine that is designed to be small,
+efficient, highly customizable, and portable while capable of
+producing high-quality output (glyph images).  It can be used in
+graphics libraries, display servers, font conversion tools,
+text image generation tools, and many other products as well.
+"
+
+homepage=https://www.freetype.org/
+license="GPLv2 | FreeType License (FTL)"
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://download.savannah.gnu.org/releases/freetype/$tarname
+
+# Source documentation
+docs="ChangeLog* README*"
+docsdir="${docdir}/${program}-${version}"
+
+build() {
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --libdir=/usr/lib${libSuffix} \
+    --mandir=$mandir \
+    --docdir=$docsdir \
+    --build="$(cc -dumpmachine)" \
+    || true
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress manual pages
+    if [ -d "${destdir}/$mandir" ] ; then
+	(
+            cd "${destdir}/$mandir"
+	    find . -type f -exec lzip -9 '{}' +
+	    find . -type l | while read -r file
+	    do
+		ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+		rm -- "$file"
+	    done
+	)
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+

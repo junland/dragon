@@ -1,0 +1,157 @@
+# Build recipe for hierarchyfs (dragora).
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=hierarchyfs
+version=dragora
+pkgversion=3.0
+release=1
+
+description="
+Skeleton bases of Dragora GNU/Linux-Libre.
+
+It contains the main hierarchy of directories, symlinks,
+ownerships, and permissions for compose the basic structure
+of the file system.
+"
+
+homepage=http://www.dragora.org
+license=GPLv3+
+
+build()
+{
+    set -e
+
+    mkdir -p "$destdir"
+    cd "$destdir"
+
+    # Directories
+
+    mkdir -p \
+             usr/bin                   \
+             boot                      \
+             dev                       \
+             etc                       \
+             home                      \
+             lost+found                \
+             media                     \
+             mnt                       \
+             opt                       \
+             proc                      \
+             root                      \
+             run                       \
+             usr/sbin                  \
+             srv                       \
+             sys                       \
+             tmp                       \
+             usr                       \
+             var                       \
+             dev/pts                   \
+             dev/shm                   \
+             etc/X11                   \
+             etc/opt                   \
+             etc/skel                  \
+             etc/sysctl.d              \
+             etc/udev/rules.d          \
+             etc/xdg                   \
+             media/cdrecorder          \
+             media/cdrom               \
+             media/floppy              \
+             media/zip                 \
+             usr/bin                   \
+             usr/games                 \
+             usr/include               \
+             usr/lib/pkgconfig         \
+             usr/libexec               \
+             usr/local/bin             \
+             usr/local/etc             \
+             usr/local/games           \
+             usr/local/include         \
+             usr/local/lib/pkgconfig   \
+             usr/local/libexec         \
+             usr/local/sbin            \
+             usr/local/share/doc       \
+             usr/local/share/info      \
+             usr/local/share/man/man1  \
+             usr/local/share/man/man2  \
+             usr/local/share/man/man3  \
+             usr/local/share/man/man4  \
+             usr/local/share/man/man5  \
+             usr/local/share/man/man6  \
+             usr/local/share/man/man7  \
+             usr/local/share/man/man8  \
+             usr/local/src             \
+             usr/pkg                   \
+             usr/share/doc             \
+             usr/share/games           \
+             usr/share/info            \
+             usr/share/man/man1        \
+             usr/share/man/man2        \
+             usr/share/man/man3        \
+             usr/share/man/man4        \
+             usr/share/man/man5        \
+             usr/share/man/man6        \
+             usr/share/man/man7        \
+             usr/share/man/man8        \
+             usr/src                   \
+             var/cache/man             \
+             var/games                 \
+             var/lib                   \
+             var/local                 \
+             var/lock                  \
+             var/log                   \
+             var/mail                  \
+             var/opt                   \
+             var/run                   \
+             var/spool/lpd             \
+             var/spool/news            \
+             var/tmp
+
+    # Copy local files
+
+    cp -p "${worktree}/archive/hierarchyfs/README.media" \
+          "media/README"
+    cp -p "${worktree}/archive/hierarchyfs/README.mnt" \
+          "mnt/README"
+
+    chmod 644 "media/README" "mnt/README"
+
+    # Copy files for the already created root account
+    cp -p "${worktree}"/archive/etc/skel/.*rc      \
+          "${worktree}"/archive/etc/skel/.profile  \
+          "${destdir}/root/"
+
+    touch \
+     "media/.graft-config" "mnt/.graft-config" "root/.graft-config"
+
+    # Manually include the post-install file for the package
+
+    mkdir -p "${destdir}/var/lib/qi"
+
+    cp -p "${CWD}/post-install.multidir" \
+     "${destdir}/var/lib/qi/${program}-${pkgversion}-${arch}+${release}.sh"
+
+    chmod 644 \
+     "${destdir}/var/lib/qi/${program}-${pkgversion}-${arch}+${release}.sh"
+
+    # Handle lib<equal> for the multi directory support
+
+    # Guess the suffix to compose the corresponding library directory
+    if test -f /tools/etc/stage1_is-multi-directory
+    then
+        libSuffix=$(cat /tools/etc/stage1_is-multi-directory)
+    fi
+
+    if test -n "$libSuffix"
+    then
+        echo "libSuffix detected."
+        echo "Changing value for post-install '${libSuffix}'"
+
+        sed -i s"/^libSuffix=X/libSuffix=${libSuffix}/" \
+         "${destdir}/var/lib/qi/${program}-${pkgversion}-${arch}+${release}.sh"
+    fi
+}
+

@@ -1,0 +1,118 @@
+# Build recipe for linux-libre (generic).
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=linux
+version=4.9.46
+release=1
+
+pkgname=kernel-generic
+
+tarname=${program}-libre-${version}-gnu.tar.lz
+
+# Remote source(s)
+fetch=http://linux-libre.fsfla.org/pub/linux-libre/releases/${version}-gnu/$tarname
+
+homepage=http://www.gnu.org/software/linux-libre
+
+description="
+The Linux kernel image and modules.
+
+This is a generic configuration for the Linux kernel
+which intends to run well in all environments.
+"
+
+license=GPLv2+
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Support LZIP
+
+    patch -p1 < "${worktree}/patches/kernel/linux-4.9.36_lzip-1.diff"
+
+    # Support AUFS
+
+    cp -R -p "${worktree}/patches/kernel/aufs/Documentation"  \
+             "${worktree}/patches/kernel/aufs/fs"             \
+             .
+    mkdir -p include/uapi/linux
+    cp -p "${worktree}/patches/kernel/aufs/include/uapi/linux/aufs_type.h" \
+          include/uapi/linux/
+
+    # http://github.com/sfjro/aufs4-standalone/tree/aufs4.9
+    patch -p1 < "${worktree}/patches/kernel/aufs/aufs4-kbuild.patch"
+    patch -p1 < "${worktree}/patches/kernel/aufs/aufs4-base.patch"
+    patch -p1 < "${worktree}/patches/kernel/aufs/aufs4-mmap.patch"
+    patch -p1 < "${worktree}/patches/kernel/aufs/aufs4-standalone.patch"
+
+    make mrproper
+
+    case $arch in
+    x86_64)
+        cp -p "${worktree}/archive/kernel/config-x86_64_generic" .config
+        kernel_arch=x86_64
+        ;;
+    i?86)
+        cp -p "${worktree}/archive/kernel/config-x86_generic" .config
+        kernel_arch=x86
+        ;;
+    *)
+        echo "No custom configuration file detected for your architecture." 1>&2
+        exit 1;
+        ;;
+    esac
+
+    make -j${jobs} bzImage
+
+    # Firmware
+    mkdir -p "${destdir}/lib/firmware"
+    make INSTALL_FW_PATH="${destdir}/lib/firmware"
+
+    # Modules
+    make -j${jobs} modules
+    make INSTALL_MOD_PATH="$destdir" modules_install
+
+    # Extract additional kernel string (if any)
+    strver="$(ls -d "${destdir}"/lib/modules/*)"
+    strver="${strver##*/}"
+
+    # Image
+    mkdir -p "${destdir}/boot"
+    cp -p .config "${destdir}/boot/config"
+    cp -p System.map "${destdir}/boot/System.map"
+    cp -p "arch/${kernel_arch}/boot/bzImage" "${destdir}/boot/vmlinuz"
+
+    # Insert post-install script manually
+
+    rm -f "${destdir}"/lib/modules/${strver}/build \
+          "${destdir}"/lib/modules/${strver}/source
+
+    mkdir -p "${destdir}/var/lib/qi"
+    cat << EOF > "${destdir}/var/lib/qi/${full_pkgname}.sh"
+
+# Kernel version
+strver=$strver
+
+# Make generic symlinks for this kernel version (if needed)
+
+srcdir="${srcdir##*/}"
+
+(
+    cd lib/modules/${strver} || exit 1
+    rm -f build source
+    ln -s /usr/src/${srcdir} build
+    ln -s /usr/src/${srcdir} source
+)
+
+EOF
+}
+

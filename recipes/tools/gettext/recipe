@@ -1,0 +1,85 @@
+# Build recipe for gettext.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=gettext
+version=0.19.8.1
+release=1
+
+tarname=${program}-${version}.tar.lz
+
+# Remote source(s)
+fetch=http://ftp.gnu.org/pub/gnu/gettext/$tarname
+
+description="
+Utilities for internationalization and localization.
+
+The Gettext package contains utilities for internationalization and
+localization.  These allow programs to be compiled with NLS (Native
+Language Support), enabling them to output messages in the user's
+native language.
+"
+
+homepage=http://www.gnu.org/software/gettext
+license="GPLv3+, LGPLv2.1"
+
+# Source documentation
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure \
+     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --with-bzip2 \
+     --without-git \
+     --without-xz \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Fix library permission if needed
+    if test -f "${destdir}/usr/lib${libSuffix}/preloadable_libintl.so"
+    then
+        chmod 755 "${destdir}/usr/lib${libSuffix}/preloadable_libintl.so"
+    fi
+
+    # Remove generated charset.alias
+    rm -f "${destdir}/usr/lib${libSuffix}/charset.alias"
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+}
+

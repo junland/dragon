@@ -1,0 +1,100 @@
+# Build recipe for bzip2.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=bzip2
+version=1.0.6
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://www.bzip.org/${version}/$tarname
+
+description="
+A high-quality data compressor program.
+
+Bzip2 is a high quality compressor that uses the best compression
+techniques (from the PPM family of statistical compressors).
+In general, the compression is considerabily better than other
+compressors, based on LZ77/LZ78 algorithm.
+
+The author of bzip2 is Julian Seward.
+"
+
+homepage=http://www.bzip.org
+license=Custom
+
+# Source documentation
+docs="CHANGES LICENSE README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Apply a patch to install the documentation (thanks to LFS)
+    patch -Np1 -i "${worktree}/patches/bzip2/bzip2-1.0.6-install_docs-1.patch"
+
+    # Ensure installation of relative symbolic links (thanks to LFS)
+    sed -i 's@\(ln -s -f \)$(PREFIX)/bin/@\1@' Makefile
+
+    # Ensure the man pages are installed into the correct location
+    sed -i "s@(PREFIX)/man@(PREFIX)/share/man@g" Makefile
+
+    # Ensure location for libraries
+    sed -i "s@(PREFIX)/lib@(PREFIX)/lib${libSuffix}@g" Makefile
+
+    # Build bzip2.
+    #
+    # Provide shared libraries for third party programs
+    make -f Makefile-libbz2_so
+    make clean
+
+    # Recompile program for static linking
+    make LDFLAGS="$QILDFLAGS -static"
+    make PREFIX="${destdir}/usr" install
+
+    # Copy shared libraries into package destination
+    cp -f -p libbz2.so* "${destdir}/usr/lib${libSuffix}"
+
+    # Library measurement
+    strip -s "${destdir}/usr/lib${libSuffix}/libbz2.so.1.0.6"
+
+    # Make soft links providing compatibility
+    (
+        cd "${destdir}/usr/lib${libSuffix}" || exit 1
+        ln -sf libbz2.so.1.0.6 libbz2.so.1.0
+        ln -sf libbz2.so.1.0.6 libbz2.so
+    )
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy the rest of the documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

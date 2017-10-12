@@ -1,0 +1,496 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0112
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0112
+Problem:    Tests 92 and 93 are old style.
+Solution:   Make test92 and test93 new style. (Hirohito Higashi, closes #1289)
+Files:      src/Makefile, src/testdir/Make_all.mak, src/testdir/Make_vms.mms,
+            src/testdir/test92.in, src/testdir/test92.ok,
+            src/testdir/test93.in, src/testdir/test93.ok,
+            src/testdir/test_mksession.vim,
+            src/testdir/test_mksession_utf8.vim
+
+
+*** ../vim-8.0.0111/src/Makefile	2016-11-17 19:32:17.897024245 +0100
+--- src/Makefile	2016-12-01 18:14:12.212658597 +0100
+***************
+*** 2052,2058 ****
+  	test60 test64 test65 test66 test67 test68 test69 \
+  	test70 test72 test73 test74 test75 test77 test78 test79 \
+  	test80 test82 test83 test84 test85 test86 test87 test88 test89 \
+! 	test90 test91 test92 test93 test94 test95 test97 test98 test99 \
+  	test100 test101 test103 test104 test107 test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+--- 2061,2067 ----
+  	test60 test64 test65 test66 test67 test68 test69 \
+  	test70 test72 test73 test74 test75 test77 test78 test79 \
+  	test80 test82 test83 test84 test85 test86 test87 test88 test89 \
+! 	test90 test91 test94 test95 test97 test98 test99 \
+  	test100 test101 test103 test104 test107 test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+***************
+*** 2118,2123 ****
+--- 2127,2134 ----
+  	test_matchadd_conceal_utf8 \
+  	test_menu \
+  	test_messages \
++ 	test_mksession \
++ 	test_mksession_utf8 \
+  	test_nested_function \
+  	test_netbeans \
+  	test_normal \
+*** ../vim-8.0.0111/src/testdir/Make_all.mak	2016-11-17 19:32:17.897024245 +0100
+--- src/testdir/Make_all.mak	2016-12-01 18:14:12.212658597 +0100
+***************
+*** 63,70 ****
+  	test88.out \
+  	test90.out \
+  	test91.out \
+- 	test92.out \
+- 	test93.out \
+  	test94.out \
+  	test95.out \
+  	test98.out \
+--- 63,68 ----
+***************
+*** 167,172 ****
+--- 165,172 ----
+  	    test_man.res \
+  	    test_marks.res \
+  	    test_matchadd_conceal.res \
++ 	    test_mksession.res \
++ 	    test_mksession_utf8.res \
+  	    test_nested_function.res \
+  	    test_netbeans.res \
+  	    test_normal.res \
+*** ../vim-8.0.0111/src/testdir/Make_vms.mms	2016-11-04 20:35:27.352945991 +0100
+--- src/testdir/Make_vms.mms	2016-12-01 18:14:12.216658571 +0100
+***************
+*** 92,98 ****
+         test72.out test75.out \
+         test77a.out test78.out test79.out test80.out \
+         test82.out test84.out test88.out test89.out \
+!        test90.out test91.out test92.out test93.out test94.out \
+         test95.out test98.out test99.out \
+         test103.out test104.out \
+         test107.out test108.out\
+--- 92,98 ----
+         test72.out test75.out \
+         test77a.out test78.out test79.out test80.out \
+         test82.out test84.out test88.out test89.out \
+!        test90.out test91.out test94.out \
+         test95.out test98.out test99.out \
+         test103.out test104.out \
+         test107.out test108.out\
+*** ../vim-8.0.0111/src/testdir/test92.in	2013-09-22 14:45:06.000000000 +0200
+--- src/testdir/test92.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,48 ****
+- vim: set ft=vim fenc=utf-8:
+- 
+- Tests if :mksession saves cursor columns correctly in presence of tab and 
+- multibyte characters when fileencoding=utf-8.
+- 
+- STARTTEST
+- :so mbyte.vim
+- :if !has('mksession')
+- :  e! test.ok
+- :  wq! test.out
+- :endif
+- :set sessionoptions=buffers splitbelow fileencoding=utf-8
+- /^start:
+- :vsplit
+- j16|:split
+- j16|:split
+- j16|:split
+- j8|:split
+- j8|:split
+- j16|:split
+- j16|:split
+- j16|:wincmd l
+- /^start:
+- :set nowrap
+- j16|3zl:split
+- j016|3zl:split
+- j016|3zl:split
+- j08|3zl:split
+- j08|3zl:split
+- j016|3zl:split
+- j016|3zl:split
+- j016|3zl:split
+- :mksession! test.out
+- :new test.out
+- :v/\(^ *normal! 0\|^ *exe 'normal!\)/d
+- :w! test.out
+- :qa!
+- ENDTEST
+- 
+- start:
+- no multibyte chAracter
+- 	one leaDing tab
+-     four leadinG spaces
+- two		consecutive tabs
+- two	tabs	in one line
+- one â¦ multibyteCharacter
+- a âbâ two multiByte characters
+- âcâ1â¬ three mulTibyte characters
+--- 0 ----
+*** ../vim-8.0.0111/src/testdir/test92.ok	2013-02-26 17:13:48.000000000 +0100
+--- src/testdir/test92.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,26 ****
+- normal! 016|
+- normal! 016|
+- normal! 016|
+- normal! 08|
+- normal! 08|
+- normal! 016|
+- normal! 016|
+- normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 8 . '|'
+-   normal! 08|
+-   exe 'normal! ' . s:c . '|zs' . 8 . '|'
+-   normal! 08|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+--- 0 ----
+*** ../vim-8.0.0111/src/testdir/test93.in	2013-09-22 14:45:17.000000000 +0200
+--- src/testdir/test93.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,48 ****
+- vim: set ft=vim fenc=latin1:
+- 
+- Tests if :mksession saves cursor columns correctly in presence of tab and 
+- multibyte characters when fileencoding=latin1.
+- 
+- STARTTEST
+- :so mbyte.vim
+- :if !has('mksession')
+- :  e! test.ok
+- :  wq! test.out
+- :endif
+- :set sessionoptions=buffers splitbelow fileencoding=latin1
+- /^start:
+- :vsplit
+- j16|:split
+- j16|:split
+- j16|:split
+- j8|:split
+- j8|:split
+- j16|:split
+- j16|:split
+- j16|:wincmd l
+- /^start:
+- :set nowrap
+- j16|3zl:split
+- j016|3zl:split
+- j016|3zl:split
+- j08|3zl:split
+- j08|3zl:split
+- j016|3zl:split
+- j016|3zl:split
+- j016|3zl:split
+- :mksession! test.out
+- :new test.out
+- :v/\(^ *normal! 0\|^ *exe 'normal!\)/d
+- :w! test.out
+- :qa!
+- ENDTEST
+- 
+- start:
+- no multibyte chAracter
+- 	one leaDing tab
+-     four leadinG spaces
+- two		consecutive tabs
+- two	tabs	in one line
+- one ä multibyteCharacter
+- aä Ä  two multiByte characters
+- Aäöü  three mulTibyte characters
+--- 0 ----
+*** ../vim-8.0.0111/src/testdir/test93.ok	2013-02-26 17:14:02.000000000 +0100
+--- src/testdir/test93.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,26 ****
+- normal! 016|
+- normal! 016|
+- normal! 016|
+- normal! 08|
+- normal! 08|
+- normal! 016|
+- normal! 016|
+- normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 8 . '|'
+-   normal! 08|
+-   exe 'normal! ' . s:c . '|zs' . 8 . '|'
+-   normal! 08|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+-   exe 'normal! ' . s:c . '|zs' . 16 . '|'
+-   normal! 016|
+--- 0 ----
+*** ../vim-8.0.0111/src/testdir/test_mksession.vim	2016-12-01 18:46:12.704038446 +0100
+--- src/testdir/test_mksession.vim	2016-12-01 18:14:12.216658571 +0100
+***************
+*** 0 ****
+--- 1,104 ----
++ " Test for :mksession, :mkview and :loadview in latin1 encoding
++ 
++ set encoding=latin1
++ scriptencoding latin1
++ 
++ if !has('multi_byte') || !has('mksession')
++   finish
++ endif
++ 
++ func Test_mksession()
++   tabnew
++   let wrap_save = &wrap
++   set sessionoptions=buffers splitbelow fileencoding=latin1
++   call setline(1, [
++     \   'start:',
++     \   'no multibyte chAracter',
++     \   '	one leaDing tab',
++     \   '    four leadinG spaces',
++     \   'two		consecutive tabs',
++     \   'two	tabs	in one line',
++     \   'one ä multibyteCharacter',
++     \   'aä Ä  two multiByte characters',
++     \   'Aäöü  three mulTibyte characters'
++     \ ])
++   let tmpfile = tempname()
++   exec 'w! ' . tmpfile
++   /^start:
++   set wrap
++   vsplit
++   norm! j16|
++   split
++   norm! j16|
++   split
++   norm! j16|
++   split
++   norm! j8|
++   split
++   norm! j8|
++   split
++   norm! j16|
++   split
++   norm! j16|
++   split
++   norm! j16|
++   wincmd l
++ 
++   set nowrap
++   /^start:
++   norm! j16|3zl
++   split
++   norm! j016|3zl
++   split
++   norm! j016|3zl
++   split
++   norm! j08|3zl
++   split
++   norm! j08|3zl
++   split
++   norm! j016|3zl
++   split
++   norm! j016|3zl
++   split
++   norm! j016|3zl
++   split
++   call wincol()
++   mksession! test_mks.out
++   let li = filter(readfile('test_mks.out'), 'v:val =~# "\\(^ *normal! 0\\|^ *exe ''normal!\\)"')
++   let expected = [
++     \   'normal! 016|',
++     \   'normal! 016|',
++     \   'normal! 016|',
++     \   'normal! 08|',
++     \   'normal! 08|',
++     \   'normal! 016|',
++     \   'normal! 016|',
++     \   'normal! 016|',
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 8 . '|'",
++     \   "  normal! 08|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 8 . '|'",
++     \   "  normal! 08|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|"
++     \ ]
++   call assert_equal(expected, li)
++   tabclose!
++ 
++   call delete('test_mks.out')
++   call delete(tmpfile)
++   let &wrap = wrap_save
++ endfunc
++ 
++ " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.0111/src/testdir/test_mksession_utf8.vim	2016-12-01 18:46:12.708038420 +0100
+--- src/testdir/test_mksession_utf8.vim	2016-12-01 18:14:12.216658571 +0100
+***************
+*** 0 ****
+--- 1,104 ----
++ " Test for :mksession, :mkview and :loadview in utf-8 encoding
++ 
++ set encoding=utf-8
++ scriptencoding utf-8
++ 
++ if !has('multi_byte') || !has('mksession')
++   finish
++ endif
++ 
++ func Test_mksession_utf8()
++   tabnew
++   let wrap_save = &wrap
++   set sessionoptions=buffers splitbelow fileencoding=utf-8
++   call setline(1, [
++     \   'start:',
++     \   'no multibyte chAracter',
++     \   '	one leaDing tab',
++     \   '    four leadinG spaces',
++     \   'two		consecutive tabs',
++     \   'two	tabs	in one line',
++     \   'one â¦ multibyteCharacter',
++     \   'a âbâ two multiByte characters',
++     \   'âcâ1â¬ three mulTibyte characters'
++     \ ])
++   let tmpfile = tempname()
++   exec 'w! ' . tmpfile
++   /^start:
++   set wrap
++   vsplit
++   norm! j16|
++   split
++   norm! j16|
++   split
++   norm! j16|
++   split
++   norm! j8|
++   split
++   norm! j8|
++   split
++   norm! j16|
++   split
++   norm! j16|
++   split
++   norm! j16|
++   wincmd l
++ 
++   set nowrap
++   /^start:
++   norm! j16|3zl
++   split
++   norm! j016|3zl
++   split
++   norm! j016|3zl
++   split
++   norm! j08|3zl
++   split
++   norm! j08|3zl
++   split
++   norm! j016|3zl
++   split
++   norm! j016|3zl
++   split
++   norm! j016|3zl
++   split
++   call wincol()
++   mksession! test_mks.out
++   let li = filter(readfile('test_mks.out'), 'v:val =~# "\\(^ *normal! 0\\|^ *exe ''normal!\\)"')
++   let expected = [
++     \   'normal! 016|',
++     \   'normal! 016|',
++     \   'normal! 016|',
++     \   'normal! 08|',
++     \   'normal! 08|',
++     \   'normal! 016|',
++     \   'normal! 016|',
++     \   'normal! 016|',
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 8 . '|'",
++     \   "  normal! 08|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 8 . '|'",
++     \   "  normal! 08|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|",
++     \   "  exe 'normal! ' . s:c . '|zs' . 16 . '|'",
++     \   "  normal! 016|"
++     \ ]
++   call assert_equal(expected, li)
++   tabclose!
++ 
++   call delete('test_mks.out')
++   call delete(tmpfile)
++   let &wrap = wrap_save
++ endfunc
++ 
++ " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.0111/src/version.c	2016-12-01 17:57:40.779167445 +0100
+--- src/version.c	2016-12-01 18:14:51.496400576 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     112,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+71. You wonder how people walk
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

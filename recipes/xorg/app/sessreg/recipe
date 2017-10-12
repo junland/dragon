@@ -1,0 +1,82 @@
+# Build recipe for sessreg.
+#
+# Copyright (C) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
+# Copyright (C) 2017 Matias A. Fonzo <selk@dragora.org>.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=sessreg
+version=1.1.1
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://www.x.org/releases/individual/app/$tarname
+
+description="
+Simple program for managing utmp/wtmp entries for X sessions.
+"
+
+homepage=http://www.x.org
+license="MIT X Consortium"
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure \
+     CPPFLAGS="-D_GNU_SOURCE -D_WTMPX_FILE=WTMP_FILE -D_PATH_WTMPX=_PATH_WTMP -D_UTMPX_FILE=UTMP_FILE -D_PATH_UTMPX=_PATH_UTMP" \
+     CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     || true
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        if test -e $file
+        then
+            cp -p $file "${destdir}${docsdir}"
+        fi
+    done
+}
+

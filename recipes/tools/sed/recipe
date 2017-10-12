@@ -1,0 +1,77 @@
+# Build recipe for sed.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=sed
+version=4.4
+release=1
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=http://ftp.gnu.org/gnu/sed/$tarname
+
+description="
+GNU stream editor.
+
+Sed isn't really a true text editor or text processor.  Instead,
+it is used to filter text, i.e., it takes text input and performs
+some operation on it and outputs the modified text.
+
+For more information, visit:  http://www.gnu.org/software/sed
+"
+
+homepage=http://www.gnu.org/software/sed
+license=GPLv3+
+
+# Source documentation
+docs="AUTHORS BUGS COPYING ChangeLog NEWS README THANKS"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+     $configure_args \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-nls \
+     --enable-i18n \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    #make -k check
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Delete generated charset.alias
+    rm -f "${destdir}/usr/lib/charset.alias"
+    rmdir "${destdir}/usr/lib" || true
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress man page
+    lzip -9 "${destdir}/${mandir}/man1/sed.1"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

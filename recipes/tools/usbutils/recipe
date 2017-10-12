@@ -1,0 +1,72 @@
+# Build recipe for usbutils.
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=usbutils
+version=008
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://www.kernel.org/pub/linux/utils/usb/usbutils/$tarname
+
+description="
+USB Utilities.
+
+The USB Utils package contains utilities used to display information
+about USB buses in the system and the devices connected to them.
+"
+
+homepage=http://linux-usb.sourceforge.net
+license=GPLv2+
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Instruct to lsusb.py where to search usb.ids
+    # Thanks to BLFS (Beyond Linux From Scratch)
+    sed -i '/^usbids/ s:usb.ids:hwdata/&:' lsusb.py
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --datadir=/usr/share/hwdata \
+     --mandir=$mandir \
+     --disable-zlib \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+

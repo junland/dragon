@@ -1,0 +1,111 @@
+# Build script for gcc
+#
+# Copyright (C) 2016-2017 Matias Fonzo, <selk@dragora.org>
+#
+# This script is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+version=6.4.0
+
+# Prerequisites
+gmp_version=6.1.2
+mpfr_version=3.1.6
+mpc_version=1.0.3
+isl_version=0.18
+
+# Unpack sources
+rm -rf -- "${TMPDIR}/gcc-${version}"
+rm -rf -- "${TMPDIR}/gmp-${gmp_version}"
+rm -rf -- "${TMPDIR}/mpfr-${mpfr_version}"
+rm -rf -- "${TMPDIR}/mpc-${mpc_version}"
+rm -rf -- "${TMPDIR}/isl-${isl_version}"
+untar "${worktree}/sources/gcc-${version}.tar.gz" "$TMPDIR"
+untar "${worktree}"/sources/gmp-${gmp_version}.tar.lz "$TMPDIR"
+untar "${worktree}"/sources/mpfr-${mpfr_version}.tar.bz2 "$TMPDIR"
+untar "${worktree}"/sources/mpc-${mpc_version}.tar.gz "$TMPDIR"
+untar "${worktree}"/sources/isl-${isl_version}.tar.bz2 "$TMPDIR"
+
+# Build instructions
+cd -- "${TMPDIR}/gcc-${version}"
+
+# Make symlinks for requisites
+ln -s ../gmp-${gmp_version} gmp
+ln -s ../mpfr-${mpfr_version} mpfr
+ln -s ../mpc-${mpc_version} mpc
+ln -s ../isl-${isl_version} isl
+
+# Apply patches for MPFR
+(
+    cd mpfr || exit 1
+    for file in "${worktree}"/patches/mpfr/patch??*
+    do
+        if test -f "$file"
+        then
+            patch -p1 < "$file"
+        fi
+    done
+)
+
+# Apply specific patches for the support in musl.
+#
+# http://port70.net/~nsz/musl/gcc-trunk/
+#
+patch -Np1 -i "${worktree}/patches/gcc/0001-libgcc_s.patch"
+patch -Np1 -i "${worktree}/patches/gcc/0005-libatomic-test-fix.patch"
+patch -Np1 -i "${worktree}/patches/gcc/0006-libgomp-test-fix.patch"
+patch -Np1 -i "${worktree}/patches/gcc/0007-libitm-test-fix.patch"
+patch -Np1 -i "${worktree}/patches/gcc/0008-libvtv-test-fix.patch"
+
+# Build in a separate directory
+rm -rf ../gcc-build
+mkdir ../gcc-build
+cd ../gcc-build
+
+option_list="
+ --prefix="$crossdir" \
+ --libdir="${crossdir}/lib${libSuffix}" \
+ --build=$host \
+ --host=$host \
+ --target=$target \
+ --enable-languages=c,c++ \
+ --enable-clocale=generic \
+ --enable-tls \
+ --enable-libstdcxx-time \
+ --enable-checking=release \
+ --enable-fully-dynamic-string \
+ --disable-symvers \
+ --disable-gnu-indirect-function \
+ --disable-libmudflap \
+ --disable-libsanitizer \
+ --disable-libmpx \
+ --disable-nls \
+ --disable-lto-plugin \
+ --with-sysroot="${crossdir}/$target" \
+ $multilib_options \
+ $gcc_options
+"
+
+if test -n "$IS_DARKCRUSADE"
+then
+    ../gcc-${version}/configure CC="$BTCC" CXX="$BTCXX" AR="ar" \
+    CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
+    $option_list
+else
+    ../gcc-${version}/configure AR="ar" \
+    CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
+    $option_list
+fi
+
+unset option_list IS_DARKCRUSADE
+
+make -j${jobs} all \
+ AS_FOR_TARGET="${target}-as" \
+ LD_FOR_TARGET="${target}-ld"
+
+make install
+
+cleanup()
+{
+    cd -- "$TMPDIR" && rm -rf gcc-* gmp-* mpfr-* mpc-* isl-*
+}
+

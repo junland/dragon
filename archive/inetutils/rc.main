@@ -1,0 +1,37 @@
+#! /bin/sh -
+#
+# inetd/rc.main
+#
+# Interner super-server
+#
+
+# Redirects the standard error to the standard output
+exec 2>&1
+
+TARGET="$1"
+SVNAME="${2:-inetd}"
+
+start()
+{
+    echo "*** ${SVNAME}: Starting inetd ..."
+    exec /usr/libexec/inetd -d
+}
+
+reset()
+{
+    case $3 in
+    exit)
+        echo "*** ${SVNAME}: Exited status $4"
+        ;;
+    signal)
+        echo "*** ${SVNAME}: Killed on signal $5"
+        ;;
+    *)
+        echo "*** ${SVNAME}: Stopped (${3})"
+        ;;
+    esac
+}
+
+# Branch to target
+eval ${TARGET} "$@"
+

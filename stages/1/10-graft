@@ -1,0 +1,34 @@
+# Build script for graft
+#
+# Copyright (C) 2015-2017 Matias Fonzo, <selk@dragora.org>
+#
+# This script is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+version=2.12
+
+rm -rf -- "${TMPDIR}/graft-${version}"
+untar "${worktree}/sources/graft-${version}.tar.gz" "$TMPDIR"
+
+# Build instructions
+cd -- "${TMPDIR}/graft-${version}"
+
+# Adjust PACKAGEDIR and TARGETDIR:
+#
+# PACKAGEDIR = /usr/pkg
+# TARGETDIR  = /
+# PERL       = /tools/bin/perl
+#
+patch -Np0 -i "${worktree}/patches/graft/Makefile.dist-stage1.diff"
+
+make -f Makefile.dist || true
+make
+
+cat graft > /tools/bin/graft
+chmod 755 /tools/bin/graft
+
+cleanup()
+{
+    cd -- "$TMPDIR" && rm -rf graft-*
+}
+

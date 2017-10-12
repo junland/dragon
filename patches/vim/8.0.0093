@@ -1,0 +1,65 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0093
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0093
+Problem:    Not using multiprocess build feature.
+Solution:   Enable multiprocess build with MSVC 10. (Ken Takata)
+Files:      src/Make_mvc.mak
+
+
+*** ../vim-8.0.0092/src/Make_mvc.mak	2016-10-12 14:19:55.738357808 +0200
+--- src/Make_mvc.mak	2016-11-19 17:14:13.715603450 +0100
+***************
+*** 297,302 ****
+--- 297,305 ----
+  # Flag to turn on Win64 compatibility warnings for VC7.x and VC8.
+  WP64CHECK = /Wp64
+  
++ # Use multiprocess build
++ USE_MP = yes
++ 
+  #>>>>> path of the compiler and linker; name of include and lib directories
+  # PATH = c:\msvc20\bin;$(PATH)
+  # INCLUDE = c:\msvc20\include
+***************
+*** 473,478 ****
+--- 476,489 ----
+  NODEFAULTLIB = /nodefaultlib
+  !endif
+  
++ # Use multiprocess build on MSVC 10
++ !if "$(USE_MP)"=="yes"
++ !if $(MSVC_MAJOR) >= 10
++ CFLAGS = $(CFLAGS) /MP
++ !endif
++ !endif
++ 
++ 
+  !ifdef NODEBUG
+  VIM = vim
+  !if "$(OPTIMIZE)" == "SPACE"
+*** ../vim-8.0.0092/src/version.c	2016-11-17 21:30:17.144445729 +0100
+--- src/version.c	2016-11-19 17:15:10.123226082 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     93,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+38. You wake up at 3 a.m. to go to the bathroom and stop and check your e-mail
+    on the way back to bed.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

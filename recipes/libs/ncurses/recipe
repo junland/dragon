@@ -1,0 +1,100 @@
+# Build recipe for ncurses.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=ncurses
+version=6.0
+patch_version=20170722
+release=1
+
+tarname=${program}-${version}-${patch_version}.tgz
+
+# Remote source(s)
+fetch=http://invisible-mirror.net/archives/ncurses/current/$tarname
+
+description="
+Emulation library of Curses.
+
+The Ncurses (new curses) library is a free software emulation of
+curses in System V Release 4.0.  The ncurses code was developed
+under GNU/Linux.  It has been in use for some time with OpenBSD
+as the system curses library, and on FreeBSD and NetBSD as an
+external package.
+
+The distribution includes the library and support utilities,
+including a terminfo compiler tic, a decompiler infocmp, clear,
+tput, tset, and a termcap conversion tool captoinfo.
+"
+
+homepage=http://www.gnu.org/software/ncurses
+license=Custom
+
+# Source documentation
+docs="ANNOUNCE AUTHORS COPYING NEWS README TO-DO VERSION"
+docsdir="${docdir}/${program}-${version}"
+
+# Custom source directory
+srcdir=${program}-${version}-${patch_version}
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --enable-widec \
+     --enable-symlinks \
+     --enable-pc-files \
+     --with-pkg-config=/usr/bin/pkgconf \
+     --with-shared \
+     --without-debug \
+     --without-ada \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Provide non-widec compatibility
+
+    for name in ncurses form panel menu
+    do
+        echo "INPUT(-l${name}w)" \
+         > "${destdir}/usr/lib${libSuffix}/lib${name}.so"
+        ln -sf lib${name}w.a "${destdir}/usr/lib${libSuffix}/lib${name}.a"
+    done
+
+    ln -sf libncurses++w.a "${destdir}/usr/lib${libSuffix}/libncurses++.a"
+    ln -sf ncursesw6-config "${destdir}/usr/bin/ncurses6-config"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

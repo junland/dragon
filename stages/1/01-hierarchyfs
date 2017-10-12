@@ -1,0 +1,49 @@
+# Build script for the filesystem layout (Dragora)
+#
+# Copyright (C) 2014-2017 Matias Fonzo, <selk@dragora.org>
+#
+# This script is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+# These steps here are to satisfy "13-symlinks", the complete
+# steps are done from "recipes/config/hierarchyfs".
+
+echo "Creating minimal structure of directories for 'rootdir' ..."
+
+mkdir -p -- "${rootdir}/usr/bin" "${rootdir}/etc" "${rootdir}/var/log"
+(
+    cd -- "${rootdir}"
+    ln -sf usr/bin bin
+)
+
+# Handle lib<equal> directory for the multi directory support
+if test -n "$libSuffix"
+then
+    echo "Handling lib<equal> for ${rootdir}/usr/lib${libSuffix} ..."
+    (
+        cd -- "${rootdir}"/usr
+        mkdir -p lib${libSuffix}
+        ln -s -f lib${libSuffix} lib
+    )
+
+    # Make symlink of compatibility for / at $rootdir
+    cd -- "$rootdir"
+    rm -f lib
+    ln -s usr/lib${libSuffix} lib
+
+    echo "Making compatibility for ${rootdir}/tools/lib${libSuffix} ..."
+    cd tools
+    mkdir -p lib${libSuffix}
+    ln -s -f lib${libSuffix} lib
+else
+    mkdir -p -- "${rootdir}/lib" "${rootdir}/tools/lib" "${rootdir}/usr/lib"
+fi
+
+# Save the value of 'libSuffix'
+
+if test -n "$libSuffix"
+then
+    mkdir -p /tools/etc
+    echo "$libSuffix" > /tools/etc/stage1_is-multi-directory
+fi
+

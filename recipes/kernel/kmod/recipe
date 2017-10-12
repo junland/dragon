@@ -1,0 +1,98 @@
+# Build recipe for kmod.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=kmod
+version=24
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://www.kernel.org/pub/linux/utils/kernel/kmod/$tarname
+
+description="
+Linux kernel module handling.
+
+kmod is a set of tools to handle common tasks with Linux kernel modules like
+insert, remove, list, check properties, resolve dependencies and aliases.
+"
+
+homepage=http://git.kernel.org/?p=utils/kernel/kmod/kmod.git
+license=LGPLv2.1
+
+# Source documentation
+docs="COPYING NEWS README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # --enable-static is not supported by kmod
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --disable-static \
+     --enable-shared \
+     --enable-tools \
+     --with-rootlibdir=/usr/lib${libSuffix} \
+     --with-zlib \
+     --without-xz \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Make symlinks for compatibility
+
+    mkdir -p "${destdir}/usr/sbin"
+    for target in depmod insmod lsmod modinfo modprobe rmmod
+    do
+        ( cd "${destdir}/usr/sbin" && ln -sf ../bin/kmod $target )
+    done
+
+    # For user invocation
+    ( cd "${destdir}/usr/bin" && ln -sf ../bin/kmod lsmod )
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

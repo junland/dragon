@@ -1,0 +1,16 @@
+#! /bin/sh -
+#
+# /etc/cron.daily/texinfo - Update index for Info documents periodically.
+#
+
+set -e
+umask 022
+ionice -c 3 -p $$
+
+for INFODIR in /usr/local/share/info/ /usr/share/info/
+do
+    find $INFODIR -maxdepth 1 \( -type f -a ! -name dir \) \
+     -exec install-info '{}' ${INFODIR}/dir \;
+done
+unset INFODIR
+

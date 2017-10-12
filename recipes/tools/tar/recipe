@@ -1,0 +1,90 @@
+# Build recipe for tar.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=tar
+version=1.29
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://ftp.gnu.org/gnu/tar/$tarname
+
+description="
+Tool to package and manipulate files.
+
+The tar program provides the ability to create tar archives, as well as
+various other kinds of manipulation.  For example, you can use tar on
+previously created archives to extract files, to store additional
+files, or to update or list files which were already stored.
+
+The name of tar comes from \"Tape ARchiver\".
+"
+
+homepage=http://www.gnu.org/software/tar
+license=GPLv3+
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README THANKS TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    FORCE_UNSAFE_CONFIGURE="1" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-backup-scripts \
+     --enable-nls \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Remove generated charset.alias
+    rm -f "${destdir}/usr/lib${libSuffix}/charset.alias"
+    rmdir "${destdir}/usr/lib${libSuffix}" || true
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

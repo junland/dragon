@@ -1,0 +1,180 @@
+# Build recipe for GCC.
+#
+# Copyright (C) 2015-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=gcc
+version=6.4.0
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://gnu.c3sl.ufpr.br/ftp/gcc/gcc-${version}/$tarname
+
+homepage=http://www.gnu.org/software/gcc
+license="GPLv2+, GPLv3+, LGPLv2.1, LGPLv3 + GCC runtime library exception"
+
+description="
+The GNU C Compiler Collection.
+
+The GNU Compiler Collection (GCC) is a compiler system produced by the
+GNU Project supporting various programming languages.  GCC is a key
+component of the GNU toolchain.  The Free Software Foundation (FSF)
+distributes GCC under the GNU General Public License (GNU GPL).
+
+For more information about GCC, visit:  $homepage
+"
+
+# Source documentation
+docs="COPYING* README"
+docsdir="${docdir}/${program}-${version}"
+
+# System-dependent
+MACHTYPE="$(cc -dumpmachine)"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Apply specific patches for the support in musl.
+    #
+    # http://port70.net/~nsz/musl/gcc-trunk/
+    #
+    patch -Np1 -i "${worktree}/patches/gcc/0001-libgcc_s.patch"
+    patch -Np1 -i "${worktree}/patches/gcc/0005-libatomic-test-fix.patch"
+    patch -Np1 -i "${worktree}/patches/gcc/0006-libgomp-test-fix.patch"
+    patch -Np1 -i "${worktree}/patches/gcc/0007-libitm-test-fix.patch"
+    patch -Np1 -i "${worktree}/patches/gcc/0008-libvtv-test-fix.patch"
+
+    # Create a separate build directory
+    rm -rf ../gcc-build
+    mkdir ../gcc-build
+    cd ../gcc-build
+
+    ../${program}-${version}/configure SED=sed \
+    BOOT_LDFLAGS="$QILDFLAGS" BOOT_CFLAGS="$QICFLAGS" \
+     $configure_args \
+     $multilib_options \
+     $gcc_options \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --infodir=$infodir \
+     --enable-bootstrap \
+     --enable-languages=c,c++,objc,obj-c++,fortran \
+     --enable-clocale=generic \
+     --enable-threads=posix \
+     --enable-tls \
+     --enable-nls \
+     --enable-lto \
+     --enable-libstdcxx-time \
+     --enable-checking=release \
+     --enable-fully-dynamic-string \
+     --disable-symvers \
+     --disable-libitm \
+     --disable-gnu-indirect-function \
+     --disable-libstdcxx-pch \
+     --disable-libmudflap \
+     --disable-libsanitizer \
+     --disable-libmpx \
+     --disable-libcilkrts \
+     --with-system-zlib \
+     --build=$MACHTYPE \
+     --host=$MACHTYPE \
+     --target=$MACHTYPE
+
+    make -j${jobs} BOOT_LDFLAGS="$QILDFLAGS" BOOT_CFLAGS="$QICFLAGS"
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Back to source dir
+    cd .. && cd "$srcdir"
+
+    # Add compatibility for building programs with LTO (Link Time Optimization)
+    mkdir -p "${destdir}/usr/lib${libSuffix}/bfd-plugins"
+    ln -sf ../../libexec/gcc/${MACHTYPE}/${version}/liblto_plugin.so \
+           "${destdir}/usr/lib${libSuffix}/bfd-plugins/"
+
+    # Move misplaced file(s) for GDB
+    mkdir -p "${destdir}/usr/share/gdb/auto-load/usr/lib${libSuffix}"
+    mv "${destdir}/usr/lib${libSuffix}"/*-gdb.py \
+       "${destdir}/usr/share/gdb/auto-load/usr/lib${libSuffix}"
+
+    # Provide compatibility and make soft links for package size
+    (
+        cd "${destdir}/usr/bin" || exit 1
+        mv gcc gcc-${version}
+        ln -sf gcc-${version} gcc
+        ln -sf gcc cc
+        ln -sf gcc-${version} ${MACHTYPE}-gcc
+        ln -sf gcc-${version} ${MACHTYPE}-gcc-${version}
+
+        mv g++ g++-gcc-${version}
+        ln -sf g++-gcc-${version} g++
+        ln -sf g++ c++
+        ln -sf g++-gcc-${version} ${MACHTYPE}-g++
+        ln -sf g++-gcc-${version} ${MACHTYPE}-c++
+
+        mv gfortran gfortran-${version}
+        ln -sf gfortran-${version} gfortran
+        ln -sf gfortran-${version} ${MACHTYPE}-gfortran
+
+        mv gcc-ar gcc-ar-${version}
+        ln -sf gcc-ar-${version} gcc-ar
+        ln -sf gcc-ar-${version} ${MACHTYPE}-gcc-ar
+
+        mv gcc-nm gcc-nm-${version}
+        ln -sf gcc-nm-${version} gcc-nm
+        ln -sf gcc-nm-${version} ${MACHTYPE}-gcc-nm
+
+        mv gcc-ranlib gcc-ranlib-${version}
+        ln -sf gcc-ranlib-${version} gcc-ranlib
+        ln -sf gcc-ranlib-${version} ${MACHTYPE}-gcc-ranlib
+    )
+    (
+        mkdir -p "${destdir}/lib" && \
+        cd "${destdir}/lib" && ln -sf ../usr/bin/cpp .
+    )
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+
+    # Delete temporary build directory
+    cd -- "$TMPDIR"
+    if test -d ./gcc-build
+    then
+        rm -rf ./gcc-build
+    fi
+}
+

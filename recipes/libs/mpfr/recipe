@@ -1,0 +1,78 @@
+# Build recipe for mpfr.
+#
+# Copyright (C) 2015-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=mpfr
+version=3.1.6
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://www.mpfr.org/mpfr-current/$tarname
+
+description="
+Library for multiple-precision floating point.
+
+The MPFR library is a C library for multiple-precision
+floating-point computations with correct rounding.
+"
+
+homepage=http://www.mpfr.org
+license="GPLv3+, LGPLv3+"
+
+# Source documentation
+docs="AUTHORS BUGS COPYING* ChangeLog NEWS PATCHES README TODO VERSION"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Apply patches from upstream
+    for file in "${worktree}"/patches/mpfr/patch??*
+    do
+        if test -f "$file"
+        then
+            patch -Np1 -i "$file"
+        fi
+    done
+
+    ./configure \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --docdir=$docsdir \
+     --enable-static \
+     --enable-shared \
+     --enable-thread-safe \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make check
+    make -j${jobs} install DESTDIR="$destdir"
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

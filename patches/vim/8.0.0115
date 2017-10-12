@@ -1,0 +1,64 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0115
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0115
+Problem:    When building with Cygwin libwinpthread isn't found.
+Solution:   Link winpthread statically. (jmmerz, closes #1255, closes #1256)
+Files:      src/Make_cyg_ming.mak
+
+
+*** ../vim-8.0.0114/src/Make_cyg_ming.mak	2016-09-08 20:25:34.000000000 +0200
+--- src/Make_cyg_ming.mak	2016-12-01 20:36:04.852560447 +0100
+***************
+*** 81,86 ****
+--- 81,93 ----
+  STATIC_STDCPLUS=no
+  endif
+  
++ 
++ # Link against the shared version of libwinpthread by default.  Set
++ # STATIC_WINPTHREAD to "yes" to link against static version instead.
++ ifndef STATIC_WINPTHREAD
++ STATIC_WINPTHREAD=$(STATIC_STDCPLUS)
++ endif
++ 
+  # If the user doesn't want gettext, undefine it.
+  ifeq (no, $(GETTEXT))
+  GETTEXT=
+***************
+*** 817,822 ****
+--- 824,833 ----
+  endif
+  endif
+  
++ ifeq (yes, $(STATIC_WINPTHREAD))
++ LIB += -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic
++ endif
++ 
+  all: $(TARGET) vimrun.exe xxd/xxd.exe install.exe uninstal.exe GvimExt/gvimext.dll
+  
+  vimrun.exe: vimrun.c
+*** ../vim-8.0.0114/src/version.c	2016-12-01 20:32:23.958023740 +0100
+--- src/version.c	2016-12-01 20:36:35.892354699 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     115,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+73. You give your dog used motherboards instead of bones
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

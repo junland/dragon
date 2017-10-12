@@ -1,0 +1,123 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0114
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0114
+Problem:    Coding style not optimal.
+Solution:   Add spaces. (Ken Takata)
+Files:      src/gui_w32.c, src/os_mswin.c
+
+
+*** ../vim-8.0.0113/src/gui_w32.c	2016-12-01 20:18:47.243420047 +0100
+--- src/gui_w32.c	2016-12-01 20:31:04.638547599 +0100
+***************
+*** 3551,3562 ****
+      filterp = convert_filterW(filter);
+  
+      vim_memset(&fileStruct, 0, sizeof(OPENFILENAMEW));
+! #ifdef OPENFILENAME_SIZE_VERSION_400W
+      /* be compatible with Windows NT 4.0 */
+      fileStruct.lStructSize = OPENFILENAME_SIZE_VERSION_400W;
+! #else
+      fileStruct.lStructSize = sizeof(fileStruct);
+! #endif
+  
+      if (title != NULL)
+  	titlep = enc_to_utf16(title, NULL);
+--- 3551,3562 ----
+      filterp = convert_filterW(filter);
+  
+      vim_memset(&fileStruct, 0, sizeof(OPENFILENAMEW));
+! #  ifdef OPENFILENAME_SIZE_VERSION_400W
+      /* be compatible with Windows NT 4.0 */
+      fileStruct.lStructSize = OPENFILENAME_SIZE_VERSION_400W;
+! #  else
+      fileStruct.lStructSize = sizeof(fileStruct);
+! #  endif
+  
+      if (title != NULL)
+  	titlep = enc_to_utf16(title, NULL);
+***************
+*** 3593,3602 ****
+       * Don't use OFN_OVERWRITEPROMPT, Vim has its own ":confirm" dialog.
+       */
+      fileStruct.Flags = (OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY);
+! #ifdef FEAT_SHORTCUT
+      if (curbuf->b_p_bin)
+  	fileStruct.Flags |= OFN_NODEREFERENCELINKS;
+! #endif
+      if (saving)
+      {
+  	if (!GetSaveFileNameW(&fileStruct))
+--- 3593,3602 ----
+       * Don't use OFN_OVERWRITEPROMPT, Vim has its own ":confirm" dialog.
+       */
+      fileStruct.Flags = (OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY);
+! #  ifdef FEAT_SHORTCUT
+      if (curbuf->b_p_bin)
+  	fileStruct.Flags |= OFN_NODEREFERENCELINKS;
+! #  endif
+      if (saving)
+      {
+  	if (!GetSaveFileNameW(&fileStruct))
+*** ../vim-8.0.0113/src/os_mswin.c	2016-11-10 17:10:47.494177267 +0100
+--- src/os_mswin.c	2016-12-01 20:31:04.638547599 +0100
+***************
+*** 40,46 ****
+  #  include <dlgs.h>
+  #  include <winspool.h>
+  #  include <commdlg.h>
+! #endif
+  
+  #endif /* PROTO */
+  
+--- 40,46 ----
+  #  include <dlgs.h>
+  #  include <winspool.h>
+  #  include <commdlg.h>
+! # endif
+  
+  #endif /* PROTO */
+  
+***************
+*** 1619,1625 ****
+  
+  	if (psettings->n_uncollated_copies == 0)
+  	    psettings->n_uncollated_copies = 1;
+!     } else {
+  	psettings->n_collated_copies = 1;
+  	psettings->n_uncollated_copies = 1;
+      }
+--- 1619,1627 ----
+  
+  	if (psettings->n_uncollated_copies == 0)
+  	    psettings->n_uncollated_copies = 1;
+!     }
+!     else
+!     {
+  	psettings->n_collated_copies = 1;
+  	psettings->n_uncollated_copies = 1;
+      }
+*** ../vim-8.0.0113/src/version.c	2016-12-01 20:18:47.243420047 +0100
+--- src/version.c	2016-12-01 20:31:31.502370175 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     114,
+  /**/
+
+-- 
+"Thou shalt not follow the Null Pointer, for at its end Chaos and
+Madness lie."
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,61 @@
+# Build recipe for xml-parser.
+#
+# Copyright (C) 2017 Mateus P. Rodrigues, mprodrigues@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=XML-Parser
+version=2.44_01
+release=1
+
+description="
+Perl interface to the Expat library.
+"
+
+homepage=http://search.cpan.org/~toddr/XML-Parser/
+license="The Perl 5 License"
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://search.cpan.org/CPAN/authors/id/T/TO/TODDR/$tarname
+
+pkgname=xml-parser
+
+# Parallel jobs for the compiler
+jobs=1
+
+# Source documentation
+docs="Changes README"
+docsdir="${docdir}/${program}-${version}"
+
+build() {
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    perl Makefile.PL INSTALLDIRS=vendor
+    make -j${jobs} V=1 \
+    docdir=$docsdir
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress manual pages
+    if [ -d "${destdir}/$mandir" ] ; then
+	(
+            cd "${destdir}/$mandir"
+	    find . -type f -exec lzip -9 '{}' +
+	    find . -type l | while read -r file
+	    do
+		ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+		rm -- "$file"
+	    done
+	)
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}

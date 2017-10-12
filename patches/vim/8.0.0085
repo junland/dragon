@@ -1,0 +1,145 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0085
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0085
+Problem:    Using freed memory with recursive function call. (Dominique Pelle)
+Solution:   Make a copy of the function name.
+Files:      src/eval.c, src/testdir/test_nested_function.vim
+
+
+*** ../vim-8.0.0084/src/eval.c	2016-11-10 20:01:41.185582969 +0100
+--- src/eval.c	2016-11-14 21:46:38.269423032 +0100
+***************
+*** 4339,4348 ****
+  		 * use its contents. */
+  		s = deref_func_name(s, &len, &partial, !evaluate);
+  
+! 		/* Invoke the function. */
+! 		ret = get_func_tv(s, len, rettv, arg,
+! 			  curwin->w_cursor.lnum, curwin->w_cursor.lnum,
+! 			  &len, evaluate, partial, NULL);
+  
+  		/* If evaluate is FALSE rettv->v_type was not set in
+  		 * get_func_tv, but it's needed in handle_subscript() to parse
+--- 4339,4355 ----
+  		 * use its contents. */
+  		s = deref_func_name(s, &len, &partial, !evaluate);
+  
+! 		/* Need to make a copy, in case evaluating the arguments makes
+! 		 * the name invalid. */
+! 		s = vim_strsave(s);
+! 		if (s == NULL)
+! 		    ret = FAIL;
+! 		else
+! 		    /* Invoke the function. */
+! 		    ret = get_func_tv(s, len, rettv, arg,
+! 			      curwin->w_cursor.lnum, curwin->w_cursor.lnum,
+! 			      &len, evaluate, partial, NULL);
+! 		vim_free(s);
+  
+  		/* If evaluate is FALSE rettv->v_type was not set in
+  		 * get_func_tv, but it's needed in handle_subscript() to parse
+*** ../vim-8.0.0084/src/testdir/test_nested_function.vim	2016-09-01 22:07:07.000000000 +0200
+--- src/testdir/test_nested_function.vim	2016-11-14 21:43:56.074512335 +0100
+***************
+*** 1,32 ****
+  "Tests for nested functions
+  "
+! function! NestedFunc()
+!   fu! Func1()
+      let g:text .= 'Func1 '
+!   endfunction
+    call Func1()
+!   fu! s:func2()
+      let g:text .= 's:func2 '
+!   endfunction
+    call s:func2()
+!   fu! s:_func3()
+      let g:text .= 's:_func3 '
+!   endfunction
+    call s:_func3()
+    let fn = 'Func4'
+!   fu! {fn}()
+      let g:text .= 'Func4 '
+!   endfunction
+    call {fn}()
+    let fn = 'func5'
+!   fu! s:{fn}()
+      let g:text .= 's:func5'
+!   endfunction
+    call s:{fn}()
+! endfunction
+  
+! function! Test_nested_functions()
+    let g:text = ''
+    call NestedFunc()
+    call assert_equal('Func1 s:func2 s:_func3 Func4 s:func5', g:text)
+  endfunction
+--- 1,42 ----
+  "Tests for nested functions
+  "
+! func NestedFunc()
+!   func! Func1()
+      let g:text .= 'Func1 '
+!   endfunc
+    call Func1()
+!   func! s:func2()
+      let g:text .= 's:func2 '
+!   endfunc
+    call s:func2()
+!   func! s:_func3()
+      let g:text .= 's:_func3 '
+!   endfunc
+    call s:_func3()
+    let fn = 'Func4'
+!   func! {fn}()
+      let g:text .= 'Func4 '
+!   endfunc
+    call {fn}()
+    let fn = 'func5'
+!   func! s:{fn}()
+      let g:text .= 's:func5'
+!   endfunc
+    call s:{fn}()
+! endfunc
+  
+! func Test_nested_functions()
+    let g:text = ''
+    call NestedFunc()
+    call assert_equal('Func1 s:func2 s:_func3 Func4 s:func5', g:text)
+  endfunction
++ 
++ func Test_nested_argument()
++   func g:X()
++     let g:Y = function('sort')
++   endfunc
++   let g:Y = function('sort')
++   echo g:Y([], g:X())
++   delfunc g:X
++   unlet g:Y
++ endfunc
+*** ../vim-8.0.0084/src/version.c	2016-11-13 15:09:21.301005386 +0100
+--- src/version.c	2016-11-14 21:40:08.616043065 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     85,
+  /**/
+
+-- 
+How To Keep A Healthy Level Of Insanity:
+3. Every time someone asks you to do something, ask if they want fries
+   with that.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

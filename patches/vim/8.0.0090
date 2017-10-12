@@ -1,0 +1,588 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0090
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0090
+Problem:    Cursor moved after last character when using 'breakindent'.
+Solution:   Fix the cursor positioning.  Turn the breakindent test into new
+            style.  (Christian Brabandt)
+Files:      src/screen.c, src/testdir/Make_all.mak,
+            src/testdir/test_breakindent.in, src/testdir/test_breakindent.ok,
+            src/testdir/test_breakindent.vim, src/Makefile
+
+
+*** ../vim-8.0.0089/src/screen.c	2016-11-06 15:25:37.697627447 +0100
+--- src/screen.c	2016-11-17 19:27:22.767064438 +0100
+***************
+*** 3010,3016 ****
+  #endif
+      colnr_T	trailcol = MAXCOL;	/* start of trailing spaces */
+  #ifdef FEAT_LINEBREAK
+!     int		need_showbreak = FALSE;
+  #endif
+  #if defined(FEAT_SIGNS) || (defined(FEAT_QUICKFIX) && defined(FEAT_WINDOWS)) \
+  	|| defined(FEAT_SYN_HL) || defined(FEAT_DIFF)
+--- 3010,3017 ----
+  #endif
+      colnr_T	trailcol = MAXCOL;	/* start of trailing spaces */
+  #ifdef FEAT_LINEBREAK
+!     int		need_showbreak = FALSE; /* overlong line, skipping first x
+! 					   chars */
+  #endif
+  #if defined(FEAT_SIGNS) || (defined(FEAT_QUICKFIX) && defined(FEAT_WINDOWS)) \
+  	|| defined(FEAT_SYN_HL) || defined(FEAT_DIFF)
+***************
+*** 3793,3805 ****
+  	    if (draw_state == WL_BRI - 1 && n_extra == 0)
+  	    {
+  		draw_state = WL_BRI;
+! 		if (wp->w_p_bri && n_extra == 0 && row != startrow
+  # ifdef FEAT_DIFF
+  			&& filler_lines == 0
+  # endif
+  		   )
+  		{
+! 		    char_attr = 0; /* was: hl_attr(HLF_AT); */
+  # ifdef FEAT_DIFF
+  		    if (diff_hlf != (hlf_T)0)
+  		    {
+--- 3794,3808 ----
+  	    if (draw_state == WL_BRI - 1 && n_extra == 0)
+  	    {
+  		draw_state = WL_BRI;
+! 		/* if need_showbreak is set, breakindent also applies */
+! 		if (wp->w_p_bri && n_extra == 0
+! 					 && (row != startrow || need_showbreak)
+  # ifdef FEAT_DIFF
+  			&& filler_lines == 0
+  # endif
+  		   )
+  		{
+! 		    char_attr = 0;
+  # ifdef FEAT_DIFF
+  		    if (diff_hlf != (hlf_T)0)
+  		    {
+*** ../vim-8.0.0089/src/testdir/Make_all.mak	2016-11-15 21:16:46.754453019 +0100
+--- src/testdir/Make_all.mak	2016-11-17 19:24:06.120428121 +0100
+***************
+*** 75,81 ****
+  	test108.out \
+  	test_autocmd_option.out \
+  	test_autoformat_join.out \
+- 	test_breakindent.out \
+  	test_changelist.out \
+  	test_close_count.out \
+  	test_comparators.out \
+--- 75,80 ----
+***************
+*** 141,146 ****
+--- 140,146 ----
+  	    test_assert.res \
+  	    test_autochdir.res \
+  	    test_backspace_opt.res \
++ 	    test_breakindent.res \
+  	    test_bufwintabinfo.res \
+  	    test_cdo.res \
+  	    test_channel.res \
+*** ../vim-8.0.0089/src/testdir/test_breakindent.in	2015-01-27 17:07:20.000000000 +0100
+--- src/testdir/test_breakindent.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,122 ****
+- Test for breakindent
+- 
+- STARTTEST
+- :so small.vim
+- :if !exists("+breakindent") | e! test.ok | w! test.out | qa! | endif
+- :10new|:vsp|:vert resize 20
+- :put =\"\tabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP\"
+- :set ts=4 sw=4 sts=4 breakindent
+- :fu! ScreenChar(line, width)
+- :	let c=''
+- :	for i in range(1,a:width)
+- :		let c.=nr2char(screenchar(a:line, i))
+- :	endfor
+- :       let c.="\n"
+- :	for i in range(1,a:width)
+- :		let c.=nr2char(screenchar(a:line+1, i))
+- :	endfor
+- :       let c.="\n"
+- :	for i in range(1,a:width)
+- :		let c.=nr2char(screenchar(a:line+2, i))
+- :	endfor
+- :	return c
+- :endfu
+- :fu DoRecordScreen()
+- :	wincmd l
+- :	$put =printf(\"\n%s\", g:test)
+- :	$put =g:line1
+- :	wincmd p
+- :endfu
+- :set briopt=min:0
+- :let g:test="Test 1: Simple breakindent"
+- :let line1=ScreenChar(line('.'),8)
+- :call DoRecordScreen()
+- :let g:test="Test 2: Simple breakindent + sbr=>>"
+- :set sbr=>>
+- :let line1=ScreenChar(line('.'),8)
+- :call DoRecordScreen()
+- :let g:test ="Test 3: Simple breakindent + briopt:sbr"
+- :set briopt=sbr,min:0 sbr=++
+- :let line1=ScreenChar(line('.'),8)
+- :call DoRecordScreen()
+- :let g:test ="Test 4: Simple breakindent + min width: 18"
+- :set sbr= briopt=min:18
+- :let line1=ScreenChar(line('.'),8)
+- :call DoRecordScreen()
+- :let g:test =" Test 5: Simple breakindent + shift by 2"
+- :set briopt=shift:2,min:0
+- :let line1=ScreenChar(line('.'),8)
+- :call DoRecordScreen()
+- :let g:test=" Test 6: Simple breakindent + shift by -1"
+- :set briopt=shift:-1,min:0
+- :let line1=ScreenChar(line('.'),8)
+- :call DoRecordScreen()
+- :let g:test=" Test 7: breakindent + shift by +1 + nu + sbr=? briopt:sbr"
+- :set briopt=shift:1,sbr,min:0 nu sbr=? nuw=4
+- :let line1=ScreenChar(line('.'),10)
+- :call DoRecordScreen()
+- :let g:test=" Test 8: breakindent + shift:1 + nu + sbr=# list briopt:sbr"
+- :set briopt=shift:1,sbr,min:0 nu sbr=# list
+- :let line1=ScreenChar(line('.'),10)
+- :call DoRecordScreen()
+- :let g:test=" Test 9: breakindent + shift by +1 + 'nu' + sbr=# list"
+- :set briopt-=sbr
+- :let line1=ScreenChar(line('.'),10)
+- :call DoRecordScreen()
+- :let g:test=" Test 10: breakindent + shift by +1 + 'nu' + sbr=~ cpo+=n"
+- :set cpo+=n sbr=~ nu nuw=4 nolist briopt=sbr,min:0
+- :let line1=ScreenChar(line('.'),10)
+- :call DoRecordScreen()
+- :wincmd p
+- :let g:test="\n Test 11: strdisplaywidth when breakindent is on"
+- :set cpo-=n sbr=>> nu nuw=4 nolist briopt= ts=4
+- :let text=getline(2) "skip leading tab when calculating text width
+- :let width = strlen(text[1:])+indent(2)*4+strlen(&sbr)*3 " text wraps 3 times
+- :$put =g:test
+- :$put =printf(\"strdisplaywidth: %d == calculated: %d\", strdisplaywidth(text), width)
+- :let g:str="\t\t\t\t\t{"
+- :let g:test=" Test 12: breakindent + long indent"
+- :wincmd p
+- :set all& breakindent linebreak briopt=min:10 nu numberwidth=3 ts=4
+- :$put =g:str
+- zt:let line1=ScreenChar(1,10)
+- :wincmd p
+- :call DoRecordScreen()
+- :"
+- :" Test, that the string "    a\tb\tc\td\te" is correctly
+- :" displayed in a 20 column wide window (see bug report
+- :" https://groups.google.com/d/msg/vim_dev/ZOdg2mc9c9Y/TT8EhFjEy0IJ
+- :only
+- :vert 20new
+- :set all& nocp breakindent briopt=min:10
+- :call setline(1, ["    a\tb\tc\td\te", "    z   y       x       w       v"])
+- :/^\s*a
+- fbgjyl:let line1 = @0
+- :?^\s*z
+- fygjyl:let line2 = @0
+- :quit!
+- :$put ='Test 13: breakindent with wrapping Tab'
+- :$put =line1
+- :$put =line2
+- :"
+- :let g:test="Test 14: breakindent + visual blockwise delete #1"
+- :set all& breakindent viminfo+=nviminfo
+- :30vnew
+- :normal! 3a1234567890
+- :normal! a    abcde
+- :exec "normal! 0\<C-V>tex"
+- :let line1=ScreenChar(line('.'),8)
+- :call DoRecordScreen()
+- :"
+- :let g:test="Test 15: breakindent + visual blockwise delete #2"
+- :%d
+- :normal! 4a1234567890
+- :exec "normal! >>\<C-V>3f0x"
+- :let line1=ScreenChar(line('.'),20)
+- :call DoRecordScreen()
+- :quit!
+- :"
+- :%w! test.out
+- :qa!
+- ENDTEST
+- dummy text
+--- 0 ----
+*** ../vim-8.0.0089/src/testdir/test_breakindent.ok	2015-01-27 13:06:51.000000000 +0100
+--- src/testdir/test_breakindent.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,74 ****
+- 
+- 	abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP
+- 
+- Test 1: Simple breakindent
+-     abcd
+-     qrst
+-     GHIJ
+- 
+- Test 2: Simple breakindent + sbr=>>
+-     abcd
+-     >>qr
+-     >>EF
+- 
+- Test 3: Simple breakindent + briopt:sbr
+-     abcd
+- ++  qrst
+- ++  GHIJ
+- 
+- Test 4: Simple breakindent + min width: 18
+-     abcd
+-   qrstuv
+-   IJKLMN
+- 
+-  Test 5: Simple breakindent + shift by 2
+-     abcd
+-       qr
+-       EF
+- 
+-  Test 6: Simple breakindent + shift by -1
+-     abcd
+-    qrstu
+-    HIJKL
+- 
+-  Test 7: breakindent + shift by +1 + nu + sbr=? briopt:sbr
+-   2     ab
+- ?        m
+- ?        x
+- 
+-  Test 8: breakindent + shift:1 + nu + sbr=# list briopt:sbr
+-   2 ^Iabcd
+- #      opq
+- #      BCD
+- 
+-  Test 9: breakindent + shift by +1 + 'nu' + sbr=# list
+-   2 ^Iabcd
+-        #op
+-        #AB
+- 
+-  Test 10: breakindent + shift by +1 + 'nu' + sbr=~ cpo+=n
+-   2     ab
+- ~       mn
+- ~       yz
+- 
+-  Test 11: strdisplaywidth when breakindent is on
+- strdisplaywidth: 46 == calculated: 64
+- 					{
+- 
+-  Test 12: breakindent + long indent
+- 56        
+-           
+- ~         
+- Test 13: breakindent with wrapping Tab
+- d
+- w
+- 
+- Test 14: breakindent + visual blockwise delete #1
+- e       
+- ~       
+- ~       
+- 
+- Test 15: breakindent + visual blockwise delete #2
+-         1234567890  
+- ~                   
+- ~                   
+--- 0 ----
+*** ../vim-8.0.0089/src/testdir/test_breakindent.vim	2016-11-17 19:31:49.285221709 +0100
+--- src/testdir/test_breakindent.vim	2016-11-17 19:26:47.999305286 +0100
+***************
+*** 0 ****
+--- 1,241 ----
++ " Test for breakindent
++ "
++ " Note: if you get strange failures when adding new tests, it might be that
++ " while the test is run, the breakindent cacheing gets in its way.
++ " It helps to change the tabastop setting and force a redraw (e.g. see
++ " Test_breakindent08())
++ if !exists('+breakindent')
++   finish
++ endif
++ 
++ let s:input ="\tabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP"
++ 
++ function s:screenline(lnum, width) abort
++   " always get 4 screen lines
++   redraw!
++   let line = []
++   for j in range(3)
++     for c in range(1, a:width)
++   call add(line, nr2char(screenchar(a:lnum+j, c)))
++     endfor
++     call add(line, "\n")
++   endfor
++   return join(line, '')
++ endfunction
++ 
++ function s:testwindows(...)
++   10new
++   vsp
++   vert resize 20
++   setl ts=4 sw=4 sts=4 breakindent 
++   put =s:input
++   if a:0
++     exe a:1
++   endif
++ endfunction
++ 
++ function s:close_windows(...)
++   bw!
++   if a:0
++     exe a:1
++   endif
++   unlet! g:line g:expect
++ endfunction
++ 
++ function Test_breakindent01()
++   " simple breakindent test
++   call s:testwindows('setl briopt=min:0')
++   let g:line=s:screenline(line('.'),8)
++   let g:expect="    abcd\n    qrst\n    GHIJ\n"
++   call assert_equal(g:expect, g:line)
++   call s:close_windows()
++ endfunction
++ 
++ function Test_breakindent02()
++   " simple breakindent test with showbreak set
++   call s:testwindows('setl briopt=min:0 sbr=>>')
++   let g:line=s:screenline(line('.'),8)
++   let g:expect="    abcd\n    >>qr\n    >>EF\n"
++   call assert_equal(g:expect, g:line)
++   call s:close_windows('set sbr=')
++ endfunction
++ 
++ function Test_breakindent03()
++   " simple breakindent test with showbreak set and briopt including sbr
++   call s:testwindows('setl briopt=sbr,min:0 sbr=++')
++   let g:line=s:screenline(line('.'),8)
++   let g:expect="    abcd\n++  qrst\n++  GHIJ\n"
++   call assert_equal(g:expect, g:line)
++   " clean up
++   call s:close_windows('set sbr=')
++ endfunction
++ 
++ function Test_breakindent04()
++   " breakindent set with min width 18
++   call s:testwindows('setl sbr= briopt=min:18')
++   let g:line=s:screenline(line('.'),8)
++   let g:expect="    abcd\n  qrstuv\n  IJKLMN\n"
++   call assert_equal(g:expect, g:line)
++   " clean up
++   call s:close_windows('set sbr=')
++ endfunction
++ 
++ function Test_breakindent05()
++   " breakindent set and shift by 2
++   call s:testwindows('setl briopt=shift:2,min:0')
++   let g:line=s:screenline(line('.'),8)
++   let g:expect="    abcd\n      qr\n      EF\n"
++   call assert_equal(g:expect, g:line)
++   call s:close_windows()
++ endfunction
++ 
++ function Test_breakindent06()
++   " breakindent set and shift by -1
++   call s:testwindows('setl briopt=shift:-1,min:0')
++   let g:line=s:screenline(line('.'),8)
++   let g:expect="    abcd\n   qrstu\n   HIJKL\n"
++   call assert_equal(g:expect, g:line)
++   call s:close_windows()
++ endfunction
++ 
++ function Test_breakindent07()
++   " breakindent set and shift by 1, Number  set sbr=? and briopt:sbr
++   call s:testwindows('setl briopt=shift:1,sbr,min:0 nu sbr=? nuw=4 cpo+=n')
++   let g:line=s:screenline(line('.'),10)
++   let g:expect="  2     ab\n?        m\n?        x\n"
++   call assert_equal(g:expect, g:line)
++   " clean up
++   call s:close_windows('set sbr= cpo-=n')
++ endfunction
++ 
++ function Test_breakindent07a()
++   " breakindent set and shift by 1, Number  set sbr=? and briopt:sbr
++   call s:testwindows('setl briopt=shift:1,sbr,min:0 nu sbr=? nuw=4')
++   let g:line=s:screenline(line('.'),10)
++   let g:expect="  2     ab\n    ?    m\n    ?    x\n"
++   call assert_equal(g:expect, g:line)
++   " clean up
++   call s:close_windows('set sbr=')
++ endfunction
++ 
++ function Test_breakindent08()
++   " breakindent set and shift by 1, Number and list set sbr=# and briopt:sbr
++   call s:testwindows('setl briopt=shift:1,sbr,min:0 nu nuw=4 sbr=# list cpo+=n ts=4')
++   " make sure, cache is invalidated!
++   set ts=8
++   redraw!
++   set ts=4
++   redraw!
++   let g:line=s:screenline(line('.'),10)
++   let g:expect="  2 ^Iabcd\n#      opq\n#      BCD\n"
++   call assert_equal(g:expect, g:line)
++   call s:close_windows('set sbr= cpo-=n')
++ endfunction
++ 
++ function Test_breakindent08a()
++   " breakindent set and shift by 1, Number and list set sbr=# and briopt:sbr
++   call s:testwindows('setl briopt=shift:1,sbr,min:0 nu nuw=4 sbr=# list')
++   let g:line=s:screenline(line('.'),10)
++   let g:expect="  2 ^Iabcd\n    #  opq\n    #  BCD\n"
++   call assert_equal(g:expect, g:line)
++   call s:close_windows('set sbr=')
++ endfunction
++ 
++ function Test_breakindent09()
++   " breakindent set and shift by 1, Number and list set sbr=#
++   call s:testwindows('setl briopt=shift:1,min:0 nu nuw=4 sbr=# list')
++   let g:line=s:screenline(line('.'),10)
++   let g:expect="  2 ^Iabcd\n       #op\n       #AB\n"
++   call assert_equal(g:expect, g:line)
++   call s:close_windows('set sbr=')
++ endfunction
++ 
++ function Test_breakindent10()
++   " breakindent set, Number set sbr=~
++   call s:testwindows('setl cpo+=n sbr=~ nu nuw=4 nolist briopt=sbr,min:0')
++   " make sure, cache is invalidated!
++   set ts=8
++   redraw!
++   set ts=4
++   redraw!
++   let g:line=s:screenline(line('.'),10)
++   let g:expect="  2     ab\n~       mn\n~       yz\n"
++   call assert_equal(g:expect, g:line)
++   call s:close_windows('set sbr= cpo-=n')
++ endfunction
++ 
++ function Test_breakindent11()
++   " test strdisplaywidth()
++   call s:testwindows('setl cpo-=n sbr=>> nu nuw=4 nolist briopt= ts=4')
++   let text=getline(2)
++   let width = strlen(text[1:])+indent(2)+strlen(&sbr)*3 " text wraps 3 times
++   call assert_equal(width, strdisplaywidth(text))
++   call s:close_windows('set sbr=')
++ endfunction
++ 
++ function Test_breakindent12()
++   " test breakindent with long indent
++   let s:input="\t\t\t\t\t{"
++   call s:testwindows('setl breakindent linebreak briopt=min:10 nu numberwidth=3 ts=4 list listchars=tab:>-')
++   let g:line=s:screenline(2,16)
++   let g:expect=" 2 >--->--->--->\n          ---{  \n~               \n"
++   call assert_equal(g:expect, g:line)
++   call s:close_windows('set nuw=4 listchars=')
++ endfunction
++ 
++ function Test_breakindent13()
++   let s:input=""
++   call s:testwindows('setl breakindent briopt=min:10 ts=8')
++   vert resize 20
++   call setline(1, ["    a\tb\tc\td\te", "    z   y       x       w       v"])
++   1
++   norm! fbgj"ayl
++   2
++   norm! fygj"byl
++   call assert_equal('d', @a)
++   call assert_equal('w', @b)
++   call s:close_windows()
++ endfunction
++ 
++ function Test_breakindent14()
++   let s:input=""
++   call s:testwindows('setl breakindent briopt= ts=8')
++   vert resize 30
++   norm! 3a1234567890
++   norm! a    abcde
++   exec "norm! 0\<C-V>tex"
++   let g:line=s:screenline(line('.'),8)
++   let g:expect="e       \n~       \n~       \n"
++   call assert_equal(g:expect, g:line)
++   call s:close_windows()
++ endfunction
++ 
++ function Test_breakindent15()
++   let s:input=""
++   call s:testwindows('setl breakindent briopt= ts=8 sw=8')
++   vert resize 30
++   norm! 4a1234567890
++   exe "normal! >>\<C-V>3f0x"
++   let g:line=s:screenline(line('.'),20)
++   let g:expect="        1234567890  \n~                   \n~                   \n"
++   call assert_equal(g:expect, g:line)
++   call s:close_windows()
++ endfunction
++ 
++ function Test_breakindent16()
++   " Check that overlong lines are indented correctly.
++   " TODO: currently it does not fail even when the bug is not fixed.
++   let s:input=""
++   call s:testwindows('setl breakindent briopt=min:0 ts=4')
++   call setline(1, "\t".repeat("1234567890", 10))
++   resize 6
++   norm! 1gg$
++   redraw!
++   let g:line=s:screenline(1,10)
++   let g:expect="    123456\n    789012\n    345678\n"
++   call assert_equal(g:expect, g:line)
++   let g:line=s:screenline(4,10)
++   let g:expect="    901234\n    567890\n    123456\n"
++   call assert_equal(g:expect, g:line)
++   call s:close_windows()
++ endfunction
+*** ../vim-8.0.0089/src/Makefile	2016-11-15 21:16:46.746453073 +0100
+--- src/Makefile	2016-11-17 19:25:11.119976976 +0100
+***************
+*** 2029,2035 ****
+  test1 \
+  	test_autocmd_option \
+  	test_autoformat_join \
+- 	test_breakindent \
+  	test_changelist \
+  	test_close_count \
+  	test_comparators \
+--- 2029,2034 ----
+***************
+*** 2064,2069 ****
+--- 2063,2069 ----
+  	test_autochdir \
+  	test_autocmd \
+  	test_backspace_opt \
++ 	test_breakindent \
+  	test_bufwintabinfo \
+  	test_cdo \
+  	test_channel \
+*** ../vim-8.0.0089/src/version.c	2016-11-17 19:11:51.717378244 +0100
+--- src/version.c	2016-11-17 19:24:36.424217741 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     90,
+  /**/
+
+-- 
+"You know, it's at times like this when I'm trapped in a Vogon airlock with
+a man from Betelgeuse and about to die of asphyxiation in deep space that I
+really wish I'd listened to what my mother told me when I was young!"
+"Why, what did she tell you?"
+"I don't know, I didn't listen!"
+		-- Arthur Dent and Ford Prefect in Douglas Adams'
+		   "The Hitchhiker's Guide to the Galaxy"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

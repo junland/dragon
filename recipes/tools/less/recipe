@@ -1,0 +1,85 @@
+# Build recipe for less.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=less
+version=487
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://ftp.gnu.org/gnu/less/$tarname
+
+description="
+A text file viewer.
+
+Less is a pager.  A pager is a program that displays text files.
+
+This package also includes the 'lesspipe.sh' script.
+"
+
+homepage=http://www.gnu.org/software/less
+license=GPLv3+
+
+# Source documentation
+docs="COPYING LICENSE NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+     $configure_args \
+     --mandir=$mandir \
+     --with-regex=pcre \
+     --with-secure \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Include our custom lesspipe.sh version (which has support for lzip)
+
+    cp -p "${worktree}/archive/less/usr/bin/lesspipe.sh" "${destdir}/usr/bin"
+    chmod 755 "${destdir}/usr/bin/lesspipe.sh"
+
+    # Include profile file
+    mkdir -p "${destdir}/etc/profile.d"
+    cat "${worktree}/archive/less/etc/profile.d/less.sh" \
+      > "${destdir}/etc/profile.d/less.sh"
+
+    # To handle config file(s)
+    touch "${destdir}/etc/profile.d/.graft-config"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

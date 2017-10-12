@@ -1,0 +1,80 @@
+# Build recipe for tzdb.
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=tzdb
+version=2017b
+release=1
+
+tarname=${program}-${version}.tar.lz
+
+# Remote source(s)
+fetch=http://www.iana.org/time-zones/repository/releases/$tarname
+
+description="
+Time zone database.
+
+The Time Zone Database (often called tz or zoneinfo) contains code and
+data that represent the history of local time for many representative
+locations around the globe.  It is updated periodically to reflect
+changes made by political bodies to time zone boundaries, UTC offsets,
+and daylight-saving rules.  Its management procedure is documented in
+BCP 175: Procedures for Maintaining the Time Zone Database.
+"
+
+homepage=http://www.iana.org/time-zones
+license="Public domain | BSD"
+
+# Source documentation
+docs="CONTRIBUTING LICENSE NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+# Force parallel jobs to '1'
+jobs=1
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    make -j${jobs} CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+     TOPDIR=/usr \
+     TZDIR=/etc/zoneinfo \
+     ETCDIR=/usr/sbin \
+     LIBDIR=/usr/lib${libSuffix} \
+     MANDIR=$mandir \
+     KSHELL="/bin/sh -" \
+     DESTDIR="$destdir" install
+
+    # This is not included on the package distribution
+    rm -f "${destdir}/usr/sbin/tzselect"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

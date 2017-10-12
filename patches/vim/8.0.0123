@@ -1,0 +1,185 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0123
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0123
+Problem:    Modern Sun compilers define "__sun" instead of "sun".
+Solution:   Use __sun. (closes #1296)
+Files:      src/mbyte.c, src/pty.c, src/os_unixx.h, src/vim.h
+
+
+*** ../vim-8.0.0122/src/mbyte.c	2016-08-29 22:42:20.000000000 +0200
+--- src/mbyte.c	2016-12-03 16:28:33.069347623 +0100
+***************
+*** 5735,5741 ****
+  #endif
+  
+  #if defined(FEAT_GUI_X11) || defined(PROTO)
+! # if defined(XtSpecificationRelease) && XtSpecificationRelease >= 6 && !defined(sun)
+  #  define USE_X11R6_XIM
+  # endif
+  
+--- 5735,5741 ----
+  #endif
+  
+  #if defined(FEAT_GUI_X11) || defined(PROTO)
+! # if defined(XtSpecificationRelease) && XtSpecificationRelease >= 6 && !defined(SUN_SYSTEM)
+  #  define USE_X11R6_XIM
+  # endif
+  
+*** ../vim-8.0.0122/src/pty.c	2016-08-29 22:42:20.000000000 +0200
+--- src/pty.c	2016-12-03 16:30:02.416759344 +0100
+***************
+*** 62,68 ****
+  #ifdef sinix
+  #undef buf_T
+  #endif
+! # ifdef sun
+  #  include <sys/conf.h>
+  # endif
+  #endif
+--- 62,68 ----
+  #ifdef sinix
+  #undef buf_T
+  #endif
+! # ifdef SUN_SYSTEM
+  #  include <sys/conf.h>
+  # endif
+  #endif
+***************
+*** 87,97 ****
+  # include <sys/ptem.h>
+  #endif
+  
+! #if !defined(sun) && !defined(VMS) && !defined(MACOS)
+  # include <sys/ioctl.h>
+  #endif
+  
+! #if defined(sun) && defined(LOCKPTY) && !defined(TIOCEXCL)
+  # include <sys/ttold.h>
+  #endif
+  
+--- 87,97 ----
+  # include <sys/ptem.h>
+  #endif
+  
+! #if !defined(SUN_SYSTEM) && !defined(VMS) && !defined(MACOS)
+  # include <sys/ioctl.h>
+  #endif
+  
+! #if defined(SUN_SYSTEM) && defined(LOCKPTY) && !defined(TIOCEXCL)
+  # include <sys/ttold.h>
+  #endif
+  
+***************
+*** 166,172 ****
+  # endif
+      if (ioctl(fd, I_PUSH, "ldterm") != 0)
+  	return -1;
+! # ifdef sun
+      if (ioctl(fd, I_PUSH, "ttcompat") != 0)
+  	return -1;
+  # endif
+--- 166,172 ----
+  # endif
+      if (ioctl(fd, I_PUSH, "ldterm") != 0)
+  	return -1;
+! # ifdef SUN_SYSTEM
+      if (ioctl(fd, I_PUSH, "ttcompat") != 0)
+  	return -1;
+  # endif
+***************
+*** 391,397 ****
+  		continue;
+  	    }
+  #endif
+! #if defined(sun) && defined(TIOCGPGRP) && !defined(SUNOS3)
+  	    /* Hack to ensure that the slave side of the pty is
+  	     * unused. May not work in anything other than SunOS4.1
+  	     */
+--- 391,397 ----
+  		continue;
+  	    }
+  #endif
+! #if defined(SUN_SYSTEM) && defined(TIOCGPGRP) && !defined(SUNOS3)
+  	    /* Hack to ensure that the slave side of the pty is
+  	     * unused. May not work in anything other than SunOS4.1
+  	     */
+*** ../vim-8.0.0122/src/os_unixx.h	2016-08-29 22:42:20.000000000 +0200
+--- src/os_unixx.h	2016-12-03 16:39:47.200909192 +0100
+***************
+*** 17,24 ****
+  # define signal sigset
+  #endif
+  
+!    /* sun's sys/ioctl.h redefines symbols from termio world */
+! #if defined(HAVE_SYS_IOCTL_H) && !defined(sun)
+  # include <sys/ioctl.h>
+  #endif
+  
+--- 17,24 ----
+  # define signal sigset
+  #endif
+  
+!    /* Sun's sys/ioctl.h redefines symbols from termio world */
+! #if defined(HAVE_SYS_IOCTL_H) && !defined(SUN_SYSTEM)
+  # include <sys/ioctl.h>
+  #endif
+  
+*** ../vim-8.0.0122/src/vim.h	2016-12-01 17:25:16.795864620 +0100
+--- src/vim.h	2016-12-03 16:32:05.895946348 +0100
+***************
+*** 268,273 ****
+--- 268,278 ----
+  # define UNUSED
+  #endif
+  
++ /* Used to check for "sun", "__sun" is used by newer compilers. */
++ #if defined(__sun)
++ # define SUN_SYSTEM
++ #endif
++ 
+  /* if we're compiling in C++ (currently only KVim), the system
+   * headers must have the correct prototypes or nothing will build.
+   * conversely, our prototypes might clash due to throw() specifiers and
+***************
+*** 2487,2493 ****
+  #define FNE_INCL_BR	1	/* include [] in name */
+  #define FNE_CHECK_START	2	/* check name starts with valid character */
+  
+! #if (defined(sun) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)) \
+  	&& defined(S_ISCHR)
+  # define OPEN_CHR_FILES
+  #endif
+--- 2492,2498 ----
+  #define FNE_INCL_BR	1	/* include [] in name */
+  #define FNE_CHECK_START	2	/* check name starts with valid character */
+  
+! #if (defined(SUN_SYSTEM) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)) \
+  	&& defined(S_ISCHR)
+  # define OPEN_CHR_FILES
+  #endif
+*** ../vim-8.0.0122/src/version.c	2016-12-03 15:23:36.567060983 +0100
+--- src/version.c	2016-12-03 16:40:28.632636420 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     123,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+89. In addition to your e-mail address being on your business
+    cards you even have your own domain.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

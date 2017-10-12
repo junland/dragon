@@ -1,0 +1,109 @@
+# Build recipe for coreutils.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=coreutils
+version=8.28
+release=1
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=http://ftp.gnu.org/gnu/coreutils/$tarname
+
+description="
+The GNU core utilities.
+
+The GNU core utilities are the basic file, shell and text manipulation
+utilities of the GNU operating system.  These are the core utilities
+which are expected to exist on every operating system.
+"
+
+homepage=http://www.gnu.org/software/coreutils
+license=GPLv3+
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README THANKS THANKS-to-translators TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # A known issue with the uname program from this package is that
+    # the -p switch always returns unknown.  The following patch fixes
+    # this behavior for all architectures (thanks to BLFS)
+    #patch -Np1 -i "${worktree}/patches/coreutils/coreutils-8.23-uname-1.patch"
+
+    ./configure FORCE_UNSAFE_CONFIGURE="1" DEFAULT_POSIX2_VERSION="199209" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-install-program=arch \
+     --enable-no-install-program=kill,uptime,hostname \
+     --with-tty-group=tty \
+     --without-gmp \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Create link to "ginstall", since many sources relies on it
+    ( cd "${destdir}/usr/bin" && ln -sf install ginstall )
+
+    # Remove generated charset.alias
+    rm -f "${destdir}/usr/lib${libSuffix}/charset.alias"
+    rmdir "${destdir}/usr/lib${libSuffix}" || true
+
+    # Add "DIR_COLORS" file
+    mkdir -p "${destdir}/etc/profile.d"
+    cat src/dircolors.hin > "${destdir}/etc/DIR_COLORS"
+
+    # Include our custom dircolors file for profile.d
+    cat "${worktree}/archive/coreutils/etc/profile.d/dircolors.sh" \
+      > "${destdir}/etc/profile.d/dircolors.sh"
+
+    # To handle config file(s)
+    touch "${destdir}/etc/profile.d/.graft-config" \
+          "${destdir}/etc/.graft-config"
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

@@ -1,0 +1,356 @@
+#! /bin/sh -
+#
+#  Builder of custom stages (cross compilers, GNU/Linux distributions)
+#
+#  Copyright (C) 2014-2017 Matias Andres Fonzo <selk@dragora.org>
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# EXIT STATUS
+# 0  = Successful completion
+# 1  = Minor common errors (e.g: help usage, support not available)
+# 2  = Command execution error
+# 3  = Integrity check error for compressed files
+
+PROGRAM="${0##*/}"
+
+# Override locale settings
+LC_ALL=C
+LANGUAGE=C
+export LC_ALL LANGUAGE
+
+# Get physical working directory, absolute path name
+CWD=$(CDPATH= cd -P -- $(dirname -- "$0") && printf "$PWD")
+
+#### Functions
+
+usage() {
+    printf "%s\n" \
+     "Builder of custom stages (cross compilers, GNU/Linux distributions)"  \
+     ""                                                                     \
+     "Usage: $PROGRAM [OPTION]... [FILE]..."                                \
+     ""                                                                     \
+     "Defaults for the options are specified in brackets."                  \
+     ""                                                                     \
+     "Options:"                                                             \
+     "  -h          display this help and exit"                             \
+     "  -V          print version information and exit"                     \
+     "  -a          target architecture [${arch}]"                          \
+     "  -j          parallel jobs for the compiler [${jobs}]"               \
+     "  -k          keep (don't delete) source directory"                   \
+     "  -o          output directory [${output}]"                           \
+     "  -s          stage number to build [${stage}]"                       \
+     ""                                                                     \
+     "Some influential environment variables:"                              \
+     "  TMPDIR      temporary directory for sources [${TMPDIR}]"            \
+     "  BTCC        C compiler command [${BTCC}]"                           \
+     "  BTCXX       C++ compiler command [${BTCXX}]"                        \
+     "  BTCFLAGS    C compiler flags [${BTCFLAGS}]"                         \
+     "  BTCXXFLAGS  C++ compiler flags [${BTCXXFLAGS}]"                     \
+     "  BTLDFLAGS   linker flags [${BTLDFLAGS}]"                            \
+     "  VENDOR      vendor name to reflect on the target triplet"           \
+     ""                                                                     \
+     "Supported architectures (targets):"
+     for arch in "${CWD}/targets"/*
+     do
+         printf "${arch##*/} "
+     done
+    echo
+}
+
+version()
+{
+    printf "%s\n" \
+     "$PROGRAM 3.13" \
+     "Copyright (C) 2014-2017 Matias Andres Fonzo." \
+     "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>" \
+     "This is free software: you are free to change and redistribute it." \
+     "There is NO WARRANTY, to the extent permitted by law."
+}
+
+warn()
+{
+    echo "$@" 1>&2
+}
+
+checkstatus_or_exit()
+{
+    status=$?
+
+    if test $status -ne 0
+    then
+        echo "Return status = $status" 1>&2
+        exit ${1-2};	# If not given, defaults to 2
+    fi
+
+    unset status
+}
+
+# Function to test and extract tarball files
+untar() {
+    tar tf "$1" > /dev/null && {
+        cd -- "$2" && tar xpf "$1"
+    }
+    checkstatus_or_exit 3
+}
+
+#### Warning for good practices
+
+# Recommended practices is to set variables in front of `configure',
+# or make(1), see also:
+#
+# http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Defining-Variables.html
+# http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Setting-Output-Variables.html
+# http://www.gnu.org/software/make/manual/make.html#Environment
+
+warn_flags()
+{
+    warn "WARNING: Environment variable '$1' is set."   \
+         "This will be unset to avoid possible risks."  \
+         ""
+}
+
+#### Default values
+
+BTCC="${BTCC:=cc}"
+BTCXX="${BTCXX:=c++}"
+BTCFLAGS="${BTCFLAGS:=-g0 -Os}"
+BTCXXFLAGS="${BTCXXFLAGS:=$BTCFLAGS}"
+BTLDFLAGS="${BTLDFLAGS:=-s}"
+worktree="$CWD"
+arch="$(uname -m)" || exit 2
+jobs=1
+opt_keep=opt_keep.off
+output=${worktree}/OUTPUT.${PROGRAM}
+TMPDIR="${TMPDIR:=${output}/sources}"
+stage=0
+
+# Compose vendor name adding "-" as suffix
+test -n "$VENDOR" && VENDOR="${VENDOR}-"
+
+#### Parse options
+
+while getopts :ha:j:ko:s:V name
+do
+    case $name in
+    h)
+        usage
+        exit 0
+        ;;
+    a)
+        arch="$OPTARG"
+        ;;
+    j)
+        jobs="$OPTARG"
+        ;;
+    k)
+        opt_keep=opt_keep
+        ;;
+    o)
+        output="$OPTARG"
+        ;;
+    s)
+        stage="$OPTARG"
+        ;;
+    V)
+        version
+        exit 0
+        ;;
+    :)
+        warn "Option '-${OPTARG}' requires an argument"
+        usage
+        exit 1
+        ;;
+    \?)
+        warn "Illegal option -- '-${OPTARG}'"
+        usage
+        exit 1
+        ;;
+    esac
+done
+shift $(( OPTIND - 1 ))
+
+# Check for environment variables, print warning, unset in any case
+test "${CC:+CC_defined}" = CC_defined && warn_flags CC
+test "${CXX:+CXX_defined}" = CXX_defined && warn_flags CXX
+test "${CFLAGS:+CFLAGS_defined}" = CFLAGS_defined && warn_flags CFLAGS
+test "${CXXFLAGS:+CXXFLAGS_defined}" = CXXFLAGS_defined && warn_flags CXXFLAGS
+test "${LDFLAGS:+LDFLAGS_defined}" = LDFLAGS_defined && warn_flags LDFLAGS
+
+unset CC CXX CFLAGS CXXFLAGS LDFLAGS warn_flags
+
+# Avoid exportation of 'libSuffix' when a target is loaded
+libSuffix=""
+
+# Load target architecture-file
+
+if test -f "${worktree}/targets/$arch"
+then
+    echo "${PROGRAM}: Loading target $arch ..."
+    . "${worktree}/targets/$arch"
+else
+    warn \
+     "${PROGRAM}: Target name not recognized -- '${arch}'" \
+     "See '$0 -h' for more information"
+    exit 1
+fi
+
+# Determine the host to use.
+
+# Set up the host if a C compiler command was exported,
+# otherwise, a local `cc' will be used instead
+
+if test -n "$BTCC"
+then
+    host="$(${BTCC} -dumpmachine)" || exit 2
+else
+    host="$(cc -dumpmachine)" || exit 2
+fi
+
+# If the host and the target are the same triplet, it won't work.
+# We are changing the host if it is really needed
+
+if test "$host" = "$target"
+then
+    # Rename VENDOR to 'cross'.  If empty, 'cross-linux' is added
+    case "${host%-*-*}" in
+    *-*)
+        host="$(echo "$host" | sed -e 's/-[^-]*/-cross/')"
+        ;;
+    *)
+        host="$(echo "$host" | sed -e 's/-[^-]*/-cross-linux/')"
+        ;;
+    esac
+fi
+
+# Compose variables for the physical output,
+# print some useful information
+
+crossdir=${output}/cross/${target}
+rootdir=${output}/stage${stage}
+
+printf "%s\n" \
+ "BTCC: $BTCC"                  \
+ "BTCXX: $BTCXX"                \
+ "BTCFLAGS: $BTCFLAGS"          \
+ "BTCXXFLAGS: $BTCXXFLAGS"      \
+ "BTLDFLAGS: $BTLDFLAGS"        \
+ "Host: $host"                  \
+ "Target: $target"              \
+ "Output directory: $output"    \
+ "Cross  directory: $crossdir"  \
+ "Root   directory: $rootdir"
+
+# Remove write permission for group and other
+umask 022
+
+# Create required directories
+if test ! -d "$output"
+then
+    mkdir -p -- "$output" || exit 2
+fi
+if test ! -d "$TMPDIR"
+then
+    mkdir -p -- "$TMPDIR" || exit 2
+fi
+
+# Set default path and propagate variables
+
+PATH="${crossdir}/bin:${PATH}"
+export PATH VENDOR TMPDIR
+
+# Main loop
+for file in "${CWD}/stages/${stage}"/${@:-??-*}
+do
+    file="${file##*/}"
+
+    if test ! -f "${CWD}/stages/${stage}/$file"
+    then
+        warn "${PROGRAM}: ${stage}/${file}: No such file or stage number"
+        exit 1
+    fi
+    if test ! -x "${CWD}/stages/${stage}/$file"
+    then
+        warn "${PROGRAM}: ${stage}/${file}: File not executable, dodging"
+        continue;
+    fi
+
+    #### Stage pre-settings
+
+    # Create sysroot directory, recreating the symlink for the stage 0
+
+    if test "$stage" = 0
+    then
+        mkdir -p -- "${crossdir}/$target" || exit 2
+
+        if test ! -e "${crossdir}/${target}/usr"
+        then
+            ln -sf . "${crossdir}/${target}/usr" || exit 2
+        fi
+
+        # Ensure toolchain sanity for multilib purposes
+        case $arch in
+        *x32)
+            if test ! -e "${crossdir}/lib"
+            then
+                ln -sf libx32 "${crossdir}/lib" || exit 2
+            fi
+            ;;
+        x86_64)
+            if test ! -e "${crossdir}/lib"
+            then
+                ln -sf lib64 "${crossdir}/lib" || exit 2
+            fi
+            ;;
+        esac
+    fi
+
+    # Create "tools" directory, recreating the symlink for the stage 1
+    if test "$stage" = 1
+    then
+        if test ! -d "${rootdir}/tools"
+        then
+            mkdir -p -- "${rootdir}/tools" || exit 2
+        fi
+
+        # Make required symlink
+        ln -sf "${rootdir}/tools" / || exit 2
+    fi
+
+    #### Load the file containing the instruction
+
+    echo "${PROGRAM}: Processing $file from stage $stage ..."
+
+    # Exit immediately on any error
+    set -e
+
+    . "${CWD}/stages/${stage}/$file" || checkstatus_or_exit 2
+
+    # Deactivate shell option
+    set +e
+
+    # Delete declared directories on the cleanup() function
+    if test "$opt_keep" != opt_keep
+    then
+        if type cleanup 1> /dev/null 2> /dev/null
+        then
+            cleanup || checkstatus_or_exit 2
+            unset cleanup
+        fi
+    fi
+
+    # Back to the current working directory
+    cd -- "$CWD" || exit 2
+done
+

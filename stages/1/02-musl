@@ -1,0 +1,32 @@
+# Build script for musl
+#
+# Copyright (C) 2014-2017 Matias Fonzo, <selk@dragora.org>
+#
+# This script is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+version=48be5b6313d7b827acf555769e93b389fa9f6307
+
+rm -rf -- "${TMPDIR}/musl-${version}"
+untar "${worktree}/sources/musl-${version}.tar.gz" "$TMPDIR"
+
+# Build instructions
+cd -- "${TMPDIR}/musl-${version}"
+
+./configure CROSS_COMPILE="${target}-" \
+ --prefix=/tools \
+ --libdir=/tools/lib${libSuffix} \
+ --syslibdir=/tools/lib \
+ --build=$host \
+ --host=$target \
+ --enable-optimize=size \
+ --disable-debug
+
+make -j${jobs}
+make DESTDIR="$rootdir" install
+
+cleanup()
+{
+    cd -- "$TMPDIR" && rm -rf musl-*
+}
+

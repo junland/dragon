@@ -1,0 +1,60 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0125
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0125
+Problem:    Not enough testing for entering Ex commands.
+Solution:   Add test for CTRL-\ e {expr}. (Dominique Pelle)
+Files:      src/testdir/test_cmdline.vim
+
+
+*** ../vim-8.0.0124/src/testdir/test_cmdline.vim	2016-12-03 14:05:44.333734329 +0100
+--- src/testdir/test_cmdline.vim	2016-12-09 18:39:54.928321403 +0100
+***************
+*** 215,219 ****
+--- 215,236 ----
+  
+    call feedkeys("f;:aaa \<C-R>\<C-A> bbb\<C-B>\"\<CR>", 'tx')
+    call assert_equal('"aaa a;b-c*d bbb', @:)
++ 
++   call feedkeys(":\<C-\>etoupper(getline(1))\<CR>\<C-B>\"\<CR>", 'tx')
++   call assert_equal('"ASDF.X /TMP/SOME VERYLONGWORD A;B-C*D ', @:)
+    bwipe!
+  endfunc
++ 
++ func Test_remove_char_in_cmdline()
++   call feedkeys(":abc def\<S-Left>\<Del>\<C-B>\"\<CR>", 'tx')
++   call assert_equal('"abc ef', @:)
++ 
++   call feedkeys(":abc def\<S-Left>\<BS>\<C-B>\"\<CR>", 'tx')
++   call assert_equal('"abcdef', @:)
++ 
++   call feedkeys(":abc def ghi\<S-Left>\<C-W>\<C-B>\"\<CR>", 'tx')
++   call assert_equal('"abc ghi', @:)
++ 
++   call feedkeys(":abc def\<S-Left>\<C-U>\<C-B>\"\<CR>", 'tx')
++   call assert_equal('"def', @:)
++ endfunc
+*** ../vim-8.0.0124/src/version.c	2016-12-04 13:37:38.425300719 +0100
+--- src/version.c	2016-12-09 18:41:04.183868270 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     125,
+  /**/
+
+-- 
+From "know your smileys":
+ :-X	My lips are sealed
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

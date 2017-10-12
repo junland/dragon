@@ -1,0 +1,135 @@
+# Build recipe for perp.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=perp
+version=2.07
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://b0llix.net/perp/distfiles/$tarname
+
+description="
+A persistent process supervisor and service managment framework.
+
+The perp package provides a set of daemons and utilities to reliably
+start, monitor, log, and control a collection of persistent processes.
+
+A \"persistent process\" is any program intended to be long-running,
+highly available, and purpose critical.  Also known and often described
+as a service, a persistent process normally provides some essential,
+on-demand system service.  Programs that serve email, domain name
+queries, and http requests are all examples of services that are
+normally run as persistent processes.
+
+These are the programs that you want to start at system boot, and to
+continue running for as long as the system itself.  These are the
+programs you need running in uninterrupted service, day and night,
+forever and ever.
+
+perp helps make sure that they do.
+"
+
+homepage=http://b0llix.net/perp
+license=Custom
+
+# Source documentation
+docs="CHANGES LICENSE README THANKS"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    patch -p0 < "${worktree}/patches/perp/flags-conf.mk.diff"
+
+    # Apply patches from Michael Forney, approved by Wayne Marshall
+    # http://github.com/michaelforney/perp
+
+    patch -p0 < "${worktree}/patches/perp/clock_gettime.patch"
+    patch -p0 < "${worktree}/patches/perp/perpd-restore_umask.patch"
+
+    make -j${jobs} CC="cc -static" QICFLAGS="$QICFLAGS"
+    make strip
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Automatic installation setup
+    DESTDIR="$destdir" ./perp/perp-setup /etc/perp
+
+    # Create the blessed /var/run/perp directory
+    mkdir -p "${destdir}/var/run/perp"
+
+    # Include our config file for tinylog(8)
+    cp -p "${worktree}/archive/perp/etc/tinylog.conf" \
+          "${destdir}/etc/"
+    chmod 644 "${destdir}/etc/tinylog.conf"
+
+    # Include our custom essential perp init scripts
+    cp -p "${worktree}/archive/perp/etc/rc.log-boot" \
+          "${destdir}/etc/perp/.boot/rc.log"
+
+    cp -p "${worktree}/archive/perp/etc/rc.perp-boot" \
+          "${destdir}/etc/perp/.boot/rc.perp"
+
+    chmod 755 "${destdir}/etc/perp/.boot/rc.log" \
+              "${destdir}/etc/perp/.boot/rc.perp"
+
+    # Add extra but essential services
+    for i in 1 2 3
+    do
+        mkdir -p "${destdir}/etc/perp/agetty-tty${i}"
+        cp -p "${worktree}/archive/perp/etc/perp/agetty-tty${i}/rc.main" \
+              "${destdir}/etc/perp/agetty-tty${i}"
+        chmod +t "${destdir}/etc/perp/agetty-tty${i}"
+        chmod 755 "${destdir}/etc/perp/agetty-tty${i}/rc.main"
+        touch "${destdir}/etc/perp/agetty-tty${i}/.graft-config"
+    done
+    unset i
+
+    # Include profile file
+    mkdir -p "${destdir}/etc/profile.d"
+    cp -p "${worktree}/archive/perp/etc/profile.d/perp.sh" \
+           "${destdir}/etc/profile.d/"
+    chmod 644 "${destdir}/etc/profile.d/perp.sh"
+
+    # To handle config file(s)
+    touch "${destdir}/etc/.graft-config" \
+          "${destdir}/etc/perp/.boot/.graft-config" \
+          "${destdir}/etc/profile.d/.graft-config"
+
+    # We don't include perp-setup*
+    rm -f "${destdir}/usr/sbin/perp-setup" \
+          "${destdir}/${mandir}/man8/perp-setup.8"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

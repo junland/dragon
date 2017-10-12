@@ -1,0 +1,77 @@
+# Build recipe for iproute2.
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=iproute2
+version=4.12.0
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://www.kernel.org/pub/linux/utils/net/iproute2/$tarname
+
+description="
+Collection of utilities for controlling TCP/IP.
+
+iproute2 is a collection of utilities for controlling
+TCP/IP networking and traffic control in GNU/Linux. 
+"
+
+homepage=http://wiki.linuxfoundation.org/networking/iproute2
+license=GPLv2+
+
+# Source documentation
+docs="COPYING README*"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # A patch coming from Alpine (Thanks to dalias for pointing it out)
+    # http://git.alpinelinux.org/cgit/aports/tree/main/iproute2/musl-fixes.patch
+    patch -Np0 -i "${worktree}/patches/iproute2/musl-fixes.patch"
+
+    ./configure
+
+    make -j${jobs} V=1 CCOPTS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+      SBINDIR=/usr/sbin \
+      LIBDIR=/usr/lib${libSuffix} \
+      DOCDIR=$docsdir \
+      MANDIR=$mandir \
+      DESTDIR="$destdir" install
+
+    # Manage config file(s)
+    touch "${destdir}/etc/iproute2/.graft-config"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

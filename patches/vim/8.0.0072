@@ -1,0 +1,54 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0072
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0072
+Problem:    MS-Windows: Crash with long font name. (Henry Hu)
+Solution:   Fix comparing with LF_FACESIZE. (Ken Takata, closes #1243)
+Files:      src/os_mswin.c
+
+
+*** ../vim-8.0.0071/src/os_mswin.c	2016-10-12 14:19:55.750357722 +0200
+--- src/os_mswin.c	2016-11-10 17:09:00.686845213 +0100
+***************
+*** 2893,2899 ****
+       */
+      for (p = name; *p && *p != ':'; p++)
+      {
+! 	if (p - name + 1 > LF_FACESIZE)
+  	    goto theend;			/* Name too long */
+  	lf->lfFaceName[p - name] = *p;
+      }
+--- 2893,2899 ----
+       */
+      for (p = name; *p && *p != ':'; p++)
+      {
+! 	if (p - name + 1 >= LF_FACESIZE)
+  	    goto theend;			/* Name too long */
+  	lf->lfFaceName[p - name] = *p;
+      }
+*** ../vim-8.0.0071/src/version.c	2016-11-07 22:42:48.828350757 +0100
+--- src/version.c	2016-11-10 17:10:11.414402898 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     72,
+  /**/
+
+-- 
+The Feynman problem solving Algorithm:
+	1) Write down the problem
+	2) Think real hard
+	3) Write down the answer
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

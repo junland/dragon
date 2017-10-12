@@ -1,0 +1,77 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0133
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0133
+Problem:    "2;'(" causes ml_get errors in an empty buffer.  (Dominique Pelle)
+Solution:   Check the cursor line earlier.
+Files:      src/ex_docmd.c, src/testdir/test_cmdline.vim
+
+
+*** ../vim-8.0.0132/src/ex_docmd.c	2016-11-15 21:16:46.750453046 +0100
+--- src/ex_docmd.c	2016-12-11 21:26:08.215361024 +0100
+***************
+*** 2277,2283 ****
+--- 2277,2287 ----
+  	if (*ea.cmd == ';')
+  	{
+  	    if (!ea.skip)
++ 	    {
+  		curwin->w_cursor.lnum = ea.line2;
++ 		/* don't leave the cursor on an illegal line */
++ 		check_cursor_lnum();
++ 	    }
+  	}
+  	else if (*ea.cmd != ',')
+  	    break;
+***************
+*** 2293,2301 ****
+  	    ea.addr_count = 0;
+      }
+  
+-     /* Don't leave the cursor on an illegal line (caused by ';') */
+-     check_cursor_lnum();
+- 
+  /*
+   * 5. Parse the command.
+   */
+--- 2297,2302 ----
+*** ../vim-8.0.0132/src/testdir/test_cmdline.vim	2016-12-09 18:42:16.411395711 +0100
+--- src/testdir/test_cmdline.vim	2016-12-11 21:23:04.124601674 +0100
+***************
+*** 234,236 ****
+--- 234,243 ----
+    call feedkeys(":abc def\<S-Left>\<C-U>\<C-B>\"\<CR>", 'tx')
+    call assert_equal('"def', @:)
+  endfunc
++ 
++ func Test_illegal_address()
++   new
++   2;'(
++   2;')
++   quit
++ endfunc
+*** ../vim-8.0.0132/src/version.c	2016-12-11 15:24:45.015136329 +0100
+--- src/version.c	2016-12-11 21:34:04.132159590 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     133,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+100. The most exciting sporting events you noticed during summer 1996
+    was Netscape vs. Microsoft.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

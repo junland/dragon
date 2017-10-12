@@ -1,0 +1,78 @@
+# Build recipe for libressl.
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=libressl
+version=2.6.2
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://ftp.openbsd.org/pub/OpenBSD/LibreSSL/$tarname
+
+description="
+A version of the TLS/crypto stack.
+
+LibreSSL is a version of the TLS/crypto stack forked from OpenSSL in
+2014, with goals of modernizing the codebase, improving security, and
+applying best practice development processes.
+
+Primary development occurs inside the OpenBSD source tree with the
+usual care the project is known for.  On a regular basis the code
+is re-packaged for portable use by other operating systems (Linux,
+FreeBSD, Windows, etc).
+"
+
+homepage=http://www.libressl.org
+license=Custom
+
+# Source documentation
+docs="COPYING ChangeLog README.md VERSION"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --disable-hardening \
+     --with-openssldir=/etc/ssl \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Manage config file(s)
+    touch "${destdir}/etc/ssl/.graft-config"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+

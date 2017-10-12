@@ -1,0 +1,60 @@
+# Build recipe for bootscripts (dragora).
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=bootscripts
+version=dragora
+pkgversion=20171001
+arch=noarch
+release=1
+
+description="
+Essential set to start or to stop the system.
+
+It contains the files for the boot process.
+"
+
+homepage=http://www.dragora.org
+license=GPLv3+
+
+build()
+{
+    set -e
+
+    mkdir -p "${destdir}/etc/rc.d" "${destdir}/usr/bin"
+
+    cp -p "${worktree}"/archive/etc/rc.d/*  "${destdir}/etc/rc.d/"
+    cp -p "${worktree}/archive/etc/rc.conf" "${destdir}/etc/"
+
+    touch "${destdir}/etc/.graft-config" \
+          "${destdir}/etc/rc.d/.graft-config"
+
+    chmod 755 "${destdir}"/etc/rc.d/*
+    chmod 644 "${destdir}/etc/rc.conf"
+
+    cat << "EOF" > "${destdir}/usr/bin/shutdown"
+#! /bin/sh -
+#
+# Power off or reboot the machine, see sinit(8)
+#
+
+# This will call to /etc/rc.d/rc.shutdown to restart
+if test "${0##*/}" = reboot
+then
+    kill -s INT 1
+else
+    # Call to /etc/rc.d/rc.shutdown to poweroff
+    kill -s USR1 1
+fi
+
+exit $?
+
+EOF
+    chmod 755 "${destdir}/usr/bin/shutdown"
+    ln -s shutdown "${destdir}/usr/bin/reboot"
+    ln -s shutdown "${destdir}/usr/bin/poweroff"
+}
+

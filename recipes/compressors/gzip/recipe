@@ -1,0 +1,93 @@
+# Build recipe for gzip.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=gzip
+version=1.8
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=ftp://ftp.gnu.org/gnu/gzip/$tarname
+
+description="
+Compression utility.
+
+Gzip (GNU zip) is a compression utility designed to be a replacement
+for 'compress'.  Its main advantages over 'compress' are much better
+compression and freedom from patented algorithms.  It has been adopted
+by the GNU project and is now relatively popular on the Internet.
+
+This package has been built to be used with the Zutils.
+"
+
+homepage=http://www.gnu.org/software/gzip
+license=GPLv3+
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README* THANKS TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --program-transform-name='s/^z/gz/' \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # No, no hard links for the package size
+    ( cd "${destdir}/usr/bin" && ln -sf gunzip uncompress )
+
+    (
+        cd "${destdir}/${mandir}/man1" || exit 1
+        ln -sf gzip.1    gunzip.1
+        ln -sf gzip.1    gzcat.1
+        ln -sf gzdiff.1  gzcmp.1
+    )
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

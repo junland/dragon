@@ -1,0 +1,74 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0076
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0076
+Problem:    Channel log has double parens ()().
+Solution:   Remove () for write_buf_line. (Yasuhiro Matsumoto)
+Files:      src/channel.c
+
+
+*** ../vim-8.0.0075/src/channel.c	2016-10-27 20:00:03.661357429 +0200
+--- src/channel.c	2016-11-11 21:12:04.681464310 +0100
+***************
+*** 1341,1347 ****
+  
+      p[len] = NL;
+      p[len + 1] = NUL;
+!     channel_send(channel, PART_IN, p, len + 1, "write_buf_line()");
+      vim_free(p);
+  }
+  
+--- 1341,1347 ----
+  
+      p[len] = NL;
+      p[len + 1] = NUL;
+!     channel_send(channel, PART_IN, p, len + 1, "write_buf_line");
+      vim_free(p);
+  }
+  
+***************
+*** 3450,3456 ****
+   * Return FAIL or OK.
+   */
+      int
+! channel_send(channel_T *channel, ch_part_T part, char_u *buf, int len, char *fun)
+  {
+      int		res;
+      sock_T	fd;
+--- 3450,3461 ----
+   * Return FAIL or OK.
+   */
+      int
+! channel_send(
+! 	channel_T *channel,
+! 	ch_part_T part,
+! 	char_u	  *buf,
+! 	int	  len,
+! 	char	  *fun)
+  {
+      int		res;
+      sock_T	fd;
+*** ../vim-8.0.0075/src/version.c	2016-11-10 20:20:01.874602675 +0100
+--- src/version.c	2016-11-11 21:12:53.829152426 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     76,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+14. You start introducing yourself as "Jim at I-I-Net dot net dot au"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

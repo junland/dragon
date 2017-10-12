@@ -1,0 +1,85 @@
+# Build recipe for alsa-utils.
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=alsa-utils
+version=1.1.4
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=ftp://ftp.alsa-project.org/pub/utils/$tarname
+
+description="
+The ALSA utilities.
+
+The alsa-utils package contains various utilities
+which are useful for controlling your sound card.
+"
+
+homepage=http://alsa-project.org
+license=GPLv2+
+
+# Source documentation
+docs="COPYING ChangeLog README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Update for hosts based on musl
+    cp -f "${worktree}/archive/common/config.guess" config.guess
+    cp -f "${worktree}/archive/common/config.sub" config.sub
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --disable-alsatest \
+     --disable-xmlto \
+     --disable-rst2man \
+     --disable-nls \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Include rc file
+    mkdir -p "${destdir}/etc/rc.d"
+    cp -p "${worktree}/archive/alsa-utils/rc.alsa" "${destdir}/etc/rc.d/"
+    chmod 755 "${destdir}/etc/rc.d/rc.alsa"
+
+    touch "${destdir}/etc/rc.d/.graft-config"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

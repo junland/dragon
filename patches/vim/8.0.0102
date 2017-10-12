@@ -1,0 +1,127 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0102
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0102 (after 8.0.0101)
+Problem:    Cannot set 'dictionary' to a path.
+Solution:   Allow for slash and backslash.  Add a test (partly by Daisuke
+            Suzuki, closes #1279, closes #1284)
+Files:      src/option.c, src/testdir/test_options.vim
+
+
+*** ../vim-8.0.0101/src/option.c	2016-11-24 21:46:15.747996856 +0100
+--- src/option.c	2016-11-25 22:01:14.532613523 +0100
+***************
+*** 452,461 ****
+  #define P_NFNAME       0x400000L /* only normal file name chars allowed */
+  #define P_INSECURE     0x800000L /* option was set from a modeline */
+  #define P_PRI_MKRC    0x1000000L /* priority for :mkvimrc (setting option has
+! 				   side effects) */
+  #define P_NO_ML       0x2000000L /* not allowed in modeline */
+  #define P_CURSWANT    0x4000000L /* update curswant required; not needed when
+  				  * there is a redraw flag */
+  
+  #define ISK_LATIN1  (char_u *)"@,48-57,_,192-255"
+  
+--- 452,462 ----
+  #define P_NFNAME       0x400000L /* only normal file name chars allowed */
+  #define P_INSECURE     0x800000L /* option was set from a modeline */
+  #define P_PRI_MKRC    0x1000000L /* priority for :mkvimrc (setting option has
+! 				    side effects) */
+  #define P_NO_ML       0x2000000L /* not allowed in modeline */
+  #define P_CURSWANT    0x4000000L /* update curswant required; not needed when
+  				  * there is a redraw flag */
++ #define P_NDNAME      0x8000000L /* only normal dir name chars allowed */
+  
+  #define ISK_LATIN1  (char_u *)"@,48-57,_,192-255"
+  
+***************
+*** 992,998 ****
+  			    (char_u *)NULL, PV_NONE,
+  #endif
+  			    {(char_u *)FALSE, (char_u *)0L} SCRIPTID_INIT},
+!     {"dictionary",  "dict", P_STRING|P_EXPAND|P_VI_DEF|P_ONECOMMA|P_NODUP|P_NFNAME,
+  #ifdef FEAT_INS_EXPAND
+  			    (char_u *)&p_dict, PV_DICT,
+  #else
+--- 993,999 ----
+  			    (char_u *)NULL, PV_NONE,
+  #endif
+  			    {(char_u *)FALSE, (char_u *)0L} SCRIPTID_INIT},
+!     {"dictionary",  "dict", P_STRING|P_EXPAND|P_VI_DEF|P_ONECOMMA|P_NODUP|P_NDNAME,
+  #ifdef FEAT_INS_EXPAND
+  			    (char_u *)&p_dict, PV_DICT,
+  #else
+***************
+*** 5876,5886 ****
+  	errmsg = e_secure;
+      }
+  
+!     /* Check for a "normal" file name in some options.  Disallow a path
+!      * separator (slash and/or backslash), wildcards and characters that are
+!      * often illegal in a file name. */
+!     else if ((options[opt_idx].flags & P_NFNAME)
+  		    && vim_strpbrk(*varp, (char_u *)"/\\*?[|;&<>\r\n") != NULL)
+      {
+  	errmsg = e_invarg;
+      }
+--- 5877,5889 ----
+  	errmsg = e_secure;
+      }
+  
+!     /* Check for a "normal" directory or file name in some options.  Disallow a
+!      * path separator (slash and/or backslash), wildcards and characters that
+!      * are often illegal in a file name. */
+!     else if (((options[opt_idx].flags & P_NFNAME)
+  		    && vim_strpbrk(*varp, (char_u *)"/\\*?[|;&<>\r\n") != NULL)
++ 	  || ((options[opt_idx].flags & P_NDNAME)
++ 		    && vim_strpbrk(*varp, (char_u *)"*?[|;&<>\r\n") != NULL))
+      {
+  	errmsg = e_invarg;
+      }
+*** ../vim-8.0.0101/src/testdir/test_options.vim	2016-11-04 16:41:16.559153991 +0100
+--- src/testdir/test_options.vim	2016-11-25 21:54:48.015372273 +0100
+***************
+*** 106,108 ****
+--- 106,123 ----
+    call assert_fails(":set kmp=trunc\x00name", "E544:")
+    call assert_fails(":set kmp=trunc\x00name", "trunc")
+  endfunc
++ 
++ func Test_dictionary()
++   " Check that it's possible to set the option.
++   set dictionary=/usr/share/dict/words
++   call assert_equal('/usr/share/dict/words', &dictionary)
++   set dictionary=/usr/share/dict/words,/and/there
++   call assert_equal('/usr/share/dict/words,/and/there', &dictionary)
++   set dictionary=/usr/share/dict\ words
++   call assert_equal('/usr/share/dict words', &dictionary)
++ 
++   " Check rejecting weird characters.
++   call assert_fails("set dictionary=/not&there", "E474:")
++   call assert_fails("set dictionary=/not>there", "E474:")
++   call assert_fails("set dictionary=/not.*there", "E474:")
++ endfunc
+*** ../vim-8.0.0101/src/version.c	2016-11-24 21:46:15.747996856 +0100
+--- src/version.c	2016-11-25 21:57:55.062002830 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     102,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+47. You are so familiar with the WWW that you find the search engines useless.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

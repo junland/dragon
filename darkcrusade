@@ -1,0 +1,125 @@
+#! /bin/sh -
+#
+#  Deploy static cross-compilers for easy distribution
+#
+#  Copyright (C) 2016, 2017 Matias Andres Fonzo <selk@dragora.org>
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+PROGRAM="${0##*/}"
+
+# Show help via option
+if test "$1" = -h -o "$1" = --help
+then
+    echo "Deploy static cross-compilers for easy distribution."
+    echo ""
+    echo "Usage: $PROGRAM [TARGET]..."
+    echo ""
+    echo "Where TARGET is any target found in the directory \"targets\"."
+    echo "If no target names are passed, all available targets will be built."
+    echo ""
+    exit 0
+fi
+
+# Exit immediately on any error
+set -e
+
+# Override locale settings
+LC_ALL=C
+export LC_ALL
+
+#### Default values
+
+# Get physical working directory, absolute path name
+CWD=$(CDPATH= cd -P -- $(dirname -- "$0") && printf "$PWD")
+
+# Output directory for tarballs
+output="${CWD}/OUTPUT.darkcrusade"
+
+# Set temporary directory for compilation, exporting it
+TMPDIR=${output}/sources
+export TMPDIR
+
+# Compose tag for tarball names using year+month+day
+tarname=darkcrusade_"$(date +%Y%b%d)"
+
+# Prepare to start the cross compiler process in the phase 1
+
+phase_one=${output}/phase1-native-"$(uname -m)".$$
+
+echo "${PROGRAM}: Creating native cross compiler on $phase_one ..."
+${CWD}/bootstrap -s0 -o $phase_one
+
+# Now will start the preparatives to use the recent native cross compiler
+
+echo "${PROGRAM}: Using (existing) compiler from $phase_one ..."
+
+# Set flags according to the generated compiler
+for BTCC in ${phase_one}/cross/*/bin/*-gcc
+do
+    if test -x "$BTCC"
+    then
+        BTCC="$BTCC"
+        break
+    fi
+done
+for BTCXX in ${phase_one}/cross/*/bin/*-g++
+do
+    if test -x "$BTCXX"
+    then
+        BTCXX="$BTCXX"
+        break
+    fi
+done
+
+# Set and compose flags to be used as CC and CXX
+
+BTCC="$BTCC -static -Wl,-Bstatic -static-libgcc"
+BTCXX="$BTCXX -static -Wl,-Bstatic -static-libgcc"
+
+IS_DARKCRUSADE=IS_DARKCRUSADE
+
+export BTCC BTCXX IS_DARKCRUSADE
+
+# Loop for create the targets, phase 2
+for target in ${CWD}/targets/${@:-*}
+do
+    target="${target##*/}"
+
+    phase_two=${output}/phase2-${target}.$$
+
+    echo "darkcrusade: Making target $target ..."
+    ${CWD}/bootstrap -s0 -a $target -o $phase_two 2>&1 | \
+     tee ${output}/${tarname}-${target}.log
+
+    # Compress log file
+    lzip -9 ${output}/${tarname}-${target}.log
+
+    # Prepare tarball
+    cd $output
+    rm -f ${tarname}-${target}.tar ${tarname}-${target}.tar.lz
+
+    cd $phase_two
+    tar -H ustar -c ./cross | lzip -9vv \
+     > ${output}/${tarname}-${target}.tar.lz
+
+    # Create the checksum
+    cd $output
+    sha256sum ${tarname}-${target}.tar.lz \
+      > ${tarname}-${target}.tar.lz.sha256
+
+    # Back to the current working directory
+    cd -- $CWD
+done
+

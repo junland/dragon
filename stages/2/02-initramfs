@@ -1,0 +1,50 @@
+# Build script for the single-purpose initramfs (liveCD)
+#
+# Copyright (C) 2017 Matias Fonzo, <selk@dragora.org>
+#
+# This script is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+mkdir -p -- "${rootdir}/initrd"
+
+cat << "EOF" > "${rootdir}/initrd/init"
+#! /bin/busybox ash
+
+/bin/busybox sleep 7
+
+/bin/busybox mkdir -p /dev /proc /sys /.UP
+
+/bin/busybox mount -n -o nosuid,noexec,nodev -t proc proc /proc
+/bin/busybox mount -n -o nosuid,noexec,nodev -t sysfs sysfs /sys
+/bin/busybox mount -n -t devtmpfs devtmpfs /dev
+
+/bin/busybox sleep 3
+
+/bin/busybox mount -n -o rw,size=100% -t tmpfs tmpfs /.UP
+/bin/busybox mkdir /.UP/cdrom /.UP/rw /.UP/squash /.UP/union
+
+# Mount ISO and system image
+/bin/busybox mount -n -t iso9660 LABEL=Dragora /.UP/cdrom
+/bin/busybox mount -n -o loop -t squashfs /.UP/cdrom/dragora.sfs /.UP/squash
+
+# Merge Squashfs with AUFS
+/bin/busybox mount -o br=/.UP/rw:/.UP/squash -t aufs none /.UP/union
+
+# Move virtual file systems prior to switch_root
+/bin/busybox mount --move /dev   /.UP/union/dev
+/bin/busybox mount --move /proc  /.UP/union/proc
+/bin/busybox mount --move /sys   /.UP/union/sys
+
+exec /bin/busybox switch_root /.UP/union /sbin/init
+
+EOF
+
+chmod 750 "${rootdir}/initrd/init"
+
+# Make initramfs
+cd -- "${rootdir}/initrd"
+rm -f initrd.img
+
+find . | sed 's!^./!!' | cpio -oC512 -H newc | \
+ lzip -9c --dictionary-size=16 > initrd.img
+

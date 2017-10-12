@@ -1,0 +1,103 @@
+#! /bin/sh -
+#
+#  Prepare to halt or reboot the system
+#
+#  Copyright (C) 2017 Matias Fonzo <selk@dragora.org>
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+IFS='
+ 	'
+PATH=/usr/bin:/bin:/usr/sbin:/sbin
+
+umask 022
+
+# Set linefeed mode to avoid staircase effect
+stty onlcr 0>&1
+
+echo ""
+case $1 in
+    reboot)
+        echo "*** System going to be rebooted ***"
+        ;;
+    poweroff)
+        echo "*** System going to be halted ***"
+        ;;
+    *)
+        echo "Invalid action '$1' for ${0}"    1>&2
+        echo "Valid actions: reboot, poweroff" 1>&2
+        exit 1;
+esac
+echo ""
+
+# Be immune to the following signals
+trap "" HUP INT QUIT ABRT TERM
+
+# Save system clock
+
+if grep -q -i localtime /etc/rc.conf
+then
+    echo "(Shutdown) Saving hardware clock in local time"
+    hwclock --systohc --localtime
+else
+    echo "(Shutdown) Saving hardware clock in UTC"
+    hwclock --systohc --utc
+fi
+
+# Save the random number generator, see random(4)
+
+echo "(Shutdown) Saving random number generator"
+echo "    /dev/urandom <-> /etc/random-seed ..."
+
+# Read pool size from /proc or assign a default value
+read -r < /proc/sys/kernel/random/poolsize size || size=4096
+
+# Save seed file containing the whole entropy pool
+dd if=/dev/urandom of=/etc/random-seed count=1 bs=${size} 2> /dev/null
+
+unset size
+chmod 600 /etc/random-seed
+
+# Flush file system buffers, update super block
+sync
+
+# Send a signal to all processes
+echo "(Shutdown) Sending the TERM signal to all the processes"
+killall5 ; sleep 9
+
+echo "(Shutdown) Deactivating swap devices"
+swapoff -v -a
+
+echo "(Shutdown) Unmounting local and remote file systems"
+umount -v -a -r
+
+sleep 1
+
+echo "(Shutdown) Remounting root filesystem in read-only mode"
+mount -n -o remount,ro /
+
+# Wait for completion of all the processes
+wait
+
+# Reboot, or halt the system (game over)
+case $1 in
+    reboot)
+        echo "Rebooting ..."
+        halt -r
+        ;;
+    *)
+        halt -p
+        ;;
+esac
+

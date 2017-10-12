@@ -1,0 +1,198 @@
+#! /bin/sh -
+#
+#  Simple `configure' script for Qi.
+#
+#  Copyright (C) 2016-2017 Matias Andres Fonzo <selk@dragora.org>
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+usage() {
+    printf "%s\n" \
+"Usage: configure [options]"                                                   \
+""                                                                             \
+"Defaults for the options are specified in brackets."                          \
+""                                                                             \
+"Options:"                                                                     \
+"  --prefix=DIR         install files in DIR [${prefix}]"                      \
+"  --exec-prefix=DIR    base DIR for arch-dependent files [${exec_prefix}]"    \
+"  --bindir=DIR         user executables [${bindir}]"                          \
+"  --sbindir=DIR        system admin executables [${sbindir}]"                 \
+"  --libexecdir=DIR     program executables [${libexecdir}]"                   \
+"  --sysconfdir=DIR     read-only single-machine data [${sysconfdir}]"         \
+"  --localstatedir=DIR  modifiable single-machine data [${localstatedir}]"     \
+"  --datarootdir=DIR    read-only arch-independent data root [${datarootdir}]" \
+"  --infodir=DIR        info documentation [${infodir}]"                       \
+"  --mandir=DIR         man documentation [${mandir}]"                         \
+"  --docdir=DIR         documentation root [${docdir}]"                        \
+"  --packagedir=DIR     package installation directory [${packagedir}]"        \
+"  --targetdir=DIR      target directory for linking [${targetdir}]"           \
+""                                                                             \
+"All the options affect the package manager, the internal values,"             \
+"including those in the configuration file."                                   \
+""
+}
+
+# Defaults
+prefix=/usr/local
+exec_prefix='$(prefix)'
+bindir='$(exec_prefix)/bin'
+sbindir='$(exec_prefix)/sbin'
+libexecdir='$(exec_prefix)/libexec'
+sysconfdir='$(prefix)/etc'
+localstatedir='$(prefix)/var'
+datarootdir='$(prefix)/share'
+infodir='$(datarootdir)/info'
+mandir='$(datarootdir)/man'
+docdir='$(datarootdir)/doc'
+packagedir='$(prefix)/pkg'
+targetdir='/'
+
+return_variables() {
+    printf "%s\n" \
+     "prefix = $prefix"                \
+     "exec_prefix = $exec_prefix"      \
+     "bindir = $bindir"                \
+     "sbindir = $sbindir"              \
+     "libexecdir = $libexecdir"        \
+     "sysconfdir = $sysconfdir"        \
+     "localstatedir = $localstatedir"  \
+     "datarootdir = $datarootdir"      \
+     "infodir = $infodir"              \
+     "mandir = $mandir"                \
+     "docdir = $docdir"                \
+     "packagedir = $packagedir"        \
+     "targetdir = $targetdir"          \
+     ""
+}
+
+# Handle options
+while [ $# -gt 0 ]
+do
+    case $1 in
+    --prefix)
+        prefix="$2"
+        shift
+        ;;
+    --prefix=*)
+        prefix="${1#*=}"
+        ;;
+    --exec-prefix)
+        exec_prefix="$2"
+        shift
+        ;;
+    --exec-prefix=*)
+        exec_prefix="${1#*=}"
+        ;;
+    --bindir)
+        bindir="$2"
+        shift
+        ;;
+    --bindir=*)
+        bindir="${1#*=}"
+        ;;
+    --sbindir)
+        sbindir="$2"
+        shift
+        ;;
+    --sbindir=*)
+        sbindir="${1#*=}"
+        ;;
+    --libexecdir)
+        libexecdir="$2"
+        shift
+        ;;
+    --libexecdir=*)
+        libexecdir="${1#*=}"
+        ;;
+    --sysconfdir)
+        sysconfdir="$2"
+        shift
+        ;;
+    --sysconfdir=*)
+        sysconfdir="${1#*=}"
+        ;;
+    --localstatedir)
+        localstatedir="$2"
+        shift
+        ;;
+    --localstatedir=*)
+        localstatedir="${1#*=}"
+        ;;
+    --datarootdir)
+        datarootdir="$2"
+        shift
+        ;;
+    --datarootdir=*)
+        datarootdir="${1#*=}"
+        ;;
+    --infodir)
+        infodir="$2"
+        shift
+        ;;
+    --infodir=*)
+        infodir="${1#*=}"
+        ;;
+    --mandir)
+        mandir="$2"
+        shift
+        ;;
+    --mandir=*)
+        mandir="${1#*=}"
+        ;;
+    --docdir)
+        docdir="$2"
+        shift
+        ;;
+    --docdir=*)
+        docdir="${1#*=}"
+        ;;
+    --packagedir)
+        packagedir="$2"
+        shift
+        ;;
+    --packagedir=*)
+        packagedir="${1#*=}"
+        ;;
+    --targetdir)
+        targetdir="$2"
+        shift
+        ;;
+    --targetdir=*)
+        targetdir="${1#*=}"
+        ;;
+    -h | --help)
+        usage
+        exit
+        ;;
+    --)	# End of options
+        shift
+        break
+        ;;
+    -*)
+        echo "configure: WARNING: unrecognized option '${1}'" 1>&2
+        ;;
+    *)
+        break
+        ;;
+    esac
+
+    shift
+done
+
+echo "Creating config.mak ..."
+return_variables
+: > config.mak
+return_variables > config.mak
+echo "OK, now you can run \`make'"
+

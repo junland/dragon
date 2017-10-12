@@ -1,0 +1,65 @@
+# Recipe file for expat.
+#
+# Maintainers: (C) 2017 Mateus P. Rodrigues, mprodrigues@dragora.org.
+#
+# Under the terms of the GNU General Public License.
+
+program=expat
+version=2.2.4
+release=1
+
+description="
+A stream-oriented XML parser library written in C.
+
+Expat excels with files too large to fit RAM, and where
+performance and flexibility are crucial.
+"
+
+homepage=http://libexpat.github.io/
+license=MIT
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://downloads.sourceforge.net/project/expat/expat/${version}/$tarname
+
+# Source documentation
+docs="AUTHORS COPYING Changes README.md"
+docsdir="${docdir}/${program}-${version}"
+
+build() {
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --libdir=/usr/lib${libSuffix} \
+    --mandir=$mandir \
+    --docdir=$docsdir \
+    --build="$(cc -dumpmachine)" \
+    || true
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress manual pages
+    if [ -d "${destdir}/$mandir" ] ; then
+	(
+            cd "${destdir}/$mandir"
+	    find . -type f -exec lzip -9 '{}' +
+	    find . -type l | while read -r file
+	    do
+		ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+		rm -- "$file"
+	    done
+	)
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+

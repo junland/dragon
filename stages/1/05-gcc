@@ -1,0 +1,133 @@
+# Build script for gcc
+#
+# Copyright (C) 2016-2017 Matias Fonzo, <selk@dragora.org>
+#
+# This script is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+version=6.4.0
+
+# Prerequisites
+gmp_version=6.1.2
+mpfr_version=3.1.6
+mpc_version=1.0.3
+isl_version=0.18
+
+# Unpack sources
+rm -rf -- "${TMPDIR}/gcc-${version}"
+rm -rf -- "${TMPDIR}/gmp-${gmp_version}"
+rm -rf -- "${TMPDIR}/mpfr-${mpfr_version}"
+rm -rf -- "${TMPDIR}/mpc-${mpc_version}"
+rm -rf -- "${TMPDIR}/isl-${isl_version}"
+untar "${worktree}/sources/gcc-${version}.tar.gz" "$TMPDIR"
+untar "${worktree}"/sources/gmp-${gmp_version}.tar.lz "$TMPDIR"
+untar "${worktree}"/sources/mpfr-${mpfr_version}.tar.bz2 "$TMPDIR"
+untar "${worktree}"/sources/mpc-${mpc_version}.tar.gz "$TMPDIR"
+untar "${worktree}"/sources/isl-${isl_version}.tar.bz2 "$TMPDIR"
+
+# Build instructions
+cd -- "${TMPDIR}/gcc-${version}"
+
+# Apply specific patches for the support in musl.
+#
+# http://port70.net/~nsz/musl/gcc-trunk/
+#
+patch -Np1 -i "${worktree}/patches/gcc/0001-libgcc_s.patch"
+patch -Np1 -i "${worktree}/patches/gcc/0005-libatomic-test-fix.patch"
+patch -Np1 -i "${worktree}/patches/gcc/0006-libgomp-test-fix.patch"
+patch -Np1 -i "${worktree}/patches/gcc/0007-libitm-test-fix.patch"
+patch -Np1 -i "${worktree}/patches/gcc/0008-libvtv-test-fix.patch"
+
+# Hard code default paths to look in /tools
+for file in \
+ gcc/config/linux.h gcc/config/i386/linux.h gcc/config/i386/linux64.h \
+ gcc/config/arm/linux-eabi.h gcc/config/arm/linux-elf.h \
+ gcc/config/mips/linux.h \
+ gcc/config/rs6000/linux64.h gcc/config/rs6000/sysv4.h \
+ gcc/config/aarch64/aarch64-linux.h \
+ gcc/config/microblaze/linux.h \
+ gcc/config/sh/linux.h ; \
+do
+    if test ! -f "$file"
+    then
+        echo "WARNING: ${0}: Non-existent file: $file" 1>&2
+        continue;
+    fi
+    sed -i \
+     -e 's@/lib\(64\)\{0,1\}\(32\)\{0,1\}/ld@/tools&@g' \
+     -e 's@/usr@/tools@g' "$file"
+    echo '
+#undef STANDARD_STARTFILE_PREFIX_1
+#undef STANDARD_STARTFILE_PREFIX_2
+#define STANDARD_STARTFILE_PREFIX_1 "/tools/lib/"
+#define STANDARD_STARTFILE_PREFIX_2 ""' >> "$file"
+done
+
+# Make symlinks for requisites
+ln -s ../gmp-${gmp_version} gmp
+ln -s ../mpfr-${mpfr_version} mpfr
+ln -s ../mpc-${mpc_version} mpc
+ln -s ../isl-${isl_version} isl
+
+# Apply patches for MPFR
+(
+    cd mpfr || exit 1
+    for file in "${worktree}"/patches/mpfr/patch??*
+    do
+        if test -f "$file"
+        then
+            patch -p1 < "$file"
+        fi
+    done
+)
+
+# Build in a separate directory
+rm -rf ../gcc-build
+mkdir ../gcc-build
+cd ../gcc-build
+
+# Import and export toolchain variables
+. "${worktree}/stages/env.d/cross-staticenv"
+
+../gcc-${version}/configure \
+AR="$AR" AS="$AS" LD="$LD" RANLIB="$RANLIB" READELF="$READELF" STRIP="$STRIP" \
+CC="$BTCC" CXX="$BTCXX" \
+CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
+ --prefix=/tools \
+ --libdir=/tools/lib${libSuffix} \
+ --build=$host \
+ --host=$target \
+ --target=$target \
+ --enable-languages=c,c++ \
+ --enable-clocale=generic \
+ --enable-tls \
+ --enable-libstdcxx-time \
+ --enable-install-libiberty \
+ --enable-fully-dynamic-string \
+ --disable-symvers \
+ --disable-bootstrap \
+ --disable-libstdcxx-pch \
+ --disable-gnu-indirect-function \
+ --disable-libmudflap \
+ --disable-libsanitizer \
+ --disable-libmpx \
+ --disable-nls \
+ --with-local-prefix=/tools \
+ --with-native-system-header-dir=/tools/include \
+ $multilib_options \
+ $gcc_options
+
+make -j${jobs} \
+ AS_FOR_TARGET="$AS" \
+ LD_FOR_TARGET="$LD"
+
+make install
+
+# Unset some imported variables from file
+unset AR AS LD RANLIB READELF STRIP
+
+cleanup()
+{
+    cd -- "$TMPDIR" && rm -rf gcc-* gmp-* mpfr-* mpc-* isl-*
+}
+

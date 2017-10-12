@@ -1,0 +1,67 @@
+# Build recipe for isl.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=isl
+version=0.18
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://isl.gforge.inria.fr/$tarname
+
+description="
+A integer set library.
+
+ISL is a library for manipulating sets and relations of integer points
+bounded by linear constraints.  Supported operations on sets include
+intersection, union, set difference, emptiness check, convex hull,
+(integer) affine hull, integer projection, and computing the
+lexicographic minimum using parametric integer programming.
+
+It also includes an ILP solver based on generalized basis reduction.
+"
+
+homepage=http://freshmeat.net/projects/isl
+license=MIT
+
+# Source documentation
+docs="AUTHORS ChangeLog LICENSE README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --enable-static \
+     --enable-shared \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Move misplaced file(s) for GDB
+    mkdir -p "${destdir}/usr/share/gdb/auto-load/usr/lib${libSuffix}"
+    mv "${destdir}/usr/lib${libSuffix}"/*-gdb.py \
+       "${destdir}/usr/share/gdb/auto-load/usr/lib${libSuffix}"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

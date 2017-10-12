@@ -1,0 +1,451 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0105
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0105
+Problem:    When using ch_read() with zero timeout, can't tell the difference
+            between reading an empty line and nothing available.
+Solution:   Add ch_canread().
+Files:      src/evalfunc.c, src/channel.c, src/proto/channel.pro,
+            src/testdir/test_channel.vim, src/testdir/shared.vim,
+            runtime/doc/eval.txt, runtime/doc/channel.txt
+
+
+*** ../vim-8.0.0104/src/evalfunc.c	2016-11-24 15:09:03.409856638 +0100
+--- src/evalfunc.c	2016-11-29 20:23:04.633430178 +0100
+***************
+*** 76,81 ****
+--- 76,82 ----
+  static void f_ceil(typval_T *argvars, typval_T *rettv);
+  #endif
+  #ifdef FEAT_JOB_CHANNEL
++ static void f_ch_canread(typval_T *argvars, typval_T *rettv);
+  static void f_ch_close(typval_T *argvars, typval_T *rettv);
+  static void f_ch_close_in(typval_T *argvars, typval_T *rettv);
+  static void f_ch_evalexpr(typval_T *argvars, typval_T *rettv);
+***************
+*** 499,504 ****
+--- 500,506 ----
+      {"ceil",		1, 1, f_ceil},
+  #endif
+  #ifdef FEAT_JOB_CHANNEL
++     {"ch_canread",	1, 1, f_ch_canread},
+      {"ch_close",	1, 1, f_ch_close},
+      {"ch_close_in",	1, 1, f_ch_close_in},
+      {"ch_evalexpr",	2, 3, f_ch_evalexpr},
+***************
+*** 1779,1784 ****
+--- 1781,1801 ----
+  
+  #ifdef FEAT_JOB_CHANNEL
+  /*
++  * "ch_canread()" function
++  */
++     static void
++ f_ch_canread(typval_T *argvars, typval_T *rettv)
++ {
++     channel_T *channel = get_channel_arg(&argvars[0], TRUE, TRUE, 0);
++ 
++     rettv->vval.v_number = 0;
++     if (channel != NULL)
++ 	rettv->vval.v_number = channel_has_readahead(channel, PART_SOCK)
++ 			    || channel_has_readahead(channel, PART_OUT)
++ 			    || channel_has_readahead(channel, PART_ERR);
++ }
++ 
++ /*
+   * "ch_close()" function
+   */
+      static void
+*** ../vim-8.0.0104/src/channel.c	2016-11-26 15:13:29.402218088 +0100
+--- src/channel.c	2016-11-29 20:13:58.177247346 +0100
+***************
+*** 2603,2609 ****
+  /*
+   * Return TRUE if "channel" has JSON or other typeahead.
+   */
+!     static int
+  channel_has_readahead(channel_T *channel, ch_part_T part)
+  {
+      ch_mode_T	ch_mode = channel->ch_part[part].ch_mode;
+--- 2603,2609 ----
+  /*
+   * Return TRUE if "channel" has JSON or other typeahead.
+   */
+!     int
+  channel_has_readahead(channel_T *channel, ch_part_T part)
+  {
+      ch_mode_T	ch_mode = channel->ch_part[part].ch_mode;
+*** ../vim-8.0.0104/src/proto/channel.pro	2016-11-26 15:13:29.402218088 +0100
+--- src/proto/channel.pro	2016-11-29 20:14:03.549209705 +0100
+***************
+*** 25,30 ****
+--- 25,31 ----
+  int channel_collapse(channel_T *channel, ch_part_T part, int want_nl);
+  int channel_can_write_to(channel_T *channel);
+  int channel_is_open(channel_T *channel);
++ int channel_has_readahead(channel_T *channel, ch_part_T part);
+  char *channel_status(channel_T *channel, int req_part);
+  void channel_info(channel_T *channel, dict_T *dict);
+  void channel_close(channel_T *channel, int invoke_close_cb);
+*** ../vim-8.0.0104/src/testdir/test_channel.vim	2016-11-17 17:25:28.212093109 +0100
+--- src/testdir/test_channel.vim	2016-11-29 21:52:55.853041485 +0100
+***************
+*** 58,63 ****
+--- 58,66 ----
+    " string with ][ should work
+    call assert_equal('this][that', ch_evalexpr(handle, 'echo this][that'))
+  
++   " nothing to read now
++   call assert_equal(0, ch_canread(handle))
++ 
+    " sending three messages quickly then reading should work
+    for i in range(3)
+      call ch_sendexpr(handle, 'echo hello ' . i)
+***************
+*** 368,374 ****
+    endif
+    call ch_setoptions(handle, {'mode': 'raw'})
+  
+!   " The message are sent raw, we do our own JSON strings here.
+    call ch_sendraw(handle, "[1, \"hello!\"]\n", {'callback': 'Ch_handleRaw1'})
+    call WaitFor('g:Ch_reply1 != ""')
+    call assert_equal("[1, \"got it\"]", g:Ch_reply1)
+--- 371,377 ----
+    endif
+    call ch_setoptions(handle, {'mode': 'raw'})
+  
+!   " The messages are sent raw, we do our own JSON strings here.
+    call ch_sendraw(handle, "[1, \"hello!\"]\n", {'callback': 'Ch_handleRaw1'})
+    call WaitFor('g:Ch_reply1 != ""')
+    call assert_equal("[1, \"got it\"]", g:Ch_reply1)
+***************
+*** 431,437 ****
+      return
+    endif
+    call ch_log('Test_raw_pipe()')
+!   let job = job_start(s:python . " test_channel_pipe.py", {'mode': 'raw'})
+    call assert_equal(v:t_job, type(job))
+    call assert_equal("run", job_status(job))
+  
+--- 434,443 ----
+      return
+    endif
+    call ch_log('Test_raw_pipe()')
+!   " Add a dummy close callback to avoid that messages are dropped when calling
+!   " ch_canread().
+!   let job = job_start(s:python . " test_channel_pipe.py",
+! 	\ {'mode': 'raw', 'close_cb': {chan -> 0}})
+    call assert_equal(v:t_job, type(job))
+    call assert_equal("run", job_status(job))
+  
+***************
+*** 458,463 ****
+--- 464,472 ----
+      call assert_equal("something\n", substitute(msg, "\r", "", 'g'))
+  
+      call ch_sendraw(job, "double this\n")
++     let g:handle = job_getchannel(job)
++     call WaitFor('ch_canread(g:handle)')
++     unlet g:handle
+      let msg = ch_readraw(job)
+      call assert_equal("this\nAND this\n", substitute(msg, "\r", "", 'g'))
+  
+*** ../vim-8.0.0104/src/testdir/shared.vim	2016-10-27 20:00:03.665357405 +0200
+--- src/testdir/shared.vim	2016-11-29 20:25:10.408554811 +0100
+***************
+*** 88,94 ****
+  
+      call call(function(a:testfunc), [port])
+    catch
+!     call assert_false(1, "Caught exception: " . v:exception)
+    finally
+      call s:kill_server(a:cmd)
+    endtry
+--- 88,94 ----
+  
+      call call(function(a:testfunc), [port])
+    catch
+!     call assert_false(1, 'Caught exception: "' . v:exception . '" in ' . v:throwpoint)
+    finally
+      call s:kill_server(a:cmd)
+    endtry
+*** ../vim-8.0.0104/runtime/doc/eval.txt	2016-11-24 15:09:03.413856612 +0100
+--- runtime/doc/eval.txt	2016-11-29 21:45:28.872201614 +0100
+***************
+*** 2008,2013 ****
+--- 2009,2015 ----
+  call({func}, {arglist} [, {dict}])
+  				any	call {func} with arguments {arglist}
+  ceil({expr})			Float	round {expr} up
++ ch_canread({handle})		Number	check if there is something to read
+  ch_close({handle})		none	close {handle}
+  ch_close_in({handle})		none	close in part of {handle}
+  ch_evalexpr({handle}, {expr} [, {options}])
+***************
+*** 2979,2994 ****
+  		don't fit, a vertical layout is used anyway.  For some systems
+  		the horizontal layout is always used.
+  
+  ch_close({handle})						*ch_close()*
+  		Close {handle}.  See |channel-close|.
+! 		{handle} can be Channel or a Job that has a Channel.
+  		A close callback is not invoked.
+  
+  		{only available when compiled with the |+channel| feature}
+  
+  ch_close_in({handle})						*ch_close_in()*
+  		Close the "in" part of {handle}.  See |channel-close-in|.
+! 		{handle} can be Channel or a Job that has a Channel.
+  		A close callback is not invoked.
+  
+  		{only available when compiled with the |+channel| feature}
+--- 2981,3008 ----
+  		don't fit, a vertical layout is used anyway.  For some systems
+  		the horizontal layout is always used.
+  
++ ch_canread({handle})						*ch_canread()*
++ 		Return non-zero when there is something to read from {handle}.
++ 		{handle} can be a Channel or a Job that has a Channel.
++ 
++ 		This is useful to read from a channel at a convenient time,
++ 		e.g. from a timer.
++ 
++ 		Note that messages are dropped when the channel does not have
++ 		a callback.  Add a close callback to avoid that.
++ 
++ 		{only available when compiled with the |+channel| feature}
++ 
+  ch_close({handle})						*ch_close()*
+  		Close {handle}.  See |channel-close|.
+! 		{handle} can be a Channel or a Job that has a Channel.
+  		A close callback is not invoked.
+  
+  		{only available when compiled with the |+channel| feature}
+  
+  ch_close_in({handle})						*ch_close_in()*
+  		Close the "in" part of {handle}.  See |channel-close-in|.
+! 		{handle} can be a Channel or a Job that has a Channel.
+  		A close callback is not invoked.
+  
+  		{only available when compiled with the |+channel| feature}
+***************
+*** 2997,3003 ****
+  		Send {expr} over {handle}.  The {expr} is encoded
+  		according to the type of channel.  The function cannot be used
+  		with a raw channel.  See |channel-use|.
+! 		{handle} can be Channel or a Job that has a Channel.
+  								*E917*
+  		{options} must be a Dictionary.  It must not have a "callback"
+  		entry.  It can have a "timeout" entry to specify the timeout
+--- 3011,3017 ----
+  		Send {expr} over {handle}.  The {expr} is encoded
+  		according to the type of channel.  The function cannot be used
+  		with a raw channel.  See |channel-use|.
+! 		{handle} can be a Channel or a Job that has a Channel.
+  								*E917*
+  		{options} must be a Dictionary.  It must not have a "callback"
+  		entry.  It can have a "timeout" entry to specify the timeout
+***************
+*** 3011,3017 ****
+  
+  ch_evalraw({handle}, {string} [, {options}])		*ch_evalraw()*
+  		Send {string} over {handle}.
+! 		{handle} can be Channel or a Job that has a Channel.
+  
+  		Works like |ch_evalexpr()|, but does not encode the request or
+  		decode the response.  The caller is responsible for the
+--- 3025,3031 ----
+  
+  ch_evalraw({handle}, {string} [, {options}])		*ch_evalraw()*
+  		Send {string} over {handle}.
+! 		{handle} can be a Channel or a Job that has a Channel.
+  
+  		Works like |ch_evalexpr()|, but does not encode the request or
+  		decode the response.  The caller is responsible for the
+***************
+*** 3024,3030 ****
+  
+  ch_getbufnr({handle}, {what})				 *ch_getbufnr()*
+  		Get the buffer number that {handle} is using for {what}.
+! 		{handle} can be Channel or a Job that has a Channel.
+  		{what} can be "err" for stderr, "out" for stdout or empty for
+  		socket output.
+  		Returns -1 when there is no buffer.
+--- 3038,3044 ----
+  
+  ch_getbufnr({handle}, {what})				 *ch_getbufnr()*
+  		Get the buffer number that {handle} is using for {what}.
+! 		{handle} can be a Channel or a Job that has a Channel.
+  		{what} can be "err" for stderr, "out" for stdout or empty for
+  		socket output.
+  		Returns -1 when there is no buffer.
+***************
+*** 3070,3077 ****
+  		|ch_logfile()|.
+  		When {handle} is passed the channel number is used for the
+  		message.
+! 		{handle} can be Channel or a Job that has a Channel.  The
+! 		Channel must open.
+  
+  ch_logfile({fname} [, {mode}])					*ch_logfile()*
+  		Start logging channel activity to {fname}.
+--- 3084,3091 ----
+  		|ch_logfile()|.
+  		When {handle} is passed the channel number is used for the
+  		message.
+! 		{handle} can be a Channel or a Job that has a Channel.  The
+! 		Channel must be open for the channel number to be used.
+  
+  ch_logfile({fname} [, {mode}])					*ch_logfile()*
+  		Start logging channel activity to {fname}.
+***************
+*** 3098,3104 ****
+  
+  ch_read({handle} [, {options}])					*ch_read()*
+  		Read from {handle} and return the received message.
+! 		{handle} can be Channel or a Job that has a Channel.
+  		See |channel-more|.
+  		{only available when compiled with the |+channel| feature}
+  
+--- 3112,3118 ----
+  
+  ch_read({handle} [, {options}])					*ch_read()*
+  		Read from {handle} and return the received message.
+! 		{handle} can be a Channel or a Job that has a Channel.
+  		See |channel-more|.
+  		{only available when compiled with the |+channel| feature}
+  
+***************
+*** 3112,3118 ****
+  		according to the type of channel.  The function cannot be used
+  		with a raw channel.
+  		See |channel-use|.				*E912*
+! 		{handle} can be Channel or a Job that has a Channel.
+  
+  		{only available when compiled with the |+channel| feature}
+  
+--- 3126,3132 ----
+  		according to the type of channel.  The function cannot be used
+  		with a raw channel.
+  		See |channel-use|.				*E912*
+! 		{handle} can be a Channel or a Job that has a Channel.
+  
+  		{only available when compiled with the |+channel| feature}
+  
+***************
+*** 3133,3139 ****
+  			"timeout"	default read timeout in msec
+  			"mode"		mode for the whole channel
+  		See |ch_open()| for more explanation.
+! 		{handle} can be Channel or a Job that has a Channel.
+  
+  		Note that changing the mode may cause queued messages to be
+  		lost.
+--- 3147,3153 ----
+  			"timeout"	default read timeout in msec
+  			"mode"		mode for the whole channel
+  		See |ch_open()| for more explanation.
+! 		{handle} can be a Channel or a Job that has a Channel.
+  
+  		Note that changing the mode may cause queued messages to be
+  		lost.
+***************
+*** 3147,3153 ****
+  			"open"		channel can be used
+  			"buffered"	channel can be read, not written to
+  			"closed"	channel can not be used
+! 		{handle} can be Channel or a Job that has a Channel.
+  		"buffered" is used when the channel was closed but there is
+  		still data that can be obtained with |ch_read()|.
+  
+--- 3161,3167 ----
+  			"open"		channel can be used
+  			"buffered"	channel can be read, not written to
+  			"closed"	channel can not be used
+! 		{handle} can be a Channel or a Job that has a Channel.
+  		"buffered" is used when the channel was closed but there is
+  		still data that can be obtained with |ch_read()|.
+  
+***************
+*** 3708,3716 ****
+  		is zero remove the item from the |List| or |Dictionary|.
+  		{expr2} must be a |string| or |Funcref|.
+  		
+! 		if {expr2} is a |string|, inside {expr2} |v:val| has the value
+  		of the current item.  For a |Dictionary| |v:key| has the key
+! 		of the current item.
+  		Examples: >
+  			call filter(mylist, 'v:val !~ "OLD"')
+  <		Removes the items where "OLD" appears. >
+--- 3722,3731 ----
+  		is zero remove the item from the |List| or |Dictionary|.
+  		{expr2} must be a |string| or |Funcref|.
+  		
+! 		If {expr2} is a |string|, inside {expr2} |v:val| has the value
+  		of the current item.  For a |Dictionary| |v:key| has the key
+! 		of the current item and for a |List| |v:key| has the index of
+! 		the current item.
+  		Examples: >
+  			call filter(mylist, 'v:val !~ "OLD"')
+  <		Removes the items where "OLD" appears. >
+*** ../vim-8.0.0104/runtime/doc/channel.txt	2016-09-12 12:45:25.000000000 +0200
+--- runtime/doc/channel.txt	2016-11-29 21:43:53.144857530 +0100
+***************
+*** 418,424 ****
+  message that is available: >
+  	let output = ch_read(channel, {'timeout': 0})
+  When no message was available then the result is v:none for a JSON or JS mode
+! channels, an empty string for a RAW or NL channel.
+  
+  To read all output from a RAW channel that is available: >
+  	let output = ch_readraw(channel)
+--- 418,428 ----
+  message that is available: >
+  	let output = ch_read(channel, {'timeout': 0})
+  When no message was available then the result is v:none for a JSON or JS mode
+! channels, an empty string for a RAW or NL channel.  You can use |ch_canread()|
+! to check if there is something to read.
+! 
+! Note that when there is no callback message are dropped.  To avoid that add a
+! close callback to the channel.
+  
+  To read all output from a RAW channel that is available: >
+  	let output = ch_readraw(channel)
+***************
+*** 465,470 ****
+--- 469,479 ----
+  Without the handler you need to read the output with |ch_read()| or
+  |ch_readraw()|. You can do this in the close callback, see |read-in-close-cb|.
+  
++ Note that if the job exits before you read the output, the output may be lost.
++ This depends on the system (on Unix this happens because closing the write end
++ of a pipe causes the read end to get EOF).  To avoid this make the job sleep
++ for a short while before it exits.
++ 
+  The handler defined for "out_cb" will not receive stderr.  If you want to
+  handle that separately, add an "err_cb" handler: >
+      let job = job_start(command, {"out_cb": "MyHandler",
+*** ../vim-8.0.0104/src/version.c	2016-11-26 17:45:50.040909819 +0100
+--- src/version.c	2016-11-29 20:14:29.545027586 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     105,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+55. You ask your doctor to implant a gig in your brain.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,84 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0078
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0078
+Problem:    Accessing freed memory in quickfix.
+Solution:   Reset pointer when freeing 'errorformat'. (Domenique Pelle)
+Files:      src/quickfix.c, src/testdir/test_quickfix.vim
+
+
+*** ../vim-8.0.0077/src/quickfix.c	2016-11-10 20:01:41.197582893 +0100
+--- src/quickfix.c	2016-11-12 15:32:55.305622514 +0100
+***************
+*** 114,119 ****
+--- 114,121 ----
+      int		    conthere;	/* %> used */
+  };
+  
++ static efm_T	*fmt_start = NULL; /* cached across qf_parse_line() calls */
++ 
+  static int	qf_init_ext(qf_info_T *qi, char_u *efile, buf_T *buf, typval_T *tv, char_u *errorformat, int newlist, linenr_T lnumfirst, linenr_T lnumlast, char_u *qf_title);
+  static void	qf_store_title(qf_info_T *qi, char_u *title);
+  static void	qf_new_list(qf_info_T *qi, char_u *qf_title);
+***************
+*** 389,394 ****
+--- 391,397 ----
+  	vim_regfree(efm_ptr->prog);
+  	vim_free(efm_ptr);
+      }
++     fmt_start = NULL;
+  }
+  
+  /* Parse 'errorformat' option */
+***************
+*** 786,792 ****
+  	qffields_T	*fields)
+  {
+      efm_T		*fmt_ptr;
+-     static efm_T	*fmt_start = NULL; /* cached across calls */
+      char_u		*ptr;
+      int			len;
+      int			i;
+--- 789,794 ----
+*** ../vim-8.0.0077/src/testdir/test_quickfix.vim	2016-11-06 14:46:40.644143343 +0100
+--- src/testdir/test_quickfix.vim	2016-11-12 15:27:04.183936416 +0100
+***************
+*** 1648,1650 ****
+--- 1648,1660 ----
+  
+    set efm&vim
+  endfunction
++ 
++ function Test_caddbuffer()
++   " This used to cause a memory access in freed memory
++   let save_efm = &efm
++   set efm=%EEEE%m,%WWWW,%+CCCC%>%#,%GGGG%.#
++   cgetexpr ['WWWW', 'EEEE', 'CCCC']
++   let &efm = save_efm
++   cad
++   bwipe!
++ endfunc
+*** ../vim-8.0.0077/src/version.c	2016-11-11 21:57:42.339822540 +0100
+--- src/version.c	2016-11-12 15:33:58.377207364 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     78,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+19. All of your friends have an @ in their names.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

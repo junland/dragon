@@ -1,0 +1,69 @@
+# Build recipe for graft.
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=graft
+version=2.12
+arch=noarch
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://peters.gormand.com.au/Home/tools/graft/$tarname
+
+description="
+A package management utility.
+
+Graft provides a mechanism for managing multiple packages under a single
+directory hierarchy. Packages are installed in self contained directory
+trees and symbolic links from a common area are made to the package files.
+
+This approach allows multiple versions of the same package to co-exist on
+the one system. One version is the commonly available version and symbolic
+links will be made to this version. New versions can be tested and once
+acceptable can replace the current commonly available version. Older
+versions can still be used for legacy systems by using the 'real' path
+name to the package instead of the 'common' path name.
+"
+
+homepage=http://peters.gormand.com.au/Home/tools/graft
+license=GPLv2+
+
+# Source documentation
+docs="CHANGES COPYING README THOUGHTS doc/graft.html doc/graft.pdf doc/graft.txt"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    cp -f Makefile.dist Makefile
+    make \
+     PACKAGEDIR=/usr/pkg       \
+     TARGETDIR=/               \
+
+    make \
+     BIN="${destdir}/usr/bin"  \
+     MAN="${destdir}/$mandir"  \
+     install
+
+    # Compress manual page
+    lzip -9 "${destdir}/${mandir}/man1/graft.1"
+
+    # Copy source documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

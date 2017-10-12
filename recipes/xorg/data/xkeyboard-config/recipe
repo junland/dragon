@@ -1,0 +1,53 @@
+# Build recipe for xkeyboard-config.
+#
+# Copyright (C) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
+# Copyright (C) 2017 Matias A. Fonzo <selk@dragora.org>.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=xkeyboard-config
+version=2.21
+arch=noarch
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://www.x.org/releases/individual/data/xkeyboard-config/$tarname
+
+description="
+X keyboard extension.
+
+The non-arch keyboard configuration database for X Window.
+"
+
+homepage=http://www.x.org
+license="MIT X Consortium"
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure $configure_args \
+     --docdir=$docsdir \
+     --enable-compat-rules \
+     --with-xkb-base=/etc/X11/xkb \
+     --with-xkb-rules-symlink=xfree86,xorg
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+

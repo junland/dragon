@@ -1,0 +1,94 @@
+# Build recipe for sinit.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=sinit
+version=1.0
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://git.suckless.org/sinit/snapshot/$tarname
+
+description="
+Suckless init.
+
+Sinit is a simple init.  It was initially based on
+Rich Felker's minimal init.
+
+There are 3 signals that sinit(8) will act on.
+
+  SIGUSR1: powers off the machine.
+  SIGINT:  reboots the machine (or alternatively via ctrl-alt-del).
+  SIGCHLD: reap children
+"
+
+homepage=http://core.suckless.org/sinit
+license=MIT/X
+
+# Source documentation
+docs="LICENSE README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    patch -p0 < "${worktree}/patches/sinit/dragora-Makefile.diff"
+    patch -p0 < "${worktree}/patches/sinit/dragora-config.def.h.diff"
+
+    make -j${jobs} CFLAGS="$QICFLAGS -Wextra -Wall" \
+                   LDFLAGS="$QILDFLAGS -static" \
+                   PREFIX=/usr \
+                   DESTDIR="$destdir" install
+
+    mkdir -p "${destdir}/usr/sbin"
+
+    # Make symlink for the main 'init'
+    ( cd "${destdir}/usr/sbin" && ln -s sinit init )
+
+    # Provide halt and killall5 implementation from "ubase",
+    # modifications of Dimitris Papastamos (sin)
+
+    mkdir -p halt killall5
+    cp -p "${worktree}"/archive/sinit/halt/* halt/
+    cp -p "${worktree}"/archive/sinit/killall5/* killall5/
+
+    cd halt
+    cc $QICFLAGS -Wextra -Wall -static -o halt *.c
+    strip --strip-unneeded halt
+
+    cp -p halt "${destdir}/usr/sbin/"
+    chmod 755 "${destdir}/usr/sbin/halt"
+    cp -p halt.8 "${destdir}/${mandir}/man8/"
+
+    cd ../killall5
+    cc $QICFLAGS -Wextra -Wall -static -o killall5 *.c
+    strip --strip-unneeded killall5
+
+    cp -p killall5 "${destdir}/usr/sbin/"
+    chmod 755 "${destdir}/usr/sbin/killall5"
+    cp -p killall5.8 "${destdir}/${mandir}/man8/"
+
+    cd ..
+
+    # Compress man page(s)
+    lzip -9 "${destdir}/${mandir}"/man8/*.8
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

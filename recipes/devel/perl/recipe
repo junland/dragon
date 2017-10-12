@@ -1,0 +1,117 @@
+# Build recipe for perl.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=perl
+version=5.24.1
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://www.cpan.org/src/5.0/$tarname
+
+description="
+Practical Extraction and Report Language.
+
+Perl 5 is a highly capable, feature-rich programming language with over
+29 years of development.  Perl 5 runs on over 100 platforms from
+portables to mainframes and is suitable for both rapid prototyping
+and large scale development projects.
+
+Perl is a language that combines some of the features of C,
+sed, awk, and the shell.
+
+For more information, visit:  http://www.perl.org
+"
+
+homepage=http://www.perl.org
+license="Artistic | GPLv1"
+
+# Source documentation
+docs="AUTHORS Artistic Changes Copying README README.linux"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Don't use -fstack-protector* (troubles)
+    sed -i 's/-fstack-protector/-fnostack-protector/g' ./Configure
+
+    ./Configure -de \
+     -Dprefix=/usr \
+     -Dinstallprefix=/usr \
+     -Dsiteprefix=/usr/local \
+     -Dprivlib=/usr/share/perl5 \
+     -Darchlib=/usr/lib${libSuffix}/perl5 \
+     -Dsitelib=/usr/local/share/perl5 \
+     -Dsitearch=/usr/local/lib${libSuffix}/perl5 \
+     -Dvendorprefix=/usr \
+     -Dvendorlib=/usr/share/perl5/vendor_perl \
+     -Dvendorarch=/usr/lib${libSuffix}/perl5/vendor_perl \
+     -Dlibpth="/usr/local/lib${libSuffix} /usr/lib${libSuffix} /lib${libSuffix}" \
+     -Dscriptdir=/usr/bin \
+     -Duseshrplib \
+     -Ubincompat5005 \
+     -Uversiononly \
+     -Duselargefiles \
+     -Dusemymalloc=n \
+     -Dusethreads \
+     -A ldflags="$QILDFLAGS" \
+     -Doptimize="$QICFLAGS" \
+     -Dman1dir="${mandir}/man1" \
+     -Dman3dir="${mandir}/man3" \
+     -Dpager="/usr/bin/less -isR" \
+     BUILD_ZLIB="False" BUILD_BZIP2="0"
+
+    make -j${jobs} BUILD_ZLIB="False" BUILD_BZIP2="0"
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Replace hard links on binaries
+    (
+        cd "${destdir}/usr/bin" || exit 1
+        ln -sf perl${version} perl
+        ln -sf c2ph pstruct
+    )
+
+    # Replace hard links on manual pages
+    ( cd "${destdir}/${mandir}/man1" && ln -sf c2ph.1 pstruct.1 )
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

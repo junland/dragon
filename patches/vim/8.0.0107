@@ -1,0 +1,590 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0107
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0107
+Problem:    When reading channel output in a timer, messages may go missing.
+            (Skywind)
+Solution:   Add the "drop" option.  Write error messages in the channel log.
+            Don't have ch_canread() check for the channel being open.
+Files:      src/structs.h, src/channel.c, src/message.c, src/evalfunc.c,
+            src/proto/channel.pro, runtime/doc/channel.txt
+
+
+*** ../vim-8.0.0106/src/structs.h	2016-11-24 15:09:03.405856662 +0100
+--- src/structs.h	2016-12-01 13:04:30.094157140 +0100
+***************
+*** 1474,1479 ****
+--- 1474,1480 ----
+      typval_T	*jq_value;
+      jsonq_T	*jq_next;
+      jsonq_T	*jq_prev;
++     int		jq_no_callback; /* TRUE when no callback was found */
+  };
+  
+  struct cbq_S
+***************
+*** 1597,1602 ****
+--- 1598,1604 ----
+      partial_T	*ch_partial;
+      char_u	*ch_close_cb;	/* call when channel is closed */
+      partial_T	*ch_close_partial;
++     int		ch_drop_never;
+  
+      job_T	*ch_job;	/* Job that uses this channel; this does not
+  				 * count as a reference to avoid a circular
+***************
+*** 1684,1689 ****
+--- 1686,1692 ----
+      partial_T	*jo_close_partial; /* not referenced! */
+      char_u	*jo_exit_cb;	/* not allocated! */
+      partial_T	*jo_exit_partial; /* not referenced! */
++     int		jo_drop_never;
+      int		jo_waittime;
+      int		jo_timeout;
+      int		jo_out_timeout;
+*** ../vim-8.0.0106/src/channel.c	2016-11-29 21:54:41.116260206 +0100
+--- src/channel.c	2016-12-01 15:21:38.504292378 +0100
+***************
+*** 1195,1200 ****
+--- 1195,1201 ----
+      if (opt->jo_set & JO_CLOSE_CALLBACK)
+  	set_callback(&channel->ch_close_cb, &channel->ch_close_partial,
+  		opt->jo_close_cb, opt->jo_close_partial);
++     channel->ch_drop_never = opt->jo_drop_never;
+  
+      if ((opt->jo_set & JO_OUT_IO) && opt->jo_io[PART_OUT] == JIO_BUFFER)
+      {
+***************
+*** 1918,1923 ****
+--- 1919,1925 ----
+  		clear_tv(&listtv);
+  	    else
+  	    {
++ 		item->jq_no_callback = FALSE;
+  		item->jq_value = alloc_tv();
+  		if (item->jq_value == NULL)
+  		{
+***************
+*** 2050,2060 ****
+   * When "id" is positive it must match the first number in the list.
+   * When "id" is zero or negative jut get the first message.  But not the one
+   * with id ch_block_id.
+   * Return OK when found and return the value in "rettv".
+   * Return FAIL otherwise.
+   */
+      static int
+! channel_get_json(channel_T *channel, ch_part_T part, int id, typval_T **rettv)
+  {
+      jsonq_T   *head = &channel->ch_part[part].ch_json_head;
+      jsonq_T   *item = head->jq_next;
+--- 2052,2068 ----
+   * When "id" is positive it must match the first number in the list.
+   * When "id" is zero or negative jut get the first message.  But not the one
+   * with id ch_block_id.
++  * When "without_callback" is TRUE also get messages that were pushed back.
+   * Return OK when found and return the value in "rettv".
+   * Return FAIL otherwise.
+   */
+      static int
+! channel_get_json(
+! 	channel_T   *channel,
+! 	ch_part_T   part,
+! 	int	    id,
+! 	int	    without_callback,
+! 	typval_T    **rettv)
+  {
+      jsonq_T   *head = &channel->ch_part[part].ch_json_head;
+      jsonq_T   *item = head->jq_next;
+***************
+*** 2064,2073 ****
+  	list_T	    *l = item->jq_value->vval.v_list;
+  	typval_T    *tv = &l->lv_first->li_tv;
+  
+! 	if ((id > 0 && tv->v_type == VAR_NUMBER && tv->vval.v_number == id)
+  	      || (id <= 0 && (tv->v_type != VAR_NUMBER
+  		 || tv->vval.v_number == 0
+! 		 || tv->vval.v_number != channel->ch_part[part].ch_block_id)))
+  	{
+  	    *rettv = item->jq_value;
+  	    if (tv->v_type == VAR_NUMBER)
+--- 2072,2082 ----
+  	list_T	    *l = item->jq_value->vval.v_list;
+  	typval_T    *tv = &l->lv_first->li_tv;
+  
+! 	if ((without_callback || !item->jq_no_callback)
+! 	    && ((id > 0 && tv->v_type == VAR_NUMBER && tv->vval.v_number == id)
+  	      || (id <= 0 && (tv->v_type != VAR_NUMBER
+  		 || tv->vval.v_number == 0
+! 		 || tv->vval.v_number != channel->ch_part[part].ch_block_id))))
+  	{
+  	    *rettv = item->jq_value;
+  	    if (tv->v_type == VAR_NUMBER)
+***************
+*** 2080,2085 ****
+--- 2089,2153 ----
+      return FAIL;
+  }
+  
++ /*
++  * Put back "rettv" into the JSON queue, there was no callback for it.
++  * Takes over the values in "rettv".
++  */
++     static void
++ channel_push_json(channel_T *channel, ch_part_T part, typval_T *rettv)
++ {
++     jsonq_T   *head = &channel->ch_part[part].ch_json_head;
++     jsonq_T   *item = head->jq_next;
++     jsonq_T   *newitem;
++ 
++     if (head->jq_prev != NULL && head->jq_prev->jq_no_callback)
++ 	/* last item was pushed back, append to the end */
++ 	item = NULL;
++     else while (item != NULL && item->jq_no_callback)
++ 	/* append after the last item that was pushed back */
++ 	item = item->jq_next;
++ 
++     newitem = (jsonq_T *)alloc((unsigned)sizeof(jsonq_T));
++     if (newitem == NULL)
++ 	clear_tv(rettv);
++     else
++     {
++ 	newitem->jq_value = alloc_tv();
++ 	if (newitem->jq_value == NULL)
++ 	{
++ 	    vim_free(newitem);
++ 	    clear_tv(rettv);
++ 	}
++ 	else
++ 	{
++ 	    newitem->jq_no_callback = FALSE;
++ 	    *newitem->jq_value = *rettv;
++ 	    if (item == NULL)
++ 	    {
++ 		/* append to the end */
++ 		newitem->jq_prev = head->jq_prev;
++ 		head->jq_prev = newitem;
++ 		newitem->jq_next = NULL;
++ 		if (newitem->jq_prev == NULL)
++ 		    head->jq_next = newitem;
++ 		else
++ 		    newitem->jq_prev->jq_next = newitem;
++ 	    }
++ 	    else
++ 	    {
++ 		/* append after "item" */
++ 		newitem->jq_prev = item;
++ 		newitem->jq_next = item->jq_next;
++ 		item->jq_next = newitem;
++ 		if (newitem->jq_next == NULL)
++ 		    head->jq_prev = newitem;
++ 		else
++ 		    newitem->jq_next->jq_prev = newitem;
++ 	    }
++ 	}
++     }
++ }
++ 
+  #define CH_JSON_MAX_ARGS 4
+  
+  /*
+***************
+*** 2410,2420 ****
+  	int		argc = 0;
+  
+  	/* Get any json message in the queue. */
+! 	if (channel_get_json(channel, part, -1, &listtv) == FAIL)
+  	{
+  	    /* Parse readahead, return when there is still no message. */
+  	    channel_parse_json(channel, part);
+! 	    if (channel_get_json(channel, part, -1, &listtv) == FAIL)
+  		return FALSE;
+  	}
+  
+--- 2478,2488 ----
+  	int		argc = 0;
+  
+  	/* Get any json message in the queue. */
+! 	if (channel_get_json(channel, part, -1, FALSE, &listtv) == FAIL)
+  	{
+  	    /* Parse readahead, return when there is still no message. */
+  	    channel_parse_json(channel, part);
+! 	    if (channel_get_json(channel, part, -1, FALSE, &listtv) == FAIL)
+  		return FALSE;
+  	}
+  
+***************
+*** 2454,2460 ****
+  	{
+  	    /* If there is a close callback it may use ch_read() to get the
+  	     * messages. */
+! 	    if (channel->ch_close_cb == NULL)
+  		drop_messages(channel, part);
+  	    return FALSE;
+  	}
+--- 2522,2528 ----
+  	{
+  	    /* If there is a close callback it may use ch_read() to get the
+  	     * messages. */
+! 	    if (channel->ch_close_cb == NULL && !channel->ch_drop_never)
+  		drop_messages(channel, part);
+  	    return FALSE;
+  	}
+***************
+*** 2531,2537 ****
+      {
+  	int	done = FALSE;
+  
+! 	/* invoke the one-time callback with the matching nr */
+  	for (cbitem = cbhead->cq_next; cbitem != NULL; cbitem = cbitem->cq_next)
+  	    if (cbitem->cq_seq_nr == seq_nr)
+  	    {
+--- 2599,2605 ----
+      {
+  	int	done = FALSE;
+  
+! 	/* JSON or JS mode: invoke the one-time callback with the matching nr */
+  	for (cbitem = cbhead->cq_next; cbitem != NULL; cbitem = cbitem->cq_next)
+  	    if (cbitem->cq_seq_nr == seq_nr)
+  	    {
+***************
+*** 2540,2546 ****
+  		break;
+  	    }
+  	if (!done)
+! 	    ch_logn(channel, "Dropping message %d without callback", seq_nr);
+      }
+      else if (callback != NULL || buffer != NULL)
+      {
+--- 2608,2624 ----
+  		break;
+  	    }
+  	if (!done)
+! 	{
+! 	    if (channel->ch_drop_never)
+! 	    {
+! 		/* message must be read with ch_read() */
+! 		channel_push_json(channel, part, listtv);
+! 		listtv = NULL;
+! 	    }
+! 	    else
+! 		ch_logn(channel, "Dropping message %d without callback",
+! 								       seq_nr);
+! 	}
+      }
+      else if (callback != NULL || buffer != NULL)
+      {
+***************
+*** 2567,2573 ****
+  	}
+      }
+      else
+! 	ch_log(channel, "Dropping message");
+  
+      if (listtv != NULL)
+  	free_tv(listtv);
+--- 2645,2651 ----
+  	}
+      }
+      else
+! 	ch_logn(channel, "Dropping message %d", seq_nr);
+  
+      if (listtv != NULL)
+  	free_tv(listtv);
+***************
+*** 2792,2800 ****
+  	      redraw_after_callback();
+  	  }
+  
+! 	  /* any remaining messages are useless now */
+! 	  for (part = PART_SOCK; part < PART_IN; ++part)
+! 	      drop_messages(channel, part);
+      }
+  
+      channel->ch_nb_close_cb = NULL;
+--- 2870,2879 ----
+  	      redraw_after_callback();
+  	  }
+  
+! 	  if (!channel->ch_drop_never)
+! 	      /* any remaining messages are useless now */
+! 	      for (part = PART_SOCK; part < PART_IN; ++part)
+! 		  drop_messages(channel, part);
+      }
+  
+      channel->ch_nb_close_cb = NULL;
+***************
+*** 3091,3099 ****
+  channel_close_now(channel_T *channel)
+  {
+      ch_log(channel, "Closing channel because all readable fds are closed");
+-     channel_close(channel, TRUE);
+      if (channel->ch_nb_close_cb != NULL)
+  	(*channel->ch_nb_close_cb)();
+  }
+  
+  /*
+--- 3170,3178 ----
+  channel_close_now(channel_T *channel)
+  {
+      ch_log(channel, "Closing channel because all readable fds are closed");
+      if (channel->ch_nb_close_cb != NULL)
+  	(*channel->ch_nb_close_cb)();
++     channel_close(channel, TRUE);
+  }
+  
+  /*
+***************
+*** 3243,3249 ****
+   * When "id" is -1 accept any message;
+   * Blocks until the message is received or the timeout is reached.
+   */
+!     int
+  channel_read_json_block(
+  	channel_T   *channel,
+  	ch_part_T   part,
+--- 3322,3328 ----
+   * When "id" is -1 accept any message;
+   * Blocks until the message is received or the timeout is reached.
+   */
+!     static int
+  channel_read_json_block(
+  	channel_T   *channel,
+  	ch_part_T   part,
+***************
+*** 3264,3270 ****
+  	more = channel_parse_json(channel, part);
+  
+  	/* search for message "id" */
+! 	if (channel_get_json(channel, part, id, rettv) == OK)
+  	{
+  	    chanpart->ch_block_id = 0;
+  	    return OK;
+--- 3343,3349 ----
+  	more = channel_parse_json(channel, part);
+  
+  	/* search for message "id" */
+! 	if (channel_get_json(channel, part, id, TRUE, rettv) == OK)
+  	{
+  	    chanpart->ch_block_id = 0;
+  	    return OK;
+***************
+*** 4290,4295 ****
+--- 4369,4388 ----
+  		    return FAIL;
+  		}
+  	    }
++ 	    else if (STRCMP(hi->hi_key, "drop") == 0)
++ 	    {
++ 		int never = FALSE;
++ 		val = get_tv_string(item);
++ 
++ 		if (STRCMP(val, "never") == 0)
++ 		    never = TRUE;
++ 		else if (STRCMP(val, "auto") != 0)
++ 		{
++ 		    EMSG2(_(e_invarg2), "drop");
++ 		    return FAIL;
++ 		}
++ 		opt->jo_drop_never = never;
++ 	    }
+  	    else if (STRCMP(hi->hi_key, "exit_cb") == 0)
+  	    {
+  		if (!(supported & JO_EXIT_CB))
+*** ../vim-8.0.0106/src/message.c	2016-11-10 20:01:41.193582919 +0100
+--- src/message.c	2016-12-01 13:50:25.124167776 +0100
+***************
+*** 42,47 ****
+--- 42,50 ----
+  static char_u	*confirm_msg = NULL;		/* ":confirm" message */
+  static char_u	*confirm_msg_tail;		/* tail of confirm_msg */
+  #endif
++ #ifdef FEAT_JOB_CHANNEL
++ static int emsg_to_channel_log = FALSE;
++ #endif
+  
+  struct msg_hist
+  {
+***************
+*** 166,171 ****
+--- 169,182 ----
+  		&& STRCMP(s, last_msg_hist->msg)))
+  	add_msg_hist(s, -1, attr);
+  
++ #ifdef FEAT_JOB_CHANNEL
++     if (emsg_to_channel_log)
++     {
++ 	/* Write message in the channel log. */
++ 	ch_logs(NULL, "ERROR: %s", (char *)s);
++     }
++ #endif
++ 
+      /* When displaying keep_msg, don't let msg_start() free it, caller must do
+       * that. */
+      if (s == keep_msg)
+***************
+*** 556,561 ****
+--- 567,573 ----
+  {
+      int		attr;
+      char_u	*p;
++     int		r;
+  #ifdef FEAT_EVAL
+      int		ignore = FALSE;
+      int		severe;
+***************
+*** 624,629 ****
+--- 636,644 ----
+  		}
+  		redir_write(s, -1);
+  	    }
++ #ifdef FEAT_JOB_CHANNEL
++ 	    ch_logs(NULL, "ERROR: %s", (char *)s);
++ #endif
+  	    return TRUE;
+  	}
+  
+***************
+*** 650,655 ****
+--- 665,673 ----
+  				     * and a redraw is expected because
+  				     * msg_scrolled is non-zero */
+  
++ #ifdef FEAT_JOB_CHANNEL
++     emsg_to_channel_log = TRUE;
++ #endif
+      /*
+       * Display name and line number for the source of the error.
+       */
+***************
+*** 659,665 ****
+       * Display the error message itself.
+       */
+      msg_nowait = FALSE;			/* wait for this msg */
+!     return msg_attr(s, attr);
+  }
+  
+  
+--- 677,688 ----
+       * Display the error message itself.
+       */
+      msg_nowait = FALSE;			/* wait for this msg */
+!     r = msg_attr(s, attr);
+! 
+! #ifdef FEAT_JOB_CHANNEL
+!     emsg_to_channel_log = FALSE;
+! #endif
+!     return r;
+  }
+  
+  
+*** ../vim-8.0.0106/src/evalfunc.c	2016-11-29 21:54:41.116260206 +0100
+--- src/evalfunc.c	2016-12-01 15:17:06.322073618 +0100
+***************
+*** 1786,1792 ****
+      static void
+  f_ch_canread(typval_T *argvars, typval_T *rettv)
+  {
+!     channel_T *channel = get_channel_arg(&argvars[0], TRUE, TRUE, 0);
+  
+      rettv->vval.v_number = 0;
+      if (channel != NULL)
+--- 1786,1792 ----
+      static void
+  f_ch_canread(typval_T *argvars, typval_T *rettv)
+  {
+!     channel_T *channel = get_channel_arg(&argvars[0], FALSE, FALSE, 0);
+  
+      rettv->vval.v_number = 0;
+      if (channel != NULL)
+*** ../vim-8.0.0106/src/proto/channel.pro	2016-11-29 21:54:41.116260206 +0100
+--- src/proto/channel.pro	2016-12-01 12:47:07.212955490 +0100
+***************
+*** 33,39 ****
+  void channel_clear(channel_T *channel);
+  void channel_free_all(void);
+  char_u *channel_read_block(channel_T *channel, ch_part_T part, int timeout);
+- int channel_read_json_block(channel_T *channel, ch_part_T part, int timeout_arg, int id, typval_T **rettv);
+  void common_channel_read(typval_T *argvars, typval_T *rettv, int raw);
+  channel_T *channel_fd2channel(sock_T fd, ch_part_T *partp);
+  void channel_handle_events(void);
+--- 33,38 ----
+*** ../vim-8.0.0106/runtime/doc/channel.txt	2016-11-29 21:54:41.120260177 +0100
+--- runtime/doc/channel.txt	2016-12-01 12:20:43.087290042 +0100
+***************
+*** 155,161 ****
+  	func MyCloseHandler(channel)
+  <		Vim will invoke callbacks that handle data before invoking
+  		close_cb, thus when this function is called no more data will
+! 		be received.
+  							*waittime*
+  "waittime"	The time to wait for the connection to be made in
+  		milliseconds.  A negative number waits forever.
+--- 155,167 ----
+  	func MyCloseHandler(channel)
+  <		Vim will invoke callbacks that handle data before invoking
+  		close_cb, thus when this function is called no more data will
+! 		be passed to the callbacks.
+! 							*channel-drop*
+! "drop"		Specifies when to drop messages:
+! 		    "auto"	When there is no callback to handle a message.
+! 				The "close_cb" is also considered for this.
+! 		    "never"	All messages will be kept.
+! 
+  							*waittime*
+  "waittime"	The time to wait for the connection to be made in
+  		milliseconds.  A negative number waits forever.
+***************
+*** 600,610 ****
+  "close_cb": handler	Callback for when the channel is closed.  Same as
+  			"close_cb" on |ch_open()|, see |close_cb|.
+  						*job-exit_cb*
+  "exit_cb": handler	Callback for when the job ends.  The arguments are the
+  			job and the exit status.
+! 			Vim checks about every 10 seconds for jobs that ended.
+! 			The check also be triggered by calling |job_status()|,
+! 			which may then invoke the exit_cb handler.
+  			Note that data can be buffered, callbacks may still be
+  			called after the process ends.
+  							*job-timeout*
+--- 606,621 ----
+  "close_cb": handler	Callback for when the channel is closed.  Same as
+  			"close_cb" on |ch_open()|, see |close_cb|.
+  						*job-exit_cb*
++ "drop"			Specifies when to drop messages.  Same as "drop" on
++ 			|ch_open()|, see |channel-drop|.  For "auto" the
++ 			exit_cb is not considered.
++ 
+  "exit_cb": handler	Callback for when the job ends.  The arguments are the
+  			job and the exit status.
+! 			Vim checks up to 10 times per second for jobs that
+! 			ended.  The check can also be triggered by calling
+! 			|job_status()|, which may then invoke the exit_cb
+! 			handler.
+  			Note that data can be buffered, callbacks may still be
+  			called after the process ends.
+  							*job-timeout*
+*** ../vim-8.0.0106/src/version.c	2016-11-29 22:10:44.221151470 +0100
+--- src/version.c	2016-12-01 12:21:52.086839902 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     107,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+62. If your doorbell rings, you think that new mail has arrived.  And then
+    you're disappointed that it's only someone at the door.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

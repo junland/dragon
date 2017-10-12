@@ -1,0 +1,97 @@
+# Build recipe for groff.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=groff
+version=1.22.3
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://ftp.gnu.org/gnu/groff/$tarname
+
+description="
+System for typesetting documents.
+
+The groff (GNU roff) software is a typesetting package which
+reads plain text mixed with formatting commands and produces
+formatted output.
+"
+
+homepage=http://www.gnu.org/software/groff
+license=GPLv3+
+
+# Source documentation
+docs="
+BUG-REPORT COPYING ChangeLog FDL LICENSES \
+NEWS PROBLEMS README REVISION TODO VERSION
+"
+
+docsdir="${docdir}/${program}-${version}"
+
+# Limite the number of parallel jobs for this version of groff
+jobs=1
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Update for hosts based on musl
+    cp -f "${worktree}/archive/common/config.guess" config.guess
+    cp -f "${worktree}/archive/common/config.sub" config.sub
+
+    ./configure \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS -static" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --with-doc=no \
+     --without-x \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Remove generated charset.alias
+    rm -f "${destdir}/usr/lib${libSuffix}/charset.alias"
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

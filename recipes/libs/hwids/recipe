@@ -1,0 +1,57 @@
+# Build recipe for hwids.
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=hwids
+version=20170715
+arch=noarch
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://github.com/gentoo/hwids/archive/$tarname
+
+description="
+Hardware identification databases.
+
+This package contain a specially re-packaged copy of the pci.ids
+and usb.ids files, as well as a copy of IEEE's databases for the
+Organizationally Unique Identifiers (OUI) and Individual Address
+Block (IAB).
+"
+
+homepage=http://github.com/gentoo/hwids
+license="GPLv2+ | 3-clause BSD"
+
+# Source documentation
+docs="README.md *.txt"
+docsdir="${docdir}/${program}-${version}"
+
+# Custom source directory name
+srcdir=hwids-hwids-${version}
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    mkdir -p "${destdir}/usr/share/hwdata"
+
+    for file in *.ids
+    do
+        cp -p $file "${destdir}/usr/share/hwdata/"
+        chmod 644 "${destdir}/usr/share/hwdata/${file}"
+    done
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+

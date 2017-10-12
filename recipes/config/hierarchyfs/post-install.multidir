@@ -1,0 +1,88 @@
+# Ownerships and permissions
+
+chown root:games  usr/games usr/share/games usr/local/games var/games
+chown root:log    var/log
+chown root:mail   var/mail
+chown root:lp     var/spool/lpd
+chown root:news   var/spool/news
+
+chmod 775         var/log var/run
+chmod 2775        var/mail
+chmod 1777        var/lock var/tmp
+
+chmod 555         proc sys
+chmod 750         root
+chmod 1777        tmp
+chmod 775         usr/games usr/share/games usr/local/games var/games
+
+# Create character special files, if needed
+test -c dev/console || mknod -m 600 dev/console c 5 1
+test -c dev/null || mknod -m 666 dev/null c 1 3
+
+# Create file records for logins and logouts
+touch var/log/btmp var/log/lastlog var/log/faillog var/log/wtmp \
+      var/run/utmp
+
+chgrp utmp  var/log/lastlog var/run/utmp
+chmod 664   var/log/lastlog var/run/utmp
+chmod 600   var/log/btmp
+
+# Symlinks
+
+ln -sf usr/bin   bin
+ln -sf usr/lib   lib
+ln -sf usr/sbin  sbin
+
+(
+    cd opt || exit 1
+    ln -sf ../etc/opt etc
+)
+(
+    cd usr || exit 1
+    ln -sf share/doc   doc
+    ln -sf share/info  info
+    ln -sf share/man   man
+)
+(
+    cd usr/share || exit 1
+    ln -sf ../lib/pkgconfig pkgconfig
+)
+(
+    cd usr/local || exit 1
+    ln -sf share/doc   doc
+    ln -sf share/info  info
+    ln -sf share/man   man
+)
+(
+    cd usr/local/share || exit 1
+    ln -sf ../lib/pkgconfig pkgconfig
+)
+(
+    cd var/spool || exit 1
+    ln -sf ../mail mail
+)
+
+libSuffix=X
+
+if test "$libSuffix" != X
+then
+    (
+        cd usr || exit 1
+        rmdir lib/pkgconfig lib/ 2> /dev/null
+
+        mkdir -p lib${libSuffix}
+        ln -s -f lib${libSuffix} lib
+    )
+    (
+        cd usr/local || exit 1
+        rmdir lib/pkgconfig lib/ 2> /dev/null
+
+        mkdir -p lib${libSuffix}
+        ln -s -f lib${libSuffix} lib
+    )
+
+    # Symlink at 'targetdir'
+    rm -f lib
+    ln -s usr/lib${libSuffix} lib
+fi
+

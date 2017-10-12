@@ -1,0 +1,78 @@
+# Build recipe for pkgconf.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=pkgconf
+version=1.3.8
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://distfiles.dereferenced.org/pkgconf/$tarname
+
+description="
+Package compiler and linker metadata toolkit.
+
+pkgconf is a program which helps to configure compiler and linker flags
+for development frameworks.  It is similar to pkg-config from
+freedesktop.org.
+
+libpkgconf is a library which provides access to most of pkgconf's
+functionality, to allow other tooling such as compilers and IDEs
+to discover and use frameworks configured by pkgconf.
+"
+
+homepage=http://github.com/pkgconf/pkgconf
+license=Custom
+
+# Source documentation
+docs="AUTHORS COPYING NEWS README*"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-static \
+     --enable-shared \
+     --with-pkg-config-dir=/usr/local/lib/pkgconfig:/usr/lib/pkgconfig \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    #make check	# It needs "kyua"...
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Create symlink-compatibility for those
+    # programs looking for `pkg-config'
+    ln -sf pkgconf "${destdir}/usr/bin/pkg-config"
+
+    # Include profile file
+    mkdir -p "${destdir}/etc/profile.d"
+    cp -p "${worktree}/archive/pkgconf/etc/profile.d/pkgconf.sh" \
+           "${destdir}/etc/profile.d/"
+    chmod 644 "${destdir}/etc/profile.d/pkgconf.sh"
+
+    # To handle config file(s)
+    touch "${destdir}/etc/profile.d/.graft-config"
+
+    # Compress man page
+    lzip -9 "${destdir}/${mandir}/man1/pkgconf.1"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+

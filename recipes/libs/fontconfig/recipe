@@ -1,0 +1,65 @@
+# Recipe file for fontconfig.
+#
+# Maintainers: (C) 2017 Mateus P. Rodrigues, mprodrigues@dragora.org.
+#
+# Under the terms of the GNU General Public License.
+
+program=fontconfig
+version=2.12.4
+release=1
+
+description="
+Library for font configuration.
+
+The fontconfig package is a library for configuring
+and customizing font access.
+"
+
+homepage=http://www.freedesktop.org/wiki/Software/fontconfig/
+license=CUSTOM
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://www.freedesktop.org/software/fontconfig/release/$tarname
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build() {
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --libdir=/usr/lib${libSuffix} \
+    --mandir=$mandir \
+    --docdir=$docsdir \
+    --build="$(cc -dumpmachine)" \
+    || true
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress manual pages
+    if [ -d "${destdir}/$mandir" ] ; then
+	(
+            cd "${destdir}/$mandir"
+	    find . -type f -exec lzip -9 '{}' +
+	    find . -type l | while read -r file
+	    do
+		ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+		rm -- "$file"
+	    done
+	)
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+

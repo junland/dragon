@@ -1,0 +1,94 @@
+# Build recipe for libffcall.
+#
+# Copyright (C) 2017 MMPG
+# Copyright (C) 2017 Matias Fonzo, <selk@dragora.org>
+# 
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=libffcall
+version=1.13
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://ftp.gnu.org/pub/gnu/libffcall/$tarname
+
+description="
+Foreign function call libraries.
+
+GNU libffcall is a collection of four libraries which can be used to
+build foreign function call interfaces in embedded interpreters:
+
+* avcall
+Calling C functions with variable arguments.
+
+* vacall
+C functions accepting variable argument prototypes.
+
+* trampoline
+Closures as first-class C functions.
+
+* callback
+Closures with variable arguments as first-class C functions
+(a reentrant combination of vacall and trampoline).
+"
+
+homepage=http://www.gnu.org/software/libffcall/
+license=GPLv3+
+
+# Source doucmentation
+docs="COPYING ChangeLog DEPENDENCIES NEWS README VERSION"
+docsdir="${docdir}/${program}-${version}"
+
+# Set paralell jobs to 1 for a sucessful compilation
+jobs=1
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+	
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --htmldir=${docsdir}/html \
+     --enable-shared \
+     --enable-static \
+     --enable-threads=posix \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make -k check
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+
+    mkdir -p "${destdir}${docsdir}"
+
+    # Move wrong HTML directory
+    mv "${destdir}/usr/share/html" "${destdir}${docsdir}/"
+
+    cp -p $docs "${destdir}${docsdir}/"
+}
+

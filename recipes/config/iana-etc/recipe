@@ -1,0 +1,54 @@
+# Build recipe for iana-etc.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=iana-etc
+version=2.30
+arch=noarch
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://sethwklein.net/$tarname
+
+description="
+Provides /etc/services and /etc/protocols files.
+
+The iana-etc package provides the Unix/Linux /etc/services and
+/etc/protocols files.  Using data from the Internet Assigned
+Numbers Authority <http://www.iana.org>.
+"
+
+homepage=http://www.iana.org/protocols
+license=OSLv3.0
+
+# Source documentation
+docs="COPYING CREDITS NEWS README VERSION"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    make all && make DESTDIR="$destdir" install
+
+    # To handle config file(s)
+    touch "${destdir}/etc/.graft-config"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

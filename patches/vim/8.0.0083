@@ -1,0 +1,79 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0083
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0083
+Problem:    Using freed memory with win_getid(). (Domenique Pelle)
+Solution:   For the current tab use curwin.
+Files:      src/window.c, src/testdir/test_window_id.vim
+
+
+*** ../vim-8.0.0082/src/window.c	2016-11-10 20:01:41.201582868 +0100
+--- src/window.c	2016-11-13 14:30:24.411958067 +0100
+***************
+*** 7133,7139 ****
+  		    break;
+  	    if (tp == NULL)
+  		return -1;
+! 	    wp = tp->tp_firstwin;
+  	}
+  	for ( ; wp != NULL; wp = wp->w_next)
+  	    if (--winnr == 0)
+--- 7133,7142 ----
+  		    break;
+  	    if (tp == NULL)
+  		return -1;
+! 	    if (tp == curtab)
+! 		wp = firstwin;
+! 	    else
+! 		wp = tp->tp_firstwin;
+  	}
+  	for ( ; wp != NULL; wp = wp->w_next)
+  	    if (--winnr == 0)
+*** ../vim-8.0.0082/src/testdir/test_window_id.vim	2016-06-04 18:45:17.000000000 +0200
+--- src/testdir/test_window_id.vim	2016-11-13 14:25:47.545713017 +0100
+***************
+*** 92,94 ****
+--- 92,103 ----
+  
+    only!
+  endfunc
++ 
++ func Test_win_getid_curtab()
++   tabedit X
++   tabfirst
++   copen
++   only
++   call assert_equal(win_getid(1), win_getid(1, 1))
++   tabclose!
++ endfunc
+*** ../vim-8.0.0082/src/version.c	2016-11-12 21:12:48.538182233 +0100
+--- src/version.c	2016-11-13 14:29:18.912373539 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     83,
+  /**/
+
+-- 
+Bypasses are devices that allow some people to dash from point A to
+point B very fast while other people dash from point B to point A very
+fast.  People living at point C, being a point directly in between, are
+often given to wonder what's so great about point A that so many people
+from point B are so keen to get there and what's so great about point B
+that so many people from point A are so keen to get there.  They often
+wish that people would just once and for all work out where the hell
+they wanted to be.
+		-- Douglas Adams, "The Hitchhiker's Guide to the Galaxy"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,122 @@
+#! /bin/sh -
+#
+#  Copyright (C) 2016, 2017 Matias Andres Fonzo <selk@dragora.org>
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+PROGRAM="${0##*/}"
+
+# Exit immediately on any error
+set -e
+
+# Override locale settings
+LC_ALL=C
+export LC_ALL
+
+# Get physical working directory, absolute path name
+CWD=$(CDPATH= cd -P -- $(dirname -- "$0") && printf "$PWD")
+
+# Functions
+unmountSeries()
+{
+    for node in "${rootdir}/usr/src/qi/archive" \
+                "${rootdir}/usr/src/qi/patches" \
+                "${rootdir}/usr/src/qi/recipes" \
+                "${rootdir}/usr/src/qi/sources" \
+                "${rootdir}/sys" \
+                "${rootdir}/proc" \
+                "${rootdir}/dev/shm" \
+                "${rootdir}/dev/pts" \
+                "${rootdir}/dev" ; \
+    do
+        if mount | grep -q "$node"
+        then
+            echo "Unmounting ${node} ..."
+            if ! umount "$node"
+            then
+                echo "Doing a lazy unmount for $node ..."
+                umount -l "$node"
+            fi
+        fi
+    done
+}
+
+# Autodetermine the path of /tools
+
+if test ! -L /tools
+then
+    echo "${PROGRAM}: cannot determine ${rootdir}: /tools does not exist as symlink" 1>&2
+    exit 1
+fi
+if test -L /tools -a ! -e /tools
+then
+    echo "${PROGRAM}: cannot access /tools: Dangling symlink" 1>&2
+    exit 1
+fi
+
+# Set canonical name to compose the root directory, removing
+# the last component from the path name "/tools"
+
+rootdir=$(CDPATH= cd -P -- /tools && printf "$PWD")
+rootdir="${rootdir%/*}"
+
+# Unmount directories and file systems before the next mounting
+
+#unmountSeries
+
+# Create required directory for destination
+mkdir -p -- "${rootdir}/dev"                 \
+            "${rootdir}/dev/pts"             \
+            "${rootdir}/dev/shm"             \
+            "${rootdir}/proc"                \
+            "${rootdir}/sys"                 \
+            "${rootdir}/usr/src/qi/archive"  \
+            "${rootdir}/usr/src/qi/patches"  \
+            "${rootdir}/usr/src/qi/recipes"  \
+            "${rootdir}/usr/src/qi/sources"
+
+echo "Mounting virtual file systems ..."
+mount -o bind /dev      "${rootdir}/dev"
+mount -t devpts devpts  "${rootdir}/dev/pts"
+mount -t proc proc      "${rootdir}/proc"
+mount -t sysfs sysfs    "${rootdir}/sys"
+
+if test -e /run/shm
+then
+    mount -o bind /run/shm "${rootdir}/dev/shm"
+else
+    mount -o bind /dev/shm "${rootdir}/dev/shm"
+fi
+
+echo "Binding directories to mount: archive, patches, recipes, sources ..."
+mount -o bind "${CWD}/archive" "${rootdir}/usr/src/qi/archive"
+mount -o bind "${CWD}/patches" "${rootdir}/usr/src/qi/patches"
+mount -o bind "${CWD}/recipes" "${rootdir}/usr/src/qi/recipes"
+mount -o bind "${CWD}/sources" "${rootdir}/usr/src/qi/sources"
+
+# Add trap for unmount the series, signalled or not
+trap 'echo ; unmountSeries' EXIT HUP QUIT ABRT TERM
+
+echo "Entering via chroot $rootdir ..."
+chroot "$rootdir" /tools/bin/env -i \
+  PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin \
+  SHELL=/bin/sh \
+  HOME=/root \
+  TERM="${TERM:-linux}" \
+  LC_ALL=C \
+  LANGUAGE=C \
+  PKG_CONFIG=/usr/bin/pkgconf \
+  PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/lib/pkgconfig \
+ /bin/sh -
+

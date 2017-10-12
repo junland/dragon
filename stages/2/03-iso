@@ -1,0 +1,90 @@
+# Build script to compose the liveCD image
+#
+# Part of the code was borrowed from
+# the Dragora's LiveCDBuilder version 0.7
+#
+# Copyright (C) 2017 MMPG
+# Copyright (C) 2017 Matias Fonzo
+#
+# Under the terms of the GNU General Public License.
+
+# Perform sanity checks (requirements)
+type mksquashfs > /dev/null  || exit 2;
+type mkisofs > /dev/null     || exit 2;
+
+# This depends on the existence of the stage 1
+if test ! -d "${output}/stage1/usr/pkg"
+then
+    echo "The stage number 1 does not exist or is incomplete." 1>&2
+    echo "Build (completely) the stage 1 before processing '$stage'." 1>&2
+    exit 1;
+fi
+if test ! -f "${rootdir}/initrd/initrd.img"
+then
+    echo "${rootdir}/initrd/initrd.img: No such initramfs file" 1>&2
+    exit 1;
+fi
+
+STAGE1="${output}/stage1"
+CDROM="${rootdir}/cdrom"
+
+# Re-create CD tree
+rm -rf -- "$CDROM"
+mkdir -p -- "${CDROM}/isolinux"
+
+# Copy kernel installation to isolinux/
+cd -- "${STAGE1}/boot"
+
+for file in System.map config vmlinuz
+do
+    if test -L $file -a ! -e $file
+    then
+        cp -p "${STAGE1}/$(readlink -- "$file")" "${CDROM}/isolinux/$file"
+    elif test -f $file
+    then
+        cp -p "${STAGE1}/boot/$file" "${CDROM}/isolinux/$file"
+    else
+        echo "No valid symlinks or regular files for copying the kernel" 1>&2
+        exit 1;
+    fi
+done
+unset file
+
+# Copy local isolinux files and initramfs for ISOLINUX
+
+cp -p "${worktree}"/archive/isolinux/* "${CDROM}/isolinux/"
+rm -f "${CDROM}/isolinux/isohybrid.pl"
+
+cp -p "${rootdir}/initrd/initrd.img" "${CDROM}/isolinux/"
+
+# Produce compressed image using mksquashfs(1)
+cd -- "$STAGE1"
+rm -f ./dragora.sfs
+
+mksquashfs ./* "${CDROM}/dragora.sfs" \
+ -comp gzip -b 256K -Xcompression-level 9 -keep-as-directory \
+ -e ./tools ./var/cache/qi/packages ./root/.ash_history
+
+# Produce hybrid ISO-9660 image
+cd -- "$CDROM"
+rm -f ./dragora-live*
+
+mkisofs -v -o "${CDROM}/dragora-live.iso"                 \
+        -no-emul-boot -boot-load-size 4 -boot-info-table  \
+        -b "isolinux/isolinux.bin"                        \
+        -c "isolinux/boot.cat"                            \
+        -A 'Dragora' -V 'Dragora'                         \
+        .
+
+echo "Applying \"hybrid booting\" to the ISO image ..."
+"${worktree}"/archive/isolinux/isohybrid.pl "${CDROM}/dragora-live.iso"
+
+# Make check sum
+sha256sum "${CDROM}/dragora-live.iso" > "${CDROM}/dragora-live.iso.sha256"
+
+echo "Finish ..."
+echo ""
+echo "The ISO image has been produced:"
+echo "${CDROM}/dragora-live.iso"
+echo ""
+

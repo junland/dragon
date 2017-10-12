@@ -1,0 +1,93 @@
+# Build recipe for pciutils.
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=pciutils
+version=3.5.5
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=ftp://atrey.karlin.mff.cuni.cz/pub/linux/pci/$tarname
+
+description="
+The PCI utilities.
+
+The PCI Utilities package is a set of programs for listing PCI devices,
+inspecting their status and setting their configuration registers.
+"
+
+homepage=http://mj.ucw.cz/sw/pciutils/
+license=GPLv2+
+
+# Source documentation
+docs="COPYING ChangeLog README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Provide both, the static and the dynamic library
+
+    make -j${jobs} V=1 OPT="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     PREFIX=/usr \
+     LIBDIR=/usr/lib${libSuffix} \
+     SHAREDIR=/usr/share/hwdata \
+     SHARED=no \
+     ZLIB=no
+
+    mkdir -p "${destdir}/usr/lib${libSuffix}"
+    cp -p lib/libpci.a "${destdir}/usr/lib${libSuffix}/"
+
+    make clean
+
+    make -j${jobs} V=1 OPT="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     PREFIX=/usr \
+     LIBDIR=/usr/lib${libSuffix} \
+     SHAREDIR=/usr/share/hwdata \
+     SHARED=yes \
+     ZLIB=no
+
+    # Make the installation
+
+    make -j${jobs} V=1 OPT="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     PREFIX=/usr \
+     LIBDIR=/usr/lib${libSuffix} \
+     SHAREDIR=/usr/share/hwdata \
+     SHARED=yes \
+     ZLIB=no \
+     DESTDIR="$destdir" install install-lib
+
+    # Fix library permissions
+    chmod 755 "${destdir}/usr/lib${libSuffix}/libpci.so.${version}"
+
+    # This is provided by the 'hwids' package
+    rm -rf "${destdir}/usr/share/hwdata"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}

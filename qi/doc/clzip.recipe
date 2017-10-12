@@ -1,0 +1,70 @@
+#
+# Sample recipe for clzip.
+#
+# (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# Under the terms of the GNU General Public License.
+#
+# Please refer to the manual for complete examples.
+
+program=clzip
+version=1.9
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://download.savannah.gnu.org/releases/lzip/clzip/$tarname
+
+description="
+A lossless data compressor based on the LZMA algorithm.
+
+Clzip is a lossless data compressor with a user interface similar to
+the one of gzip or bzip2.  Clzip is about as fast as gzip, compresses
+most files more than bzip2, and is better than both from a data
+recovery perspective.
+
+Clzip uses the lzip file format; the files produced by clzip are fully
+compatible with lzip-1.4 or newer, and can be rescued with lziprecover.
+
+Clzip is in fact a C language version of lzip, intended for embedded
+devices or systems lacking a C++ compiler.
+"
+
+homepage=http://lzip.nongnu.org/clzip.html
+license=GPLv2+
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README"
+docdir="${docdir}/${program}-${version}"
+
+build() {
+    # Exit on any error
+    set -e
+
+    # Decompress the source in 'TMPDIR'
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args
+
+    make -j${jobs}
+    make -j${jobs} install-as-lzip DESTDIR="$destdir"
+
+    # Compress man pages
+    lzip -9 "${destdir}/${mandir}/man1/clzip.1"
+
+    # Compress info documents
+    rm -f "${destdir}/${infodir}/dir"
+    lzip -9 "${destdir}/${infodir}/clzip.info"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docdir}"
+
+    for file in $docs ; do
+        cp -p $file "${destdir}${docdir}"
+    done
+}
+

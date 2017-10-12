@@ -1,0 +1,56 @@
+# Build recipe for libsigsegv.
+#
+# Copyright (C) 2017 MMPG
+# Copyright (C) 2017 Matias Fonzo, <selk@dragora.org>
+#
+# This recipe is free software: you have unlimited permisson
+# to copy, distribute and modify it.
+
+program=libsigsegv
+version=2.11
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://ftp.gnu.org/gnu/libsigsegv/$tarname
+
+description="
+A library for handling page faults.
+
+GNU libsigsegv is a library for handling page faults in user mode.
+A page fault occurs when a program tries to access to a region of
+memory that is currently not available.
+"
+
+hompage=http://www.gnu.org/software/libsigsegv/
+license=GPLv2+
+
+# Source documentation
+docs="AUTHORS ChangeLog COPYING NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+	
+    cd "$srcdir"
+	
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --disable-shared \
+     --enable-static \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make -k check
+    make -j${jobs} DESTDIR="$destdir" install
+	
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+

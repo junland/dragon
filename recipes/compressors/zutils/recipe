@@ -1,0 +1,87 @@
+# Build recipe for zutils.
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=zutils
+version=1.7-pre1
+release=1
+
+tarname=${program}-${version}.tar.lz
+
+# Remote source(s)
+fetch=http://download.savannah.gnu.org/releases/zutils/$tarname
+
+description="
+Utilities dealing with compressed files.
+
+Zutils is a collection of utilities able to process any combination of
+compressed and uncompressed files transparently.  If any given file,
+including standard input, is compressed, its decompressed content is
+used.  Compressed files are decompressed on the fly; no temporary files
+are created.
+
+These utilities are not wrapper scripts but safer and more efficient
+C++ programs.  In particular the "--recursive" option is very efficient
+in those utilities supporting it.
+"
+
+homepage=http://zutils.nongnu.org/zutils.html
+license=GPLv2+
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CXXFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # To handle config file
+    touch "${destdir}/etc/.graft-config"
+
+    # Compress info documents (if needed)
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

@@ -1,0 +1,77 @@
+# Build recipe for qi.
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=qi
+version=1.0-rc10
+arch=noarch
+release=1
+
+tarname=${program}-${version}.tar.lz
+
+# Remote source(s)
+fetch="
+ http://rsync.dragora.org/current/sources/$tarname
+ http://gungre.ch/dragora/mirror/current/sources/$tarname
+"
+
+description="
+A package manager.
+
+Qi provides operating modes for build, install, remove, upgrade,
+and inspect software packages.
+
+Qi produces software packages using recipe names (also known as
+"ports"); in this case, simple text files that contain shell
+instructions.
+
+Qi has been written to make use of Graft, a symlink utility to
+keep your packages under a single directory hierarchy, it was inspired
+by both Depot (Carnegie Mellon University) and Stow (Bob Glickstein).
+"
+
+homepage=http://www.dragora.org
+license=GPLv3+
+
+# Source documentation
+docs="AUTHORS COPYING CREDITS NEWS README doc/example.order"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure $configure_args
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Copy the config file used in the temporary system
+    if test -r /tools/etc/qirc
+    then
+        cp -p /tools/etc/qirc "${destdir}/etc/"
+        chmod 644 "${destdir}/etc/qirc"
+    fi
+
+    # Manage dot new
+    touch "${destdir}/etc/.graft-config"
+
+    # Compress and copy source documents
+
+    lzip -9 "${destdir}/${infodir}/qi.info" \
+            "${destdir}/${mandir}/man1/qi.1"
+
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

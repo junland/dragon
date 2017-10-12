@@ -1,0 +1,70 @@
+# Build recipe for intltool.
+#
+# Copyright (C) 2017 mprodriguews, mprodrigues@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=intltool
+version=0.51.0
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=https://launchpad.net/intltool/trunk/${version}/+download/$tarname
+
+description="
+intltool is a set of tools to centralize translation of many different file
+formats using GNU gettext-compatible PO files.
+"
+
+homepage=https://freedesktop.org/wiki/Software/intltool/
+license=GPLv2
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --libdir=/usr/lib${libSuffix} \
+    --infodir=$infodir \
+    --mandir=$mandir \
+    --docdir=$docsdir \
+    --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}

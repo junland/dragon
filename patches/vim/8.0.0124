@@ -1,0 +1,66 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0124
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0124
+Problem:    Internal error for assert_inrange(1, 1).
+Solution:   Adjust number of allowed arguments. (Dominique Pelle)
+Files:      src/evalfunc.c, src/testdir/test_assert.vim
+
+
+*** ../vim-8.0.0123/src/evalfunc.c	2016-12-01 15:34:04.087413921 +0100
+--- src/evalfunc.c	2016-12-04 13:35:51.062002139 +0100
+***************
+*** 471,477 ****
+      {"assert_exception", 1, 2, f_assert_exception},
+      {"assert_fails",	1, 2, f_assert_fails},
+      {"assert_false",	1, 2, f_assert_false},
+!     {"assert_inrange",	2, 3, f_assert_inrange},
+      {"assert_match",	2, 3, f_assert_match},
+      {"assert_notequal",	2, 3, f_assert_notequal},
+      {"assert_notmatch",	2, 3, f_assert_notmatch},
+--- 471,477 ----
+      {"assert_exception", 1, 2, f_assert_exception},
+      {"assert_fails",	1, 2, f_assert_fails},
+      {"assert_false",	1, 2, f_assert_false},
+!     {"assert_inrange",	3, 4, f_assert_inrange},
+      {"assert_match",	2, 3, f_assert_match},
+      {"assert_notequal",	2, 3, f_assert_notequal},
+      {"assert_notmatch",	2, 3, f_assert_notmatch},
+*** ../vim-8.0.0123/src/testdir/test_assert.vim	2016-07-23 15:13:09.000000000 +0200
+--- src/testdir/test_assert.vim	2016-12-04 13:36:28.425758026 +0100
+***************
+*** 117,122 ****
+--- 117,124 ----
+    call assert_inrange(5, 7, 8)
+    call assert_match("Expected range 5 - 7, but got 8", v:errors[0])
+    call remove(v:errors, 0)
++ 
++   call assert_fails('call assert_inrange(1, 1)', 'E119:')
+  endfunc
+  
+  func Test_user_is_happy()
+*** ../vim-8.0.0123/src/version.c	2016-12-03 16:40:44.432532400 +0100
+--- src/version.c	2016-12-04 13:35:14.590240433 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     124,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+91. It's Saturday afternoon in the middle of May and you
+    are on computer.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

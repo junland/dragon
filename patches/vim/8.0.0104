@@ -1,0 +1,98 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0104
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0104
+Problem:    Value of 'thesaurus' option not checked properly.
+Solution:   Add P_NDNAME flag. (Daisuke Suzuki)
+Files:      src/option.c, src/testdir/test_options.vim
+
+
+*** ../vim-8.0.0103/src/option.c	2016-11-25 22:04:09.607397081 +0100
+--- src/option.c	2016-11-26 17:35:20.089224386 +0100
+***************
+*** 2660,2666 ****
+      {"textwidth",   "tw",   P_NUM|P_VI_DEF|P_VIM|P_RBUF,
+  			    (char_u *)&p_tw, PV_TW,
+  			    {(char_u *)0L, (char_u *)0L} SCRIPTID_INIT},
+!     {"thesaurus",   "tsr",  P_STRING|P_EXPAND|P_VI_DEF|P_ONECOMMA|P_NODUP,
+  #ifdef FEAT_INS_EXPAND
+  			    (char_u *)&p_tsr, PV_TSR,
+  #else
+--- 2660,2666 ----
+      {"textwidth",   "tw",   P_NUM|P_VI_DEF|P_VIM|P_RBUF,
+  			    (char_u *)&p_tw, PV_TW,
+  			    {(char_u *)0L, (char_u *)0L} SCRIPTID_INIT},
+!     {"thesaurus",   "tsr",  P_STRING|P_EXPAND|P_VI_DEF|P_ONECOMMA|P_NODUP|P_NDNAME,
+  #ifdef FEAT_INS_EXPAND
+  			    (char_u *)&p_tsr, PV_TSR,
+  #else
+*** ../vim-8.0.0103/src/testdir/test_options.vim	2016-11-25 22:04:09.607397081 +0100
+--- src/testdir/test_options.vim	2016-11-26 17:41:00.722891085 +0100
+***************
+*** 107,123 ****
+    call assert_fails(":set kmp=trunc\x00name", "trunc")
+  endfunc
+  
+! func Test_dictionary()
+    " Check that it's possible to set the option.
+!   set dictionary=/usr/share/dict/words
+!   call assert_equal('/usr/share/dict/words', &dictionary)
+!   set dictionary=/usr/share/dict/words,/and/there
+!   call assert_equal('/usr/share/dict/words,/and/there', &dictionary)
+!   set dictionary=/usr/share/dict\ words
+!   call assert_equal('/usr/share/dict words', &dictionary)
+  
+    " Check rejecting weird characters.
+!   call assert_fails("set dictionary=/not&there", "E474:")
+!   call assert_fails("set dictionary=/not>there", "E474:")
+!   call assert_fails("set dictionary=/not.*there", "E474:")
+  endfunc
+--- 107,131 ----
+    call assert_fails(":set kmp=trunc\x00name", "trunc")
+  endfunc
+  
+! func Check_dir_option(name)
+    " Check that it's possible to set the option.
+!   exe 'set ' . a:name . '=/usr/share/dict/words'
+!   call assert_equal('/usr/share/dict/words', eval('&' . a:name))
+!   exe 'set ' . a:name . '=/usr/share/dict/words,/and/there'
+!   call assert_equal('/usr/share/dict/words,/and/there', eval('&' . a:name))
+!   exe 'set ' . a:name . '=/usr/share/dict\ words'
+!   call assert_equal('/usr/share/dict words', eval('&' . a:name))
+  
+    " Check rejecting weird characters.
+!   call assert_fails("set " . a:name . "=/not&there", "E474:")
+!   call assert_fails("set " . a:name . "=/not>there", "E474:")
+!   call assert_fails("set " . a:name . "=/not.*there", "E474:")
+! endfunc
+! 
+! func Test_dictionary()
+!   call Check_dir_option('dictionary')
+! endfunc
+! 
+! func Test_thesaurus()
+!   call Check_dir_option('thesaurus')
+  endfunc
+*** ../vim-8.0.0103/src/version.c	2016-11-26 15:13:29.410218034 +0100
+--- src/version.c	2016-11-26 17:36:23.568793629 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     104,
+  /**/
+
+-- 
+Never go to the toilet in a paperless office.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

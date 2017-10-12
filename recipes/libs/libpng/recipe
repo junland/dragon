@@ -1,0 +1,65 @@
+# Build recipe for libpng.
+#
+# Copyright (C) 2017 Mateus P. Rodrigues, mprodrigues@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=libpng
+version=1.6.32
+release=1
+
+description="
+libpng is the official PNG reference library. It supports almost
+all PNG features, is extensible, and has been extensively tested
+for over 20 years.
+"
+
+homepage=http://www.libpng.org/pub/png/libpng.html
+license="libpng license"
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://downloads.sourceforge.net/project/libpng/libpng16/${version}/$tarname
+
+# Source documentation
+docs="ANNOUNCE CHANGES LICENSE README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build() {
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --libdir=/usr/lib${libSuffix} \
+    --infodir=$infodir \
+    --mandir=$mandir \
+    --docdir=$docsdir \
+    --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress manual pages
+    if [ -d "${destdir}/$mandir" ] ; then
+	(
+            cd "${destdir}/$mandir"
+	    find . -type f -exec lzip -9 '{}' +
+	    find . -type l | while read -r file
+	    do
+		ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+		rm -- "$file"
+	    done
+	)
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+

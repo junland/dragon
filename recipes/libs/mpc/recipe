@@ -1,0 +1,68 @@
+# Build recipe for mpc.
+#
+# Copyright (C) 2015-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=mpc
+version=1.0.3
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=ftp://ftp.gnu.org/gnu/mpc/$tarname
+
+description="
+Library for the arithmetic of complex numbers.
+
+The MPC package contains a library for the arithmetic of complex
+numbers with arbitrarily high precision and correct rounding of
+the result.
+"
+
+homepage=http://www.multiprecision.org
+license=LGPLv3+
+
+# Source documentation
+docs="AUTHORS COPYING* ChangeLog NEWS README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --with-gmp=/usr \
+     --enable-static \
+     --enable-shared \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make check
+    make -j${jobs} install DESTDIR="$destdir"
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

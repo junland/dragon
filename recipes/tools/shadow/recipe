@@ -1,0 +1,109 @@
+# Build recipe for shadow.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=shadow
+version=4.5
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://github.com/shadow-maint/shadow/releases/download/${version}/$tarname
+
+description="
+The shadow tool suite.
+
+The shadow package contains programs for handling
+passwords in a secure way.
+"
+
+homepage=http://pkg-shadow.alioth.debian.org
+license=BSD
+
+# Source documentation
+docs="COPYING NEWS README TODO"
+docsdir="${docdir}/${pkgname}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Apply patches
+
+    # Disable the installation of the groups program and its man pages,
+    # as coreutils provides a better version.  Also prevent the
+    # installation of manual pages that were already installed by the
+    # man pages package (thanks to "Linux From Scratch")
+    patch -Np0 -i "${worktree}/patches/shadow/shadow-manpages"
+
+    # ruserok(3) is missing from musl
+    patch -Np0 -i "${worktree}/patches/shadow/shadow-no_rlogin"
+
+    # Apply to use our custom definitions
+    patch -Np0 -i "${worktree}/patches/shadow/shadow-login.defs.diff"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-shadowgrp \
+     --disable-shared \
+     --with-sha-crypt \
+     --with-group-name-max-length=32 \
+     --without-libcrack \
+     --without-nscd \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make check
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Make the default useradd consistent with our /etc/group file
+    sed -i 's/1000/100/' "${destdir}/etc/default/useradd"
+
+    # Set mksh(1) as the default shell
+    sed -i 's@SHELL=/bin/bash@SHELL=/bin/mksh@' \
+     "${destdir}/etc/default/useradd"
+
+    # To handle config file(s)
+    touch "${destdir}/etc/.graft-config" "${destdir}/etc/default/.graft-config"
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

@@ -1,0 +1,270 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0073
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0073 (after 8.0.0069)
+Problem:    More comparisons between firstwin and lastwin.
+Solution:   Use ONE_WINDOW for consistency. (Hirohito Higashi)
+Files:      src/buffer.c, src/ex_cmds.c, src/ex_docmd.c, src/option.c,
+            src/window.c
+
+
+*** ../vim-8.0.0072/src/buffer.c	2016-11-06 15:25:37.689627497 +0100
+--- src/buffer.c	2016-11-10 17:42:03.550441517 +0100
+***************
+*** 1412,1418 ****
+  # ifdef FEAT_AUTOCMD
+  		   && !(curwin->w_closing || curwin->w_buffer->b_locked > 0)
+  # endif
+! 		   && (firstwin != lastwin || first_tabpage->tp_next != NULL))
+  	{
+  	    if (win_close(curwin, FALSE) == FAIL)
+  		break;
+--- 1412,1418 ----
+  # ifdef FEAT_AUTOCMD
+  		   && !(curwin->w_closing || curwin->w_buffer->b_locked > 0)
+  # endif
+! 		   && (!ONE_WINDOW || first_tabpage->tp_next != NULL))
+  	{
+  	    if (win_close(curwin, FALSE) == FAIL)
+  		break;
+***************
+*** 5140,5146 ****
+  			: wp->w_width != Columns)
+  		    || (had_tab > 0 && wp != firstwin)
+  #endif
+! 		    ) && firstwin != lastwin
+  #ifdef FEAT_AUTOCMD
+  		    && !(wp->w_closing || wp->w_buffer->b_locked > 0)
+  #endif
+--- 5140,5146 ----
+  			: wp->w_width != Columns)
+  		    || (had_tab > 0 && wp != firstwin)
+  #endif
+! 		    ) && !ONE_WINDOW
+  #ifdef FEAT_AUTOCMD
+  		    && !(wp->w_closing || wp->w_buffer->b_locked > 0)
+  #endif
+*** ../vim-8.0.0072/src/ex_cmds.c	2016-10-21 20:35:32.632943225 +0200
+--- src/ex_cmds.c	2016-11-10 17:42:17.082356600 +0100
+***************
+*** 4577,4583 ****
+      if (eap->forceit)
+  	bigness = curwin->w_height;
+  #ifdef FEAT_WINDOWS
+!     else if (firstwin != lastwin)
+  	bigness = curwin->w_height - 3;
+  #endif
+      else
+--- 4577,4583 ----
+      if (eap->forceit)
+  	bigness = curwin->w_height;
+  #ifdef FEAT_WINDOWS
+!     else if (!ONE_WINDOW)
+  	bigness = curwin->w_height - 3;
+  #endif
+      else
+*** ../vim-8.0.0072/src/ex_docmd.c	2016-11-06 15:25:37.693627473 +0100
+--- src/ex_docmd.c	2016-11-10 17:39:17.259485131 +0100
+***************
+*** 7488,7496 ****
+  {
+      /* First close all the windows but the current one.  If that worked then
+       * close the last window in this tab, that will close it. */
+!     if (lastwin != firstwin)
+  	close_others(TRUE, forceit);
+!     if (lastwin == firstwin)
+  	ex_win_close(forceit, curwin, NULL);
+  # ifdef FEAT_GUI
+      need_mouse_correct = TRUE;
+--- 7488,7496 ----
+  {
+      /* First close all the windows but the current one.  If that worked then
+       * close the last window in this tab, that will close it. */
+!     if (!ONE_WINDOW)
+  	close_others(TRUE, forceit);
+!     if (ONE_WINDOW)
+  	ex_win_close(forceit, curwin, NULL);
+  # ifdef FEAT_GUI
+      need_mouse_correct = TRUE;
+*** ../vim-8.0.0072/src/option.c	2016-11-05 20:13:29.142451833 +0100
+--- src/option.c	2016-11-10 17:42:51.762138974 +0100
+***************
+*** 8551,8557 ****
+  	}
+  
+  	/* Change window height NOW */
+! 	if (lastwin != firstwin)
+  	{
+  	    if (pp == &p_wh && curwin->w_height < p_wh)
+  		win_setheight((int)p_wh);
+--- 8551,8557 ----
+  	}
+  
+  	/* Change window height NOW */
+! 	if (!ONE_WINDOW)
+  	{
+  	    if (pp == &p_wh && curwin->w_height < p_wh)
+  		win_setheight((int)p_wh);
+***************
+*** 8591,8597 ****
+  	}
+  
+  	/* Change window width NOW */
+! 	if (lastwin != firstwin && curwin->w_width < p_wiw)
+  	    win_setwidth((int)p_wiw);
+      }
+  
+--- 8591,8597 ----
+  	}
+  
+  	/* Change window width NOW */
+! 	if (!ONE_WINDOW && curwin->w_width < p_wiw)
+  	    win_setwidth((int)p_wiw);
+      }
+  
+***************
+*** 10075,10081 ****
+  comp_col(void)
+  {
+  #if defined(FEAT_CMDL_INFO) && defined(FEAT_WINDOWS)
+!     int last_has_status = (p_ls == 2 || (p_ls == 1 && firstwin != lastwin));
+  
+      sc_col = 0;
+      ru_col = 0;
+--- 10075,10081 ----
+  comp_col(void)
+  {
+  #if defined(FEAT_CMDL_INFO) && defined(FEAT_WINDOWS)
+!     int last_has_status = (p_ls == 2 || (p_ls == 1 && !ONE_WINDOW));
+  
+      sc_col = 0;
+      ru_col = 0;
+*** ../vim-8.0.0072/src/window.c	2016-11-06 15:25:37.697627447 +0100
+--- src/window.c	2016-11-10 17:39:17.263485105 +0100
+***************
+*** 791,797 ****
+  	oldwin = curwin;
+  
+      /* add a status line when p_ls == 1 and splitting the first window */
+!     if (lastwin == firstwin && p_ls == 1 && oldwin->w_status_height == 0)
+      {
+  	if (oldwin->w_height <= p_wmh && new_wp == NULL)
+  	{
+--- 791,797 ----
+  	oldwin = curwin;
+  
+      /* add a status line when p_ls == 1 and splitting the first window */
+!     if (ONE_WINDOW && p_ls == 1 && oldwin->w_status_height == 0)
+      {
+  	if (oldwin->w_height <= p_wmh && new_wp == NULL)
+  	{
+***************
+*** 1492,1498 ****
+      win_T	*wp2;
+      int		temp;
+  
+!     if (lastwin == firstwin)	    /* just one window */
+      {
+  	beep_flush();
+  	return;
+--- 1492,1498 ----
+      win_T	*wp2;
+      int		temp;
+  
+!     if (ONE_WINDOW)	    /* just one window */
+      {
+  	beep_flush();
+  	return;
+***************
+*** 1674,1680 ****
+      int		dir;
+      int		height = curwin->w_height;
+  
+!     if (lastwin == firstwin)
+      {
+  	beep_flush();
+  	return;
+--- 1674,1680 ----
+      int		dir;
+      int		height = curwin->w_height;
+  
+!     if (ONE_WINDOW)
+      {
+  	beep_flush();
+  	return;
+***************
+*** 2123,2129 ****
+  
+      ++RedrawingDisabled;
+  
+!     for (wp = firstwin; wp != NULL && lastwin != firstwin; )
+      {
+  	if (wp->w_buffer == buf && (!keep_curwin || wp != curwin)
+  #ifdef FEAT_AUTOCMD
+--- 2123,2129 ----
+  
+      ++RedrawingDisabled;
+  
+!     for (wp = firstwin; wp != NULL && !ONE_WINDOW; )
+      {
+  	if (wp->w_buffer == buf && (!keep_curwin || wp != curwin)
+  #ifdef FEAT_AUTOCMD
+***************
+*** 3373,3379 ****
+  	}
+      }
+  
+!     if (message && lastwin != firstwin)
+  	EMSG(_("E445: Other window contains changes"));
+  }
+  
+--- 3373,3379 ----
+  	}
+      }
+  
+!     if (message && !ONE_WINDOW)
+  	EMSG(_("E445: Other window contains changes"));
+  }
+  
+***************
+*** 5971,5977 ****
+  {
+      /* Don't make a difference between horizontal or vertical split. */
+      last_status_rec(topframe, (p_ls == 2
+! 			  || (p_ls == 1 && (morewin || lastwin != firstwin))));
+  }
+  
+      static void
+--- 5971,5977 ----
+  {
+      /* Don't make a difference between horizontal or vertical split. */
+      last_status_rec(topframe, (p_ls == 2
+! 			  || (p_ls == 1 && (morewin || !ONE_WINDOW))));
+  }
+  
+      static void
+*** ../vim-8.0.0072/src/version.c	2016-11-10 17:10:47.494177267 +0100
+--- src/version.c	2016-11-10 17:39:46.535301392 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     73,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+11. You find yourself typing "com" after every period when using a word
+    processor.com
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

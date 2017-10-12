@@ -1,0 +1,74 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0094
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0094
+Problem:    When vimrun.exe is not found the error message is not properly
+            encoded.
+Solution:   Use utf-16 and MessageBoxW(). (Ken Takata)
+Files:      src/os_win32.c
+    
+
+*** ../vim-8.0.0093/src/os_win32.c	2016-11-17 17:25:28.212093109 +0100
+--- src/os_win32.c	2016-11-19 17:28:31.537877020 +0100
+***************
+*** 4705,4716 ****
+  #if defined(FEAT_GUI_W32)
+  		if (need_vimrun_warning)
+  		{
+! 		    MessageBox(NULL,
+! 			    _("VIMRUN.EXE not found in your $PATH.\n"
+! 				"External commands will not pause after completion.\n"
+! 				"See  :help win32-vimrun  for more information."),
+! 			    _("Vim Warning"),
+! 			    MB_ICONWARNING);
+  		    need_vimrun_warning = FALSE;
+  		}
+  		if (!s_dont_use_vimrun && p_stmp)
+--- 4705,4728 ----
+  #if defined(FEAT_GUI_W32)
+  		if (need_vimrun_warning)
+  		{
+! 		    char *msg = _("VIMRUN.EXE not found in your $PATH.\n"
+! 			"External commands will not pause after completion.\n"
+! 			"See  :help win32-vimrun  for more information.");
+! 		    char *title = _("Vim Warning");
+! # ifdef FEAT_MBYTE
+! 		    if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+! 		    {
+! 			WCHAR *wmsg = enc_to_utf16((char_u *)msg, NULL);
+! 			WCHAR *wtitle = enc_to_utf16((char_u *)title, NULL);
+! 
+! 			if (wmsg != NULL && wtitle != NULL)
+! 			    MessageBoxW(NULL, wmsg, wtitle, MB_ICONWARNING);
+! 			vim_free(wmsg);
+! 			vim_free(wtitle);
+! 		    }
+! 		    else
+! # endif
+! 			MessageBox(NULL, msg, title, MB_ICONWARNING);
+  		    need_vimrun_warning = FALSE;
+  		}
+  		if (!s_dont_use_vimrun && p_stmp)
+*** ../vim-8.0.0093/src/version.c	2016-11-19 17:17:09.442428237 +0100
+--- src/version.c	2016-11-19 17:26:21.074746311 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     94,
+  /**/
+
+-- 
+Everyone has a photographic memory. Some don't have film.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

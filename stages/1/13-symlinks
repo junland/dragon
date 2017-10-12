@@ -1,0 +1,31 @@
+# Build script for essential symlinks
+#
+# Copyright (C) 2014-2017 Matias Fonzo, <selk@dragora.org>
+#
+# This script is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+# Essential symbolic links for rootdir
+for file in bash cat echo env file pwd sh stty
+do
+    ln -sf "/tools/bin/${file}" "${rootdir}/bin"
+done
+
+ln -sf gcc /tools/bin/cc
+
+ln -sf /tools/bin/perl "${rootdir}/usr/bin"
+
+ln -sf /proc/self/mounts "${rootdir}/etc/mtab"
+
+# Libraries
+ln -sf /tools/lib${libSuffix}/libgcc_s.so   "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libgcc_s.so.1 "${rootdir}/usr/lib${libSuffix}"
+
+ln -sf /tools/lib${libSuffix}/libstdc++.so   "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libstdc++.so.6 "${rootdir}/usr/lib${libSuffix}"
+
+ln -sf /tools/lib${libSuffix}/libstdc++.a "${rootdir}/usr/lib${libSuffix}"
+
+sed -e 's/tools/usr/' /tools/lib${libSuffix}/libstdc++.la \
+ > "${rootdir}/usr/lib${libSuffix}/libstdc++.la"
+

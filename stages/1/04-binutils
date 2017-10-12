@@ -1,0 +1,58 @@
+# Build script for binutils
+#
+# Copyright (C) 2014-2017 Matias Fonzo, <selk@dragora.org>
+#
+# This script is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+version=2.29.1
+
+rm -rf -- "${TMPDIR}/binutils-${version}"
+untar "${worktree}/sources/binutils-${version}.tar.lz" "$TMPDIR"
+
+# Build instructions
+cd -- "${TMPDIR}/binutils-${version}"
+
+# Build in a separate directory
+rm -rf ../binutils-build
+mkdir ../binutils-build
+cd ../binutils-build
+
+# Import and export toolchain variables
+. "${worktree}/stages/env.d/cross-staticenv"
+
+../binutils-${version}/configure \
+AR="$AR" AS="$AS" LD="$LD" RANLIB="$RANLIB" READELF="$READELF" STRIP="$STRIP" \
+CC="$BTCC" CXX="$BTCXX" \
+CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
+ --prefix=/tools \
+ --libdir=/tools/lib${libSuffix} \
+ --build=$host \
+ --host=$target \
+ --target=$target \
+ --enable-deterministic-archives \
+ --disable-compressed-debug-sections \
+ --disable-nls \
+ --disable-werror \
+ --disable-ppl-version-check \
+ --disable-cloog-version-check \
+ --with-lib-path=/tools/lib \
+ $multilib_options
+
+make -j${jobs} MAKEINFO="true"
+make MAKEINFO="true" install
+
+# Make a new ld(1) containing another search path,
+# this is handled by 16-toolchain (called from musl's recipe)
+make -C ld clean
+make -C ld LIB_PATH=/usr/lib${libSuffix}:/lib
+cp -f ld/ld-new /tools/bin
+
+# Unset some imported variables from file
+unset AR AS LD RANLIB READELF STRIP
+
+cleanup()
+{
+    cd -- "$TMPDIR" && rm -rf binutils-*
+}
+

@@ -1,0 +1,105 @@
+# Build recipe for readline.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=readline
+version=7.0
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=ftp://ftp.gnu.org/gnu/readline/$tarname
+
+description="
+A library with line-editing capabilities.
+
+GNU readline is a software library created and maintained by the
+GNU Project.  It is licensed under the GPL, and used in projects
+such as GNU bash.  It provides line-editing capabilities.
+"
+
+homepage=http://www.gnu.org/software/readline
+license=GPLv3+
+
+# Source documentation
+docs="CHANGELOG CHANGES COPYING NEWS README USAGE"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Apply patches from upstream
+    for file in "${worktree}"/patches/readline/readline70-???*
+    do
+        if test -f "$file"
+        then
+            patch -Np0 -i "$file"
+        fi
+    done
+
+    # Reinstalling Readline will cause the old libraries to be moved to
+    # <libraryname>.old, this avoid printing a harmful message about
+    # the static libraries (thanks to LFS)
+    sed -i '/MV.*old/d' Makefile.in
+    sed -i '/{OLDSUFF}/c:' support/shlib-install
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-multibyte \
+     --enable-static \
+     --enable-shared \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1 SHLIB_LIBS='-lncursesw'
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Copy custom inputrc file
+    mkdir -p "${destdir}/etc"
+    cp -p "${worktree}/archive/readline/etc/inputrc" "${destdir}/etc/"
+    chmod 644 "${destdir}/etc/inputrc"
+
+    touch "${destdir}/etc/.graft-config"
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}
+

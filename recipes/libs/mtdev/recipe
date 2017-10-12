@@ -1,0 +1,78 @@
+# Build recipe for mtdev.
+#
+# Copyright (C) 2017 Mateus P. Rodrigues, mprodrigues@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=mtdev
+version=1.1.5
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://bitmath.org/code/mtdev/$tarname
+
+description="
+The mtdev is a stand-alone library which transforms all variants of kernel MT
+events to the slotted type B protocol. The events put into mtdev may be from
+any MT device, specifically type A without contact tracking, type A with
+contact tracking, or type B with contact tracking. See the kernel documentation
+for further details.
+"
+
+homepage=http://bitmath.org/code/mtdev/
+license=MIT
+
+# Source documentation
+docs="COPYING ChangeLog README"
+docsdir="${docdir}/${pkgname}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --docdir=$docsdir \
+     --infodir=$infodir \
+     --mandir=$mandir \
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
+}

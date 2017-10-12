@@ -1,0 +1,64 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0119
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0119
+Problem:    No test for using CTRL-R on the command line.
+Solution:   Add a test. (Dominique Pelle) And some more.
+Files:      src/testdir/test_cmdline.vim
+
+
+*** ../vim-8.0.0118/src/testdir/test_cmdline.vim	2016-10-15 15:39:34.689059624 +0200
+--- src/testdir/test_cmdline.vim	2016-12-03 14:04:58.806031917 +0100
+***************
+*** 194,196 ****
+--- 194,219 ----
+    bwipe!
+    call delete('a', 'rf')
+  endfunc
++ 
++ func Test_paste_in_cmdline()
++   let @a = "def"
++   call feedkeys(":abc \<C-R>a ghi\<C-B>\"\<CR>", 'tx')
++   call assert_equal('"abc def ghi', @:)
++ 
++   new
++   call setline(1, 'asdf.x /tmp/some verylongword a;b-c*d ')
++ 
++   call feedkeys(":aaa \<C-R>\<C-W> bbb\<C-B>\"\<CR>", 'tx')
++   call assert_equal('"aaa asdf bbb', @:)
++ 
++   call feedkeys("ft:aaa \<C-R>\<C-F> bbb\<C-B>\"\<CR>", 'tx')
++   call assert_equal('"aaa /tmp/some bbb', @:)
++ 
++   set incsearch
++   call feedkeys("fy:aaa veryl\<C-R>\<C-W> bbb\<C-B>\"\<CR>", 'tx')
++   call assert_equal('"aaa verylongword bbb', @:)
++ 
++   call feedkeys("f;:aaa \<C-R>\<C-A> bbb\<C-B>\"\<CR>", 'tx')
++   call assert_equal('"aaa a;b-c*d bbb', @:)
++   bwipe!
++ endfunc
+*** ../vim-8.0.0118/src/version.c	2016-12-01 23:03:24.516958281 +0100
+--- src/version.c	2016-12-03 13:51:51.679148757 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     119,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+84. Books in your bookcase bear the names Bongo, WinSock and Inside OLE
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

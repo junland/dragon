@@ -1,0 +1,223 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0096
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0096
+Problem:    When the input or output is not a tty Vim appears to hang.
+Solution:   Add the --ttyfail argument.  Also add the "ttyin" and "ttyout"
+            features to be able to check in Vim script.
+Files:      src/globals.h, src/structs.h, src/main.c, src/evalfunc.c,
+            runtime/doc/starting.txt, runtime/doc/eval.txt
+
+
+*** ../vim-8.0.0095/src/globals.h	2016-11-10 20:01:41.181582995 +0100
+--- src/globals.h	2016-11-24 14:47:12.106114198 +0100
+***************
+*** 643,648 ****
+--- 643,650 ----
+  EXTERN int	really_exiting INIT(= FALSE);
+  				/* TRUE when we are sure to exit, e.g., after
+  				 * a deadly signal */
++ EXTERN int	stdout_isatty INIT(= TRUE);	/* is stdout a terminal? */
++ 
+  #if defined(FEAT_AUTOCHDIR)
+  EXTERN int	test_autochdir INIT(= FALSE);
+  #endif
+*** ../vim-8.0.0095/src/structs.h	2016-11-17 17:25:28.212093109 +0100
+--- src/structs.h	2016-11-24 14:47:01.506180720 +0100
+***************
+*** 3225,3232 ****
+  #endif
+  
+      int		want_full_screen;
+-     int		stdout_isatty;		/* is stdout a terminal? */
+      int		not_a_term;		/* no warning for missing term? */
+      char_u	*term;			/* specified terminal name */
+  #ifdef FEAT_CRYPT
+      int		ask_for_key;		/* -x argument */
+--- 3225,3232 ----
+  #endif
+  
+      int		want_full_screen;
+      int		not_a_term;		/* no warning for missing term? */
++     int		tty_fail;		/* exit if not a tty */
+      char_u	*term;			/* specified terminal name */
+  #ifdef FEAT_CRYPT
+      int		ask_for_key;		/* -x argument */
+*** ../vim-8.0.0095/src/main.c	2016-08-29 22:42:20.000000000 +0200
+--- src/main.c	2016-11-24 14:46:47.594268023 +0100
+***************
+*** 973,979 ****
+       * (needed for :! to * work). mch_check_win() will also handle the -d or
+       * -dev argument.
+       */
+!     paramp->stdout_isatty = (mch_check_win(paramp->argc, paramp->argv) != FAIL);
+      TIME_MSG("window checked");
+  
+      /*
+--- 973,979 ----
+       * (needed for :! to * work). mch_check_win() will also handle the -d or
+       * -dev argument.
+       */
+!     stdout_isatty = (mch_check_win(paramp->argc, paramp->argv) != FAIL);
+      TIME_MSG("window checked");
+  
+      /*
+***************
+*** 1828,1833 ****
+--- 1828,1834 ----
+  				/* "--literal" take files literally */
+  				/* "--nofork" don't fork */
+  				/* "--not-a-term" don't warn for not a term */
++ 				/* "--ttyfail" exit if not a term */
+  				/* "--noplugin[s]" skip plugins */
+  				/* "--cmd <cmd>" execute cmd before vimrc */
+  		if (STRICMP(argv[0] + argv_idx, "help") == 0)
+***************
+*** 1857,1862 ****
+--- 1858,1865 ----
+  		    p_lpl = FALSE;
+  		else if (STRNICMP(argv[0] + argv_idx, "not-a-term", 10) == 0)
+  		    parmp->not_a_term = TRUE;
++ 		else if (STRNICMP(argv[0] + argv_idx, "ttyfail", 7) == 0)
++ 		    parmp->tty_fail = TRUE;
+  		else if (STRNICMP(argv[0] + argv_idx, "cmd", 3) == 0)
+  		{
+  		    want_argument = TRUE;
+***************
+*** 2489,2495 ****
+  	if (!input_isatty)
+  	    silent_mode = TRUE;
+      }
+!     else if (parmp->want_full_screen && (!parmp->stdout_isatty || !input_isatty)
+  #ifdef FEAT_GUI
+  	    /* don't want the delay when started from the desktop */
+  	    && !gui.starting
+--- 2492,2498 ----
+  	if (!input_isatty)
+  	    silent_mode = TRUE;
+      }
+!     else if (parmp->want_full_screen && (!stdout_isatty || !input_isatty)
+  #ifdef FEAT_GUI
+  	    /* don't want the delay when started from the desktop */
+  	    && !gui.starting
+***************
+*** 2504,2510 ****
+  	 * input buffer so fast I can't even kill the process in under 2
+  	 * minutes (and it beeps continuously the whole time :-)
+  	 */
+! 	if (netbeans_active() && (!parmp->stdout_isatty || !input_isatty))
+  	{
+  	    mch_errmsg(_("Vim: Error: Failure to start gvim from NetBeans\n"));
+  	    exit(1);
+--- 2507,2513 ----
+  	 * input buffer so fast I can't even kill the process in under 2
+  	 * minutes (and it beeps continuously the whole time :-)
+  	 */
+! 	if (netbeans_active() && (!stdout_isatty || !input_isatty))
+  	{
+  	    mch_errmsg(_("Vim: Error: Failure to start gvim from NetBeans\n"));
+  	    exit(1);
+***************
+*** 2517,2527 ****
+  	    exit(1);
+  	}
+  #endif
+! 	if (!parmp->stdout_isatty)
+  	    mch_errmsg(_("Vim: Warning: Output is not to a terminal\n"));
+  	if (!input_isatty)
+  	    mch_errmsg(_("Vim: Warning: Input is not from a terminal\n"));
+  	out_flush();
+  	if (scriptin[0] == NULL)
+  	    ui_delay(2000L, TRUE);
+  	TIME_MSG("Warning delay");
+--- 2520,2532 ----
+  	    exit(1);
+  	}
+  #endif
+! 	if (!stdout_isatty)
+  	    mch_errmsg(_("Vim: Warning: Output is not to a terminal\n"));
+  	if (!input_isatty)
+  	    mch_errmsg(_("Vim: Warning: Input is not from a terminal\n"));
+  	out_flush();
++ 	if (parmp->tty_fail && (!stdout_isatty || !input_isatty))
++ 	    exit(1);
+  	if (scriptin[0] == NULL)
+  	    ui_delay(2000L, TRUE);
+  	TIME_MSG("Warning delay");
+***************
+*** 3287,3292 ****
+--- 3292,3298 ----
+  #endif
+      main_msg(_("-T <terminal>\tSet terminal type to <terminal>"));
+      main_msg(_("--not-a-term\t\tSkip warning for input/output not being a terminal"));
++     main_msg(_("--ttyfail\t\tExit if input or output is not a terminal"));
+      main_msg(_("-u <vimrc>\t\tUse <vimrc> instead of any .vimrc"));
+  #ifdef FEAT_GUI
+      main_msg(_("-U <gvimrc>\t\tUse <gvimrc> instead of any .gvimrc"));
+*** ../vim-8.0.0095/src/evalfunc.c	2016-11-10 20:01:41.189582944 +0100
+--- src/evalfunc.c	2016-11-24 14:47:35.001970494 +0100
+***************
+*** 5959,5964 ****
+--- 5959,5968 ----
+  	}
+  	else if (STRICMP(name, "vim_starting") == 0)
+  	    n = (starting != 0);
++ 	else if (STRICMP(name, "ttyin") == 0)
++ 	    n = mch_input_isatty();
++ 	else if (STRICMP(name, "ttyout") == 0)
++ 	    n = stdout_isatty;
+  #ifdef FEAT_MBYTE
+  	else if (STRICMP(name, "multi_byte_encoding") == 0)
+  	    n = has_mbyte;
+*** ../vim-8.0.0095/runtime/doc/starting.txt	2016-09-12 12:45:48.000000000 +0200
+--- runtime/doc/starting.txt	2016-11-24 14:39:52.460879969 +0100
+***************
+*** 421,426 ****
+--- 421,430 ----
+  		not connected to a terminal.  This will avoid the warning and
+  		the two second delay that would happen. {not in Vi}
+  
++ 							*--ttyfail*
++ --ttyfail	When the stdin or stdout is not a terminal (tty) then exit
++ 		right away.
++ 
+  							*-d*
+  -d		Start in diff mode, like |vimdiff|.
+  		{not in Vi} {not available when compiled without the |+diff|
+*** ../vim-8.0.0095/runtime/doc/eval.txt	2016-10-15 15:39:34.693059595 +0200
+--- runtime/doc/eval.txt	2016-11-24 14:53:43.191657088 +0100
+***************
+*** 8405,8410 ****
+--- 8416,8423 ----
+  timers			Compiled with |timer_start()| support.
+  title			Compiled with window title support |'title'|.
+  toolbar			Compiled with support for |gui-toolbar|.
++ ttyin			input is a terminal (tty)
++ ttyout			output is a terminal (tty)
+  unix			Unix version of Vim.
+  user_commands		User-defined commands.
+  vertsplit		Compiled with vertically split windows |:vsplit|.
+*** ../vim-8.0.0095/src/version.c	2016-11-21 20:55:54.458792774 +0100
+--- src/version.c	2016-11-24 14:40:18.220710851 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     96,
+  /**/
+
+-- 
+George:  "I just got a new set of golf clubs for my wife!"
+  John:  "Great trade!"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

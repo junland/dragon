@@ -1,0 +1,77 @@
+# Build recipe for xf86bigfontproto.
+#
+# Copyright (C) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=xf86bigfontproto
+version=1.2.0
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://www.x.org/releases/individual/proto/$tarname
+
+description="
+The xf86bigfontproto package is part of X11.
+"
+
+homepage=http://www.x.org
+license="MIT X Consortium"
+
+# Source documentation
+docs="COPYING ChangeLog"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     || true
+
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        if test -e $file
+        then
+            cp -p $file "${destdir}${docsdir}"
+        fi
+    done
+}

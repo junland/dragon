@@ -1,0 +1,87 @@
+# Build recipe for bc.
+#
+# Copyright (C) 2016-2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=bc
+version=1.07.1
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://ftp.gnu.org/gnu/bc/$tarname
+
+description="
+An arbitrary precision numeric processing language.
+
+Bc is an arbitrary precision numeric processing language.  Syntax is
+similar to C, but differs in many substantial areas.  It supports
+interactive execution of statements.
+
+Bc is a utility included in the POSIX P1003.2/D11 draft standard.
+Since the POSIX document does not specify how bc must be implemented,
+this version does not use the historical method of having bc be a
+compiler for the dc calculator.  This version has a single executable
+that both compiles the language and runs the resulting 'byte code'.
+The byte code is not the dc language.
+"
+
+homepage=http://www.gnu.org/software/bc
+license="GPLv2+, LGPLv2.1"
+
+# Source documentation
+docs="AUTHORS COPYING* ChangeLog FAQ NEWS README Examples/"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --with-readline \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p -r $file "${destdir}${docsdir}"
+    done
+}
+
