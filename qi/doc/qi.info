@@ -1,0 +1,1756 @@
+This is qi.info, produced by makeinfo version 4.13 from qi.texi.
+
+This manual is for Qi (version 1.0-rc4, 30 Jan 2017), which is a simple
+source builder and package manager.
+
+   Copyright (C) 2015, 2016, 2017 Matias A. Fonzo, Argentina, Santiago
+del Estero.
+
+     Permission is granted to copy, distribute and/or modify this
+     document under the terms of the GNU Free Documentation License,
+     Version 1.3 or any later version published by the Free Software
+     Foundation; with no Invariant Sections, with no Front-Cover Texts,
+     and with no Back-Cover Texts.  A copy of the license is included
+     in the section entitled "GNU Free Documentation License".
+
+INFO-DIR-SECTION Texinfo documentation system
+START-INFO-DIR-ENTRY
+* Qi: (qi).                     Source builder and package manager.
+END-INFO-DIR-ENTRY
+
+
+File: qi.info,  Node: Top,  Next: Introduction,  Up: (dir)
+
+Qi manual
+*********
+
+This manual is for Qi (version 1.0-rc4, 30 Jan 2017).
+
+* Menu:
+
+* Introduction::                    Purpose, description
+* Invocation::                      Command-line interface
+* The qirc file::                   Configuration file
+* Packages::                        Managing packages
+* Recipes::                         Building packages
+* Order files::                     Handling the build order
+* Examine packages::                Debugging purposes
+* Messages::                        Output messages
+* Exit status::                     Exit codes
+* GNU Free Documentation License::
+* Index::
+
+
+   Copyright (C) 2015-2017 Matias A. Fonzo, Argentina, Santiago del
+Estero.
+
+   The Qi home page can be found at `http://www.dragora.org'.
+Send bug reports or suggestions to <dragora-users@nongnu.org>.
+
+
+File: qi.info,  Node: Introduction,  Next: Invocation,  Prev: Top,  Up: Top
+
+1 Introduction
+**************
+
+Qi is a source builder and a package manager:
+
+   It contains a set of (individual) tools to build, install, remove,
+and upgrade software packages.  It follows the philosophy of simplicity
+without adding too many features, such as those that can be found in
+popular package managers.  Basically it does two things: builds
+packages and manages them.
+
+   Qi constructs the sources using recipe names, files that contain
+specific instructions to build every source.  As result, a binary
+package is obtained which can be installed, removed, upgraded, or
+inspected in the system.
+
+   The packages are managed thanks to an external tool called
+_graft(1)_, which provides a mechanism for managing multiple packages
+under a single directory hierarchy, it was inspired by both Depot
+(Carnegie Mellon University) and Stow (Bob Glickstein).  In this
+aspect, Qi complements Graft: it can work with packages, check them,
+solve conflicts, and more...
+
+
+File: qi.info,  Node: Invocation,  Next: The qirc file,  Prev: Introduction,  Up: Top
+
+2 Invocation
+************
+
+The synopsis to invoke Qi is:
+
+     pkg<action> [options] [package|recipe|order] ...
+
+The following commands or actions are supported by Qi:
+
+`pkghelp'
+     Shows the help.
+
+`pkgadd'
+     Add the packages to the system using _graft(1)_ for linking.
+
+`pkgremove'
+     Remove the packages from the system.
+
+`pkgupgrade'
+     Upgrade software packages.
+
+`pkgbuild'
+     Build packages using recipe files.
+
+`pkgorder'
+     Resolves the build order through .order files.
+
+`pkgerupt'
+     Examine packages for debugging purposes.
+
+
+     *Global options*
+
+     There are global or common options for the commands, as well as
+     specific to each one.
+
+`-h'
+     Show options for the given command and exit.
+
+
+     *Options for command `pkgadd':*
+
+`-f'
+     Force package installation (implies -p).
+
+`-P'
+     Extract package on an installation tree.
+
+     This option sets `${packagedir}'.
+
+     Default value: _PREFIX/pkg_
+
+`-p'
+     Prune conflicts.
+
+`-t'
+     Target directory for linking.
+
+     This option sets `${targetdir}'.
+
+     Default value: _/_
+
+`-V'
+     _graft(1)_ very verbose.
+
+`-w'
+     Warn about the files that will be linked.
+
+
+     *Options for command `pkgremove':*
+
+`-k'
+     Keep (don't delete) package directory.
+
+`-P'
+     Remove from an installation tree.
+
+     This option sets `${packagedir}'.
+
+     Default value: _PREFIX/pkg_
+
+`-p'
+     Prune conflicts.
+
+`-t'
+     Target directory for unlinking.
+
+     This option sets `${targetdir}'.
+
+     Default value: _/_
+
+`-V'
+     _graft(1)_ very verbose.
+
+
+     *Options for command `pkgupgrade':*
+
+`-k'
+     Keep (don't delete) package directory.
+
+`-P'
+     Package installation tree.
+
+     This option sets `${packagedir}'.
+
+     Default value: _PREFIX/pkg_
+
+`-t'
+     Target directory.
+
+     This option sets `${targetdir}'.
+
+     Default value: _/_
+
+`-V'
+     Enable (very) verbose mode.
+
+`-w'
+     Warn about packages that will be upgraded.
+
+
+     *Options for command `pkgbuild':*
+
+`-a'
+     Architecture to use.
+
+     This option sets `${arch}'.
+
+     Default value is obtained via _uname(1)_ as `uname -m'.
+
+`-i'
+     Increment release number.
+
+     This option increment the release number when a package is
+     produced.
+
+`-j'
+     Parallel jobs for the compiler
+
+     This option sets `${jobs}'.
+
+     Default value: _1_
+
+`-k'
+     Keep (don't delete) `${srcdir}' and `${destdir}'.
+
+`-n'
+     Don't create a .tlz package.
+
+`-o'
+     Where the produced packages are written.
+
+     This option sets `${outdir}'.
+
+     Default value: _/var/cache/qi/packages_
+
+`-U'
+     Perform package upgrade after build.
+
+     This option calls to `pkgupgrade'.
+
+
+     *Options for command `pkgorder':*
+
+`-x'
+     Exclude depends file.
+
+2.1 Environment
+===============
+
+     Some influential environment variables:
+
+`QICFLAGS'
+     C compiler flags for building packages.
+
+     Default value: _"-g0 -Os"_
+
+`QICXXFLAGS'
+     C++ compiler flags for building packages.
+
+     Default value: _"-g0 -Os"_
+
+`QILDFLAGS'
+     Linker flags for building packages.
+
+     Default value: _-s_
+
+`DOPOST'
+     post-install script control variable.
+
+     The `DOPOST' variable is currently used for `pkgadd',
+     `pkgupgrade', `pkgbuild' (when option -U is given).
+
+     A different value than "DOPOST" omits the execution of the
+     post-install script (if any).
+
+`RC'
+     Runtime configuration file.
+
+     A different value than "RC" overrides the configuration file.
+
+     This is used by: `pkgadd', `pkgremove', `pkgupgrade', `pkgbuild'.
+
+`TMPDIR'
+     Temporary directory (by default _/tmp_).
+
+     `TMPDIR' is expanded with random numbers for major security.
+
+     This is used by: `pkgbuild', `pkgerupt'.
+
+2.2 Notes
+=========
+
+   * Command names has been prefixed with `pkg' to facilitate the set
+     in relation to its purpose.
+
+   * The _PREFIX_ reference is related with the installation prefix of
+     Qi.
+
+   * All the options can be mixed.  Options specified in the
+     command-line have priority over the config file `qirc'.  If there
+     are no options, and if `qirc' is not present, default (internal)
+     values will be used instead.
+
+
+File: qi.info,  Node: The qirc file,  Next: Packages,  Prev: Invocation,  Up: Top
+
+3 The qirc file
+***************
+
+`qirc' is the configuration file for Qi used at runtime during the
+installation, removal of a package or when a recipe is built.  This
+file is optional, and it can be useful to define variables and
+configure external tools (such as a download manager) for default use.
+
+   * Variables are declared as `name=value'.
+
+   * Declaration of values should only take one line, no line break.
+
+   * Assignments like `name=$var' are only interpreted as literal.
+
+The options specified in the command-line can override the values
+specified in the configuration file.  For more information, see *note
+Invocation::.
+
+The order in which Qi looks for this file is:
+
+  1. `${HOME}/.qirc'  Effective user.
+
+  2. `${sysconfdir}/qirc'  System-wide.
+
+   If you intend to run Qi for a specific user, you should copy the file
+`${sysconfdir}/qirc' to `${HOME}/.qirc' setting `${packagedir}' and
+`${targetdir}' for your `$HOME'.
+
+
+File: qi.info,  Node: Packages,  Next: Recipes,  Prev: The qirc file,  Up: Top
+
+4 Packages
+**********
+
+A package is a suite of programs usually distributed in binary form
+which may also contain manual pages, documentation, or any other file
+associated to a specific software.
+
+   The Qi package format is a simple redistributable _tar(1)_ archive
+compressed with _lzip(1)_.  The package extension ends in ".tlz".
+
+Both package installation and package deinstallation are managed using
+`${packagedir}' and `${targetdir}':
+
+   `${packagedir}' is a common directory tree where the package contents
+is decompressed (resides).  By default the tree is located at
+_PREFIX/pkg_.
+
+   `${targetdir}' is a target directory where the links will be made
+taking `${packagedir}/package_name' into account.
+
+   Packages are installed in self-contained directory trees and symbolic
+links from a common area are made to the package files.  This allows
+multiple versions of the same package to co-exist on the one system.
+
+   All the links to install or to remove a package are managed using
+_graft(1)_.  Since multiple packages can be installed or removed at the
+same time, certain conflicts may arise between the packages.
+
+   According to the User's Guide of Graft(1), a conflict is defined as
+one of the following conditions:
+
+   * If the package object is a directory and the target object exists
+     but is not a directory.
+
+   * If the package object is not a directory and the target object
+     exists and is not a symbolic link.
+
+   * If the package object is not a directory and the target object
+     exists and is a symbolic link to something other than the package
+     object.
+
+Qi's default behavior is to not proceed with the installation when a
+conflict occurs.  But when a package that is going to be removed is in
+conflict with another package, _graft(1)_ removes those parts that are
+not in conflict, leaving the links belonging to the original package.
+This behavior can be changed if the option -p is specified (see the
+examples below).
+
+4.1 Adding packages
+===================
+
+This sort order is particularly useful just before the actual package
+installation, because it helps to understand how the package
+installation works:
+
+  1. Detects and reports if the package is already installed.
+
+  2. Ignores some signals up to completing the installation: HUP INT
+     QUIT ABRT TERM.
+
+  3. The integrity of the file (package) is checked.
+
+  4. Creates required directory for the package as
+     `${packagedir}/package_name'.
+
+  5. Decompress the content of the package in
+     `${packagedir}/package_name'.
+
+  6. A test of the package is performed before completing the
+     installation to see if there are no conflicts with another package.
+     This is the default behavior if -p is not supplied.
+
+  7. _graft(1)_ is invoked to install symbolic links from the package
+     installation directory to the target directory.
+
+  8. If the meta file is readable, the description will be shown for
+     the package.
+
+  9. Run post install instructions from `post-install', if any.
+
+_Usage:_ pkgadd [-hfpVw] [-P <DIR>] [-t <DIR>] [package.tlz ...]
+
+   To install a single package, simply type:
+
+     pkgadd coreutils-8.24-x86_64+1.tlz
+
+   To install multiple packages at once:
+
+     pkgadd gcc-4.9.3-x86_64+1.tlz rafaela-2.2-i586+1.tlz ...
+
+   Warn about the files that will be linked:
+
+     pkgadd -w gcc-4.9.3-x86_64+1.tlz
+
+   * This is to verify the content of a package before installing it.
+
+   See what happens when a package is installed (very verbose):
+
+     pkgadd -V mariana-3.0-x86_64+1.tlz
+
+   * This is for a detailed (long) output.
+
+   Installing in a different directory tree and target:
+
+     pkgadd -P /tmp/pkgdir -T /tmp/targetdir lzip-1.17-i586+1.tlz
+
+   When a package is already installed, `pkgadd' refuses to continue.
+This is to keep some control over the database of your packages, if you
+really want to force the installation of a package, you can use the -f
+option (which implies -p).  See below.
+
+   *Pruning conflicts*
+
+   Remove objects (files, links or directories) from the target
+directory that are in conflict with the package directory:
+
+     pkgadd -p zutils-1.4-x86_64+1.tlz
+
+   When the -p option is used, it proceeds to install the package
+normally, but first will try to remove any conflict.  Use it with care,
+combine this option with -V.
+
+4.2 Removing packages
+=====================
+
+This sort order is particularly useful just before the actual package
+deinstallation, because it helps to understand how the package
+deinstallation works:
+
+  1. Look for a package name to remove inside of `${packagedir}'.
+     Package names must be specified using the full package name, such
+     as "name-version-arch+release.tlz" or specifying the package name
+     directory.
+
+  2. Ignores some signals up to completing the deinstallation: HUP INT
+     QUIT ABRT TERM.
+
+  3. _graft(1)_ is invoked to remove symbolic links from the package
+     installation directory to the target directory:
+
+     If a conflict exists with another package, those links that are
+     not in conflict will be preserved.  It's possible to prune all the
+     conflicts using the -p option.
+
+  4. Remove directories made empty by package deletion.  This has
+     effect on `${targetdir}' but not for `${packagedir}'.
+
+  5. The package directory is deleted if the option -k is not supplied.
+
+_Usage:_ pkgremove [-hkpV] [-P <DIR>] [-t <DIR>] [package_name ...]
+
+   To remove a package, just execute the command:
+
+     pkgremove xz-5.2.2-x86_64+1
+
+   To remove multiple versions of the same package:
+
+     pkgremove xz*
+
+   To remove multiple packages at once:
+
+     pkgremove foo bar baz ...
+
+   Detailed output (very verbose):
+
+     pkgremove -V xz-5.2.2-x86_64+1
+
+   Removing from a different directory tree and target:
+
+     pkgremove -P /tmp/pkgdir -T /tmp/targetdir lzip-1.17-x86_64+1
+
+   Pruning conflicts:
+
+     pkgremove -p -V hunter
+
+4.3 Upgrading packages
+======================
+
+This sort order is particularly useful just before the actual package
+upgrade, because it helps to understand how the package upgrade works:
+
+  1. Prepare temporary location for the incoming package.
+
+  2. Pre-install incoming package into the temporary location.
+
+  3. Remove packages under the same name: this is considered as the old
+     packages. (Default behaviour if -k is not supplied).
+
+  4. Upgrade or install the package calling to `pkgadd'.
+
+  5. Delete temporary location of the package.
+
+_Usage:_ pkgupgrade [-hkVw] [-P <DIR>] [-t <DIR>] [package.tlz ...]
+
+   Upgrading a package is simple as:
+
+     pkgupgrade coreutils-8.25-x86_64+1.tlz
+
+`pkgupgrade' uses `pkgadd' and `pkgremove' to upgrade software
+packages.  So it inherits the properties of each utility, except here,
+only the essential options are provided.  For example, the option -V
+(for a detailed output) belongs to when these utilities are invoked.
+The options -P and -t work in the same way as the previous examples for
+`pkgadd', `pkgremove'.  `pkgupgrade' will try to update the package or
+to install it (in case it has not been installed).
+
+   To see what packages will be updated (if any), always type:
+
+     pkgupgrade -w coreutils-8.25-x86_64+1.tlz
+
+4.4 Notes
+=========
+
+   * Some signals like HUP INT QUIT ABRT TERM are ignored on the
+     package installation or deinstallation.  The intention is to ignore
+     the cancellation while the package is being installed or removed
+     (e.g.  Ctrl+C, terminal window closed, etc.).  The installation or
+     removal of a package can be crucial for the proper functioning of
+     the system.
+
+   * The meta file is read from the directory where the package is
+     found.
+
+   * A post-install script is read from
+     `${packagedir}/package_name/var/lib/qi/post-install/name.install'.
+
+   * Default behavior is to upgrade or install a package removing old
+     packages, this is "packages found under the same name".  If you
+     want to preserve the multiple versions of the same package, you
+     must pass the -k option.
+
+   ---------- Footnotes ----------
+
+   (1) The official guide for Graft can be found at
+`http://peters.gormand.com.au/Home/tools/graft/graft.html'.
+
+
+File: qi.info,  Node: Recipes,  Next: Order files,  Prev: Packages,  Up: Top
+
+5 Recipes
+*********
+
+A recipe is a file telling qi what to do.  Most often, the recipe tells
+qi how to build a binary package from a source tarball.
+
+   A recipe has two parts: a list of variable definitions and a list of
+sections.  By convention, the syntax of a section is:
+
+     section_name() {
+       section lines
+     }
+
+   The section name is followed by parentheses, one space and an opening
+brace.  The line finishing the section contains just a closing brace.
+The section names or the function names currently recognized are
+`build'.
+
+   The `build' section is an augmented shell script.  This is the main
+section (or *shell function*) which contains the instructions to build
+and produce a package.
+
+5.1 Variables
+=============
+
+A "variable" is a *shell variable* defined either in `qirc' or in a
+recipe to represent a string of text, called the variable's "value".
+These values are substituted by explicit request in the definitions of
+other variables or in calls to external commands.
+
+   Variables can represent lists of file names, options to pass to
+compilers, programs to run, directories to look in for source files,
+directories to write output in, or anything else you can imagine.
+
+   Definitions of variables in qi have four levels of precedence.
+Options which define variables from the command-line override those
+specified in the `qirc' file, while variables defined in the recipe
+override those specified in `qirc', taking priority over those
+variables settled by options via command-line.  Finally, some variables
+(arch, jobs, outdir, worktree, tardir, netget, rsync) have default
+values if they are not defined anywhere.
+
+   Options that set variables through the command-line can only
+reference variables defined in `qirc' and variables with default values.
+
+   Definitions of variables in `qirc' can only reference variables
+previously defined in `qirc' and variables with default values.
+
+   Definitions of variables in the recipe can only reference variables
+settled by command-line, variables previously defined in the recipe,
+variables defined in `qirc', and variables with default values.
+
+5.1.1 Special variables
+-----------------------
+
+The three variables `arch', `jobs', and `outdir' can only be set using
+command line options or in `qirc'.  If not specified, they have default
+values.
+
+   `arch' is the architecture to compose the package name.  Its value
+is available in the recipe as `${arch}'.  Default value is the output
+of `uname -m'.
+
+   `jobs' is the number of jobs to pass to the compiler.  Its default
+value is available in the recipe as `${jobs}'.  Defaults to `1'.
+
+   `outdir' is the directory where the produced packages are written.
+This variable cannot be redefined in the recipe.  Defaults to
+`/var/cache/qi/packages'.
+
+   `worktree' is the working tree where archives, patches, and recipes
+are expected.  This variable cannot be redefined in the recipe.
+Defaults to `/usr/src/qi'.
+
+   The variable `tardir' is defined in the recipe to the directory
+where the tarball containing the source can be found.  The full name of
+the tarball is commonly used as `${tardir}/$tarname'.  A value of `.'
+for `tardir' sets it to the value of the CWD (Current Working
+Directory), this means, from where the recipe is located.
+
+   The two variables `srcdir' and `destdir' can be defined in the
+recipe, as any other variable, but if they are not, Qi uses default
+values for them when building the package.
+
+   `srcdir' contains the source code to be compiled, and defaults to
+`${program}-${version}'.
+
+   `destdir' is the place where the built package will be installed,
+and defaults to `${TMPDIR}/package-${program}'.
+
+   If `pkgname' is left undefined, the special variable `program' is
+assigned by default.  If `pkgversion' is left undefined, the special
+variable `version' is assigned by default.
+
+   `pkgname', `pkgversion', along with `version', `arch', and
+`release', are used to produce the name of the package in the form
+`${pkgname}-${pkgversion}-${arch}+${release}.tlz'.  All of them must be
+defined in the recipe, excepting `arch', which is optional.
+
+   * `program': name of the package.
+
+   * `version': version of the package.
+
+   * `arch': architecture of the package.
+
+   * `release': release number of the package. It is recommended to
+     increase this number after any significant change in the recipe is
+     made.
+
+Obtaining sources over the network must be declared in the recipe using
+the `fetch' variable.  Use double quotes for separated values.
+
+   The variables `netget' and `rsync' can be defined in `qirc' to
+establish a network downloader in order to get the sources.  If they
+are not defined, qi uses default values:
+
+   `netget' is the general network downloader tool for use, and
+defaults to `wget -c -w1 -t3 --no-check-certificate'.
+
+   `rsync' is the network tool for sources containing the prefix for
+the RSYNC protocol, and defaults to `rsync -v -a -L -z -i --progress'.
+
+There are three important variables to produce meta information of the
+package: `description', `homepage', `license'.
+
+   The variable `description' is special to write the description of the
+package, which will be shown when installed.
+
+   A description has two parts: a brief description and a long
+description.  By convention, the syntax of a description is:
+
+     description="
+     Brief description.
+
+     Long description.
+     "
+
+The first (substantial) line of the value is a brief description of the
+software (called the "blurb").  A new (blank) line is followed to
+separate the brief description from the long description.
+
+   An example looks like:
+
+     description="
+     A source builder and a package manager.
+
+     Qi is a source builder and a package manager.  It contains a set of
+     tools to build, install, remove, and upgrade software packages.
+
+     Qi follows the philosophy of the simplicity without adding too many
+     features, such as those that can be found in popular package managers.
+     Basically it does two things: builds packages and manages them.
+     "
+
+   * Consider a length limit of 78 characters as maximum.  *Note The
+     meta file: Recipes.
+
+The `homepage' variable is used simply to declare the main site or home
+of the source, thus:
+
+     homepage=http://www.dragora.org
+
+The variable `license' is used for license information(1).  Some code
+in the program can be covered by license A, license B, or license C.
+For "separate licensing" or "heterogeneous licensing", we suggest using
+*|* for a disjunction, *&* for a conjunction (if that ever happens in a
+significant way), and comma for heterogeneous licensing.  Comma would
+have lower precedence.  Plus added special terms.
+
+     license="LGPL, GPL | Artistic, GPL + added permission"
+
+5.1.2 Variables from the environment
+------------------------------------
+
+The variables `QICFLAGS', `QICXXFLAGS', and `QILDFLAGS' have no effect
+by default.  The environment variables such as `CFLAGS', `CXXFLAGS',
+and `LDFLAGS' are unset at compile time.
+
+   Recommended practices is to set variables in front of `configure' or
+in front of _make(1)_ instead of exporting to the environment.  As
+follows:
+
+     Variables not defined in a site shell script can be set in the
+     environment passed to configure. However, some packages may run
+     configure again during the build, and the customized values of
+     these variables may be lost. In order to avoid this problem, you
+     should set them in the configure command line, using `VAR=value'.
+     For example:
+
+     `./configure CC=/usr/local2/bin/gcc'
+
+     `http://gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Defining-Variables.html'
+
+     Indeed, while configure can notice the definition of CC in
+     `./configure CC=bizarre-cc', it is impossible to notice it in
+     `CC=bizarre-cc ./configure', which, unfortunately, is what most
+     users do.
+
+     [...]
+
+     configure: error: changes in the environment can compromise the
+     build.
+
+     `http://gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Setting-Output-Variables.html'
+
+     It is not wise for makefiles to depend for their functioning on
+     environment variables set up outside their control, since this
+     would cause different users to get different results from the same
+     makefile.  This is against the whole purpose of most makefiles.
+
+     `http://gnu.org/software/make/manual/make.html#Environment'
+
+5.2 The meta file
+=================
+
+The "meta file" is an external file created by `pkgbuild' when a recipe
+is processed and when a package is produced.  The file is generated as
+`${full_pkgname}.tlz.txt' which contains information about the package
+such as `program', `version', `release'.  Also definitions of the
+special variables `fetch', `description', `homepage', `license'.
+
+   A meta file has the purpose to extract information and the purpose to
+reflect essential information to the user without having to check
+inside the package itself.
+
+   The meta file is basically composed as:
+
+     # Description
+
+     variable=value
+     ...
+
+The description is extracted from the declared variable `description',
+where each line is interpreted literally and where the description is
+pre-formatted to fit in (exactly) 80 columns.  Plus `# ' is prepend to
+each line.
+
+   Followed by new line, the rest is composed by variables; the
+inclusion of its values, may vary.  For example, in addition to the
+special variables, there are implicit variables such as `blurb',
+`depends'.
+
+   The `blurb' variable is related to the special variable
+`description'.  Always taking the first (substantial) line or "brief
+description".
+
+   The value of `depends' only will be included if the `depends' file
+is a regular file.  *Note The depends file: Order files.
+
+Now let's take a look on a real example of a meta file:
+
+     # A lossless data compressor based on the LZMA algorithm.
+     #
+     # Clzip is a lossless data compressor with a user interface similar to
+     # the one of gzip or bzip2.  Clzip is about as fast as gzip, compresses
+     # most files more than bzip2, and is better than both from a data
+     # recovery perspective.
+     #
+     # Clzip uses the lzip file format; the files produced by clzip are fully
+     # compatible with lzip-1.4 or newer, and can be rescued with lziprecover.
+     #
+     # Clzip is in fact a C language version of lzip, intended for embedded
+     # devices or systems lacking a C++ compiler.
+
+     QICFLAGS="-g0 -Os"
+     QICXXFLAGS="-g0 -Os"
+     QILDFLAGS="-s"
+     program=clzip
+     version=1.8
+     release=1
+     blurb="A lossless data compressor based on the LZMA algorithm."
+     homepage="http://lzip.nongnu.org/clzip.html"
+     license="GPLv2+"
+     fetch="http://download.savannah.gnu.org/releases/lzip/clzip/clzip-1.8.tar.gz"
+     depends=" "
+
+   Creation of the meta file is made in `${outdir}'.
+
+5.3 Building packages
+=====================
+
+This sort order is particularly useful just before the actual package
+build, because it helps to understand how a package is being built:
+
+  1. A recipe is read from the current directory, if not, it will be
+     looked in `${worktree}/recipes'.  Names of recipes can be invoked
+     relative to `${worktree}/recipes'.  The recipe must be a regular
+     file and must be readable by the user who is running the command.
+
+  2. Checks are made when the recipe is imported (included), essential
+     variable names cannot be empty: `program', `version', `release'.
+     Also the main function `build()' must be present.
+
+  3. `pkgbuild' tries to obtain the sources remotely if it does not
+     exist locally (`${tardir}').  Once the source is already in place,
+     its timestamp is updated, creating or updating the SHA1 sum.
+
+  4. Required directories are created: `${TMPDIR}/$srcdir',
+     `${outdir}', `${destdir}/var/lib/qi/recipes'.
+
+  5. Sane ownerships and permissions are applied to the full source
+     directory: `${TMPDIR}/$srcdir'.
+
+  6. The main function `build()' is called.  Exits immediately if a
+     command exits with a non-zero status.
+
+  7. A package is going to be created under the following conditions:
+
+        * If `${destdir}' is not empty.
+
+        * If the option -n was not given.
+
+     A copy of the recipe (file) is included on
+     `${destdir}/var/lib/qi/recipes' as `${full_pkgname}.recipe'.
+
+     If the `post-install' script is in the current working directory
+     or from where the recipe name resides, it will be added as
+     `${destdir}/var/lib/qi/post-install/${full_pkgname}.install'.
+
+     The package is produced from the content of `${destdir}'.  First,
+     creating a tarball, and then compressing it using the maximum
+     level of compression of _lzip(1)_.
+
+  8. By default, directories like `${TMPDIR}/$srcdir' and `${destdir}'
+     are deleted.
+
+  9. If the option -U is given, `pkgupgrade' is invoked to install or
+     upgrade the package.
+
+
+_Usage:_ pkgbuild [-hiknU] [-a <ARCH>] [-j <JOBS>] [-o <DIR>] [recipe
+...]
+
+   To build a single package, simply type:
+
+     pkgbuild clzip.recipe
+
+   Compile passing parallel jobs to the compiler for speed up the
+process:
+
+     pkgbuild -j4 clzip.recipe
+
+   To build and install or upgrade multiple packages at once:
+
+     pkgbuild -U clzip.recipe zutils.recipe matias.recipe
+
+   Reading recipes and building from the output of a command:
+
+     cat depends | pkgbuild -
+
+   Incrementing the release number after a significant change in a
+recipe:
+     pkgbuild -i stargazer.recipe
+
+If the recipe name cannot be read from the current directory or from a
+specific path name, `${worktree}/recipes' is used for the search:
+
+   There is a special case for the names of recipes `recipe'.
+`pkgbuild' can complete the recipe name without being required to be
+specified in the command-line, only if the name of the recipe is
+`recipe'.  For example:
+
+     pkgbuild devel/gcc
+
+   Will complete the search as `${worktree}/recipes/devel/gcc/recipe'.
+
+5.4 Writing recipes
+===================
+
+5.4.1 Internal functions
+------------------------
+
+Some internal functions are available to be applied on the recipe:
+
+`unpack()'
+     The unpack function can decompress multiple (compressed) files
+     while verifies the integrity.  Depending on where the function is
+     called, the decompression occurs in the current working directory.
+
+     Usage: `unpack file(s) ...'
+
+     The cases supported for the special extensions are: *.tar, *.tar.*,
+     *.tgz*, *.tbz*, *.tlz*, *.txz*, *.zip, *.ZIP, *.gz, *.bz2, *.lz.
+
+   ---------- Footnotes ----------
+
+   (1) The proposal for `license' was made by Richard M. Stallman at
+`http://lists.gnu.org/archive/html/gnu-linux-libre/2016-05/msg00003.html'.
+
+
+File: qi.info,  Node: Order files,  Next: Examine packages,  Prev: Recipes,  Up: Top
+
+6 Order files
+*************
+
+`pkgorder' has the purpose to resolve the build order through .order
+files.  In other words, is a good complement for `pkgbuild'.
+
+_Usage:_ pkgorder [-x] [file_name.order ...]
+
+Basically, `pkgorder' reads from a declared file which ends in
+".order".  The output is an ordered list of recipe names which can be
+passed to `pkgbuild' (via a pipe) to build a number or a series of
+packages.
+
+   DECLARATION
+
+   If 'a' depends on 'b' and 'c', and 'c' depends on 'b' as well, the
+file might look like:
+
+     a.recipe: c.recipe b.recipe
+     b.recipe:
+     c.recipe: b.recipe
+
+   Each letter represents a recipe name, complete dependencies for the
+first recipe name are listed in descending order, which is printed from
+right to left, and removed from left to right:
+
+   OUTPUT
+
+     b.recipe
+     c.recipe
+     a.recipe
+
+   * Commented lines starting with a '#' are allowed.  Blank lines,
+     colons, parentheses, and end of line are removed.
+
+6.1 The depends file
+====================
+
+When `pkgorder' read from an order file; by default, it will proceed to
+read the dependencies of each recipe.  This behavior can be omitted if
+the -x option is given.
+
+   The procedure for reading the dependencies of each recipe is
+extracting the directory location where the order file resides.  Then
+it iterates over the declared items extracting its location in search
+of the special file `depends'.
+
+   * The `depends' file only is read (sequentially) if it is a regular
+     file and is not empty.
+
+The special file `depends' must contain a list of prerequisites for the
+recipe.  Prerequisites are names of valid recipes, including its
+location.  The location must be relative to `${worktree}' (variable
+described in *note Recipes::).
+
+   Example of a `depends' file declared for _bash.recipe_:
+
+     libs/readline/readline.recipe
+
+   Then, if _core/bash/bash.recipe_ has been declared on _core.order_,
+the output would be:
+
+     ...
+     libs/readline/readline.recipe
+     core/bash/bash.recipe
+     ...
+
+   Combined in a pipe, _readline_ represents the first dependency of
+_bash_:
+
+     `pkgorder core.order | pkgbuild -U -'
+
+
+File: qi.info,  Node: Examine packages,  Next: Messages,  Prev: Order files,  Up: Top
+
+7 Examine packages
+******************
+
+`pkgerupt' is a special command to examine packages for debugging
+purposes.
+
+_Usage:_ pkgerupt [-h] [package.tlz ...]
+
+   When a package name is given `pkgerupt' will create a random
+directory for the package.  The prefix directory where the random
+directory is created is controlled by the `TMPDIR' variable, by default
+`TMPDIR' is assigned to _/tmp_.  Creation mode is "u=,g=rwx,o=rwx"
+(0700).
+
+   The extraction to inspecting a package is equivalent to the shell
+instruction:
+
+     `( umask 000 && cd -- $PRVDIR && lzip -cd - | tar -xf - ) < $file'
+
+   The package content is decompressed in the random (private) directory
+via pipe.  Creation mode is "u=rwx,g=rwx,o=rwx" (0777).
+
+   If there is any substantial change, consider increasing the build
+number when repackaging: edit the value of the `release' variable
+(recipe), compose the output file using the new number.
+
+
+File: qi.info,  Node: Messages,  Next: Exit status,  Prev: Examine packages,  Up: Top
+
+8 Messages
+**********
+
+Some symbols are used for output messages to help to identify the
+messages shown by the tools in Qi.  There are four simple categories
+where the symbols are represented:
+
+
+*Specifics*
+
+   This symbols are unique to identify the running tool:
+
+`+'
+     This symbol belongs to the `pkgadd' tool.
+
+`-'
+     This symbol belongs to the `pkgremove' tool.
+
+`~'
+     This symbol belongs to the `pkgupgrade' tool.
+
+`#'
+     This symbol belongs to the `pkgbuild' tool.
+
+`='
+     This symbol belongs to the `pkgerupt' tool.
+
+`%'
+     This symbol is used to scan a package or to warn when the option
+     is used.
+
+     Specific symbols are enclosed between `( )'.
+
+     *Preventive*
+
+     Preventive symbols are intended to alert the user about unforeseen
+     or important situations, and to meet requirements before
+     proceeding:
+
+`*'
+     Normally used for testing compressed sources, obtain remote
+     sources, or set system permissions.
+
+     Preventive symbols are enclosed between `[ ]'.
+
+     *Informative*
+
+     Informative symbols are intended to inform users the most essential
+     tasks during the execution:
+
+`i'
+     Symbol used when a task is going to be performed or when a task has
+     been completed.
+
+`!'
+     This symbol informs about deleting files.
+
+     Informative symbols are enclosed between `[ ]'.
+
+   *Transitory*
+
+   Transitory symbols are part for occasional changes (`@') but no less
+important.  Also to invoke Qi tools externally (`^').
+
+   Transitory symbols are enclosed between `{ }'.
+
+
+File: qi.info,  Node: Exit status,  Next: GNU Free Documentation License,  Prev: Messages,  Up: Top
+
+9 Exit status
+*************
+
+All the conditions of exit codes are described in this chapter.
+
+`0'
+     Successful completion (no errors).
+
+`1'
+     *Minor common errors:*
+
+        - Illegal option.
+
+        - Option requires an argument.
+
+        - Internal function to load not found.
+
+        - Program (prerequisite) is not available.
+
+`2'
+     *Command execution error*
+
+     Evaluation of external commands or shell arguments.  If it fails,
+     returns 2.
+
+`3'
+     *Integrity check error for compressed files*
+
+     Compressed files means:
+
+        - All the tarballs supported by _tar(1)_.
+
+        - Zip files supported by _unzip(1)_.
+
+        - Gzip files supported by _gzip(1)_.
+
+        - Bzip2 files supported by _bzip2(1)_.
+
+        - Lzip files supported by _lzip(1)_.
+
+`4'
+     *File empty, not regular, or expected*
+
+     Commonly, it is expected:
+
+        - A binary package (.tlz).
+
+        - An installed package to remove.
+
+        - A recipe file.
+
+        - A file of order (.order).
+
+`5'
+     *Empty or not defined variable*
+
+     This exit code is used for reporting about empty or undefined
+     variables.  Usually, variables of the recipe or assigned arrays
+     that are tested.
+
+`6'
+     *Package already installed*
+
+     The package directory for an incoming package already exists.
+
+`10'
+     *Network manager error*
+
+     Exit status from the execution of the network manager tool and its
+     arguments.
+
+Error messages are reported to the standard error.
+
+
+File: qi.info,  Node: GNU Free Documentation License,  Next: Index,  Prev: Exit status,  Up: Top
+
+Appendix A GNU Free Documentation License
+*****************************************
+
+                     Version 1.3, 3 November 2008
+
+     Copyright (C) 2000, 2001, 2002, 2007, 2008 Free Software Foundation, Inc.
+     `http://fsf.org/'
+
+     Everyone is permitted to copy and distribute verbatim copies
+     of this license document, but changing it is not allowed.
+
+  0. PREAMBLE
+
+     The purpose of this License is to make a manual, textbook, or other
+     functional and useful document "free" in the sense of freedom: to
+     assure everyone the effective freedom to copy and redistribute it,
+     with or without modifying it, either commercially or
+     noncommercially.  Secondarily, this License preserves for the
+     author and publisher a way to get credit for their work, while not
+     being considered responsible for modifications made by others.
+
+     This License is a kind of "copyleft", which means that derivative
+     works of the document must themselves be free in the same sense.
+     It complements the GNU General Public License, which is a copyleft
+     license designed for free software.
+
+     We have designed this License in order to use it for manuals for
+     free software, because free software needs free documentation: a
+     free program should come with manuals providing the same freedoms
+     that the software does.  But this License is not limited to
+     software manuals; it can be used for any textual work, regardless
+     of subject matter or whether it is published as a printed book.
+     We recommend this License principally for works whose purpose is
+     instruction or reference.
+
+  1. APPLICABILITY AND DEFINITIONS
+
+     This License applies to any manual or other work, in any medium,
+     that contains a notice placed by the copyright holder saying it
+     can be distributed under the terms of this License.  Such a notice
+     grants a world-wide, royalty-free license, unlimited in duration,
+     to use that work under the conditions stated herein.  The
+     "Document", below, refers to any such manual or work.  Any member
+     of the public is a licensee, and is addressed as "you".  You
+     accept the license if you copy, modify or distribute the work in a
+     way requiring permission under copyright law.
+
+     A "Modified Version" of the Document means any work containing the
+     Document or a portion of it, either copied verbatim, or with
+     modifications and/or translated into another language.
+
+     A "Secondary Section" is a named appendix or a front-matter section
+     of the Document that deals exclusively with the relationship of the
+     publishers or authors of the Document to the Document's overall
+     subject (or to related matters) and contains nothing that could
+     fall directly within that overall subject.  (Thus, if the Document
+     is in part a textbook of mathematics, a Secondary Section may not
+     explain any mathematics.)  The relationship could be a matter of
+     historical connection with the subject or with related matters, or
+     of legal, commercial, philosophical, ethical or political position
+     regarding them.
+
+     The "Invariant Sections" are certain Secondary Sections whose
+     titles are designated, as being those of Invariant Sections, in
+     the notice that says that the Document is released under this
+     License.  If a section does not fit the above definition of
+     Secondary then it is not allowed to be designated as Invariant.
+     The Document may contain zero Invariant Sections.  If the Document
+     does not identify any Invariant Sections then there are none.
+
+     The "Cover Texts" are certain short passages of text that are
+     listed, as Front-Cover Texts or Back-Cover Texts, in the notice
+     that says that the Document is released under this License.  A
+     Front-Cover Text may be at most 5 words, and a Back-Cover Text may
+     be at most 25 words.
+
+     A "Transparent" copy of the Document means a machine-readable copy,
+     represented in a format whose specification is available to the
+     general public, that is suitable for revising the document
+     straightforwardly with generic text editors or (for images
+     composed of pixels) generic paint programs or (for drawings) some
+     widely available drawing editor, and that is suitable for input to
+     text formatters or for automatic translation to a variety of
+     formats suitable for input to text formatters.  A copy made in an
+     otherwise Transparent file format whose markup, or absence of
+     markup, has been arranged to thwart or discourage subsequent
+     modification by readers is not Transparent.  An image format is
+     not Transparent if used for any substantial amount of text.  A
+     copy that is not "Transparent" is called "Opaque".
+
+     Examples of suitable formats for Transparent copies include plain
+     ASCII without markup, Texinfo input format, LaTeX input format,
+     SGML or XML using a publicly available DTD, and
+     standard-conforming simple HTML, PostScript or PDF designed for
+     human modification.  Examples of transparent image formats include
+     PNG, XCF and JPG.  Opaque formats include proprietary formats that
+     can be read and edited only by proprietary word processors, SGML or
+     XML for which the DTD and/or processing tools are not generally
+     available, and the machine-generated HTML, PostScript or PDF
+     produced by some word processors for output purposes only.
+
+     The "Title Page" means, for a printed book, the title page itself,
+     plus such following pages as are needed to hold, legibly, the
+     material this License requires to appear in the title page.  For
+     works in formats which do not have any title page as such, "Title
+     Page" means the text near the most prominent appearance of the
+     work's title, preceding the beginning of the body of the text.
+
+     The "publisher" means any person or entity that distributes copies
+     of the Document to the public.
+
+     A section "Entitled XYZ" means a named subunit of the Document
+     whose title either is precisely XYZ or contains XYZ in parentheses
+     following text that translates XYZ in another language.  (Here XYZ
+     stands for a specific section name mentioned below, such as
+     "Acknowledgements", "Dedications", "Endorsements", or "History".)
+     To "Preserve the Title" of such a section when you modify the
+     Document means that it remains a section "Entitled XYZ" according
+     to this definition.
+
+     The Document may include Warranty Disclaimers next to the notice
+     which states that this License applies to the Document.  These
+     Warranty Disclaimers are considered to be included by reference in
+     this License, but only as regards disclaiming warranties: any other
+     implication that these Warranty Disclaimers may have is void and
+     has no effect on the meaning of this License.
+
+  2. VERBATIM COPYING
+
+     You may copy and distribute the Document in any medium, either
+     commercially or noncommercially, provided that this License, the
+     copyright notices, and the license notice saying this License
+     applies to the Document are reproduced in all copies, and that you
+     add no other conditions whatsoever to those of this License.  You
+     may not use technical measures to obstruct or control the reading
+     or further copying of the copies you make or distribute.  However,
+     you may accept compensation in exchange for copies.  If you
+     distribute a large enough number of copies you must also follow
+     the conditions in section 3.
+
+     You may also lend copies, under the same conditions stated above,
+     and you may publicly display copies.
+
+  3. COPYING IN QUANTITY
+
+     If you publish printed copies (or copies in media that commonly
+     have printed covers) of the Document, numbering more than 100, and
+     the Document's license notice requires Cover Texts, you must
+     enclose the copies in covers that carry, clearly and legibly, all
+     these Cover Texts: Front-Cover Texts on the front cover, and
+     Back-Cover Texts on the back cover.  Both covers must also clearly
+     and legibly identify you as the publisher of these copies.  The
+     front cover must present the full title with all words of the
+     title equally prominent and visible.  You may add other material
+     on the covers in addition.  Copying with changes limited to the
+     covers, as long as they preserve the title of the Document and
+     satisfy these conditions, can be treated as verbatim copying in
+     other respects.
+
+     If the required texts for either cover are too voluminous to fit
+     legibly, you should put the first ones listed (as many as fit
+     reasonably) on the actual cover, and continue the rest onto
+     adjacent pages.
+
+     If you publish or distribute Opaque copies of the Document
+     numbering more than 100, you must either include a
+     machine-readable Transparent copy along with each Opaque copy, or
+     state in or with each Opaque copy a computer-network location from
+     which the general network-using public has access to download
+     using public-standard network protocols a complete Transparent
+     copy of the Document, free of added material.  If you use the
+     latter option, you must take reasonably prudent steps, when you
+     begin distribution of Opaque copies in quantity, to ensure that
+     this Transparent copy will remain thus accessible at the stated
+     location until at least one year after the last time you
+     distribute an Opaque copy (directly or through your agents or
+     retailers) of that edition to the public.
+
+     It is requested, but not required, that you contact the authors of
+     the Document well before redistributing any large number of
+     copies, to give them a chance to provide you with an updated
+     version of the Document.
+
+  4. MODIFICATIONS
+
+     You may copy and distribute a Modified Version of the Document
+     under the conditions of sections 2 and 3 above, provided that you
+     release the Modified Version under precisely this License, with
+     the Modified Version filling the role of the Document, thus
+     licensing distribution and modification of the Modified Version to
+     whoever possesses a copy of it.  In addition, you must do these
+     things in the Modified Version:
+
+       A. Use in the Title Page (and on the covers, if any) a title
+          distinct from that of the Document, and from those of
+          previous versions (which should, if there were any, be listed
+          in the History section of the Document).  You may use the
+          same title as a previous version if the original publisher of
+          that version gives permission.
+
+       B. List on the Title Page, as authors, one or more persons or
+          entities responsible for authorship of the modifications in
+          the Modified Version, together with at least five of the
+          principal authors of the Document (all of its principal
+          authors, if it has fewer than five), unless they release you
+          from this requirement.
+
+       C. State on the Title page the name of the publisher of the
+          Modified Version, as the publisher.
+
+       D. Preserve all the copyright notices of the Document.
+
+       E. Add an appropriate copyright notice for your modifications
+          adjacent to the other copyright notices.
+
+       F. Include, immediately after the copyright notices, a license
+          notice giving the public permission to use the Modified
+          Version under the terms of this License, in the form shown in
+          the Addendum below.
+
+       G. Preserve in that license notice the full lists of Invariant
+          Sections and required Cover Texts given in the Document's
+          license notice.
+
+       H. Include an unaltered copy of this License.
+
+       I. Preserve the section Entitled "History", Preserve its Title,
+          and add to it an item stating at least the title, year, new
+          authors, and publisher of the Modified Version as given on
+          the Title Page.  If there is no section Entitled "History" in
+          the Document, create one stating the title, year, authors,
+          and publisher of the Document as given on its Title Page,
+          then add an item describing the Modified Version as stated in
+          the previous sentence.
+
+       J. Preserve the network location, if any, given in the Document
+          for public access to a Transparent copy of the Document, and
+          likewise the network locations given in the Document for
+          previous versions it was based on.  These may be placed in
+          the "History" section.  You may omit a network location for a
+          work that was published at least four years before the
+          Document itself, or if the original publisher of the version
+          it refers to gives permission.
+
+       K. For any section Entitled "Acknowledgements" or "Dedications",
+          Preserve the Title of the section, and preserve in the
+          section all the substance and tone of each of the contributor
+          acknowledgements and/or dedications given therein.
+
+       L. Preserve all the Invariant Sections of the Document,
+          unaltered in their text and in their titles.  Section numbers
+          or the equivalent are not considered part of the section
+          titles.
+
+       M. Delete any section Entitled "Endorsements".  Such a section
+          may not be included in the Modified Version.
+
+       N. Do not retitle any existing section to be Entitled
+          "Endorsements" or to conflict in title with any Invariant
+          Section.
+
+       O. Preserve any Warranty Disclaimers.
+
+     If the Modified Version includes new front-matter sections or
+     appendices that qualify as Secondary Sections and contain no
+     material copied from the Document, you may at your option
+     designate some or all of these sections as invariant.  To do this,
+     add their titles to the list of Invariant Sections in the Modified
+     Version's license notice.  These titles must be distinct from any
+     other section titles.
+
+     You may add a section Entitled "Endorsements", provided it contains
+     nothing but endorsements of your Modified Version by various
+     parties--for example, statements of peer review or that the text
+     has been approved by an organization as the authoritative
+     definition of a standard.
+
+     You may add a passage of up to five words as a Front-Cover Text,
+     and a passage of up to 25 words as a Back-Cover Text, to the end
+     of the list of Cover Texts in the Modified Version.  Only one
+     passage of Front-Cover Text and one of Back-Cover Text may be
+     added by (or through arrangements made by) any one entity.  If the
+     Document already includes a cover text for the same cover,
+     previously added by you or by arrangement made by the same entity
+     you are acting on behalf of, you may not add another; but you may
+     replace the old one, on explicit permission from the previous
+     publisher that added the old one.
+
+     The author(s) and publisher(s) of the Document do not by this
+     License give permission to use their names for publicity for or to
+     assert or imply endorsement of any Modified Version.
+
+  5. COMBINING DOCUMENTS
+
+     You may combine the Document with other documents released under
+     this License, under the terms defined in section 4 above for
+     modified versions, provided that you include in the combination
+     all of the Invariant Sections of all of the original documents,
+     unmodified, and list them all as Invariant Sections of your
+     combined work in its license notice, and that you preserve all
+     their Warranty Disclaimers.
+
+     The combined work need only contain one copy of this License, and
+     multiple identical Invariant Sections may be replaced with a single
+     copy.  If there are multiple Invariant Sections with the same name
+     but different contents, make the title of each such section unique
+     by adding at the end of it, in parentheses, the name of the
+     original author or publisher of that section if known, or else a
+     unique number.  Make the same adjustment to the section titles in
+     the list of Invariant Sections in the license notice of the
+     combined work.
+
+     In the combination, you must combine any sections Entitled
+     "History" in the various original documents, forming one section
+     Entitled "History"; likewise combine any sections Entitled
+     "Acknowledgements", and any sections Entitled "Dedications".  You
+     must delete all sections Entitled "Endorsements."
+
+  6. COLLECTIONS OF DOCUMENTS
+
+     You may make a collection consisting of the Document and other
+     documents released under this License, and replace the individual
+     copies of this License in the various documents with a single copy
+     that is included in the collection, provided that you follow the
+     rules of this License for verbatim copying of each of the
+     documents in all other respects.
+
+     You may extract a single document from such a collection, and
+     distribute it individually under this License, provided you insert
+     a copy of this License into the extracted document, and follow
+     this License in all other respects regarding verbatim copying of
+     that document.
+
+  7. AGGREGATION WITH INDEPENDENT WORKS
+
+     A compilation of the Document or its derivatives with other
+     separate and independent documents or works, in or on a volume of
+     a storage or distribution medium, is called an "aggregate" if the
+     copyright resulting from the compilation is not used to limit the
+     legal rights of the compilation's users beyond what the individual
+     works permit.  When the Document is included in an aggregate, this
+     License does not apply to the other works in the aggregate which
+     are not themselves derivative works of the Document.
+
+     If the Cover Text requirement of section 3 is applicable to these
+     copies of the Document, then if the Document is less than one half
+     of the entire aggregate, the Document's Cover Texts may be placed
+     on covers that bracket the Document within the aggregate, or the
+     electronic equivalent of covers if the Document is in electronic
+     form.  Otherwise they must appear on printed covers that bracket
+     the whole aggregate.
+
+  8. TRANSLATION
+
+     Translation is considered a kind of modification, so you may
+     distribute translations of the Document under the terms of section
+     4.  Replacing Invariant Sections with translations requires special
+     permission from their copyright holders, but you may include
+     translations of some or all Invariant Sections in addition to the
+     original versions of these Invariant Sections.  You may include a
+     translation of this License, and all the license notices in the
+     Document, and any Warranty Disclaimers, provided that you also
+     include the original English version of this License and the
+     original versions of those notices and disclaimers.  In case of a
+     disagreement between the translation and the original version of
+     this License or a notice or disclaimer, the original version will
+     prevail.
+
+     If a section in the Document is Entitled "Acknowledgements",
+     "Dedications", or "History", the requirement (section 4) to
+     Preserve its Title (section 1) will typically require changing the
+     actual title.
+
+  9. TERMINATION
+
+     You may not copy, modify, sublicense, or distribute the Document
+     except as expressly provided under this License.  Any attempt
+     otherwise to copy, modify, sublicense, or distribute it is void,
+     and will automatically terminate your rights under this License.
+
+     However, if you cease all violation of this License, then your
+     license from a particular copyright holder is reinstated (a)
+     provisionally, unless and until the copyright holder explicitly
+     and finally terminates your license, and (b) permanently, if the
+     copyright holder fails to notify you of the violation by some
+     reasonable means prior to 60 days after the cessation.
+
+     Moreover, your license from a particular copyright holder is
+     reinstated permanently if the copyright holder notifies you of the
+     violation by some reasonable means, this is the first time you have
+     received notice of violation of this License (for any work) from
+     that copyright holder, and you cure the violation prior to 30 days
+     after your receipt of the notice.
+
+     Termination of your rights under this section does not terminate
+     the licenses of parties who have received copies or rights from
+     you under this License.  If your rights have been terminated and
+     not permanently reinstated, receipt of a copy of some or all of
+     the same material does not give you any rights to use it.
+
+ 10. FUTURE REVISIONS OF THIS LICENSE
+
+     The Free Software Foundation may publish new, revised versions of
+     the GNU Free Documentation License from time to time.  Such new
+     versions will be similar in spirit to the present version, but may
+     differ in detail to address new problems or concerns.  See
+     `http://www.gnu.org/copyleft/'.
+
+     Each version of the License is given a distinguishing version
+     number.  If the Document specifies that a particular numbered
+     version of this License "or any later version" applies to it, you
+     have the option of following the terms and conditions either of
+     that specified version or of any later version that has been
+     published (not as a draft) by the Free Software Foundation.  If
+     the Document does not specify a version number of this License,
+     you may choose any version ever published (not as a draft) by the
+     Free Software Foundation.  If the Document specifies that a proxy
+     can decide which future versions of this License can be used, that
+     proxy's public statement of acceptance of a version permanently
+     authorizes you to choose that version for the Document.
+
+ 11. RELICENSING
+
+     "Massive Multiauthor Collaboration Site" (or "MMC Site") means any
+     World Wide Web server that publishes copyrightable works and also
+     provides prominent facilities for anybody to edit those works.  A
+     public wiki that anybody can edit is an example of such a server.
+     A "Massive Multiauthor Collaboration" (or "MMC") contained in the
+     site means any set of copyrightable works thus published on the MMC
+     site.
+
+     "CC-BY-SA" means the Creative Commons Attribution-Share Alike 3.0
+     license published by Creative Commons Corporation, a not-for-profit
+     corporation with a principal place of business in San Francisco,
+     California, as well as future copyleft versions of that license
+     published by that same organization.
+
+     "Incorporate" means to publish or republish a Document, in whole or
+     in part, as part of another Document.
+
+     An MMC is "eligible for relicensing" if it is licensed under this
+     License, and if all works that were first published under this
+     License somewhere other than this MMC, and subsequently
+     incorporated in whole or in part into the MMC, (1) had no cover
+     texts or invariant sections, and (2) were thus incorporated prior
+     to November 1, 2008.
+
+     The operator of an MMC Site may republish an MMC contained in the
+     site under CC-BY-SA on the same site at any time before August 1,
+     2009, provided the MMC is eligible for relicensing.
+
+
+ADDENDUM: How to use this License for your documents
+====================================================
+
+To use this License in a document you have written, include a copy of
+the License in the document and put the following copyright and license
+notices just after the title page:
+
+       Copyright (C)  YEAR  YOUR NAME.
+       Permission is granted to copy, distribute and/or modify this document
+       under the terms of the GNU Free Documentation License, Version 1.3
+       or any later version published by the Free Software Foundation;
+       with no Invariant Sections, no Front-Cover Texts, and no Back-Cover
+       Texts.  A copy of the license is included in the section entitled ``GNU
+       Free Documentation License''.
+
+   If you have Invariant Sections, Front-Cover Texts and Back-Cover
+Texts, replace the "with...Texts." line with this:
+
+         with the Invariant Sections being LIST THEIR TITLES, with
+         the Front-Cover Texts being LIST, and with the Back-Cover Texts
+         being LIST.
+
+   If you have Invariant Sections without Cover Texts, or some other
+combination of the three, merge those two alternatives to suit the
+situation.
+
+   If your document contains nontrivial examples of program code, we
+recommend releasing these examples in parallel under your choice of
+free software license, such as the GNU General Public License, to
+permit their use in free software.
+
+
+File: qi.info,  Node: Index,  Prev: GNU Free Documentation License,  Up: Top
+
+Index
+*****
+
+ [index ]
+* Menu:
+
+* .order files:                          Order files.         (line   6)
+* adding packages:                       Packages.            (line  54)
+* building packages:                     Recipes.             (line 284)
+* environment:                           Invocation.          (line 173)
+* examine packages:                      Examine packages.    (line   6)
+* exit codes:                            Exit status.         (line   6)
+* internal functions:                    Recipes.             (line 375)
+* introduction:                          Introduction.        (line   6)
+* invocation:                            Invocation.          (line   6)
+* notes <1>:                             Packages.            (line 216)
+* notes:                                 Invocation.          (line 216)
+* output messages:                       Messages.            (line   6)
+* packages:                              Packages.            (line   6)
+* recipes:                               Recipes.             (line   6)
+* removing packages:                     Packages.            (line 128)
+* special variables:                     Recipes.             (line  58)
+* the depends file:                      Order files.         (line  41)
+* the meta file:                         Recipes.             (line 218)
+* the qirc file:                         The qirc file.       (line   6)
+* upgrading packages:                    Packages.            (line 181)
+* variables:                             Recipes.             (line  28)
+* variables from the environment:        Recipes.             (line 177)
+* writing recipes:                       Recipes.             (line 372)
+
+
+
+Tag Table:
+Node: Top824
+Node: Introduction1715
+Node: Invocation2763
+Node: The qirc file6983
+Node: Packages8008
+Ref: Packages-Footnote-116096
+Node: Recipes16209
+Ref: Recipes-Footnote-130840
+Node: Order files30985
+Node: Examine packages33217
+Node: Messages34220
+Node: Exit status35848
+Node: GNU Free Documentation License37442
+Node: Index62603
+
+End Tag Table
+
+
+Local Variables:
+coding: iso-8859-1
+End:
