@@ -1,9 +1,11 @@
 
 # Set PKG_CONFIG and PKG_CONFIG_PATH if unset
+
 test -n "${PKG_CONFIG+$PKG_CONFIG}" || \
-    PKG_CONFIG=/usr/bin/pkgconf
+ PKG_CONFIG=/usr/bin/pkgconf
+
 test -n "${PKG_CONFIG_PATH+$PKG_CONFIG_PATH}" || \
-    PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/lib/pkgconfig
+ PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
 
 export PKG_CONFIG PKG_CONFIG_PATH
 
