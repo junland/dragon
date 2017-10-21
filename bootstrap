@@ -72,7 +72,7 @@ usage() {
 version()
 {
     printf "%s\n" \
-     "$PROGRAM 3.13" \
+     "$PROGRAM 3.14" \
      "Copyright (C) 2014-2017 Matias Andres Fonzo." \
      "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>" \
      "This is free software: you are free to change and redistribute it." \
@@ -301,16 +301,10 @@ do
 
         # Ensure toolchain sanity for multilib purposes
         case $arch in
-        *x32)
-            if test ! -e "${crossdir}/lib"
+        i586 | *x32 | x86_64 )
+            if test ! -e "${crossdir}/lib" -a -n "$libSuffix"
             then
-                ln -sf libx32 "${crossdir}/lib" || exit 2
-            fi
-            ;;
-        x86_64)
-            if test ! -e "${crossdir}/lib"
-            then
-                ln -sf lib64 "${crossdir}/lib" || exit 2
+                ln -sf lib${libSuffix} "${crossdir}/lib" || exit 2
             fi
             ;;
         esac
