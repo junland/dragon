@@ -59,7 +59,7 @@ build()
     cd ../gcc-build
 
     ../${program}-${version}/configure SED=sed \
-    BOOT_LDFLAGS="$QILDFLAGS" BOOT_CFLAGS="$QICFLAGS" \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      $multilib_options \
      $gcc_options \
@@ -89,8 +89,11 @@ build()
      --host=$MACHTYPE \
      --target=$MACHTYPE
 
-    make -j${jobs} BOOT_LDFLAGS="$QILDFLAGS" BOOT_CFLAGS="$QICFLAGS"
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} BOOT_LDFLAGS="$QILDFLAGS" \
+                   BOOT_CFLAGS="$QICFLAGS" \
+                   BOOT_CXXFLAGS="$QICXXFLAGS"
+
+    make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Back to source dir
     cd .. && cd "$srcdir"
