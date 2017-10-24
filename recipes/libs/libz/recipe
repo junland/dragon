@@ -42,7 +42,7 @@ build()
 
     cd "$srcdir"
 
-    ./configure CFLAGS="$QICFLAGS" \
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
@@ -50,20 +50,20 @@ build()
      --enable-static
 
     make -j${jobs}
-    make -j${jobs} install DESTDIR="$destdir"
+    make -j${jobs} DESTDIR="$destdir" install
 
-    # Strip manually
+    # Strip manually (LDFLAGS is not picked up)
+    strip --strip-unneeded "${destdir}/usr/lib${libSuffix}"/libz.so*
     strip -g "${destdir}/usr/lib${libSuffix}/libz.a"
+
+    # Fix library permissions
+    chmod 755 "${destdir}/usr/lib${libSuffix}/libz.so.${pkgversion}"
 
     # Compress man pages
     lzip -9 "${destdir}/${mandir}"/man?/*.?
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
