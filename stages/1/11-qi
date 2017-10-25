@@ -23,13 +23,28 @@ make clean
 # Copy our custom qirc to /tools
 cp -f "${worktree}/archive/qi/qirc" /tools/etc/
 
-# Include additional settings from targets/ dir
+# Include additional settings from targets/
+
+# We prefix '--enable-multilib' for targets supporting it,
+# the native GCC wants this option explicitly
+if test -n "$multilib_options"
+then
+    case $multilib_options in
+    *--disable-multilib* | *--enable-multilib*)
+        true
+        ;;
+    *)
+        multilib_options="--enable-multilib $multilib_options"
+        ;;
+    esac
+fi
+
 cat << EOF >> /tools/etc/qirc
 
 # Multilib options
 multilib_options=$multilib_options
 
-# lib<equal> suffix (multilib)
+# lib<equal> suffix (multilib, if any)
 libSuffix=$libSuffix
 
 # GCC (arch-specific) options
