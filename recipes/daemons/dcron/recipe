@@ -1,6 +1,7 @@
 # Build recipe for dcron.
 #
 # Copyright (C) 2017 Alan Beadle, ab.beadle@gmail.com.
+# Copyright (C) 2017 Matias Fonzo, selk@dragora.org.
 #
 # This recipe is free software: you have unlimited permission
 # to copy, distribute and modify it.
@@ -59,15 +60,27 @@ build()
              "${destdir}/etc/cron.weekly"  \
              "${destdir}/etc/cron.monthly"
 
+    # Install dcron perp service
+
+    mkdir -p "${destdir}/etc/perp/dcron"
+
+    cp -p "${worktree}/archive/dcron/rc.log" \
+          "${worktree}/archive/dcron/rc.main" \
+          "${destdir}/etc/perp/dcron/"
+
+    chmod 755 "${destdir}"/etc/perp/dcron/rc.*
+
+    # Be an active service by default
+    chmod +t "${destdir}/etc/perp/dcron"
+
+    # To handle config file(s)
+    touch "${destdir}/etc/perp/dcron/.graft-config"
+
     # Compress man pages
     lzip -9 "${destdir}/${mandir}"/man?/*
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
