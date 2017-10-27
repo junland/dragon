@@ -1,0 +1,86 @@
+# Build recipe for glib (release 2).
+#
+# Copyright (C) 2017 Matias A. Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=glib
+version=2.54.1
+short_version=2.54
+release=1
+
+pkgname=glib2
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=http://download.gnome.org/sources/glib/${short_version}/$tarname
+
+description="
+General purpose library of C routines.
+
+GLib is the low-level core library that forms the basis for projects
+such as GTK+ and GNOME. It provides data structure handling for C,
+portability wrappers, and interfaces for such runtime functionality
+as an event loop, threads, dynamic loading, and an object system.
+"
+
+homepage=
+license=
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog HACKING NEWS README README.commits"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-static \
+     --enable-shared \
+     --enable-debug=no \
+     --with-threads=posix \
+     --with-pcre=system \
+     --with-python=/usr/bin/python3 \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
