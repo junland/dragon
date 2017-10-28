@@ -58,6 +58,7 @@ build()
      --enable-pc-files \
      --with-pkg-config-libdir=/usr/lib/pkgconfig \
      --with-shared \
+     --without-normal \
      --without-debug \
      --without-ada \
      --build="$(cc -dumpmachine)"
@@ -69,13 +70,41 @@ build()
 
     for name in ncurses form panel menu
     do
-        echo "INPUT(-l${name}w)" \
-         > "${destdir}/usr/lib${libSuffix}/lib${name}.so"
-        ln -sf lib${name}w.a "${destdir}/usr/lib${libSuffix}/lib${name}.a"
+        echo "INPUT(-l${name}w)" > \
+         "${destdir}/usr/lib${libSuffix}/lib${name}.so"
+        (
+            cd "${destdir}/usr/lib/pkgconfig" && \
+             ln -sf ${name}w.pc ${name}.pc
+        )
     done
-
-    ln -sf libncurses++w.a "${destdir}/usr/lib${libSuffix}/libncurses++.a"
+    # Backward compatibility
+    (
+        cd "${destdir}/usr/lib${libSuffix}" || exit 2
+        echo "INPUT(-lncursesw)" > libcursesw.so
+        ln -sf libncurses.so libcurses.so
+        ln -sf libncurses++w.a libncurses++.a
+    )
+    # Just in case
     ln -sf ncursesw6-config "${destdir}/usr/bin/ncurses6-config"
+
+    # Make extra support (ABI version 5)
+
+    make distclean
+
+    ./configure CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --with-shared \
+     --without-normal \
+     --without-debug \
+     --without-ada \
+     --without-cxx-binding \
+     --with-abi-version=5 \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} sources libs
+    cp -p lib/lib*.so.5* "${destdir}/usr/lib${libSuffix}/"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
