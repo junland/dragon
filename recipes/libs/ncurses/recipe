@@ -7,8 +7,10 @@
 
 program=ncurses
 version=6.0
-patch_version=20170722
+patch_version=20171021
 release=1
+
+pkgversion=${version}-${patch_version}
 
 tarname=${program}-${version}-${patch_version}.tgz
 
@@ -34,10 +36,10 @@ license=Custom
 
 # Source documentation
 docs="ANNOUNCE AUTHORS COPYING NEWS README TO-DO VERSION"
-docsdir="${docdir}/${program}-${version}"
+docsdir="${docdir}/${program}-${pkgversion}"
 
 # Custom source directory
-srcdir=${program}-${version}-${patch_version}
+srcdir=${program}-${pkgversion}
 
 build()
 {
@@ -54,13 +56,12 @@ build()
      --enable-widec \
      --enable-symlinks \
      --enable-pc-files \
-     --with-pkg-config=/usr/bin/pkgconf \
      --with-shared \
      --without-debug \
      --without-ada \
      --build="$(cc -dumpmachine)"
 
-    make -j${jobs}
+    make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
     # Provide non-widec compatibility
@@ -91,10 +92,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
