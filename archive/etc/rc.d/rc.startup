@@ -17,12 +17,29 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+umask 022
+
+# Parse config file
+
+if test -f /etc/rc.conf
+then
+    while IFS='=' read -r variable value
+    do
+        case $variable in
+        \#* | "")	# Ignore commented or blank lines
+            continue
+            ;;
+        esac
+
+        # Set variable name avoiding code execution
+        eval "$variable=\${value}"
+    done < /etc/rc.conf
+fi
+
 IFS='
  	'
 PATH=/usr/bin:/bin:/usr/sbin:/sbin
 export PATH
-
-umask 022
 
 # Make the kernel send the SIGINT (interrupt) signal to the init process
 ctrlaltdel soft
@@ -44,7 +61,6 @@ mount -v -n -o defaults -t tmpfs tmpfs /run
 
 echo "(Startup) Starting event managing daemon"
 udevd --daemon
-sleep 1
 
 # Request device uevents to replay events at system coldplug
 udevadm trigger --type=subsystems --action=add
@@ -53,6 +69,13 @@ udevadm trigger --type=devices    --action=change
 
 # Wait for event queue
 udevadm settle
+
+# Remount the root filesystem in *read-only mode*, if needed
+if test -w /
+then
+    echo "(Startup) Remounting root filesystem in read-only mode"
+    mount -v -n -o remount,ro /
+fi
 
 # Initialize the Logical Volume Manager
 
@@ -72,15 +95,6 @@ swapon -a
 hwclock --hctosys --localtime
 
 # Perform file system checks
-
-echo "(Startup) Preparing to check the root file system"
-
-# If the root filesystem is not in *read-only mode*, remount it
-if test -w /
-then
-    echo "(Startup) Remounting root filesystem in read-only mode"
-    mount -v -n -o remount,ro /
-fi
 
 # Force file system checks if 'FORCEFSCK' was passed on boot prompt
 grep -q -i FORCEFSCK /proc/cmdline && forcefsck=-f
@@ -124,6 +138,18 @@ fsck $forcefsck -A -C -R -T -a
 
 unset forcefsck
 
+# Set system clock (2/2)
+
+if test "${HWCLOCK:-UTC}" = UTC
+then
+    echo "(Startup) Setting system time from the hardware clock to UTC"
+    hwclock --hctosys --utc
+else
+    echo "(Startup) The system time was already set to local time" 1>&2
+fi
+
+unset HWCLOCK
+
 # Remount the root filesystem in *read-write mode*
 echo "(Startup) Remounting root filesystem in read-write mode"
 mount -v -n -o remount,rw /
@@ -164,30 +190,8 @@ dd if=/dev/urandom of=/etc/random-seed count=1 bs=${size} 2> /dev/null
 chmod 600 /etc/random-seed
 unset size
 
-#### Parse config file
-
-if test -f /etc/rc.conf
-then
-    while IFS='=' read -r variable value
-    do
-        case $variable in
-        \#* | "")	# Ignore commented or blank lines
-            continue
-            ;;
-        esac
-
-        # Set variable name avoiding code execution
-        eval "$variable=\${value}"
-    done < /etc/rc.conf
-fi
-
-# Set terminal attributes
-
-# Screen blanking interval, default sets to 15 minutes
-setterm -blank "${BLANKTIME:-15}"
-unset BLANKTIME
-
-# Set host name and domain name for the system, this is global
+# Set host name and domain name for the system from /etc/rc.conf.
+# This overrides any value given for sysctl(8)
 
 echo "${HOSTNAME:-dragora}"        > /proc/sys/kernel/hostname
 echo "${DOMAINNAME:-example.net}"  > /proc/sys/kernel/domainname
@@ -275,6 +279,14 @@ rm -f /tmp/.ICE-unix/*   \
 find /var/lock /var/run  \
  \( ! -type d -a ! -name utmp \) -exec rm -f '{}' +
 
+# Start to monitor services through perpd(8) instances
+
+echo "(Startup) Monitoring services *through* perpd(8) instances"
+if type perpboot > /dev/null
+then
+    PERP_BASE=/etc/perp perpboot -d
+fi
+
 # Start ALSA (sound support)
 
 if test -x /etc/rc.d/rc.alsa
@@ -297,7 +309,7 @@ then
     /etc/rc.d/rc.local
 fi
 
-# Load keyboard map
+# Load keyboard map from /etc/rc.conf
 
 if test -n "$KEYMAP"
 then
@@ -305,26 +317,9 @@ then
     unset KEYMAP
 fi
 
-# Start to monitor services through perpd(8) instances
+# Set terminal attributes from /etc/rc.conf
 
-echo "(Startup) Monitoring services *through* perpd(8) instances"
-if type perpboot > /dev/null
-then
-    env \
-     PATH=/sbin:/bin:/usr/sbin:/usr/bin \
-     PERP_BASE=/etc/perp \
-     perpboot -d
-fi
-
-# Set system clock (2/2)
-
-if test "${HWCLOCK:-UTC}" = UTC
-then
-    echo "(Startup) Setting system time from the hardware clock to UTC"
-    hwclock --hctosys --utc
-else
-    echo "(Startup) The system time was already set to local time"
-fi
-
-unset HWCLOCK
+# Screen blanking interval, default sets to 15 minutes
+setterm -blank "${BLANKTIME:-15}"
+unset BLANKTIME
 
