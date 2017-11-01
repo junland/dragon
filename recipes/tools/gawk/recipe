@@ -40,7 +40,7 @@ build()
 
     cd "$srcdir"
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
@@ -52,6 +52,12 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
+
+    # Not needed for us when 'gawk.sh' is installed
+    rm -f "${destdir}/etc/profile.d/gawk.csh"
+
+    # To handle config file via graft(1)
+    touch "${destdir}/etc/profile.d/.graft-config"
 
     # Replace hard link with a soft link
     (
