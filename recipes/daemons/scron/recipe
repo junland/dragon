@@ -1,0 +1,85 @@
+# Build recipe for scron.
+#
+# Copyright (C) 2017 Matias Fonzo, selk@dragora.org.
+#
+# This recipe is free software: you have unlimited permission
+# to copy, distribute and modify it.
+
+program=scron
+version=0.4
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://dl.2f30.org/releases/$tarname
+
+description="
+Clock daemon.
+
+Scron schedules commands to be run at specified dates and times.
+"
+
+homepage=http://git.2f30.org/scron
+license=MIT/X
+
+# Source documentation
+docs="LICENSE README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    make -j${jobs} \
+     CFLAGS="$QICFLAGS -std=c99 -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=200809L -D_BSD_SOURCE" \
+     LDFLAGS="$QILDFLAGS -static" \
+     PREFIX=/usr \
+     MANPREFIX=$mandir \
+     DESTDIR="$destdir" install
+
+    # Compress man page and copy the documentation
+
+    lzip -9 "${destdir}/${mandir}/man1/scron.1"
+
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+
+    # Create directories adding the crontab file
+
+    mkdir -p "${destdir}/etc/cron.hourly"  \
+             "${destdir}/etc/cron.daily"   \
+             "${destdir}/etc/cron.weekly"  \
+             "${destdir}/etc/cron.monthly"
+
+    # Incorporate our "run-parts" version for running cron jobs
+    cp -p "${worktree}/archive/scron/run-parts" "${destdir}/usr/bin/"
+    chmod 755 "${destdir}/usr/bin/run-parts"
+
+    # Add the crontab file
+    mkdir -p "${destdir}/etc"
+    cp -p "${worktree}/archive/scron/crontab" "${destdir}/etc/"
+    chmod 644 "${destdir}/etc/crontab"
+
+    # Install scron perp service
+
+    mkdir -p "${destdir}/etc/perp/crond"
+
+    cp -p "${worktree}/archive/scron/rc.log" \
+          "${worktree}/archive/scron/rc.main" \
+          "${destdir}/etc/perp/crond/"
+
+    chmod 755 "${destdir}"/etc/perp/crond/rc.*
+
+    # Be an active service by default
+    chmod +t "${destdir}/etc/perp/crond"
+
+    # To handle config file(s)
+    touch "${destdir}/etc/.graft-config" \
+          "${destdir}/etc/perp/crond/.graft-config"
+}
+
