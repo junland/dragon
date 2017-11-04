@@ -58,7 +58,7 @@ build()
      --enable-pc-files \
      --with-pkg-config-libdir=/usr/lib${libSuffix}/pkgconfig \
      --with-shared \
-     --without-normal \
+     --with-normal \
      --without-debug \
      --without-ada \
      --build="$(cc -dumpmachine)"
@@ -72,6 +72,8 @@ build()
     do
         echo "INPUT(-l${name}w)" > \
          "${destdir}/usr/lib${libSuffix}/lib${name}.so"
+        echo "INPUT(-l${name}w)" > \
+         "${destdir}/usr/lib${libSuffix}/lib${name}.a"
         (
             cd "${destdir}/usr/lib${libSuffix}/pkgconfig" && \
              ln -sf ${name}w.pc ${name}.pc
@@ -86,25 +88,6 @@ build()
     )
     # Just in case
     ln -sf ncursesw6-config "${destdir}/usr/bin/ncurses6-config"
-
-    # Make extra support (ABI version 5)
-
-    make distclean
-
-    ./configure CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --mandir=$mandir \
-     --with-shared \
-     --without-normal \
-     --without-debug \
-     --without-ada \
-     --without-cxx-binding \
-     --with-abi-version=5 \
-     --build="$(cc -dumpmachine)"
-
-    make sources libs
-    cp -p lib/lib*.so.5* "${destdir}/usr/lib${libSuffix}/"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
