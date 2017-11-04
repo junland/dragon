@@ -27,11 +27,16 @@ chgrp utmp  var/log/lastlog var/run/utmp
 chmod 664   var/log/lastlog var/run/utmp
 chmod 600   var/log/btmp
 
-# Symlinks
+# Make symlinks at 'targetdir'
 
-ln -sf usr/bin   bin
-ln -sf usr/lib   lib
-ln -sf usr/sbin  sbin
+for link in bin lib sbin
+do
+    if test ! -e $link
+    then
+        ln -sf usr/${link} $link
+    fi
+done
+unset link
 
 (
     cd opt || exit 1
@@ -66,22 +71,31 @@ libSuffix=X
 
 if test "$libSuffix" != X
 then
-    (
-        cd usr || exit 1
-        rmdir lib/pkgconfig lib/ 2> /dev/null
+    if test ! -e usr/lib${libSuffix}
+    then
+        (
+            cd usr || exit 1
+            rmdir lib/pkgconfig lib/ 2> /dev/null
 
-        mkdir -p lib${libSuffix}
-        ln -s -f lib${libSuffix} lib
-    )
-    (
-        cd usr/local || exit 1
-        rmdir lib/pkgconfig lib/ 2> /dev/null
+            mkdir -p lib${libSuffix}
+            ln -s -f lib${libSuffix} lib
+        )
+    fi
+    if test ! -e usr/local/lib${libSuffix}
+    then
+        (
+            cd usr/local || exit 1
+            rmdir lib/pkgconfig lib/ 2> /dev/null
 
-        mkdir -p lib${libSuffix}
-        ln -s -f lib${libSuffix} lib
-    )
+            mkdir -p lib${libSuffix}
+            ln -s -f lib${libSuffix} lib
+        )
+    fi
 
-    # Symlink at 'targetdir'
+    # Re-create pkgconfig
+    mkdir -p usr/lib/pkgconfig usr/local/lib/pkgconfig
+
+    # Make symlink at 'targetdir'
     rm -f lib
     ln -s usr/lib${libSuffix} lib
 fi
