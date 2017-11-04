@@ -24,10 +24,6 @@
 # 6  = Package already installed
 # 10 = Network manager error
 
-# Override locale settings
-LC_ALL=C
-export LC_ALL
-
 #### Functions
 
 usage()
@@ -318,7 +314,7 @@ build_mode()
                  "$( stat -c "%y %n" "${CWD}/$recipe" )"                     \
                  "$( stat -c "%y %n" "${outdir}/${full_pkgname}.tlz" )"      \
                  ""                                                          \
-                 "This package is going to be built ..."                     \
+                 "    The recipe will be processed."                         \
                  ""
             else
                 warn \
@@ -749,10 +745,9 @@ install_mode()
             do
                 for replace in "${packagedir}/${line}"*
                 do
-                    if test "$(pkgbase $replace)" = "$short_name"
-                    then
-                        continue;
-                    fi
+                    # The search of the package to replace cannot be
+                    # the same to the incoming package for install
+                    test "$(pkgbase $replace)" = "$short_name" && continue;
 
                     warn "Replacing package \`${replace}' ..."
 
@@ -833,10 +828,7 @@ upgrade_mode()
     do
         # The search of the package to remove cannot be the
         # same to the installation of the temporary package
-        if test "$long_name" = "$PRVDIR"
-        then
-            continue;
-        fi
+        test "$long_name" = "$PRVDIR" && continue;
 
         if test "$short_name" = "$(pkgbase $long_name)"
         then
