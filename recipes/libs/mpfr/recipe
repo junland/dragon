@@ -46,12 +46,11 @@ build()
     cd "$srcdir"
 
     # Apply patches from upstream
+    rm -f PATCHES
+
     for file in "${worktree}"/patches/mpfr/patch??*
     do
-        if test -f "$file"
-        then
-            patch -Np1 -i "$file"
-        fi
+        test -f "$file" && patch -p1 < "$file"
     done
 
     ./configure \
@@ -65,8 +64,7 @@ build()
      --enable-thread-safe \
      --build="$(cc -dumpmachine)"
 
-    make -j${jobs}
-    make check
+    make -j${jobs} && make check
     make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Compress info documents deleting index file for the package
