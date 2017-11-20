@@ -316,6 +316,10 @@ build_mode()
                  ""                                                          \
                  "    The recipe will be processed."                         \
                  ""
+            elif test "$_opt_ignoreqsts" = _opt_ignoreqsts
+            then
+                warn "Recipe for '${full_pkgname}.tlz':  Ignored."
+                return 0
             else
                 warn \
                  ""                                                          \
@@ -329,27 +333,36 @@ build_mode()
                  ""
 
                 # In non-interactive mode, the user is asked about
-                # rebuilding the package; in interactive mode,
-                # the user need to pass the option explicitly
+                # rebuilding the package.  In interactive mode,
+                # the user need to pass the option explicitly.
 
                 if test ! -t 0
                 then
-                    printf "Do you want to rebuild this package? {y/N} " > /dev/tty
+                    printf "Do you want to rebuild this package? {y/n/N} " > /dev/tty
                     IFS= read -r REPLY < /dev/tty || exit 2
                     case $REPLY in
                     [yY]*)
                         echo "$REPLY" > /dev/tty
                         unset REPLY
                         ;;
+                    N*)
+                        unset REPLY
+                        _opt_ignoreqsts=_opt_ignoreqsts
+                        readonly _opt_ignoreqsts
+                        echo "Ignoring old recipes (compared to the provided package) ..." > /dev/tty
+                        echo ""
+                        return 0
+                        ;;
                     *)
                         unset REPLY
                         echo "Recipe for '${full_pkgname}.tlz':  Cancelled." > /dev/tty
+                        echo ""
                         return 0
                         ;;
                     esac
                 else
-                    warn "See '$PROGRAM -h' for more information."
-                    exit 6;
+                    warn "(Use -f to reprocess ${CWD}/$recipe)." ""
+                    return 6;
                 fi
             fi
         fi
@@ -1010,6 +1023,7 @@ mode=""
 verbose=0
 graft_v=-v
 _isUpgrade=""
+_opt_ignoreqsts=_opt_ignoreqsts.off
 TMPDIR="${TMPDIR:=/usr/src/qi/build}"
 QICFLAGS="${QICFLAGS:=-g0 -Os}"
 QICXXFLAGS="${QICXXFLAGS:=$QICFLAGS}"
