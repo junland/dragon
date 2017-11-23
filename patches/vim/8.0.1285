@@ -1,0 +1,2377 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1286
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1285
+Problem:    Distributed autoload files may clash with user files. (Andy
+            Wokula)
+Solution:   Use the "autoload/dist" directory.
+Files:      runtime/filetype.vim, runtime/autoload/filetype.vim,
+            runtime/autoload/dist/ft.vim, runtime/scripts.vim, Filelist,
+            src/Makefile, nsis/gvim.nsi
+
+
+*** ../vim-8.0.1284/runtime/filetype.vim	2017-11-09 21:05:27.266425176 +0100
+--- runtime/filetype.vim	2017-11-11 15:19:06.847389631 +0100
+***************
+*** 1,7 ****
+  " Vim support file to detect file types
+  "
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last Change:	2017 Nov 09
+  
+  " Listen very carefully, I will say this only once
+  if exists("did_load_filetypes")
+--- 1,7 ----
+  " Vim support file to detect file types
+  "
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last Change:	2017 Nov 11
+  
+  " Listen very carefully, I will say this only once
+  if exists("did_load_filetypes")
+***************
+*** 52,58 ****
+  au BufNewFile,BufRead $VIMRUNTIME/doc/*.txt	setf help
+  
+  " Abaqus or Trasys
+! au BufNewFile,BufRead *.inp			call filetype#Check_inp()
+  
+  " A-A-P recipe
+  au BufNewFile,BufRead *.aap			setf aap
+--- 52,58 ----
+  au BufNewFile,BufRead $VIMRUNTIME/doc/*.txt	setf help
+  
+  " Abaqus or Trasys
+! au BufNewFile,BufRead *.inp			call dist#ft#Check_inp()
+  
+  " A-A-P recipe
+  au BufNewFile,BufRead *.aap			setf aap
+***************
+*** 154,160 ****
+  
+  " Assembly (all kinds)
+  " *.lst is not pure assembly, it has two extra columns (address, byte codes)
+! au BufNewFile,BufRead *.asm,*.[sS],*.[aA],*.mac,*.lst	call filetype#FTasm()
+  
+  " Macro (VAX)
+  au BufNewFile,BufRead *.mar			setf vmasm
+--- 154,160 ----
+  
+  " Assembly (all kinds)
+  " *.lst is not pure assembly, it has two extra columns (address, byte codes)
+! au BufNewFile,BufRead *.asm,*.[sS],*.[aA],*.mac,*.lst	call dist#ft#FTasm()
+  
+  " Macro (VAX)
+  au BufNewFile,BufRead *.mar			setf vmasm
+***************
+*** 184,190 ****
+  au BufNewFile,BufRead *.mch,*.ref,*.imp		setf b
+  
+  " BASIC or Visual Basic
+! au BufNewFile,BufRead *.bas			call filetype#FTVB("basic")
+  
+  " Visual Basic Script (close to Visual Basic) or Visual Basic .NET
+  au BufNewFile,BufRead *.vb,*.vbs,*.dsm,*.ctl	setf vb
+--- 184,190 ----
+  au BufNewFile,BufRead *.mch,*.ref,*.imp		setf b
+  
+  " BASIC or Visual Basic
+! au BufNewFile,BufRead *.bas			call dist#ft#FTVB("basic")
+  
+  " Visual Basic Script (close to Visual Basic) or Visual Basic .NET
+  au BufNewFile,BufRead *.vb,*.vbs,*.dsm,*.ctl	setf vb
+***************
+*** 202,208 ****
+  	\ if getline(1) =~ '^/\*' | setf rexx | else | setf dosbatch | endif
+  
+  " Batch file for 4DOS
+! au BufNewFile,BufRead *.btm			call filetype#FTbtm()
+  
+  " BC calculator
+  au BufNewFile,BufRead *.bc			setf bc
+--- 202,208 ----
+  	\ if getline(1) =~ '^/\*' | setf rexx | else | setf dosbatch | endif
+  
+  " Batch file for 4DOS
+! au BufNewFile,BufRead *.btm			call dist#ft#FTbtm()
+  
+  " BC calculator
+  au BufNewFile,BufRead *.bc			setf bc
+***************
+*** 222,228 ****
+  
+  " BIND zone
+  au BufNewFile,BufRead named.root		setf bindzone
+! au BufNewFile,BufRead *.db			call filetype#BindzoneCheck('')
+  
+  " Blank
+  au BufNewFile,BufRead *.bl			setf blank
+--- 222,228 ----
+  
+  " BIND zone
+  au BufNewFile,BufRead named.root		setf bindzone
+! au BufNewFile,BufRead *.db			call dist#ft#BindzoneCheck('')
+  
+  " Blank
+  au BufNewFile,BufRead *.bl			setf blank
+***************
+*** 238,244 ****
+  endif
+  
+  " C or lpc
+! au BufNewFile,BufRead *.c			call filetype#FTlpc()
+  
+  " Calendar
+  au BufNewFile,BufRead calendar			setf calendar
+--- 238,244 ----
+  endif
+  
+  " C or lpc
+! au BufNewFile,BufRead *.c			call dist#ft#FTlpc()
+  
+  " Calendar
+  au BufNewFile,BufRead calendar			setf calendar
+***************
+*** 292,298 ****
+  " .h files can be C, Ch C++, ObjC or ObjC++.
+  " Set c_syntax_for_h if you want C, ch_syntax_for_h if you want Ch. ObjC is
+  " detected automatically.
+! au BufNewFile,BufRead *.h			call filetype#FTheader()
+  
+  " Ch (CHscript)
+  au BufNewFile,BufRead *.chf			setf ch
+--- 292,298 ----
+  " .h files can be C, Ch C++, ObjC or ObjC++.
+  " Set c_syntax_for_h if you want C, ch_syntax_for_h if you want Ch. ObjC is
+  " detected automatically.
+! au BufNewFile,BufRead *.h			call dist#ft#FTheader()
+  
+  " Ch (CHscript)
+  au BufNewFile,BufRead *.chf			setf ch
+***************
+*** 326,332 ****
+  au BufNewFile,BufRead *..ch			setf chill
+  
+  " Changes for WEB and CWEB or CHILL
+! au BufNewFile,BufRead *.ch			call filetype#FTchange()
+  
+  " ChordPro
+  au BufNewFile,BufRead *.chopro,*.crd,*.cho,*.crdpro,*.chordpro	setf chordpro
+--- 326,332 ----
+  au BufNewFile,BufRead *..ch			setf chill
+  
+  " Changes for WEB and CWEB or CHILL
+! au BufNewFile,BufRead *.ch			call dist#ft#FTchange()
+  
+  " ChordPro
+  au BufNewFile,BufRead *.chopro,*.crd,*.cho,*.crdpro,*.chordpro	setf chordpro
+***************
+*** 338,344 ****
+  au BufNewFile,BufRead *.eni			setf cl
+  
+  " Clever or dtd
+! au BufNewFile,BufRead *.ent			call filetype#FTent()
+  
+  " Clipper (or FoxPro; could also be eviews)
+  au BufNewFile,BufRead *.prg
+--- 338,344 ----
+  au BufNewFile,BufRead *.eni			setf cl
+  
+  " Clever or dtd
+! au BufNewFile,BufRead *.ent			call dist#ft#FTent()
+  
+  " Clipper (or FoxPro; could also be eviews)
+  au BufNewFile,BufRead *.prg
+***************
+*** 393,401 ****
+  au BufNewFile,BufRead *Eterm/*.cfg		setf eterm
+  
+  " Euphoria 3 or 4
+! au BufNewFile,BufRead *.eu,*.ew,*.ex,*.exu,*.exw  call filetype#EuphoriaCheck()
+  if has("fname_case")
+!    au BufNewFile,BufRead *.EU,*.EW,*.EX,*.EXU,*.EXW  call filetype#EuphoriaCheck()
+  endif
+  
+  " Lynx config files
+--- 393,401 ----
+  au BufNewFile,BufRead *Eterm/*.cfg		setf eterm
+  
+  " Euphoria 3 or 4
+! au BufNewFile,BufRead *.eu,*.ew,*.ex,*.exu,*.exw  call dist#ft#EuphoriaCheck()
+  if has("fname_case")
+!    au BufNewFile,BufRead *.EU,*.EW,*.EX,*.EXU,*.EXW  call dist#ft#EuphoriaCheck()
+  endif
+  
+  " Lynx config files
+***************
+*** 442,448 ****
+  au BufNewFile,BufRead *.desc			setf desc
+  
+  " the D language or dtrace
+! au BufNewFile,BufRead *.d			call filetype#DtraceCheck()
+  
+  " Desktop files
+  au BufNewFile,BufRead *.desktop,.directory	setf desktop
+--- 442,448 ----
+  au BufNewFile,BufRead *.desc			setf desc
+  
+  " the D language or dtrace
+! au BufNewFile,BufRead *.d			call dist#ft#DtraceCheck()
+  
+  " Desktop files
+  au BufNewFile,BufRead *.desktop,.directory	setf desktop
+***************
+*** 474,480 ****
+  	\ endif
+  
+  " DCL (Digital Command Language - vms) or DNS zone file
+! au BufNewFile,BufRead *.com			call filetype#BindzoneCheck('dcl')
+  
+  " DOT
+  au BufNewFile,BufRead *.dot			setf dot
+--- 474,480 ----
+  	\ endif
+  
+  " DCL (Digital Command Language - vms) or DNS zone file
+! au BufNewFile,BufRead *.com			call dist#ft#BindzoneCheck('dcl')
+  
+  " DOT
+  au BufNewFile,BufRead *.dot			setf dot
+***************
+*** 522,528 ****
+  au BufNewFile,BufRead *.ecd			setf ecd
+  
+  " Eiffel or Specman or Euphoria
+! au BufNewFile,BufRead *.e,*.E			call filetype#FTe()
+  
+  " Elinks configuration
+  au BufNewFile,BufRead */etc/elinks.conf,*/.elinks/elinks.conf	setf elinks
+--- 522,528 ----
+  au BufNewFile,BufRead *.ecd			setf ecd
+  
+  " Eiffel or Specman or Euphoria
+! au BufNewFile,BufRead *.e,*.E			call dist#ft#FTe()
+  
+  " Elinks configuration
+  au BufNewFile,BufRead */etc/elinks.conf,*/.elinks/elinks.conf	setf elinks
+***************
+*** 695,701 ****
+  au BufNewFile,BufRead *.t.html			setf tilde
+  
+  " HTML (.shtml and .stm for server side)
+! au BufNewFile,BufRead *.html,*.htm,*.shtml,*.stm  call filetype#FThtml()
+  
+  " HTML with Ruby - eRuby
+  au BufNewFile,BufRead *.erb,*.rhtml		setf eruby
+--- 695,701 ----
+  au BufNewFile,BufRead *.t.html			setf tilde
+  
+  " HTML (.shtml and .stm for server side)
+! au BufNewFile,BufRead *.html,*.htm,*.shtml,*.stm  call dist#ft#FThtml()
+  
+  " HTML with Ruby - eRuby
+  au BufNewFile,BufRead *.erb,*.rhtml		setf eruby
+***************
+*** 722,728 ****
+  au BufNewFile,BufRead *.icn			setf icon
+  
+  " IDL (Interface Description Language)
+! au BufNewFile,BufRead *.idl			call filetype#FTidl()
+  
+  " Microsoft IDL (Interface Description Language)  Also *.idl
+  " MOF = WMI (Windows Management Instrumentation) Managed Object Format
+--- 722,728 ----
+  au BufNewFile,BufRead *.icn			setf icon
+  
+  " IDL (Interface Description Language)
+! au BufNewFile,BufRead *.idl			call dist#ft#FTidl()
+  
+  " Microsoft IDL (Interface Description Language)  Also *.idl
+  " MOF = WMI (Windows Management Instrumentation) Managed Object Format
+***************
+*** 733,742 ****
+  
+  " Indent profile (must come before IDL *.pro!)
+  au BufNewFile,BufRead .indent.pro		setf indent
+! au BufNewFile,BufRead indent.pro		call filetype#ProtoCheck('indent')
+  
+  " IDL (Interactive Data Language)
+! au BufNewFile,BufRead *.pro			call filetype#ProtoCheck('idlang')
+  
+  " Indent RC
+  au BufNewFile,BufRead indentrc			setf indent
+--- 733,742 ----
+  
+  " Indent profile (must come before IDL *.pro!)
+  au BufNewFile,BufRead .indent.pro		setf indent
+! au BufNewFile,BufRead indent.pro		call dist#ft#ProtoCheck('indent')
+  
+  " IDL (Interactive Data Language)
+! au BufNewFile,BufRead *.pro			call dist#ft#ProtoCheck('idlang')
+  
+  " Indent RC
+  au BufNewFile,BufRead indentrc			setf indent
+***************
+*** 950,956 ****
+  au BufNewFile,BufRead *.mason,*.mhtml,*.comp	setf mason
+  
+  " Mathematica, Matlab, Murphi or Objective C
+! au BufNewFile,BufRead *.m			call filetype#FTm()
+  
+  " Mathematica notebook
+  au BufNewFile,BufRead *.nb			setf mma
+--- 950,956 ----
+  au BufNewFile,BufRead *.mason,*.mhtml,*.comp	setf mason
+  
+  " Mathematica, Matlab, Murphi or Objective C
+! au BufNewFile,BufRead *.m			call dist#ft#FTm()
+  
+  " Mathematica notebook
+  au BufNewFile,BufRead *.nb			setf mma
+***************
+*** 980,986 ****
+  au BufNewFile,BufRead *.mix,*.mixal		setf mix
+  
+  " MMIX or VMS makefile
+! au BufNewFile,BufRead *.mms			call filetype#FTmms()
+  
+  " Symbian meta-makefile definition (MMP)
+  au BufNewFile,BufRead *.mmp			setf mmp
+--- 980,986 ----
+  au BufNewFile,BufRead *.mix,*.mixal		setf mix
+  
+  " MMIX or VMS makefile
+! au BufNewFile,BufRead *.mms			call dist#ft#FTmms()
+  
+  " Symbian meta-makefile definition (MMP)
+  au BufNewFile,BufRead *.mmp			setf mmp
+***************
+*** 1068,1077 ****
+  	\   setf nroff |
+  	\ endif
+  au BufNewFile,BufRead *.tr,*.nr,*.roff,*.tmac,*.mom	setf nroff
+! au BufNewFile,BufRead *.[1-9]			call filetype#FTnroff()
+  
+  " Nroff or Objective C++
+! au BufNewFile,BufRead *.mm			call filetype#FTmm()
+  
+  " Not Quite C
+  au BufNewFile,BufRead *.nqc			setf nqc
+--- 1068,1077 ----
+  	\   setf nroff |
+  	\ endif
+  au BufNewFile,BufRead *.tr,*.nr,*.roff,*.tmac,*.mom	setf nroff
+! au BufNewFile,BufRead *.[1-9]			call dist#ft#FTnroff()
+  
+  " Nroff or Objective C++
+! au BufNewFile,BufRead *.mm			call dist#ft#FTmm()
+  
+  " Not Quite C
+  au BufNewFile,BufRead *.nqc			setf nqc
+***************
+*** 1126,1134 ****
+  
+  " Perl
+  if has("fname_case")
+!   au BufNewFile,BufRead *.pl,*.PL		call filetype#FTpl()
+  else
+!   au BufNewFile,BufRead *.pl			call filetype#FTpl()
+  endif
+  au BufNewFile,BufRead *.plx,*.al,*.psgi		setf perl
+  au BufNewFile,BufRead *.p6,*.pm6,*.pl6		setf perl6
+--- 1126,1134 ----
+  
+  " Perl
+  if has("fname_case")
+!   au BufNewFile,BufRead *.pl,*.PL		call dist#ft#FTpl()
+  else
+!   au BufNewFile,BufRead *.pl			call dist#ft#FTpl()
+  endif
+  au BufNewFile,BufRead *.plx,*.al,*.psgi		setf perl
+  au BufNewFile,BufRead *.p6,*.pm6,*.pl6		setf perl6
+***************
+*** 1195,1201 ****
+  au BufNewFile,BufRead .povrayrc			setf povini
+  
+  " Povray, PHP or assembly
+! au BufNewFile,BufRead *.inc			call filetype#FTinc()
+  
+  " Printcap and Termcap
+  au BufNewFile,BufRead *printcap
+--- 1195,1201 ----
+  au BufNewFile,BufRead .povrayrc			setf povini
+  
+  " Povray, PHP or assembly
+! au BufNewFile,BufRead *.inc			call dist#ft#FTinc()
+  
+  " Printcap and Termcap
+  au BufNewFile,BufRead *printcap
+***************
+*** 1224,1236 ****
+  au BufNewFile,BufRead .procmail,.procmailrc	setf procmail
+  
+  " Progress or CWEB
+! au BufNewFile,BufRead *.w			call filetype#FTprogress_cweb()
+  
+  " Progress or assembly
+! au BufNewFile,BufRead *.i			call filetype#FTprogress_asm()
+  
+  " Progress or Pascal
+! au BufNewFile,BufRead *.p			call filetype#FTprogress_pascal()
+  
+  " Software Distributor Product Specification File (POSIX 1387.2-1995)
+  au BufNewFile,BufRead *.psf			setf psf
+--- 1224,1236 ----
+  au BufNewFile,BufRead .procmail,.procmailrc	setf procmail
+  
+  " Progress or CWEB
+! au BufNewFile,BufRead *.w			call dist#ft#FTprogress_cweb()
+  
+  " Progress or assembly
+! au BufNewFile,BufRead *.i			call dist#ft#FTprogress_asm()
+  
+  " Progress or Pascal
+! au BufNewFile,BufRead *.p			call dist#ft#FTprogress_pascal()
+  
+  " Software Distributor Product Specification File (POSIX 1387.2-1995)
+  au BufNewFile,BufRead *.psf			setf psf
+***************
+*** 1316,1322 ****
+  endif
+  
+  " Rexx, Rebol or R
+! au BufNewFile,BufRead *.r,*.R				call filetype#FTr()
+  
+  " Remind
+  au BufNewFile,BufRead .reminders,*.remind,*.rem		setf remind
+--- 1316,1322 ----
+  endif
+  
+  " Rexx, Rebol or R
+! au BufNewFile,BufRead *.r,*.R				call dist#ft#FTr()
+  
+  " Remind
+  au BufNewFile,BufRead .reminders,*.remind,*.rem		setf remind
+***************
+*** 1412,1418 ****
+  au BufNewFile,BufRead sendmail.cf		setf sm
+  
+  " Sendmail .mc files are actually m4.  Could also be MS Message text file.
+! au BufNewFile,BufRead *.mc			call filetype#McSetf()
+  
+  " Services
+  au BufNewFile,BufRead */etc/services		setf services
+--- 1412,1418 ----
+  au BufNewFile,BufRead sendmail.cf		setf sm
+  
+  " Sendmail .mc files are actually m4.  Could also be MS Message text file.
+! au BufNewFile,BufRead *.mc			call dist#ft#McSetf()
+  
+  " Services
+  au BufNewFile,BufRead */etc/services		setf services
+***************
+*** 1453,1475 ****
+  
+  " Shell scripts (sh, ksh, bash, bash2, csh); Allow .profile_foo etc.
+  " Gentoo ebuilds and Arch Linux PKGBUILDs are actually bash scripts
+! au BufNewFile,BufRead .bashrc*,bashrc,bash.bashrc,.bash[_-]profile*,.bash[_-]logout*,.bash[_-]aliases*,*.bash,*/{,.}bash[_-]completion{,.d,.sh}{,/*},*.ebuild,*.eclass,PKGBUILD* call filetype#SetFileTypeSH("bash")
+! au BufNewFile,BufRead .kshrc*,*.ksh call filetype#SetFileTypeSH("ksh")
+! au BufNewFile,BufRead */etc/profile,.profile*,*.sh,*.env call filetype#SetFileTypeSH(getline(1))
+  
+  " Shell script (Arch Linux) or PHP file (Drupal)
+  au BufNewFile,BufRead *.install
+  	\ if getline(1) =~ '<?php' |
+  	\   setf php |
+  	\ else |
+! 	\   call filetype#SetFileTypeSH("bash") |
+  	\ endif
+  
+  " tcsh scripts
+! au BufNewFile,BufRead .tcshrc*,*.tcsh,tcsh.tcshrc,tcsh.login	call filetype#SetFileTypeShell("tcsh")
+  
+  " csh scripts, but might also be tcsh scripts (on some systems csh is tcsh)
+! au BufNewFile,BufRead .login*,.cshrc*,csh.cshrc,csh.login,csh.logout,*.csh,.alias  call filetype#CSH()
+  
+  " Z-Shell script
+  au BufNewFile,BufRead .zprofile,*/etc/zprofile,.zfbfmarks  setf zsh
+--- 1453,1475 ----
+  
+  " Shell scripts (sh, ksh, bash, bash2, csh); Allow .profile_foo etc.
+  " Gentoo ebuilds and Arch Linux PKGBUILDs are actually bash scripts
+! au BufNewFile,BufRead .bashrc*,bashrc,bash.bashrc,.bash[_-]profile*,.bash[_-]logout*,.bash[_-]aliases*,*.bash,*/{,.}bash[_-]completion{,.d,.sh}{,/*},*.ebuild,*.eclass,PKGBUILD* call dist#ft#SetFileTypeSH("bash")
+! au BufNewFile,BufRead .kshrc*,*.ksh call dist#ft#SetFileTypeSH("ksh")
+! au BufNewFile,BufRead */etc/profile,.profile*,*.sh,*.env call dist#ft#SetFileTypeSH(getline(1))
+  
+  " Shell script (Arch Linux) or PHP file (Drupal)
+  au BufNewFile,BufRead *.install
+  	\ if getline(1) =~ '<?php' |
+  	\   setf php |
+  	\ else |
+! 	\   call dist#ft#SetFileTypeSH("bash") |
+  	\ endif
+  
+  " tcsh scripts
+! au BufNewFile,BufRead .tcshrc*,*.tcsh,tcsh.tcshrc,tcsh.login	call dist#ft#SetFileTypeShell("tcsh")
+  
+  " csh scripts, but might also be tcsh scripts (on some systems csh is tcsh)
+! au BufNewFile,BufRead .login*,.cshrc*,csh.cshrc,csh.login,csh.logout,*.csh,.alias  call dist#ft#CSH()
+  
+  " Z-Shell script
+  au BufNewFile,BufRead .zprofile,*/etc/zprofile,.zfbfmarks  setf zsh
+***************
+*** 1540,1546 ****
+  
+  " Snort Configuration
+  au BufNewFile,BufRead *.hog,snort.conf,vision.conf	setf hog
+! au BufNewFile,BufRead *.rules			call filetype#FTRules()
+  
+  " Spec (Linux RPM)
+  au BufNewFile,BufRead *.spec			setf spec
+--- 1540,1546 ----
+  
+  " Snort Configuration
+  au BufNewFile,BufRead *.hog,snort.conf,vision.conf	setf hog
+! au BufNewFile,BufRead *.rules			call dist#ft#FTRules()
+  
+  " Spec (Linux RPM)
+  au BufNewFile,BufRead *.spec			setf spec
+***************
+*** 1564,1570 ****
+  au BufNewFile,BufRead *.tyb,*.typ,*.tyc,*.pkb,*.pks	setf sql
+  
+  " SQL
+! au BufNewFile,BufRead *.sql			call filetype#SQL()
+  
+  " SQLJ
+  au BufNewFile,BufRead *.sqlj			setf sqlj
+--- 1564,1570 ----
+  au BufNewFile,BufRead *.tyb,*.typ,*.tyc,*.pkb,*.pks	setf sql
+  
+  " SQL
+! au BufNewFile,BufRead *.sql			call dist#ft#SQL()
+  
+  " SQLJ
+  au BufNewFile,BufRead *.sqlj			setf sqlj
+***************
+*** 1613,1619 ****
+  
+  " Tads (or Nroff or Perl test file)
+  au BufNewFile,BufRead *.t
+! 	\ if !filetype#FTnroff() && !filetype#FTperl() | setf tads | endif
+  
+  " Tags
+  au BufNewFile,BufRead tags			setf tags
+--- 1613,1619 ----
+  
+  " Tads (or Nroff or Perl test file)
+  au BufNewFile,BufRead *.t
+! 	\ if !dist#ft#FTnroff() && !dist#ft#FTperl() | setf tads | endif
+  
+  " Tags
+  au BufNewFile,BufRead tags			setf tags
+***************
+*** 1642,1648 ****
+  
+  " TeX
+  au BufNewFile,BufRead *.latex,*.sty,*.dtx,*.ltx,*.bbl	setf tex
+! au BufNewFile,BufRead *.tex			call filetype#FTtex()
+  
+  " ConTeXt
+  au BufNewFile,BufRead *.mkii,*.mkiv,*.mkvi   setf context
+--- 1642,1648 ----
+  
+  " TeX
+  au BufNewFile,BufRead *.latex,*.sty,*.dtx,*.ltx,*.bbl	setf tex
+! au BufNewFile,BufRead *.tex			call dist#ft#FTtex()
+  
+  " ConTeXt
+  au BufNewFile,BufRead *.mkii,*.mkiv,*.mkvi   setf context
+***************
+*** 1740,1746 ****
+  	\ endif
+  
+  " Visual Basic (also uses *.bas) or FORM
+! au BufNewFile,BufRead *.frm			call filetype#FTVB("form")
+  
+  " SaxBasic is close to Visual Basic
+  au BufNewFile,BufRead *.sba			setf vb
+--- 1740,1746 ----
+  	\ endif
+  
+  " Visual Basic (also uses *.bas) or FORM
+! au BufNewFile,BufRead *.frm			call dist#ft#FTVB("form")
+  
+  " SaxBasic is close to Visual Basic
+  au BufNewFile,BufRead *.sba			setf vb
+***************
+*** 1830,1839 ****
+  " Xmath
+  au BufNewFile,BufRead *.msc,*.msf		setf xmath
+  au BufNewFile,BufRead *.ms
+! 	\ if !filetype#FTnroff() | setf xmath | endif
+  
+  " XML  specific variants: docbk and xbl
+! au BufNewFile,BufRead *.xml			call filetype#FTxml()
+  
+  " XMI (holding UML models) is also XML
+  au BufNewFile,BufRead *.xmi			setf xml
+--- 1830,1839 ----
+  " Xmath
+  au BufNewFile,BufRead *.msc,*.msf		setf xmath
+  au BufNewFile,BufRead *.ms
+! 	\ if !dist#ft#FTnroff() | setf xmath | endif
+  
+  " XML  specific variants: docbk and xbl
+! au BufNewFile,BufRead *.xml			call dist#ft#FTxml()
+  
+  " XMI (holding UML models) is also XML
+  au BufNewFile,BufRead *.xmi			setf xml
+***************
+*** 1876,1882 ****
+  au BufNewFile,BufRead *.yy,*.yxx,*.y++		setf yacc
+  
+  " Yacc or racc
+! au BufNewFile,BufRead *.y			call filetype#FTy()
+  
+  " Yaml
+  au BufNewFile,BufRead *.yaml,*.yml		setf yaml
+--- 1876,1882 ----
+  au BufNewFile,BufRead *.yy,*.yxx,*.y++		setf yacc
+  
+  " Yacc or racc
+! au BufNewFile,BufRead *.y			call dist#ft#FTy()
+  
+  " Yaml
+  au BufNewFile,BufRead *.yaml,*.yml		setf yaml
+***************
+*** 1892,1900 ****
+  " Zope
+  "   dtml (zope dynamic template markup language), pt (zope page template),
+  "   cpt (zope form controller page template)
+! au BufNewFile,BufRead *.dtml,*.pt,*.cpt		call filetype#FThtml()
+  "   zsql (zope sql method)
+! au BufNewFile,BufRead *.zsql			call filetype#SQL()
+  
+  " Z80 assembler asz80
+  au BufNewFile,BufRead *.z8a			setf z8a
+--- 1892,1900 ----
+  " Zope
+  "   dtml (zope dynamic template markup language), pt (zope page template),
+  "   cpt (zope form controller page template)
+! au BufNewFile,BufRead *.dtml,*.pt,*.cpt		call dist#ft#FThtml()
+  "   zsql (zope sql method)
+! au BufNewFile,BufRead *.zsql			call dist#ft#SQL()
+  
+  " Z80 assembler asz80
+  au BufNewFile,BufRead *.z8a			setf z8a
+***************
+*** 2048,2054 ****
+  
+  " ReDIF
+  " Only used when the .rdf file was not detected to be XML.
+! au BufRead,BufNewFile *.rdf			call filetype#Redif()
+  
+  " Remind
+  au BufNewFile,BufRead .reminders*		call s:StarSetf('remind')
+--- 2048,2054 ----
+  
+  " ReDIF
+  " Only used when the .rdf file was not detected to be XML.
+! au BufRead,BufNewFile *.rdf			call dist#ft#Redif()
+  
+  " Remind
+  au BufNewFile,BufRead .reminders*		call s:StarSetf('remind')
+*** ../vim-8.0.1284/runtime/autoload/filetype.vim	2017-11-09 21:05:27.266425176 +0100
+--- runtime/autoload/filetype.vim	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,741 ****
+- " Vim functions for file type detection
+- "
+- " Maintainer:	Bram Moolenaar <Bram@vim.org>
+- " Last Change:	2017 Nov 09
+- 
+- " These functions are moved here from runtime/filetype.vim to make startup
+- " faster.
+- 
+- " Line continuation is used here, remove 'C' from 'cpoptions'
+- let s:cpo_save = &cpo
+- set cpo&vim
+- 
+- func filetype#Check_inp()
+-   if getline(1) =~ '^\*'
+-     setf abaqus
+-   else
+-     let n = 1
+-     if line("$") > 500
+-       let nmax = 500
+-     else
+-       let nmax = line("$")
+-     endif
+-     while n <= nmax
+-       if getline(n) =~? "^header surface data"
+- 	setf trasys
+- 	break
+-       endif
+-       let n = n + 1
+-     endwhile
+-   endif
+- endfunc
+- 
+- " This function checks for the kind of assembly that is wanted by the user, or
+- " can be detected from the first five lines of the file.
+- func filetype#FTasm()
+-   " make sure b:asmsyntax exists
+-   if !exists("b:asmsyntax")
+-     let b:asmsyntax = ""
+-   endif
+- 
+-   if b:asmsyntax == ""
+-     call filetype#FTasmsyntax()
+-   endif
+- 
+-   " if b:asmsyntax still isn't set, default to asmsyntax or GNU
+-   if b:asmsyntax == ""
+-     if exists("g:asmsyntax")
+-       let b:asmsyntax = g:asmsyntax
+-     else
+-       let b:asmsyntax = "asm"
+-     endif
+-   endif
+- 
+-   exe "setf " . fnameescape(b:asmsyntax)
+- endfunc
+- 
+- func filetype#FTasmsyntax()
+-   " see if file contains any asmsyntax=foo overrides. If so, change
+-   " b:asmsyntax appropriately
+-   let head = " ".getline(1)." ".getline(2)." ".getline(3)." ".getline(4).
+- 	\" ".getline(5)." "
+-   let match = matchstr(head, '\sasmsyntax=\zs[a-zA-Z0-9]\+\ze\s')
+-   if match != ''
+-     let b:asmsyntax = match
+-   elseif ((head =~? '\.title') || (head =~? '\.ident') || (head =~? '\.macro') || (head =~? '\.subtitle') || (head =~? '\.library'))
+-     let b:asmsyntax = "vmasm"
+-   endif
+- endfunc
+- 
+- " Check if one of the first five lines contains "VB_Name".  In that case it is
+- " probably a Visual Basic file.  Otherwise it's assumed to be "alt" filetype.
+- func filetype#FTVB(alt)
+-   if getline(1).getline(2).getline(3).getline(4).getline(5) =~? 'VB_Name\|Begin VB\.\(Form\|MDIForm\|UserControl\)'
+-     setf vb
+-   else
+-     exe "setf " . a:alt
+-   endif
+- endfunc
+- 
+- func filetype#FTbtm()
+-   if exists("g:dosbatch_syntax_for_btm") && g:dosbatch_syntax_for_btm
+-     setf dosbatch
+-   else
+-     setf btm
+-   endif
+- endfunc
+- 
+- func filetype#BindzoneCheck(default)
+-   if getline(1).getline(2).getline(3).getline(4) =~ '^; <<>> DiG [0-9.]\+.* <<>>\|$ORIGIN\|$TTL\|IN\s\+SOA'
+-     setf bindzone
+-   elseif a:default != ''
+-     exe 'setf ' . a:default
+-   endif
+- endfunc
+- 
+- func filetype#FTlpc()
+-   if exists("g:lpc_syntax_for_c")
+-     let lnum = 1
+-     while lnum <= 12
+-       if getline(lnum) =~# '^\(//\|inherit\|private\|protected\|nosave\|string\|object\|mapping\|mixed\)'
+- 	setf lpc
+- 	return
+-       endif
+-       let lnum = lnum + 1
+-     endwhile
+-   endif
+-   setf c
+- endfunc
+- 
+- func filetype#FTheader()
+-   if match(getline(1, min([line("$"), 200])), '^@\(interface\|end\|class\)') > -1
+-     if exists("g:c_syntax_for_h")
+-       setf objc
+-     else
+-       setf objcpp
+-     endif
+-   elseif exists("g:c_syntax_for_h")
+-     setf c
+-   elseif exists("g:ch_syntax_for_h")
+-     setf ch
+-   else
+-     setf cpp
+-   endif
+- endfunc
+- 
+- " This function checks if one of the first ten lines start with a '@'.  In
+- " that case it is probably a change file.
+- " If the first line starts with # or ! it's probably a ch file.
+- " If a line has "main", "include", "//" ir "/*" it's probably ch.
+- " Otherwise CHILL is assumed.
+- func filetype#FTchange()
+-   let lnum = 1
+-   while lnum <= 10
+-     if getline(lnum)[0] == '@'
+-       setf change
+-       return
+-     endif
+-     if lnum == 1 && (getline(1)[0] == '#' || getline(1)[0] == '!')
+-       setf ch
+-       return
+-     endif
+-     if getline(lnum) =~ "MODULE"
+-       setf chill
+-       return
+-     endif
+-     if getline(lnum) =~ 'main\s*(\|#\s*include\|//'
+-       setf ch
+-       return
+-     endif
+-     let lnum = lnum + 1
+-   endwhile
+-   setf chill
+- endfunc
+- 
+- func filetype#FTent()
+-   " This function checks for valid cl syntax in the first five lines.
+-   " Look for either an opening comment, '#', or a block start, '{".
+-   " If not found, assume SGML.
+-   let lnum = 1
+-   while lnum < 6
+-     let line = getline(lnum)
+-     if line =~ '^\s*[#{]'
+-       setf cl
+-       return
+-     elseif line !~ '^\s*$'
+-       " Not a blank line, not a comment, and not a block start,
+-       " so doesn't look like valid cl code.
+-       break
+-     endif
+-     let lnum = lnum + 1
+-   endw
+-   setf dtd
+- endfunc
+- 
+- func filetype#EuphoriaCheck()
+-   if exists('g:filetype_euphoria')
+-     exe 'setf ' . g:filetype_euphoria
+-   else
+-     setf euphoria3
+-   endif
+- endfunc
+- 
+- func filetype#DtraceCheck()
+-   let lines = getline(1, min([line("$"), 100]))
+-   if match(lines, '^module\>\|^import\>') > -1
+-     " D files often start with a module and/or import statement.
+-     setf d
+-   elseif match(lines, '^#!\S\+dtrace\|#pragma\s\+D\s\+option\|:\S\{-}:\S\{-}:') > -1
+-     setf dtrace
+-   else
+-     setf d
+-   endif
+- endfunc
+- 
+- func filetype#FTe()
+-   if exists('g:filetype_euphoria')
+-     exe 'setf ' . g:filetype_euphoria
+-   else
+-     let n = 1
+-     while n < 100 && n < line("$")
+-       if getline(n) =~ "^\\s*\\(<'\\|'>\\)\\s*$"
+- 	setf specman
+- 	return
+-       endif
+-       let n = n + 1
+-     endwhile
+-     setf eiffel
+-   endif
+- endfunc
+- 
+- " Distinguish between HTML, XHTML and Django
+- func filetype#FThtml()
+-   let n = 1
+-   while n < 10 && n < line("$")
+-     if getline(n) =~ '\<DTD\s\+XHTML\s'
+-       setf xhtml
+-       return
+-     endif
+-     if getline(n) =~ '{%\s*\(extends\|block\|load\)\>\|{#\s\+'
+-       setf htmldjango
+-       return
+-     endif
+-     let n = n + 1
+-   endwhile
+-   setf html
+- endfunc
+- 
+- " Distinguish between standard IDL and MS-IDL
+- func filetype#FTidl()
+-   let n = 1
+-   while n < 50 && n < line("$")
+-     if getline(n) =~ '^\s*import\s\+"\(unknwn\|objidl\)\.idl"'
+-       setf msidl
+-       return
+-     endif
+-     let n = n + 1
+-   endwhile
+-   setf idl
+- endfunc
+- 
+- " Distinguish between "default" and Cproto prototype file. */
+- func filetype#ProtoCheck(default)
+-   " Cproto files have a comment in the first line and a function prototype in
+-   " the second line, it always ends in ";".  Indent files may also have
+-   " comments, thus we can't match comments to see the difference.
+-   " IDL files can have a single ';' in the second line, require at least one
+-   " chacter before the ';'.
+-   if getline(2) =~ '.;$'
+-     setf cpp
+-   else
+-     exe 'setf ' . a:default
+-   endif
+- endfunc
+- 
+- func filetype#FTm()
+-   let n = 1
+-   let saw_comment = 0 " Whether we've seen a multiline comment leader.
+-   while n < 100
+-     let line = getline(n)
+-     if line =~ '^\s*/\*'
+-       " /* ... */ is a comment in Objective C and Murphi, so we can't conclude
+-       " it's either of them yet, but track this as a hint in case we don't see
+-       " anything more definitive.
+-       let saw_comment = 1
+-     endif
+-     if line =~ '^\s*\(#\s*\(include\|import\)\>\|@import\>\|//\)'
+-       setf objc
+-       return
+-     endif
+-     if line =~ '^\s*%'
+-       setf matlab
+-       return
+-     endif
+-     if line =~ '^\s*(\*'
+-       setf mma
+-       return
+-     endif
+-     if line =~ '^\c\s*\(\(type\|var\)\>\|--\)'
+-       setf murphi
+-       return
+-     endif
+-     let n = n + 1
+-   endwhile
+- 
+-   if saw_comment
+-     " We didn't see anything definitive, but this looks like either Objective C
+-     " or Murphi based on the comment leader. Assume the former as it is more
+-     " common.
+-     setf objc
+-   elseif exists("g:filetype_m")
+-     " Use user specified default filetype for .m
+-     exe "setf " . g:filetype_m
+-   else
+-     " Default is matlab
+-     setf matlab
+-   endif
+- endfunc
+- 
+- func filetype#FTmms()
+-   let n = 1
+-   while n < 10
+-     let line = getline(n)
+-     if line =~ '^\s*\(%\|//\)' || line =~ '^\*'
+-       setf mmix
+-       return
+-     endif
+-     if line =~ '^\s*#'
+-       setf make
+-       return
+-     endif
+-     let n = n + 1
+-   endwhile
+-   setf mmix
+- endfunc
+- 
+- " This function checks if one of the first five lines start with a dot.  In
+- " that case it is probably an nroff file: 'filetype' is set and 1 is returned.
+- func filetype#FTnroff()
+-   if getline(1)[0] . getline(2)[0] . getline(3)[0] . getline(4)[0] . getline(5)[0] =~ '\.'
+-     setf nroff
+-     return 1
+-   endif
+-   return 0
+- endfunc
+- 
+- func filetype#FTmm()
+-   let n = 1
+-   while n < 10
+-     let line = getline(n)
+-     if line =~ '^\s*\(#\s*\(include\|import\)\>\|@import\>\|/\*\)'
+-       setf objcpp
+-       return
+-     endif
+-     let n = n + 1
+-   endwhile
+-   setf nroff
+- endfunc
+- 
+- func filetype#FTpl()
+-   if exists("g:filetype_pl")
+-     exe "setf " . g:filetype_pl
+-   else
+-     " recognize Prolog by specific text in the first non-empty line
+-     " require a blank after the '%' because Perl uses "%list" and "%translate"
+-     let l = getline(nextnonblank(1))
+-     if l =~ '\<prolog\>' || l =~ '^\s*\(%\+\(\s\|$\)\|/\*\)' || l =~ ':-'
+-       setf prolog
+-     else
+-       setf perl
+-     endif
+-   endif
+- endfunc
+- 
+- func filetype#FTinc()
+-   if exists("g:filetype_inc")
+-     exe "setf " . g:filetype_inc
+-   else
+-     let lines = getline(1).getline(2).getline(3)
+-     if lines =~? "perlscript"
+-       setf aspperl
+-     elseif lines =~ "<%"
+-       setf aspvbs
+-     elseif lines =~ "<?"
+-       setf php
+-     else
+-       call filetype#FTasmsyntax()
+-       if exists("b:asmsyntax")
+- 	exe "setf " . fnameescape(b:asmsyntax)
+-       else
+- 	setf pov
+-       endif
+-     endif
+-   endif
+- endfunc
+- 
+- func filetype#FTprogress_cweb()
+-   if exists("g:filetype_w")
+-     exe "setf " . g:filetype_w
+-     return
+-   endif
+-   if getline(1) =~ '&ANALYZE' || getline(3) =~ '&GLOBAL-DEFINE'
+-     setf progress
+-   else
+-     setf cweb
+-   endif
+- endfunc
+- 
+- func filetype#FTprogress_asm()
+-   if exists("g:filetype_i")
+-     exe "setf " . g:filetype_i
+-     return
+-   endif
+-   " This function checks for an assembly comment the first ten lines.
+-   " If not found, assume Progress.
+-   let lnum = 1
+-   while lnum <= 10 && lnum < line('$')
+-     let line = getline(lnum)
+-     if line =~ '^\s*;' || line =~ '^\*'
+-       call filetype#FTasm()
+-       return
+-     elseif line !~ '^\s*$' || line =~ '^/\*'
+-       " Not an empty line: Doesn't look like valid assembly code.
+-       " Or it looks like a Progress /* comment
+-       break
+-     endif
+-     let lnum = lnum + 1
+-   endw
+-   setf progress
+- endfunc
+- 
+- func filetype#FTprogress_pascal()
+-   if exists("g:filetype_p")
+-     exe "setf " . g:filetype_p
+-     return
+-   endif
+-   " This function checks for valid Pascal syntax in the first ten lines.
+-   " Look for either an opening comment or a program start.
+-   " If not found, assume Progress.
+-   let lnum = 1
+-   while lnum <= 10 && lnum < line('$')
+-     let line = getline(lnum)
+-     if line =~ '^\s*\(program\|unit\|procedure\|function\|const\|type\|var\)\>'
+- 	\ || line =~ '^\s*{' || line =~ '^\s*(\*'
+-       setf pascal
+-       return
+-     elseif line !~ '^\s*$' || line =~ '^/\*'
+-       " Not an empty line: Doesn't look like valid Pascal code.
+-       " Or it looks like a Progress /* comment
+-       break
+-     endif
+-     let lnum = lnum + 1
+-   endw
+-   setf progress
+- endfunc
+- 
+- func filetype#FTr()
+-   let max = line("$") > 50 ? 50 : line("$")
+- 
+-   for n in range(1, max)
+-     " Rebol is easy to recognize, check for that first
+-     if getline(n) =~? '\<REBOL\>'
+-       setf rebol
+-       return
+-     endif
+-   endfor
+- 
+-   for n in range(1, max)
+-     " R has # comments
+-     if getline(n) =~ '^\s*#'
+-       setf r
+-       return
+-     endif
+-     " Rexx has /* comments */
+-     if getline(n) =~ '^\s*/\*'
+-       setf rexx
+-       return
+-     endif
+-   endfor
+- 
+-   " Nothing recognized, use user default or assume Rexx
+-   if exists("g:filetype_r")
+-     exe "setf " . g:filetype_r
+-   else
+-     " Rexx used to be the default, but R appears to be much more popular.
+-     setf r
+-   endif
+- endfunc
+- 
+- func filetype#McSetf()
+-   " Rely on the file to start with a comment.
+-   " MS message text files use ';', Sendmail files use '#' or 'dnl'
+-   for lnum in range(1, min([line("$"), 20]))
+-     let line = getline(lnum)
+-     if line =~ '^\s*\(#\|dnl\)'
+-       setf m4  " Sendmail .mc file
+-       return
+-     elseif line =~ '^\s*;'
+-       setf msmessages  " MS Message text file
+-       return
+-     endif
+-   endfor
+-   setf m4  " Default: Sendmail .mc file
+- endfunc
+- 
+- " Called from filetype.vim and scripts.vim.
+- func filetype#SetFileTypeSH(name)
+-   if expand("<amatch>") =~ g:ft_ignore_pat
+-     return
+-   endif
+-   if a:name =~ '\<csh\>'
+-     " Some .sh scripts contain #!/bin/csh.
+-     call filetype#SetFileTypeShell("csh")
+-     return
+-   elseif a:name =~ '\<tcsh\>'
+-     " Some .sh scripts contain #!/bin/tcsh.
+-     call filetype#SetFileTypeShell("tcsh")
+-     return
+-   elseif a:name =~ '\<zsh\>'
+-     " Some .sh scripts contain #!/bin/zsh.
+-     call filetype#SetFileTypeShell("zsh")
+-     return
+-   elseif a:name =~ '\<ksh\>'
+-     let b:is_kornshell = 1
+-     if exists("b:is_bash")
+-       unlet b:is_bash
+-     endif
+-     if exists("b:is_sh")
+-       unlet b:is_sh
+-     endif
+-   elseif exists("g:bash_is_sh") || a:name =~ '\<bash\>' || a:name =~ '\<bash2\>'
+-     let b:is_bash = 1
+-     if exists("b:is_kornshell")
+-       unlet b:is_kornshell
+-     endif
+-     if exists("b:is_sh")
+-       unlet b:is_sh
+-     endif
+-   elseif a:name =~ '\<sh\>'
+-     let b:is_sh = 1
+-     if exists("b:is_kornshell")
+-       unlet b:is_kornshell
+-     endif
+-     if exists("b:is_bash")
+-       unlet b:is_bash
+-     endif
+-   endif
+-   call filetype#SetFileTypeShell("sh")
+- endfunc
+- 
+- " For shell-like file types, check for an "exec" command hidden in a comment,
+- " as used for Tcl.
+- " Also called from scripts.vim, thus can't be local to this script.
+- func filetype#SetFileTypeShell(name)
+-   if expand("<amatch>") =~ g:ft_ignore_pat
+-     return
+-   endif
+-   let l = 2
+-   while l < 20 && l < line("$") && getline(l) =~ '^\s*\(#\|$\)'
+-     " Skip empty and comment lines.
+-     let l = l + 1
+-   endwhile
+-   if l < line("$") && getline(l) =~ '\s*exec\s' && getline(l - 1) =~ '^\s*#.*\\$'
+-     " Found an "exec" line after a comment with continuation
+-     let n = substitute(getline(l),'\s*exec\s\+\([^ ]*/\)\=', '', '')
+-     if n =~ '\<tclsh\|\<wish'
+-       setf tcl
+-       return
+-     endif
+-   endif
+-   exe "setf " . a:name
+- endfunc
+- 
+- func filetype#CSH()
+-   if exists("g:filetype_csh")
+-     call filetype#SetFileTypeShell(g:filetype_csh)
+-   elseif &shell =~ "tcsh"
+-     call filetype#SetFileTypeShell("tcsh")
+-   else
+-     call filetype#SetFileTypeShell("csh")
+-   endif
+- endfunc
+- 
+- let s:ft_rules_udev_rules_pattern = '^\s*\cudev_rules\s*=\s*"\([^"]\{-1,}\)/*".*'
+- func filetype#FTRules()
+-   let path = expand('<amatch>:p')
+-   if path =~ '^/\(etc/udev/\%(rules\.d/\)\=.*\.rules\|lib/udev/\%(rules\.d/\)\=.*\.rules\)$'
+-     setf udevrules
+-     return
+-   endif
+-   if path =~ '^/etc/ufw/'
+-     setf conf  " Better than hog
+-     return
+-   endif
+-   if path =~ '^/\(etc\|usr/share\)/polkit-1/rules\.d'
+-     setf javascript
+-     return
+-   endif
+-   try
+-     let config_lines = readfile('/etc/udev/udev.conf')
+-   catch /^Vim\%((\a\+)\)\=:E484/
+-     setf hog
+-     return
+-   endtry
+-   let dir = expand('<amatch>:p:h')
+-   for line in config_lines
+-     if line =~ s:ft_rules_udev_rules_pattern
+-       let udev_rules = substitute(line, s:ft_rules_udev_rules_pattern, '\1', "")
+-       if dir == udev_rules
+- 	setf udevrules
+-       endif
+-       break
+-     endif
+-   endfor
+-   setf hog
+- endfunc
+- 
+- func filetype#SQL()
+-   if exists("g:filetype_sql")
+-     exe "setf " . g:filetype_sql
+-   else
+-     setf sql
+-   endif
+- endfunc
+- 
+- " If the file has an extension of 't' and is in a directory 't' or 'xt' then
+- " it is almost certainly a Perl test file.
+- " If the first line starts with '#' and contains 'perl' it's probably a Perl
+- " file.
+- " (Slow test) If a file contains a 'use' statement then it is almost certainly
+- " a Perl file.
+- func filetype#FTperl()
+-   let dirname = expand("%:p:h:t")
+-   if expand("%:e") == 't' && (dirname == 't' || dirname == 'xt')
+-     setf perl
+-     return 1
+-   endif
+-   if getline(1)[0] == '#' && getline(1) =~ 'perl'
+-     setf perl
+-     return 1
+-   endif
+-   if search('^use\s\s*\k', 'nc', 30)
+-     setf perl
+-     return 1
+-   endif
+-   return 0
+- endfunc
+- 
+- " Choose context, plaintex, or tex (LaTeX) based on these rules:
+- " 1. Check the first line of the file for "%&<format>".
+- " 2. Check the first 1000 non-comment lines for LaTeX or ConTeXt keywords.
+- " 3. Default to "latex" or to g:tex_flavor, can be set in user's vimrc.
+- func filetype#FTtex()
+-   let firstline = getline(1)
+-   if firstline =~ '^%&\s*\a\+'
+-     let format = tolower(matchstr(firstline, '\a\+'))
+-     let format = substitute(format, 'pdf', '', '')
+-     if format == 'tex'
+-       let format = 'latex'
+-     elseif format == 'plaintex'
+-       let format = 'plain'
+-     endif
+-   elseif expand('%') =~ 'tex/context/.*/.*.tex'
+-     let format = 'context'
+-   else
+-     " Default value, may be changed later:
+-     let format = exists("g:tex_flavor") ? g:tex_flavor : 'plain'
+-     " Save position, go to the top of the file, find first non-comment line.
+-     let save_cursor = getpos('.')
+-     call cursor(1,1)
+-     let firstNC = search('^\s*[^[:space:]%]', 'c', 1000)
+-     if firstNC " Check the next thousand lines for a LaTeX or ConTeXt keyword.
+-       let lpat = 'documentclass\>\|usepackage\>\|begin{\|newcommand\>\|renewcommand\>'
+-       let cpat = 'start\a\+\|setup\a\+\|usemodule\|enablemode\|enableregime\|setvariables\|useencoding\|usesymbols\|stelle\a\+\|verwende\a\+\|stel\a\+\|gebruik\a\+\|usa\a\+\|imposta\a\+\|regle\a\+\|utilisemodule\>'
+-       let kwline = search('^\s*\\\%(' . lpat . '\)\|^\s*\\\(' . cpat . '\)',
+- 			      \ 'cnp', firstNC + 1000)
+-       if kwline == 1	" lpat matched
+- 	let format = 'latex'
+-       elseif kwline == 2	" cpat matched
+- 	let format = 'context'
+-       endif		" If neither matched, keep default set above.
+-       " let lline = search('^\s*\\\%(' . lpat . '\)', 'cn', firstNC + 1000)
+-       " let cline = search('^\s*\\\%(' . cpat . '\)', 'cn', firstNC + 1000)
+-       " if cline > 0
+-       "   let format = 'context'
+-       " endif
+-       " if lline > 0 && (cline == 0 || cline > lline)
+-       "   let format = 'tex'
+-       " endif
+-     endif " firstNC
+-     call setpos('.', save_cursor)
+-   endif " firstline =~ '^%&\s*\a\+'
+- 
+-   " Translation from formats to file types.  TODO:  add AMSTeX, RevTex, others?
+-   if format == 'plain'
+-     setf plaintex
+-   elseif format == 'context'
+-     setf context
+-   else " probably LaTeX
+-     setf tex
+-   endif
+-   return
+- endfunc
+- 
+- func filetype#FTxml()
+-   let n = 1
+-   while n < 100 && n < line("$")
+-     let line = getline(n)
+-     " DocBook 4 or DocBook 5.
+-     let is_docbook4 = line =~ '<!DOCTYPE.*DocBook'
+-     let is_docbook5 = line =~ ' xmlns="http://docbook.org/ns/docbook"'
+-     if is_docbook4 || is_docbook5
+-       let b:docbk_type = "xml"
+-       if is_docbook5
+- 	let b:docbk_ver = 5
+-       else
+- 	let b:docbk_ver = 4
+-       endif
+-       setf docbk
+-       return
+-     endif
+-     if line =~ 'xmlns:xbl="http://www.mozilla.org/xbl"'
+-       setf xbl
+-       return
+-     endif
+-     let n += 1
+-   endwhile
+-   setf xml
+- endfunc
+- 
+- func filetype#FTy()
+-   let n = 1
+-   while n < 100 && n < line("$")
+-     let line = getline(n)
+-     if line =~ '^\s*%'
+-       setf yacc
+-       return
+-     endif
+-     if getline(n) =~ '^\s*\(#\|class\>\)' && getline(n) !~ '^\s*#\s*include'
+-       setf racc
+-       return
+-     endif
+-     let n = n + 1
+-   endwhile
+-   setf yacc
+- endfunc
+- 
+- func filetype#Redif()
+-   let lnum = 1
+-   while lnum <= 5 && lnum < line('$')
+-     if getline(lnum) =~ "^\ctemplate-type:"
+-       setf redif
+-       return
+-     endif
+-     let lnum = lnum + 1
+-   endwhile
+- endfunc
+- 
+- 
+- " Restore 'cpoptions'
+- let &cpo = s:cpo_save
+- unlet s:cpo_save
+--- 0 ----
+*** ../vim-8.0.1284/runtime/autoload/dist/ft.vim	1970-01-01 01:00:00.000000000 +0100
+--- runtime/autoload/dist/ft.vim	2017-11-11 15:21:35.877152921 +0100
+***************
+*** 0 ****
+--- 1,741 ----
++ " Vim functions for file type detection
++ "
++ " Maintainer:	Bram Moolenaar <Bram@vim.org>
++ " Last Change:	2017 Nov 11
++ 
++ " These functions are moved here from runtime/filetype.vim to make startup
++ " faster.
++ 
++ " Line continuation is used here, remove 'C' from 'cpoptions'
++ let s:cpo_save = &cpo
++ set cpo&vim
++ 
++ func dist#ft#Check_inp()
++   if getline(1) =~ '^\*'
++     setf abaqus
++   else
++     let n = 1
++     if line("$") > 500
++       let nmax = 500
++     else
++       let nmax = line("$")
++     endif
++     while n <= nmax
++       if getline(n) =~? "^header surface data"
++ 	setf trasys
++ 	break
++       endif
++       let n = n + 1
++     endwhile
++   endif
++ endfunc
++ 
++ " This function checks for the kind of assembly that is wanted by the user, or
++ " can be detected from the first five lines of the file.
++ func dist#ft#FTasm()
++   " make sure b:asmsyntax exists
++   if !exists("b:asmsyntax")
++     let b:asmsyntax = ""
++   endif
++ 
++   if b:asmsyntax == ""
++     call dist#ft#FTasmsyntax()
++   endif
++ 
++   " if b:asmsyntax still isn't set, default to asmsyntax or GNU
++   if b:asmsyntax == ""
++     if exists("g:asmsyntax")
++       let b:asmsyntax = g:asmsyntax
++     else
++       let b:asmsyntax = "asm"
++     endif
++   endif
++ 
++   exe "setf " . fnameescape(b:asmsyntax)
++ endfunc
++ 
++ func dist#ft#FTasmsyntax()
++   " see if file contains any asmsyntax=foo overrides. If so, change
++   " b:asmsyntax appropriately
++   let head = " ".getline(1)." ".getline(2)." ".getline(3)." ".getline(4).
++ 	\" ".getline(5)." "
++   let match = matchstr(head, '\sasmsyntax=\zs[a-zA-Z0-9]\+\ze\s')
++   if match != ''
++     let b:asmsyntax = match
++   elseif ((head =~? '\.title') || (head =~? '\.ident') || (head =~? '\.macro') || (head =~? '\.subtitle') || (head =~? '\.library'))
++     let b:asmsyntax = "vmasm"
++   endif
++ endfunc
++ 
++ " Check if one of the first five lines contains "VB_Name".  In that case it is
++ " probably a Visual Basic file.  Otherwise it's assumed to be "alt" filetype.
++ func dist#ft#FTVB(alt)
++   if getline(1).getline(2).getline(3).getline(4).getline(5) =~? 'VB_Name\|Begin VB\.\(Form\|MDIForm\|UserControl\)'
++     setf vb
++   else
++     exe "setf " . a:alt
++   endif
++ endfunc
++ 
++ func dist#ft#FTbtm()
++   if exists("g:dosbatch_syntax_for_btm") && g:dosbatch_syntax_for_btm
++     setf dosbatch
++   else
++     setf btm
++   endif
++ endfunc
++ 
++ func dist#ft#BindzoneCheck(default)
++   if getline(1).getline(2).getline(3).getline(4) =~ '^; <<>> DiG [0-9.]\+.* <<>>\|$ORIGIN\|$TTL\|IN\s\+SOA'
++     setf bindzone
++   elseif a:default != ''
++     exe 'setf ' . a:default
++   endif
++ endfunc
++ 
++ func dist#ft#FTlpc()
++   if exists("g:lpc_syntax_for_c")
++     let lnum = 1
++     while lnum <= 12
++       if getline(lnum) =~# '^\(//\|inherit\|private\|protected\|nosave\|string\|object\|mapping\|mixed\)'
++ 	setf lpc
++ 	return
++       endif
++       let lnum = lnum + 1
++     endwhile
++   endif
++   setf c
++ endfunc
++ 
++ func dist#ft#FTheader()
++   if match(getline(1, min([line("$"), 200])), '^@\(interface\|end\|class\)') > -1
++     if exists("g:c_syntax_for_h")
++       setf objc
++     else
++       setf objcpp
++     endif
++   elseif exists("g:c_syntax_for_h")
++     setf c
++   elseif exists("g:ch_syntax_for_h")
++     setf ch
++   else
++     setf cpp
++   endif
++ endfunc
++ 
++ " This function checks if one of the first ten lines start with a '@'.  In
++ " that case it is probably a change file.
++ " If the first line starts with # or ! it's probably a ch file.
++ " If a line has "main", "include", "//" ir "/*" it's probably ch.
++ " Otherwise CHILL is assumed.
++ func dist#ft#FTchange()
++   let lnum = 1
++   while lnum <= 10
++     if getline(lnum)[0] == '@'
++       setf change
++       return
++     endif
++     if lnum == 1 && (getline(1)[0] == '#' || getline(1)[0] == '!')
++       setf ch
++       return
++     endif
++     if getline(lnum) =~ "MODULE"
++       setf chill
++       return
++     endif
++     if getline(lnum) =~ 'main\s*(\|#\s*include\|//'
++       setf ch
++       return
++     endif
++     let lnum = lnum + 1
++   endwhile
++   setf chill
++ endfunc
++ 
++ func dist#ft#FTent()
++   " This function checks for valid cl syntax in the first five lines.
++   " Look for either an opening comment, '#', or a block start, '{".
++   " If not found, assume SGML.
++   let lnum = 1
++   while lnum < 6
++     let line = getline(lnum)
++     if line =~ '^\s*[#{]'
++       setf cl
++       return
++     elseif line !~ '^\s*$'
++       " Not a blank line, not a comment, and not a block start,
++       " so doesn't look like valid cl code.
++       break
++     endif
++     let lnum = lnum + 1
++   endw
++   setf dtd
++ endfunc
++ 
++ func dist#ft#EuphoriaCheck()
++   if exists('g:filetype_euphoria')
++     exe 'setf ' . g:filetype_euphoria
++   else
++     setf euphoria3
++   endif
++ endfunc
++ 
++ func dist#ft#DtraceCheck()
++   let lines = getline(1, min([line("$"), 100]))
++   if match(lines, '^module\>\|^import\>') > -1
++     " D files often start with a module and/or import statement.
++     setf d
++   elseif match(lines, '^#!\S\+dtrace\|#pragma\s\+D\s\+option\|:\S\{-}:\S\{-}:') > -1
++     setf dtrace
++   else
++     setf d
++   endif
++ endfunc
++ 
++ func dist#ft#FTe()
++   if exists('g:filetype_euphoria')
++     exe 'setf ' . g:filetype_euphoria
++   else
++     let n = 1
++     while n < 100 && n < line("$")
++       if getline(n) =~ "^\\s*\\(<'\\|'>\\)\\s*$"
++ 	setf specman
++ 	return
++       endif
++       let n = n + 1
++     endwhile
++     setf eiffel
++   endif
++ endfunc
++ 
++ " Distinguish between HTML, XHTML and Django
++ func dist#ft#FThtml()
++   let n = 1
++   while n < 10 && n < line("$")
++     if getline(n) =~ '\<DTD\s\+XHTML\s'
++       setf xhtml
++       return
++     endif
++     if getline(n) =~ '{%\s*\(extends\|block\|load\)\>\|{#\s\+'
++       setf htmldjango
++       return
++     endif
++     let n = n + 1
++   endwhile
++   setf html
++ endfunc
++ 
++ " Distinguish between standard IDL and MS-IDL
++ func dist#ft#FTidl()
++   let n = 1
++   while n < 50 && n < line("$")
++     if getline(n) =~ '^\s*import\s\+"\(unknwn\|objidl\)\.idl"'
++       setf msidl
++       return
++     endif
++     let n = n + 1
++   endwhile
++   setf idl
++ endfunc
++ 
++ " Distinguish between "default" and Cproto prototype file. */
++ func dist#ft#ProtoCheck(default)
++   " Cproto files have a comment in the first line and a function prototype in
++   " the second line, it always ends in ";".  Indent files may also have
++   " comments, thus we can't match comments to see the difference.
++   " IDL files can have a single ';' in the second line, require at least one
++   " chacter before the ';'.
++   if getline(2) =~ '.;$'
++     setf cpp
++   else
++     exe 'setf ' . a:default
++   endif
++ endfunc
++ 
++ func dist#ft#FTm()
++   let n = 1
++   let saw_comment = 0 " Whether we've seen a multiline comment leader.
++   while n < 100
++     let line = getline(n)
++     if line =~ '^\s*/\*'
++       " /* ... */ is a comment in Objective C and Murphi, so we can't conclude
++       " it's either of them yet, but track this as a hint in case we don't see
++       " anything more definitive.
++       let saw_comment = 1
++     endif
++     if line =~ '^\s*\(#\s*\(include\|import\)\>\|@import\>\|//\)'
++       setf objc
++       return
++     endif
++     if line =~ '^\s*%'
++       setf matlab
++       return
++     endif
++     if line =~ '^\s*(\*'
++       setf mma
++       return
++     endif
++     if line =~ '^\c\s*\(\(type\|var\)\>\|--\)'
++       setf murphi
++       return
++     endif
++     let n = n + 1
++   endwhile
++ 
++   if saw_comment
++     " We didn't see anything definitive, but this looks like either Objective C
++     " or Murphi based on the comment leader. Assume the former as it is more
++     " common.
++     setf objc
++   elseif exists("g:filetype_m")
++     " Use user specified default filetype for .m
++     exe "setf " . g:filetype_m
++   else
++     " Default is matlab
++     setf matlab
++   endif
++ endfunc
++ 
++ func dist#ft#FTmms()
++   let n = 1
++   while n < 10
++     let line = getline(n)
++     if line =~ '^\s*\(%\|//\)' || line =~ '^\*'
++       setf mmix
++       return
++     endif
++     if line =~ '^\s*#'
++       setf make
++       return
++     endif
++     let n = n + 1
++   endwhile
++   setf mmix
++ endfunc
++ 
++ " This function checks if one of the first five lines start with a dot.  In
++ " that case it is probably an nroff file: 'filetype' is set and 1 is returned.
++ func dist#ft#FTnroff()
++   if getline(1)[0] . getline(2)[0] . getline(3)[0] . getline(4)[0] . getline(5)[0] =~ '\.'
++     setf nroff
++     return 1
++   endif
++   return 0
++ endfunc
++ 
++ func dist#ft#FTmm()
++   let n = 1
++   while n < 10
++     let line = getline(n)
++     if line =~ '^\s*\(#\s*\(include\|import\)\>\|@import\>\|/\*\)'
++       setf objcpp
++       return
++     endif
++     let n = n + 1
++   endwhile
++   setf nroff
++ endfunc
++ 
++ func dist#ft#FTpl()
++   if exists("g:filetype_pl")
++     exe "setf " . g:filetype_pl
++   else
++     " recognize Prolog by specific text in the first non-empty line
++     " require a blank after the '%' because Perl uses "%list" and "%translate"
++     let l = getline(nextnonblank(1))
++     if l =~ '\<prolog\>' || l =~ '^\s*\(%\+\(\s\|$\)\|/\*\)' || l =~ ':-'
++       setf prolog
++     else
++       setf perl
++     endif
++   endif
++ endfunc
++ 
++ func dist#ft#FTinc()
++   if exists("g:filetype_inc")
++     exe "setf " . g:filetype_inc
++   else
++     let lines = getline(1).getline(2).getline(3)
++     if lines =~? "perlscript"
++       setf aspperl
++     elseif lines =~ "<%"
++       setf aspvbs
++     elseif lines =~ "<?"
++       setf php
++     else
++       call dist#ft#FTasmsyntax()
++       if exists("b:asmsyntax")
++ 	exe "setf " . fnameescape(b:asmsyntax)
++       else
++ 	setf pov
++       endif
++     endif
++   endif
++ endfunc
++ 
++ func dist#ft#FTprogress_cweb()
++   if exists("g:filetype_w")
++     exe "setf " . g:filetype_w
++     return
++   endif
++   if getline(1) =~ '&ANALYZE' || getline(3) =~ '&GLOBAL-DEFINE'
++     setf progress
++   else
++     setf cweb
++   endif
++ endfunc
++ 
++ func dist#ft#FTprogress_asm()
++   if exists("g:filetype_i")
++     exe "setf " . g:filetype_i
++     return
++   endif
++   " This function checks for an assembly comment the first ten lines.
++   " If not found, assume Progress.
++   let lnum = 1
++   while lnum <= 10 && lnum < line('$')
++     let line = getline(lnum)
++     if line =~ '^\s*;' || line =~ '^\*'
++       call dist#ft#FTasm()
++       return
++     elseif line !~ '^\s*$' || line =~ '^/\*'
++       " Not an empty line: Doesn't look like valid assembly code.
++       " Or it looks like a Progress /* comment
++       break
++     endif
++     let lnum = lnum + 1
++   endw
++   setf progress
++ endfunc
++ 
++ func dist#ft#FTprogress_pascal()
++   if exists("g:filetype_p")
++     exe "setf " . g:filetype_p
++     return
++   endif
++   " This function checks for valid Pascal syntax in the first ten lines.
++   " Look for either an opening comment or a program start.
++   " If not found, assume Progress.
++   let lnum = 1
++   while lnum <= 10 && lnum < line('$')
++     let line = getline(lnum)
++     if line =~ '^\s*\(program\|unit\|procedure\|function\|const\|type\|var\)\>'
++ 	\ || line =~ '^\s*{' || line =~ '^\s*(\*'
++       setf pascal
++       return
++     elseif line !~ '^\s*$' || line =~ '^/\*'
++       " Not an empty line: Doesn't look like valid Pascal code.
++       " Or it looks like a Progress /* comment
++       break
++     endif
++     let lnum = lnum + 1
++   endw
++   setf progress
++ endfunc
++ 
++ func dist#ft#FTr()
++   let max = line("$") > 50 ? 50 : line("$")
++ 
++   for n in range(1, max)
++     " Rebol is easy to recognize, check for that first
++     if getline(n) =~? '\<REBOL\>'
++       setf rebol
++       return
++     endif
++   endfor
++ 
++   for n in range(1, max)
++     " R has # comments
++     if getline(n) =~ '^\s*#'
++       setf r
++       return
++     endif
++     " Rexx has /* comments */
++     if getline(n) =~ '^\s*/\*'
++       setf rexx
++       return
++     endif
++   endfor
++ 
++   " Nothing recognized, use user default or assume Rexx
++   if exists("g:filetype_r")
++     exe "setf " . g:filetype_r
++   else
++     " Rexx used to be the default, but R appears to be much more popular.
++     setf r
++   endif
++ endfunc
++ 
++ func dist#ft#McSetf()
++   " Rely on the file to start with a comment.
++   " MS message text files use ';', Sendmail files use '#' or 'dnl'
++   for lnum in range(1, min([line("$"), 20]))
++     let line = getline(lnum)
++     if line =~ '^\s*\(#\|dnl\)'
++       setf m4  " Sendmail .mc file
++       return
++     elseif line =~ '^\s*;'
++       setf msmessages  " MS Message text file
++       return
++     endif
++   endfor
++   setf m4  " Default: Sendmail .mc file
++ endfunc
++ 
++ " Called from filetype.vim and scripts.vim.
++ func dist#ft#SetFileTypeSH(name)
++   if expand("<amatch>") =~ g:ft_ignore_pat
++     return
++   endif
++   if a:name =~ '\<csh\>'
++     " Some .sh scripts contain #!/bin/csh.
++     call dist#ft#SetFileTypeShell("csh")
++     return
++   elseif a:name =~ '\<tcsh\>'
++     " Some .sh scripts contain #!/bin/tcsh.
++     call dist#ft#SetFileTypeShell("tcsh")
++     return
++   elseif a:name =~ '\<zsh\>'
++     " Some .sh scripts contain #!/bin/zsh.
++     call dist#ft#SetFileTypeShell("zsh")
++     return
++   elseif a:name =~ '\<ksh\>'
++     let b:is_kornshell = 1
++     if exists("b:is_bash")
++       unlet b:is_bash
++     endif
++     if exists("b:is_sh")
++       unlet b:is_sh
++     endif
++   elseif exists("g:bash_is_sh") || a:name =~ '\<bash\>' || a:name =~ '\<bash2\>'
++     let b:is_bash = 1
++     if exists("b:is_kornshell")
++       unlet b:is_kornshell
++     endif
++     if exists("b:is_sh")
++       unlet b:is_sh
++     endif
++   elseif a:name =~ '\<sh\>'
++     let b:is_sh = 1
++     if exists("b:is_kornshell")
++       unlet b:is_kornshell
++     endif
++     if exists("b:is_bash")
++       unlet b:is_bash
++     endif
++   endif
++   call dist#ft#SetFileTypeShell("sh")
++ endfunc
++ 
++ " For shell-like file types, check for an "exec" command hidden in a comment,
++ " as used for Tcl.
++ " Also called from scripts.vim, thus can't be local to this script.
++ func dist#ft#SetFileTypeShell(name)
++   if expand("<amatch>") =~ g:ft_ignore_pat
++     return
++   endif
++   let l = 2
++   while l < 20 && l < line("$") && getline(l) =~ '^\s*\(#\|$\)'
++     " Skip empty and comment lines.
++     let l = l + 1
++   endwhile
++   if l < line("$") && getline(l) =~ '\s*exec\s' && getline(l - 1) =~ '^\s*#.*\\$'
++     " Found an "exec" line after a comment with continuation
++     let n = substitute(getline(l),'\s*exec\s\+\([^ ]*/\)\=', '', '')
++     if n =~ '\<tclsh\|\<wish'
++       setf tcl
++       return
++     endif
++   endif
++   exe "setf " . a:name
++ endfunc
++ 
++ func dist#ft#CSH()
++   if exists("g:filetype_csh")
++     call dist#ft#SetFileTypeShell(g:filetype_csh)
++   elseif &shell =~ "tcsh"
++     call dist#ft#SetFileTypeShell("tcsh")
++   else
++     call dist#ft#SetFileTypeShell("csh")
++   endif
++ endfunc
++ 
++ let s:ft_rules_udev_rules_pattern = '^\s*\cudev_rules\s*=\s*"\([^"]\{-1,}\)/*".*'
++ func dist#ft#FTRules()
++   let path = expand('<amatch>:p')
++   if path =~ '^/\(etc/udev/\%(rules\.d/\)\=.*\.rules\|lib/udev/\%(rules\.d/\)\=.*\.rules\)$'
++     setf udevrules
++     return
++   endif
++   if path =~ '^/etc/ufw/'
++     setf conf  " Better than hog
++     return
++   endif
++   if path =~ '^/\(etc\|usr/share\)/polkit-1/rules\.d'
++     setf javascript
++     return
++   endif
++   try
++     let config_lines = readfile('/etc/udev/udev.conf')
++   catch /^Vim\%((\a\+)\)\=:E484/
++     setf hog
++     return
++   endtry
++   let dir = expand('<amatch>:p:h')
++   for line in config_lines
++     if line =~ s:ft_rules_udev_rules_pattern
++       let udev_rules = substitute(line, s:ft_rules_udev_rules_pattern, '\1', "")
++       if dir == udev_rules
++ 	setf udevrules
++       endif
++       break
++     endif
++   endfor
++   setf hog
++ endfunc
++ 
++ func dist#ft#SQL()
++   if exists("g:filetype_sql")
++     exe "setf " . g:filetype_sql
++   else
++     setf sql
++   endif
++ endfunc
++ 
++ " If the file has an extension of 't' and is in a directory 't' or 'xt' then
++ " it is almost certainly a Perl test file.
++ " If the first line starts with '#' and contains 'perl' it's probably a Perl
++ " file.
++ " (Slow test) If a file contains a 'use' statement then it is almost certainly
++ " a Perl file.
++ func dist#ft#FTperl()
++   let dirname = expand("%:p:h:t")
++   if expand("%:e") == 't' && (dirname == 't' || dirname == 'xt')
++     setf perl
++     return 1
++   endif
++   if getline(1)[0] == '#' && getline(1) =~ 'perl'
++     setf perl
++     return 1
++   endif
++   if search('^use\s\s*\k', 'nc', 30)
++     setf perl
++     return 1
++   endif
++   return 0
++ endfunc
++ 
++ " Choose context, plaintex, or tex (LaTeX) based on these rules:
++ " 1. Check the first line of the file for "%&<format>".
++ " 2. Check the first 1000 non-comment lines for LaTeX or ConTeXt keywords.
++ " 3. Default to "latex" or to g:tex_flavor, can be set in user's vimrc.
++ func dist#ft#FTtex()
++   let firstline = getline(1)
++   if firstline =~ '^%&\s*\a\+'
++     let format = tolower(matchstr(firstline, '\a\+'))
++     let format = substitute(format, 'pdf', '', '')
++     if format == 'tex'
++       let format = 'latex'
++     elseif format == 'plaintex'
++       let format = 'plain'
++     endif
++   elseif expand('%') =~ 'tex/context/.*/.*.tex'
++     let format = 'context'
++   else
++     " Default value, may be changed later:
++     let format = exists("g:tex_flavor") ? g:tex_flavor : 'plain'
++     " Save position, go to the top of the file, find first non-comment line.
++     let save_cursor = getpos('.')
++     call cursor(1,1)
++     let firstNC = search('^\s*[^[:space:]%]', 'c', 1000)
++     if firstNC " Check the next thousand lines for a LaTeX or ConTeXt keyword.
++       let lpat = 'documentclass\>\|usepackage\>\|begin{\|newcommand\>\|renewcommand\>'
++       let cpat = 'start\a\+\|setup\a\+\|usemodule\|enablemode\|enableregime\|setvariables\|useencoding\|usesymbols\|stelle\a\+\|verwende\a\+\|stel\a\+\|gebruik\a\+\|usa\a\+\|imposta\a\+\|regle\a\+\|utilisemodule\>'
++       let kwline = search('^\s*\\\%(' . lpat . '\)\|^\s*\\\(' . cpat . '\)',
++ 			      \ 'cnp', firstNC + 1000)
++       if kwline == 1	" lpat matched
++ 	let format = 'latex'
++       elseif kwline == 2	" cpat matched
++ 	let format = 'context'
++       endif		" If neither matched, keep default set above.
++       " let lline = search('^\s*\\\%(' . lpat . '\)', 'cn', firstNC + 1000)
++       " let cline = search('^\s*\\\%(' . cpat . '\)', 'cn', firstNC + 1000)
++       " if cline > 0
++       "   let format = 'context'
++       " endif
++       " if lline > 0 && (cline == 0 || cline > lline)
++       "   let format = 'tex'
++       " endif
++     endif " firstNC
++     call setpos('.', save_cursor)
++   endif " firstline =~ '^%&\s*\a\+'
++ 
++   " Translation from formats to file types.  TODO:  add AMSTeX, RevTex, others?
++   if format == 'plain'
++     setf plaintex
++   elseif format == 'context'
++     setf context
++   else " probably LaTeX
++     setf tex
++   endif
++   return
++ endfunc
++ 
++ func dist#ft#FTxml()
++   let n = 1
++   while n < 100 && n < line("$")
++     let line = getline(n)
++     " DocBook 4 or DocBook 5.
++     let is_docbook4 = line =~ '<!DOCTYPE.*DocBook'
++     let is_docbook5 = line =~ ' xmlns="http://docbook.org/ns/docbook"'
++     if is_docbook4 || is_docbook5
++       let b:docbk_type = "xml"
++       if is_docbook5
++ 	let b:docbk_ver = 5
++       else
++ 	let b:docbk_ver = 4
++       endif
++       setf docbk
++       return
++     endif
++     if line =~ 'xmlns:xbl="http://www.mozilla.org/xbl"'
++       setf xbl
++       return
++     endif
++     let n += 1
++   endwhile
++   setf xml
++ endfunc
++ 
++ func dist#ft#FTy()
++   let n = 1
++   while n < 100 && n < line("$")
++     let line = getline(n)
++     if line =~ '^\s*%'
++       setf yacc
++       return
++     endif
++     if getline(n) =~ '^\s*\(#\|class\>\)' && getline(n) !~ '^\s*#\s*include'
++       setf racc
++       return
++     endif
++     let n = n + 1
++   endwhile
++   setf yacc
++ endfunc
++ 
++ func dist#ft#Redif()
++   let lnum = 1
++   while lnum <= 5 && lnum < line('$')
++     if getline(lnum) =~ "^\ctemplate-type:"
++       setf redif
++       return
++     endif
++     let lnum = lnum + 1
++   endwhile
++ endfunc
++ 
++ 
++ " Restore 'cpoptions'
++ let &cpo = s:cpo_save
++ unlet s:cpo_save
+*** ../vim-8.0.1284/runtime/scripts.vim	2017-11-09 20:43:52.210128405 +0100
+--- runtime/scripts.vim	2017-11-11 15:21:45.885003051 +0100
+***************
+*** 1,7 ****
+  " Vim support file to detect file types in scripts
+  "
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last change:	2017 Nov 09
+  
+  " This file is called by an autocommand for every file that has just been
+  " loaded into a buffer.  It checks if the type of file can be recognized by
+--- 1,7 ----
+  " Vim support file to detect file types in scripts
+  "
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last change:	2017 Nov 11
+  
+  " This file is called by an autocommand for every file that has just been
+  " loaded into a buffer.  It checks if the type of file can be recognized by
+***************
+*** 66,84 ****
+  
+    " Bourne-like shell scripts: bash bash2 ksh ksh93 sh
+    if s:name =~# '^\(bash\d*\|\|ksh\d*\|sh\)\>'
+!     call filetype#SetFileTypeSH(s:line1)	" defined in filetype.vim
+  
+      " csh scripts
+    elseif s:name =~# '^csh\>'
+      if exists("g:filetype_csh")
+!       call filetype#SetFileTypeShell(g:filetype_csh)
+      else
+!       call filetype#SetFileTypeShell("csh")
+      endif
+  
+      " tcsh scripts
+    elseif s:name =~# '^tcsh\>'
+!     call filetype#SetFileTypeShell("tcsh")
+  
+      " Z shell scripts
+    elseif s:name =~# '^zsh\>'
+--- 66,84 ----
+  
+    " Bourne-like shell scripts: bash bash2 ksh ksh93 sh
+    if s:name =~# '^\(bash\d*\|\|ksh\d*\|sh\)\>'
+!     call dist#ft#SetFileTypeSH(s:line1)	" defined in filetype.vim
+  
+      " csh scripts
+    elseif s:name =~# '^csh\>'
+      if exists("g:filetype_csh")
+!       call dist#ft#SetFileTypeShell(g:filetype_csh)
+      else
+!       call dist#ft#SetFileTypeShell("csh")
+      endif
+  
+      " tcsh scripts
+    elseif s:name =~# '^tcsh\>'
+!     call dist#ft#SetFileTypeShell("tcsh")
+  
+      " Z shell scripts
+    elseif s:name =~# '^zsh\>'
+***************
+*** 185,191 ****
+  
+    " Bourne-like shell scripts: sh ksh bash bash2
+    if s:line1 =~# '^:$'
+!     call filetype#SetFileTypeSH(s:line1)	" defined in filetype.vim
+  
+      " Z shell scripts
+    elseif s:line1 =~# '^#compdef\>' || s:line1 =~# '^#autoload\>' ||
+--- 185,191 ----
+  
+    " Bourne-like shell scripts: sh ksh bash bash2
+    if s:line1 =~# '^:$'
+!     call dist#ft#SetFileTypeSH(s:line1)	" defined in filetype.vim
+  
+      " Z shell scripts
+    elseif s:line1 =~# '^#compdef\>' || s:line1 =~# '^#autoload\>' ||
+*** ../vim-8.0.1284/Filelist	2017-10-28 18:26:17.810294482 +0200
+--- Filelist	2017-11-11 15:22:12.696601723 +0100
+***************
+*** 659,664 ****
+--- 659,665 ----
+  		runtime/makemenu.vim \
+  		runtime/autoload/*.vim \
+  		runtime/autoload/README.txt \
++ 		runtime/autoload/dist/*.vim \
+  		runtime/autoload/xml/*.vim \
+  		runtime/colors/*.vim \
+  		runtime/colors/README.txt \
+*** ../vim-8.0.1284/src/Makefile	2017-11-05 20:59:12.524905157 +0100
+--- src/Makefile	2017-11-11 15:27:41.351699469 +0100
+***************
+*** 2381,2388 ****
+  # install the help files; first adjust the contents for the final location
+  installrtbase: $(HELPSOURCE)/vim.1 $(DEST_VIM) $(DEST_RT) \
+  		$(DEST_HELP) $(DEST_PRINT) $(DEST_COL) $(DEST_SYN) $(DEST_IND) \
+! 		$(DEST_FTP) $(DEST_AUTO) $(DEST_AUTO)/xml $(DEST_PLUG) \
+! 		$(DEST_TUTOR) $(DEST_SPELL) $(DEST_COMP)
+  	-$(SHELL) ./installman.sh install $(DEST_MAN) "" $(INSTALLMANARGS)
+  # Generate the help tags with ":helptags" to handle all languages.
+  # Move the distributed tags file aside and restore it, to avoid it being
+--- 2385,2392 ----
+  # install the help files; first adjust the contents for the final location
+  installrtbase: $(HELPSOURCE)/vim.1 $(DEST_VIM) $(DEST_RT) \
+  		$(DEST_HELP) $(DEST_PRINT) $(DEST_COL) $(DEST_SYN) $(DEST_IND) \
+! 		$(DEST_FTP) $(DEST_AUTO) $(DEST_AUTO)/dist $(DEST_AUTO)/xml \
+! 		$(DEST_PLUG) $(DEST_TUTOR) $(DEST_SPELL) $(DEST_COMP)
+  	-$(SHELL) ./installman.sh install $(DEST_MAN) "" $(INSTALLMANARGS)
+  # Generate the help tags with ":helptags" to handle all languages.
+  # Move the distributed tags file aside and restore it, to avoid it being
+***************
+*** 2458,2463 ****
+--- 2462,2469 ----
+  # install the standard autoload files
+  	cd $(AUTOSOURCE); $(INSTALL_DATA) *.vim README.txt $(DEST_AUTO)
+  	cd $(DEST_AUTO); chmod $(HELPMOD) *.vim README.txt
++ 	cd $(AUTOSOURCE)/dist; $(INSTALL_DATA) *.vim $(DEST_AUTO)/dist
++ 	cd $(DEST_AUTO)/dist; chmod $(HELPMOD) *.vim
+  	cd $(AUTOSOURCE)/xml; $(INSTALL_DATA) *.vim $(DEST_AUTO)/xml
+  	cd $(DEST_AUTO)/xml; chmod $(HELPMOD) *.vim
+  # install the standard plugin files
+***************
+*** 2653,2659 ****
+  		$(DEST_PRINT) $(DEST_COL) $(DEST_SYN) $(DEST_IND) $(DEST_FTP) \
+  		$(DEST_LANG) $(DEST_KMAP) $(DEST_COMP) $(DEST_MACRO) \
+  		$(DEST_PACK) $(DEST_TOOLS) $(DEST_TUTOR) $(DEST_SPELL) \
+! 		$(DEST_AUTO) $(DEST_AUTO)/xml $(DEST_PLUG):
+  	$(MKDIR_P) $@
+  	-chmod $(DIRMOD) $@
+  
+--- 2659,2665 ----
+  		$(DEST_PRINT) $(DEST_COL) $(DEST_SYN) $(DEST_IND) $(DEST_FTP) \
+  		$(DEST_LANG) $(DEST_KMAP) $(DEST_COMP) $(DEST_MACRO) \
+  		$(DEST_PACK) $(DEST_TOOLS) $(DEST_TUTOR) $(DEST_SPELL) \
+! 		$(DEST_AUTO) $(DEST_AUTO)/dist $(DEST_AUTO)/xml $(DEST_PLUG):
+  	$(MKDIR_P) $@
+  	-chmod $(DIRMOD) $@
+  
+***************
+*** 2808,2816 ****
+  	-rm -f $(DEST_PRINT)/*.ps
+  	-rmdir $(DEST_HELP) $(DEST_PRINT) $(DEST_COL) $(DEST_SYN) $(DEST_IND)
+  	-rm -rf $(DEST_FTP)/*.vim $(DEST_FTP)/README.txt $(DEST_FTP)/logtalk.dict
+! 	-rm -f $(DEST_AUTO)/*.vim $(DEST_AUTO)/README.txt $(DEST_AUTO)/xml/*.vim
+  	-rm -f $(DEST_PLUG)/*.vim $(DEST_PLUG)/README.txt
+! 	-rmdir $(DEST_FTP) $(DEST_AUTO)/xml $(DEST_AUTO) $(DEST_PLUG) $(DEST_RT)
+  #	This will fail when other Vim versions are installed, no worries.
+  	-rmdir $(DEST_VIM)
+  
+--- 2814,2824 ----
+  	-rm -f $(DEST_PRINT)/*.ps
+  	-rmdir $(DEST_HELP) $(DEST_PRINT) $(DEST_COL) $(DEST_SYN) $(DEST_IND)
+  	-rm -rf $(DEST_FTP)/*.vim $(DEST_FTP)/README.txt $(DEST_FTP)/logtalk.dict
+! 	-rm -f $(DEST_AUTO)/*.vim $(DEST_AUTO)/README.txt
+! 	-rm -f $(DEST_AUTO)/dist/*.vim $(DEST_AUTO)/xml/*.vim
+  	-rm -f $(DEST_PLUG)/*.vim $(DEST_PLUG)/README.txt
+! 	-rmdir $(DEST_FTP) $(DEST_AUTO)/dist $(DEST_AUTO)/xml $(DEST_AUTO)
+! 	-rmdir $(DEST_PLUG) $(DEST_RT)
+  #	This will fail when other Vim versions are installed, no worries.
+  	-rmdir $(DEST_VIM)
+  
+*** ../vim-8.0.1284/nsis/gvim.nsi	2017-10-28 18:26:17.810294482 +0200
+--- nsis/gvim.nsi	2017-11-11 15:28:31.950946898 +0100
+***************
+*** 268,273 ****
+--- 268,276 ----
+  	SetOutPath $0\autoload
+  	File ${VIMRT}\autoload\*.*
+  
++ 	SetOutPath $0\autoload\dist
++ 	File ${VIMRT}\autoload\dist\*.*
++ 
+  	SetOutPath $0\autoload\xml
+  	File ${VIMRT}\autoload\xml\*.*
+  
+*** ../vim-8.0.1284/src/version.c	2017-11-10 21:53:01.550219652 +0100
+--- src/version.c	2017-11-11 15:29:36.665985005 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1285,
+  /**/
+
+-- 
+DENNIS: Oh, very nice. King, eh!  I expect you've got a palace and fine
+        clothes and courtiers and plenty of food.  And how d'you get that?  By
+        exploiting the workers! By hanging on to outdated imperialist dogma
+        which perpetuates the social and economic differences in our society!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

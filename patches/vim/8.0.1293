@@ -1,0 +1,681 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1293
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1293
+Problem:    Setting a breakpoint in the terminal debugger sometimes fails.
+Solution:   Interrupt the program if needed.  Set the interface to async.
+Files:      runtime/pack/dist/opt/termdebug/plugin/termdebug.vim,
+            runtime/doc/terminal.txt
+
+
+*** ../vim-8.0.1292/runtime/pack/dist/opt/termdebug/plugin/termdebug.vim	2017-11-04 21:44:24.309090745 +0100
+--- runtime/pack/dist/opt/termdebug/plugin/termdebug.vim	2017-11-12 17:59:48.285349818 +0100
+***************
+*** 20,25 ****
+--- 20,28 ----
+    finish
+  endif
+  
++ " Uncomment this line to write logging in "debuglog".
++ " call ch_logfile('debuglog', 'w')
++ 
+  " The command that starts debugging, e.g. ":Termdebug vim".
+  " To end type "quit" in the gdb window.
+  command -nargs=* -complete=file Termdebug call s:StartDebug(<q-args>)
+***************
+*** 31,36 ****
+--- 34,40 ----
+  
+  let s:pc_id = 12
+  let s:break_id = 13
++ let s:stopped = 1
+  
+  if &background == 'light'
+    hi default debugPC term=reverse ctermbg=lightblue guibg=lightblue
+***************
+*** 83,93 ****
+    " Add -quiet to avoid the intro message causing a hit-enter prompt.
+    let cmd = [g:termdebugger, '-quiet', '-tty', pty, a:cmd]
+    echomsg 'executing "' . join(cmd) . '"'
+!   let gdbbuf = term_start(cmd, {
+  	\ 'exit_cb': function('s:EndDebug'),
+  	\ 'term_finish': 'close',
+  	\ })
+!   if gdbbuf == 0
+      echoerr 'Failed to open the gdb terminal window'
+      exe 'bwipe! ' . s:ptybuf
+      exe 'bwipe! ' . s:commbuf
+--- 87,97 ----
+    " Add -quiet to avoid the intro message causing a hit-enter prompt.
+    let cmd = [g:termdebugger, '-quiet', '-tty', pty, a:cmd]
+    echomsg 'executing "' . join(cmd) . '"'
+!   let s:gdbbuf = term_start(cmd, {
+  	\ 'exit_cb': function('s:EndDebug'),
+  	\ 'term_finish': 'close',
+  	\ })
+!   if s:gdbbuf == 0
+      echoerr 'Failed to open the gdb terminal window'
+      exe 'bwipe! ' . s:ptybuf
+      exe 'bwipe! ' . s:commbuf
+***************
+*** 97,103 ****
+  
+    " Connect gdb to the communication pty, using the GDB/MI interface
+    " If you get an error "undefined command" your GDB is too old.
+!   call term_sendkeys(gdbbuf, 'new-ui mi ' . commpty . "\r")
+  
+    " Sign used to highlight the line where the program has stopped.
+    " There can be only one.
+--- 101,112 ----
+  
+    " Connect gdb to the communication pty, using the GDB/MI interface
+    " If you get an error "undefined command" your GDB is too old.
+!   call term_sendkeys(s:gdbbuf, 'new-ui mi ' . commpty . "\r")
+! 
+!   " Interpret commands while the target is running.  This should usualy only be
+!   " exec-interrupt, since many commands don't work properly while the target is
+!   " running.
+!   call s:SendCommand('-gdb-set mi-async on')
+  
+    " Sign used to highlight the line where the program has stopped.
+    " There can be only one.
+***************
+*** 170,175 ****
+--- 179,187 ----
+    command Step call s:SendCommand('-exec-step')
+    command Over call s:SendCommand('-exec-next')
+    command Finish call s:SendCommand('-exec-finish')
++   command -nargs=* Run call s:Run(<q-args>)
++   command -nargs=* Arguments call s:SendCommand('-exec-arguments ' . <q-args>)
++   command Stop call s:SendCommand('-exec-interrupt')
+    command Continue call s:SendCommand('-exec-continue')
+    command -range -nargs=* Evaluate call s:Evaluate(<range>, <q-args>)
+    command Gdb call win_gotoid(s:gdbwin)
+***************
+*** 183,188 ****
+--- 195,201 ----
+      nnoremenu WinBar.Next :Over<CR>
+      nnoremenu WinBar.Finish :Finish<CR>
+      nnoremenu WinBar.Cont :Continue<CR>
++     nnoremenu WinBar.Stop :Stop<CR>
+      nnoremenu WinBar.Eval :Evaluate<CR>
+    endif
+  endfunc
+***************
+*** 194,199 ****
+--- 207,215 ----
+    delcommand Step
+    delcommand Over
+    delcommand Finish
++   delcommand Run
++   delcommand Arguments
++   delcommand Stop
+    delcommand Continue
+    delcommand Evaluate
+    delcommand Gdb
+***************
+*** 206,211 ****
+--- 222,228 ----
+      aunmenu WinBar.Next
+      aunmenu WinBar.Finish
+      aunmenu WinBar.Cont
++     aunmenu WinBar.Stop
+      aunmenu WinBar.Eval
+    endif
+  
+***************
+*** 220,227 ****
+  
+  " :Break - Set a breakpoint at the cursor position.
+  func s:SetBreakpoint()
+!   call term_sendkeys(s:commbuf, '-break-insert --source '
+! 	\ . fnameescape(expand('%:p')) . ' --line ' . line('.') . "\r")
+  endfunc
+  
+  " :Delete - Delete a breakpoint at the cursor position.
+--- 237,255 ----
+  
+  " :Break - Set a breakpoint at the cursor position.
+  func s:SetBreakpoint()
+!   " Setting a breakpoint may not work while the program is running.
+!   " Interrupt to make it work.
+!   let do_continue = 0
+!   if !s:stopped
+!     let do_continue = 1
+!     call s:SendCommand('-exec-interrupt')
+!     sleep 10m
+!   endif
+!   call s:SendCommand('-break-insert --source '
+! 	\ . fnameescape(expand('%:p')) . ' --line ' . line('.'))
+!   if do_continue
+!     call s:SendCommand('-exec-continue')
+!   endif
+  endfunc
+  
+  " :Delete - Delete a breakpoint at the cursor position.
+***************
+*** 244,249 ****
+--- 272,284 ----
+    call term_sendkeys(s:commbuf, a:cmd . "\r")
+  endfunc
+  
++ func s:Run(args)
++   if a:args != ''
++     call s:SendCommand('-exec-arguments ' . a:args)
++   endif
++   call s:SendCommand('-exec-run')
++ endfunc
++ 
+  " :Evaluate - evaluate what is under the cursor
+  func s:Evaluate(range, arg)
+    if a:arg != ''
+***************
+*** 259,265 ****
+    else
+      let expr = expand('<cexpr>')
+    endif
+!   call term_sendkeys(s:commbuf, '-data-evaluate-expression "' . expr . "\"\r")
+    let s:evalexpr = expr
+  endfunc
+  
+--- 294,300 ----
+    else
+      let expr = expand('<cexpr>')
+    endif
+!   call s:SendCommand('-data-evaluate-expression "' . expr . '"')
+    let s:evalexpr = expr
+  endfunc
+  
+***************
+*** 269,275 ****
+    let value = substitute(value, '\\"', '"', 'g')
+    echomsg '"' . s:evalexpr . '": ' . value
+  
+!   if s:evalexpr[0] != '*' && value =~ '^0x' && value !~ '"$'
+      " Looks like a pointer, also display what it points to.
+      let s:evalexpr = '*' . s:evalexpr
+      call term_sendkeys(s:commbuf, '-data-evaluate-expression "' . s:evalexpr . "\"\r")
+--- 304,310 ----
+    let value = substitute(value, '\\"', '"', 'g')
+    echomsg '"' . s:evalexpr . '": ' . value
+  
+!   if s:evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
+      " Looks like a pointer, also display what it points to.
+      let s:evalexpr = '*' . s:evalexpr
+      call term_sendkeys(s:commbuf, '-data-evaluate-expression "' . s:evalexpr . "\"\r")
+***************
+*** 286,291 ****
+--- 321,332 ----
+  func s:HandleCursor(msg)
+    let wid = win_getid(winnr())
+  
++   if a:msg =~ '^\*stopped'
++     let s:stopped = 1
++   elseif a:msg =~ '^\*running'
++     let s:stopped = 0
++   endif
++ 
+    if win_gotoid(s:startwin)
+      let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
+      if a:msg =~ '^\(\*stopped\|=thread-selected\)' && filereadable(fname)
+*** ../vim-8.0.1292/runtime/doc/terminal.txt	2017-09-17 23:02:17.180074376 +0200
+--- runtime/doc/terminal.txt	2017-11-12 17:46:47.136811279 +0100
+***************
+*** 1,4 ****
+! *terminal.txt*	For Vim version 8.0.  Last change: 2017 Sep 17
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+--- 1,4 ----
+! *terminal.txt*	For Vim version 8.0.  Last change: 2017 Nov 12
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+***************
+*** 14,22 ****
+  If the result is "1" you have it.
+  
+  
+! 1. Basic use			|terminal-use|
+! 2. Remote testing		|terminal-testing|
+! 3. Debugging			|terminal-debug|
+  
+  {Vi does not have any of these commands}
+  {only available when compiled with the |+terminal| feature}
+--- 14,38 ----
+  If the result is "1" you have it.
+  
+  
+! 1. Basic use		|terminal-use|
+!       Typing			|terminal-typing|
+!       Size and color		|terminal-size-color|
+!       Syntax			|:terminal|
+!       Resizing			|terminal-resizing|
+!       Terminal Modes		|Terminal-mode|
+!       Cursor style		|terminal-cursor-style|
+!       Special keys		|terminal-special-keys|
+!       Unix			|terminal-unix|
+!       MS-Windows		|terminal-ms-windows|
+! 2. Remote testing	|terminal-testing|
+! 3. Debugging		|terminal-debug|
+!       Starting			|termdebug-starting|
+!       Example session		|termdebug-example|
+!       Stepping through code	|termdebug-stepping|
+!       Inspecting variables	|termdebug-variables|
+!       Other commands		|termdebug-commands|
+!       Communication		|termdebug-communication|
+!       Customizing		|termdebug-customizing|
+  
+  {Vi does not have any of these commands}
+  {only available when compiled with the |+terminal| feature}
+***************
+*** 44,50 ****
+  terminal window to move keyboard focus elsewhere.
+  
+  CTRL-W can be used to navigate between windows and other CTRL-W commands, e.g.:
+! 	CTRL-W CTRL-W 	move focus to the next window
+  	CTRL-W :	enter an Ex command
+  See |CTRL-W| for more commands.
+  
+--- 60,66 ----
+  terminal window to move keyboard focus elsewhere.
+  
+  CTRL-W can be used to navigate between windows and other CTRL-W commands, e.g.:
+! 	CTRL-W CTRL-W	move focus to the next window
+  	CTRL-W :	enter an Ex command
+  See |CTRL-W| for more commands.
+  
+***************
+*** 64,70 ****
+  	'termkey' :	    enter an Ex command
+  	'termkey' 'termkey' send 'termkey' to the job in the terminal
+  	'termkey' .	    send a CTRL-W to the job in the terminal
+! 	'termkey' N  	    go to terminal Normal mode, see below
+  	'termkey' CTRL-N    same as CTRL-W N
+  	'termkey' CTRL-C    same as |t_CTRL-W_CTRL-C|
+  							*t_CTRL-\_CTRL-N*
+--- 80,86 ----
+  	'termkey' :	    enter an Ex command
+  	'termkey' 'termkey' send 'termkey' to the job in the terminal
+  	'termkey' .	    send a CTRL-W to the job in the terminal
+! 	'termkey' N	    go to terminal Normal mode, see below
+  	'termkey' CTRL-N    same as CTRL-W N
+  	'termkey' CTRL-C    same as |t_CTRL-W_CTRL-C|
+  							*t_CTRL-\_CTRL-N*
+***************
+*** 81,91 ****
+  
+  To change the keys you type use terminal mode mappings, see |:tmap|.
+  These are defined like any mapping, but apply only when typing keys that are
+! sent to the job running in the terminal.
+  
+  
+  Size and color ~
+! 
+  See option 'termsize' for controlling the size of the terminal window.
+  (TODO: scrolling when the terminal is larger than the window)
+  
+--- 97,114 ----
+  
+  To change the keys you type use terminal mode mappings, see |:tmap|.
+  These are defined like any mapping, but apply only when typing keys that are
+! sent to the job running in the terminal.  For example, to make Escape switch
+! to Terminal-Normal mode: >
+!    tnoremap <Esc> <C-W>N
+! <							*options-in-terminal*
+! After opening the terminal window and setting 'buftype' to "terminal" the
+! BufWinEnter autocommand event is triggered.  This makes it possible to set
+! options specifically for the window and buffer.  Example: >
+!    au BufWinEnter * if &buftype == 'terminal' | setlocal bufhidden=hide | endif
+  
+  
+  Size and color ~
+! 							*terminal-size-color*
+  See option 'termsize' for controlling the size of the terminal window.
+  (TODO: scrolling when the terminal is larger than the window)
+  
+***************
+*** 194,200 ****
+  
+  
+  Resizing ~
+! 
+  The size of the terminal can be in one of three modes:
+  
+  1. The 'termsize' option is empty: The terminal size follows the window size.
+--- 217,223 ----
+  
+  
+  Resizing ~
+! 							*terminal-resizing*
+  The size of the terminal can be in one of three modes:
+  
+  1. The 'termsize' option is empty: The terminal size follows the window size.
+***************
+*** 244,250 ****
+  
+  
+  Cursor style ~
+! 
+  By default the cursor in the terminal window uses a not blinking block.  The
+  normal xterm escape sequences can be used to change the blinking state and the
+  shape.  Once focus leaves the terminal window Vim will restore the original
+--- 267,273 ----
+  
+  
+  Cursor style ~
+! 							*terminal-cursor-style*
+  By default the cursor in the terminal window uses a not blinking block.  The
+  normal xterm escape sequences can be used to change the blinking state and the
+  shape.  Once focus leaves the terminal window Vim will restore the original
+***************
+*** 256,263 ****
+  blinking will also be inverted.
+  
+  
+! Unix ~
+  
+  On Unix a pty is used to make it possible to run all kinds of commands.  You
+  can even run Vim in the terminal!  That's used for debugging, see below.
+  
+--- 279,299 ----
+  blinking will also be inverted.
+  
+  
+! Special keys ~
+! 							*terminal-special-keys*
+! Since the terminal emulator simulates an xterm, only escape sequences that
+! both Vim and xterm recognize will be available in the terminal window.  If you
+! want to pass on other escape sequences to the job running in the terminal you
+! need to set up forwarding.  Example: >
+! 	tmap <expr> <Esc>]b SendToTerm("\<Esc>]b")
+! 	func SendToTerm(what)
+! 	  call term_sendkeys('', a:what)
+! 	  return ''
+! 	endfunc
+  
++ 
++ Unix ~
++ 							*terminal-unix*
+  On Unix a pty is used to make it possible to run all kinds of commands.  You
+  can even run Vim in the terminal!  That's used for debugging, see below.
+  
+***************
+*** 280,286 ****
+  
+  
+  MS-Windows ~
+! 
+  On MS-Windows winpty is used to make it possible to run all kind of commands.
+  Obviously, they must be commands that run in a terminal, not open their own
+  window.
+--- 316,322 ----
+  
+  
+  MS-Windows ~
+! 							*terminal-ms-windows*
+  On MS-Windows winpty is used to make it possible to run all kind of commands.
+  Obviously, they must be commands that run in a terminal, not open their own
+  window.
+***************
+*** 323,334 ****
+  
+  
+  Starting ~
+! 
+  Load the plugin with this command: >
+  	packadd termdebug
+  <							*:Termdebug*
+  To start debugging use `:TermDebug` folowed by the command name, for example: >
+! 	:TermDebug vim
+  
+  This opens two windows:
+  gdb window	A terminal window in which "gdb vim" is executed.  Here you
+--- 359,370 ----
+  
+  
+  Starting ~
+! 							*termdebug-starting*
+  Load the plugin with this command: >
+  	packadd termdebug
+  <							*:Termdebug*
+  To start debugging use `:TermDebug` folowed by the command name, for example: >
+! 	:Termdebug vim
+  
+  This opens two windows:
+  gdb window	A terminal window in which "gdb vim" is executed.  Here you
+***************
+*** 352,388 ****
+  opened windows are closed.
+  
+  
+! Stepping through code ~
+  
+  Put focus on the gdb window to type commands there.  Some common ones are:
+! - CTRL-C    interrupt the program
+! - next      execute the current line and stop at the next line
+! - step      execute the current line and stop at the next statement, entering
+! 	    functions
+! - finish    execute until leaving the current function
+! - where     show the stack
+! - frame N   go to the Nth stack frame
+! - continue  continue execution
+! 
+! In the window showing the source code some commands can used to control gdb:
+!  :Break     set a breakpoint at the current line; a sign will be displayed
+!  :Delete    delete a breakpoint at the current line
+!  :Step	    execute the gdb "step" command
+!  :Over      execute the gdb "next" command (:Next is a Vim command)
+!  :Finish    execute the gdb "finish" command
+!  :Continue  execute the gdb "continue" command
+  
+  The plugin adds a window toolbar with these entries:
+!   Step	    :Step
+!   Next	    :Over
+!   Finish    :Finish
+!   Cont	    :Continue
+!   Eval	    :Evaluate
+  This way you can use the mouse to perform the most common commands.
+  
+  
+  Inspecting variables ~
+! 
+   :Evaluate	    evaluate the expression under the cursor
+   K		    same
+   :Evaluate {expr}   evaluate {expr}
+--- 388,486 ----
+  opened windows are closed.
+  
+  
+! Example session ~
+! 							*termdebug-example*
+! Start in the Vim "src" directory and build Vim: >
+! 	% make
+! Start Vim: >
+! 	% ./vim
+! Load the termdebug plugin and start debugging Vim: >
+! 	:packadd termdebug
+! 	:Termdebug vim
+! You should now have three windows:
+!     source  - where you started, has a window toolbar with buttons
+!     gdb	    - you can type gdb commands here
+!     program - the executed program will use this window
+! You can use CTRL-W CTRL-W or the mouse to move focus between windows.
+! Put focus on the gdb window and type: >
+! 	break ex_help
+! 	run
+! Vim will start running in the program window. Put focus there and type: >
+! 	:help gui
+! Gdb will run into the ex_help breakpoint.  The source window now shows the 
+! ex_cmds.c file.  A ">>" marker will appear where the breakpoint was set.  The
+! line where the debugger stopped is highlighted.  You can now step through the
+! program.  Let's use the mouse: click on the "Next" button in the window
+! toolbar.  You will see the highlighting move as the debugger executes a line
+! of source code.
+! 
+! Click "Next" a few times until the for loop is highlighted.  Put the cursor on
+! the end of "eap->arg", then click "Eval" in the toolbar.  You will see this
+! displayed:
+! 	"eap->arg": 0x555555e68855 "gui" ~
+! This way you can inspect the value of local variables.  You can also focus the
+! gdb window and use a "print" command, e.g.: >
+! 	print *eap
+! 
+! Now go back to the source window and put the cursor on the first line after
+! the for loop, then type: >
+! 	:Break
+! You will see a ">>" marker appear, this indicates the new breakpoint.  Now
+! click "Cont" in the toolbar and the code until the breakpoint will be
+! executed.
+! 
+! You can type more advanced commands in the gdb window.  For example, type: >
+! 	watch curbuf
+! Now click "Cont" in the toolbar (or type "cont" in the gdb window). Execution
+! will now continue until the value of "curbuf" changes, which is in do_ecmd().
+! To remove this watchpoint again type in the gdb window: >
+! 	delete 3
+! 
+! You can see the stack by typing in the gdb window: >
+! 	where
+! Move through the stack frames, e.g. with: >
+! 	frame 3
+! The source window will show the code, at the point where the call was made to
+! a deeper level.
+! 
+  
++ Stepping through code ~
++ 							*termdebug-stepping*
+  Put focus on the gdb window to type commands there.  Some common ones are:
+! - CTRL-C	interrupt the program
+! - next		execute the current line and stop at the next line
+! - step		execute the current line and stop at the next statement,
+! 		entering functions
+! - finish	execute until leaving the current function
+! - where		show the stack
+! - frame N	go to the Nth stack frame
+! - continue	continue execution
+! 
+! In the window showing the source code these commands can used to control gdb:
+!  :Run [args]	    run the program with [args] or the previous arguments
+!  :Arguments {args}  set arguments for the next :Run
+! 
+!  :Break		set a breakpoint at the current line; a sign will be displayed
+!  :Delete	delete a breakpoint at the current line
+! 
+!  :Step		execute the gdb "step" command
+!  :Over 		execute the gdb "next" command (:Next is a Vim command)
+!  :Finish	execute the gdb "finish" command
+!  :Continue	execute the gdb "continue" command
+!  :Stop		interrupt the program
+  
+  The plugin adds a window toolbar with these entries:
+!   Step		:Step
+!   Next		:Over
+!   Finish	:Finish
+!   Cont		:Continue
+!   Stop		:Stop
+!   Eval		:Evaluate
+  This way you can use the mouse to perform the most common commands.
+  
+  
+  Inspecting variables ~
+! 							*termdebug-variables*
+   :Evaluate	    evaluate the expression under the cursor
+   K		    same
+   :Evaluate {expr}   evaluate {expr}
+***************
+*** 392,416 ****
+  
+  
+  Other commands ~
+! 
+   :Gdb	       jump to the gdb window
+   :Program      jump to the window with the running program
+  
+  
+  Communication ~
+! 
+  There is another, hidden, buffer, which is used for Vim to communicate with
+  gdb.  The buffer name is "gdb communication".  Do not delete this buffer, it
+  will break the debugger.
+  
+  
+  Customizing ~
+! 
+  To change the name of the gdb command, set the "termdebugger" variable before
+  invoking `:Termdebug`: >
+  	let termdebugger = "mygdb"
+  Only debuggers fully compatible with gdb will work.  Vim uses the GDB/MI
+! interface.
+  
+  The color of the signs can be adjusted with these highlight groups:
+  - debugPC		the current position
+--- 490,517 ----
+  
+  
+  Other commands ~
+! 							*termdebug-commands*
+   :Gdb	       jump to the gdb window
+   :Program      jump to the window with the running program
+  
+  
+  Communication ~
+! 						*termdebug-communication*
+  There is another, hidden, buffer, which is used for Vim to communicate with
+  gdb.  The buffer name is "gdb communication".  Do not delete this buffer, it
+  will break the debugger.
+  
+  
+  Customizing ~
+! 							*termdebug-customizing*
+  To change the name of the gdb command, set the "termdebugger" variable before
+  invoking `:Termdebug`: >
+  	let termdebugger = "mygdb"
++ <						*gdb-version*
+  Only debuggers fully compatible with gdb will work.  Vim uses the GDB/MI
+! interface.  This probably requires gdb version 7.12.  if you get this error:
+! 	Undefined command: "new-ui". Try "help".~
+! Then your gdb is too old.
+  
+  The color of the signs can be adjusted with these highlight groups:
+  - debugPC		the current position
+***************
+*** 429,434 ****
+--- 530,539 ----
+    let g:termdebug_wide = 163
+  This will set &columns to 163 when :Termdebug is used.  The value is restored
+  when quitting the debugger.
++ If g:termdebug_wide is set and &Columns is already  larger than
++ g:termdebug_wide then a vertical split will be used without changing &columns.
++ Set it to 1 to get a vertical split without every changing &columns (useful
++ for when the terminal can't be resized by Vim).
+  
+  
+  
+*** ../vim-8.0.1292/src/version.c	2017-11-12 16:56:07.286277099 +0100
+--- src/version.c	2017-11-12 17:56:24.060334900 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1293,
+  /**/
+
+
+-- 
+CRONE:  Who sent you?
+ARTHUR: The Knights Who Say GNU!
+CRONE:  Aaaagh!  (she looks around in rear) No!  We have no licenses here.
+           "Monty Python and the Holy editor wars" PYTHON (MONTY) SOFTWARE LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

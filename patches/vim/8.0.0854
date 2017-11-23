@@ -1,0 +1,593 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0854
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0854
+Problem:    No redraw after terminal was closed.
+Solution:   Set typebuf_was_filled. (Yasuhiro Matsumoto, closes #1925, closes
+            #1924)  Add function to check for messages even when input is
+            available.
+Files:      src/terminal.c, src/os_unix.c, src/proto/os_unix.pro,
+            src/os_win32.c, src/proto/os_win32.pro, src/os_mswin.c
+
+
+*** ../vim-8.0.0853/src/terminal.c	2017-08-03 19:22:32.281906757 +0200
+--- src/terminal.c	2017-08-03 20:32:59.023355123 +0200
+***************
+*** 1305,1310 ****
+--- 1305,1311 ----
+  
+  	/* Need to break out of vgetc(). */
+  	ins_char_typebuf(K_IGNORE);
++ 	typebuf_was_filled = TRUE;
+  
+  	term = curbuf->b_term;
+  	if (term != NULL)
+***************
+*** 2140,2170 ****
+  	ch_log(NULL, "term_wait(): invalid argument");
+  	return;
+      }
+  
+      /* Get the job status, this will detect a job that finished. */
+!     if (buf->b_term->tl_job == NULL
+! 	    || STRCMP(job_status(buf->b_term->tl_job), "dead") == 0)
+      {
+  	/* The job is dead, keep reading channel I/O until the channel is
+  	 * closed. */
+  	while (buf->b_term != NULL && !buf->b_term->tl_channel_closed)
+  	{
+! 	    mch_char_avail();
+  	    parse_queued_messages();
+  	    ui_delay(10L, FALSE);
+  	}
+! 	mch_char_avail();
+  	parse_queued_messages();
+      }
+      else
+      {
+! 	mch_char_avail();
+  	parse_queued_messages();
+  
+  	/* Wait for 10 msec for any channel I/O. */
+  	/* TODO: use delay from optional argument */
+  	ui_delay(10L, TRUE);
+! 	mch_char_avail();
+  
+  	/* Flushing messages on channels is hopefully sufficient.
+  	 * TODO: is there a better way? */
+--- 2141,2176 ----
+  	ch_log(NULL, "term_wait(): invalid argument");
+  	return;
+      }
++     if (buf->b_term->tl_job == NULL)
++     {
++ 	ch_log(NULL, "term_wait(): no job to wait for");
++ 	return;
++     }
+  
+      /* Get the job status, this will detect a job that finished. */
+!     if (STRCMP(job_status(buf->b_term->tl_job), "dead") == 0)
+      {
+  	/* The job is dead, keep reading channel I/O until the channel is
+  	 * closed. */
++ 	ch_log(NULL, "term_wait(): waiting for channel to close");
+  	while (buf->b_term != NULL && !buf->b_term->tl_channel_closed)
+  	{
+! 	    mch_check_messages();
+  	    parse_queued_messages();
+  	    ui_delay(10L, FALSE);
+  	}
+! 	mch_check_messages();
+  	parse_queued_messages();
+      }
+      else
+      {
+! 	mch_check_messages();
+  	parse_queued_messages();
+  
+  	/* Wait for 10 msec for any channel I/O. */
+  	/* TODO: use delay from optional argument */
+  	ui_delay(10L, TRUE);
+! 	mch_check_messages();
+  
+  	/* Flushing messages on channels is hopefully sufficient.
+  	 * TODO: is there a better way? */
+*** ../vim-8.0.0853/src/os_unix.c	2017-08-03 13:51:02.380784846 +0200
+--- src/os_unix.c	2017-08-03 20:32:09.339711561 +0200
+***************
+*** 175,182 ****
+  #endif
+  static pid_t wait4pid(pid_t, waitstatus *);
+  
+! static int  WaitForChar(long msec, int *interrupted);
+! static int  WaitForCharOrMouse(long msec, int *interrupted);
+  #if defined(__BEOS__) || defined(VMS)
+  int  RealWaitForChar(int, long, int *, int *interrupted);
+  #else
+--- 175,182 ----
+  #endif
+  static pid_t wait4pid(pid_t, waitstatus *);
+  
+! static int  WaitForChar(long msec, int *interrupted, int ignore_input);
+! static int  WaitForCharOrMouse(long msec, int *interrupted, int ignore_input);
+  #if defined(__BEOS__) || defined(VMS)
+  int  RealWaitForChar(int, long, int *, int *interrupted);
+  #else
+***************
+*** 481,487 ****
+  	 * We want to be interrupted by the winch signal
+  	 * or by an event on the monitored file descriptors.
+  	 */
+! 	if (WaitForChar(wait_time, &interrupted))
+  	{
+  	    /* If input was put directly in typeahead buffer bail out here. */
+  	    if (typebuf_changed(tb_change_cnt))
+--- 481,487 ----
+  	 * We want to be interrupted by the winch signal
+  	 * or by an event on the monitored file descriptors.
+  	 */
+! 	if (WaitForChar(wait_time, &interrupted, FALSE))
+  	{
+  	    /* If input was put directly in typeahead buffer bail out here. */
+  	    if (typebuf_changed(tb_change_cnt))
+***************
+*** 536,544 ****
+      int
+  mch_char_avail(void)
+  {
+!     return WaitForChar(0L, NULL);
+  }
+  
+  #if defined(HAVE_TOTAL_MEM) || defined(PROTO)
+  # ifdef HAVE_SYS_RESOURCE_H
+  #  include <sys/resource.h>
+--- 536,555 ----
+      int
+  mch_char_avail(void)
+  {
+!     return WaitForChar(0L, NULL, FALSE);
+  }
+  
++ #if defined(FEAT_TERMINAL) || defined(PROTO)
++ /*
++  * Check for any pending input or messages.
++  */
++     int
++ mch_check_messages(void)
++ {
++     return WaitForChar(0L, NULL, TRUE);
++ }
++ #endif
++ 
+  #if defined(HAVE_TOTAL_MEM) || defined(PROTO)
+  # ifdef HAVE_SYS_RESOURCE_H
+  #  include <sys/resource.h>
+***************
+*** 718,724 ****
+  	in_mch_delay = FALSE;
+      }
+      else
+! 	WaitForChar(msec, NULL);
+  }
+  
+  #if defined(HAVE_STACK_LIMIT) \
+--- 729,735 ----
+  	in_mch_delay = FALSE;
+      }
+      else
+! 	WaitForChar(msec, NULL, FALSE);
+  }
+  
+  #if defined(HAVE_STACK_LIMIT) \
+***************
+*** 5616,5628 ****
+   * from inbuf[].
+   * "msec" == -1 will block forever.
+   * Invokes timer callbacks when needed.
+   * "interrupted" (if not NULL) is set to TRUE when no character is available
+   * but something else needs to be done.
+   * Returns TRUE when a character is available.
+   * When a GUI is being used, this will never get called -- webb
+   */
+      static int
+! WaitForChar(long msec, int *interrupted)
+  {
+  #ifdef FEAT_TIMERS
+      long    due_time;
+--- 5627,5641 ----
+   * from inbuf[].
+   * "msec" == -1 will block forever.
+   * Invokes timer callbacks when needed.
++  * When "ignore_input" is TRUE even check for pending input when input is
++  * already available.
+   * "interrupted" (if not NULL) is set to TRUE when no character is available
+   * but something else needs to be done.
+   * Returns TRUE when a character is available.
+   * When a GUI is being used, this will never get called -- webb
+   */
+      static int
+! WaitForChar(long msec, int *interrupted, int ignore_input)
+  {
+  #ifdef FEAT_TIMERS
+      long    due_time;
+***************
+*** 5631,5637 ****
+  
+      /* When waiting very briefly don't trigger timers. */
+      if (msec >= 0 && msec < 10L)
+! 	return WaitForCharOrMouse(msec, NULL);
+  
+      while (msec < 0 || remaining > 0)
+      {
+--- 5644,5650 ----
+  
+      /* When waiting very briefly don't trigger timers. */
+      if (msec >= 0 && msec < 10L)
+! 	return WaitForCharOrMouse(msec, NULL, ignore_input);
+  
+      while (msec < 0 || remaining > 0)
+      {
+***************
+*** 5645,5651 ****
+  	}
+  	if (due_time <= 0 || (msec > 0 && due_time > remaining))
+  	    due_time = remaining;
+! 	if (WaitForCharOrMouse(due_time, interrupted))
+  	    return TRUE;
+  	if (interrupted != NULL && *interrupted)
+  	    /* Nothing available, but need to return so that side effects get
+--- 5658,5664 ----
+  	}
+  	if (due_time <= 0 || (msec > 0 && due_time > remaining))
+  	    due_time = remaining;
+! 	if (WaitForCharOrMouse(due_time, interrupted, ignore_input))
+  	    return TRUE;
+  	if (interrupted != NULL && *interrupted)
+  	    /* Nothing available, but need to return so that side effects get
+***************
+*** 5656,5662 ****
+      }
+      return FALSE;
+  #else
+!     return WaitForCharOrMouse(msec, interrupted);
+  #endif
+  }
+  
+--- 5669,5675 ----
+      }
+      return FALSE;
+  #else
+!     return WaitForCharOrMouse(msec, interrupted, ignore_input);
+  #endif
+  }
+  
+***************
+*** 5664,5675 ****
+   * Wait "msec" msec until a character is available from the mouse or keyboard
+   * or from inbuf[].
+   * "msec" == -1 will block forever.
+   * "interrupted" (if not NULL) is set to TRUE when no character is available
+   * but something else needs to be done.
+   * When a GUI is being used, this will never get called -- webb
+   */
+      static int
+! WaitForCharOrMouse(long msec, int *interrupted)
+  {
+  #ifdef FEAT_MOUSE_GPM
+      int		gpm_process_wanted;
+--- 5677,5689 ----
+   * Wait "msec" msec until a character is available from the mouse or keyboard
+   * or from inbuf[].
+   * "msec" == -1 will block forever.
++  * for "ignore_input" see WaitForCharOr().
+   * "interrupted" (if not NULL) is set to TRUE when no character is available
+   * but something else needs to be done.
+   * When a GUI is being used, this will never get called -- webb
+   */
+      static int
+! WaitForCharOrMouse(long msec, int *interrupted, int ignore_input)
+  {
+  #ifdef FEAT_MOUSE_GPM
+      int		gpm_process_wanted;
+***************
+*** 5679,5685 ****
+  #endif
+      int		avail;
+  
+!     if (input_available())	    /* something in inbuf[] */
+  	return 1;
+  
+  #if defined(FEAT_MOUSE_DEC)
+--- 5693,5699 ----
+  #endif
+      int		avail;
+  
+!     if (!ignore_input && input_available())	    /* something in inbuf[] */
+  	return 1;
+  
+  #if defined(FEAT_MOUSE_DEC)
+***************
+*** 5722,5728 ****
+  # endif
+  	if (!avail)
+  	{
+! 	    if (input_available())
+  		return 1;
+  # ifdef FEAT_XCLIPBOARD
+  	    if (rest == 0 || !do_xterm_trace())
+--- 5736,5742 ----
+  # endif
+  	if (!avail)
+  	{
+! 	    if (!ignore_input && input_available())
+  		return 1;
+  # ifdef FEAT_XCLIPBOARD
+  	    if (rest == 0 || !do_xterm_trace())
+*** ../vim-8.0.0853/src/proto/os_unix.pro	2017-08-01 22:24:21.553439094 +0200
+--- src/proto/os_unix.pro	2017-08-03 20:32:14.475674718 +0200
+***************
+*** 3,8 ****
+--- 3,9 ----
+  void mch_write(char_u *s, int len);
+  int mch_inchar(char_u *buf, int maxlen, long wtime, int tb_change_cnt);
+  int mch_char_avail(void);
++ int mch_check_messages(void);
+  long_u mch_total_mem(int special);
+  void mch_delay(long msec, int ignoreinput);
+  int mch_stackcheck(char *p);
+*** ../vim-8.0.0853/src/os_win32.c	2017-08-02 23:18:21.459665648 +0200
+--- src/os_win32.c	2017-08-03 20:39:27.768564299 +0200
+***************
+*** 1400,1409 ****
+  /*
+   * Wait until console input from keyboard or mouse is available,
+   * or the time is up.
+   * Return TRUE if something is available FALSE if not.
+   */
+      static int
+! WaitForChar(long msec)
+  {
+      DWORD	    dwNow = 0, dwEndTime = 0;
+      INPUT_RECORD    ir;
+--- 1400,1410 ----
+  /*
+   * Wait until console input from keyboard or mouse is available,
+   * or the time is up.
++  * When "ignore_input" is TRUE even wait when input is available.
+   * Return TRUE if something is available FALSE if not.
+   */
+      static int
+! WaitForChar(long msec, int ignore_input)
+  {
+      DWORD	    dwNow = 0, dwEndTime = 0;
+      INPUT_RECORD    ir;
+***************
+*** 1440,1446 ****
+  		|| g_nMouseClick != -1
+  #endif
+  #ifdef FEAT_CLIENTSERVER
+! 		|| input_available()
+  #endif
+  	   )
+  	    return TRUE;
+--- 1441,1447 ----
+  		|| g_nMouseClick != -1
+  #endif
+  #ifdef FEAT_CLIENTSERVER
+! 		|| (!ignore_input && input_available())
+  #endif
+  	   )
+  	    return TRUE;
+***************
+*** 1583,1590 ****
+      int
+  mch_char_avail(void)
+  {
+!     return WaitForChar(0L);
+  }
+  #endif
+  
+  /*
+--- 1584,1602 ----
+      int
+  mch_char_avail(void)
+  {
+!     return WaitForChar(0L, FALSE);
+  }
++ 
++ # if defined(FEAT_TERMINAL) || defined(PROTO)
++ /*
++  * Check for any pending input or messages.
++  */
++     int
++ mch_check_messages(void)
++ {
++     return WaitForChar(0L, TRUE);
++ }
++ # endif
+  #endif
+  
+  /*
+***************
+*** 1614,1620 ****
+  	DWORD cRecords = 0;
+  
+  #ifdef FEAT_CLIENTSERVER
+! 	(void)WaitForChar(-1L);
+  	if (input_available())
+  	    return 0;
+  # ifdef FEAT_MOUSE
+--- 1626,1632 ----
+  	DWORD cRecords = 0;
+  
+  #ifdef FEAT_CLIENTSERVER
+! 	(void)WaitForChar(-1L, FALSE);
+  	if (input_available())
+  	    return 0;
+  # ifdef FEAT_MOUSE
+***************
+*** 1681,1687 ****
+  
+      if (time >= 0)
+      {
+! 	if (!WaitForChar(time))     /* no character available */
+  	    return 0;
+      }
+      else    /* time == -1, wait forever */
+--- 1693,1699 ----
+  
+      if (time >= 0)
+      {
+! 	if (!WaitForChar(time, FALSE))     /* no character available */
+  	    return 0;
+      }
+      else    /* time == -1, wait forever */
+***************
+*** 1693,1699 ****
+  	 * write the autoscript file to disk.  Or cause the CursorHold event
+  	 * to be triggered.
+  	 */
+! 	if (!WaitForChar(p_ut))
+  	{
+  #ifdef FEAT_AUTOCMD
+  	    if (trigger_cursorhold() && maxlen >= 3)
+--- 1705,1711 ----
+  	 * write the autoscript file to disk.  Or cause the CursorHold event
+  	 * to be triggered.
+  	 */
+! 	if (!WaitForChar(p_ut, FALSE))
+  	{
+  #ifdef FEAT_AUTOCMD
+  	    if (trigger_cursorhold() && maxlen >= 3)
+***************
+*** 1723,1729 ****
+      /* Keep looping until there is something in the typeahead buffer and more
+       * to get and still room in the buffer (up to two bytes for a char and
+       * three bytes for a modifier). */
+!     while ((typeaheadlen == 0 || WaitForChar(0L))
+  					  && typeaheadlen + 5 <= TYPEAHEADLEN)
+      {
+  	if (typebuf_changed(tb_change_cnt))
+--- 1735,1741 ----
+      /* Keep looping until there is something in the typeahead buffer and more
+       * to get and still room in the buffer (up to two bytes for a char and
+       * three bytes for a modifier). */
+!     while ((typeaheadlen == 0 || WaitForChar(0L, FALSE))
+  					  && typeaheadlen + 5 <= TYPEAHEADLEN)
+      {
+  	if (typebuf_changed(tb_change_cnt))
+***************
+*** 5721,5727 ****
+  
+  
+  /*
+!  * write `cbToWrite' bytes in `pchBuf' to the screen
+   * Returns the number of bytes actually written (at least one).
+   */
+      static DWORD
+--- 5733,5739 ----
+  
+  
+  /*
+!  * Write "cbToWrite" bytes in `pchBuf' to the screen.
+   * Returns the number of bytes actually written (at least one).
+   */
+      static DWORD
+***************
+*** 5828,5834 ****
+  
+  	if (p_wd)
+  	{
+! 	    WaitForChar(p_wd);
+  	    if (prefix != 0)
+  		prefix = 1;
+  	}
+--- 5840,5846 ----
+  
+  	if (p_wd)
+  	{
+! 	    WaitForChar(p_wd, FALSE);
+  	    if (prefix != 0)
+  		prefix = 1;
+  	}
+***************
+*** 6120,6126 ****
+  # endif
+  	    Sleep((int)msec);
+      else
+! 	WaitForChar(msec);
+  #endif
+  }
+  
+--- 6132,6138 ----
+  # endif
+  	    Sleep((int)msec);
+      else
+! 	WaitForChar(msec, FALSE);
+  #endif
+  }
+  
+*** ../vim-8.0.0853/src/proto/os_win32.pro	2017-08-02 23:18:21.459665648 +0200
+--- src/proto/os_win32.pro	2017-08-03 20:39:33.036526458 +0200
+***************
+*** 8,13 ****
+--- 8,14 ----
+  void mch_setmouse(int on);
+  void mch_update_cursor(void);
+  int mch_char_avail(void);
++ int mch_check_messages(void);
+  int mch_inchar(char_u *buf, int maxlen, long time, int tb_change_cnt);
+  void mch_init(void);
+  void mch_exit(int r);
+*** ../vim-8.0.0853/src/os_mswin.c	2017-03-19 21:47:46.897119250 +0100
+--- src/os_mswin.c	2017-08-03 20:41:29.415690323 +0200
+***************
+*** 809,814 ****
+--- 809,826 ----
+      /* never used */
+      return TRUE;
+  }
++ 
++ # if defined(FEAT_TERMINAL) || defined(PROTO)
++ /*
++  * Check for any pending input or messages.
++  */
++     int
++ mch_check_messages(void)
++ {
++     /* TODO: check for messages */
++     return TRUE;
++ }
++ # endif
+  #endif
+  
+  
+*** ../vim-8.0.0853/src/version.c	2017-08-03 19:22:32.285906728 +0200
+--- src/version.c	2017-08-03 20:42:00.807464738 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     854,
+  /**/
+
+-- 
+BLACK KNIGHT:  I move for no man.
+ARTHUR:        So be it!
+    [hah] [parry thrust]
+    [ARTHUR chops the BLACK KNIGHT's left arm off]
+ARTHUR:        Now stand aside, worthy adversary.
+BLACK KNIGHT:  'Tis but a scratch.
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,107 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0234
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0234 (after 8.0.0225)
+Problem:    When several lines are visually selected and one of them is short,
+            using put may cause a crash. (Axel Bender)
+Solution:   Check for a short line. (Christian Brabandt)
+Files:      src/ops.c, src/testdir/test_put.vim
+
+
+*** ../vim-8.0.0233/src/ops.c	2017-01-23 21:53:48.578417996 +0100
+--- src/ops.c	2017-01-24 19:29:54.769672745 +0100
+***************
+*** 3774,3789 ****
+  	 */
+  	if (y_type == MCHAR && y_size == 1)
+  	{
+! 	    linenr_T end = curbuf->b_visual.vi_end.lnum;
+  
+! 	    if (curbuf->b_visual.vi_end.lnum < curbuf->b_visual.vi_start.lnum)
+! 		end = curbuf->b_visual.vi_start.lnum;
+  
+  	    do {
+  		totlen = count * yanklen;
+  		if (totlen > 0)
+  		{
+  		    oldp = ml_get(lnum);
+  		    newp = alloc_check((unsigned)(STRLEN(oldp) + totlen + 1));
+  		    if (newp == NULL)
+  			goto end;	/* alloc() gave an error message */
+--- 3774,3798 ----
+  	 */
+  	if (y_type == MCHAR && y_size == 1)
+  	{
+! 	    linenr_T end;
+  
+! 	    if (VIsual_active)
+! 	    {
+! 		end = curbuf->b_visual.vi_end.lnum;
+! 		if (end < curbuf->b_visual.vi_start.lnum)
+! 		    end = curbuf->b_visual.vi_start.lnum;
+! 	    }
+  
+  	    do {
+  		totlen = count * yanklen;
+  		if (totlen > 0)
+  		{
+  		    oldp = ml_get(lnum);
++ 		    if (VIsual_active && col > (int)STRLEN(oldp))
++ 		    {
++ 			lnum++;
++ 			continue;
++ 		    }
+  		    newp = alloc_check((unsigned)(STRLEN(oldp) + totlen + 1));
+  		    if (newp == NULL)
+  			goto end;	/* alloc() gave an error message */
+*** ../vim-8.0.0233/src/testdir/test_put.vim	2017-01-23 21:53:48.578417996 +0100
+--- src/testdir/test_put.vim	2017-01-24 19:22:01.824873262 +0100
+***************
+*** 21,23 ****
+--- 21,36 ----
+    call assert_equal(['Xfile_put 1', 'Xfile_put 2'], getline(1,2))
+    bw!
+  endfunc
++ 
++ func Test_put_char_block2()
++   new
++   let a = [ getreg('a'), getregtype('a') ]
++   call setreg('a', ' one ', 'v')
++   call setline(1, ['Line 1', '', 'Line 3', ''])
++   " visually select the first 3 lines and put register a over it
++   exe "norm! ggl\<c-v>2j2l\"ap"
++   call assert_equal(['L one  1', '', 'L one  3', ''], getline(1,4))
++   " clean up
++   bw!
++   call setreg('a', a[0], a[1])
++ endfunc
+*** ../vim-8.0.0233/src/version.c	2017-01-24 19:18:10.386436951 +0100
+--- src/version.c	2017-01-24 19:33:17.348302563 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     234,
+  /**/
+
+-- 
+CUSTOMER:     You're not fooling anyone y'know.  Look, isn't there something
+              you can do?
+DEAD PERSON:  I feel happy... I feel happy.
+    [whop]
+CUSTOMER:     Ah, thanks very much.
+MORTICIAN:    Not at all.  See you on Thursday.
+CUSTOMER:     Right.
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

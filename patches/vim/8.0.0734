@@ -1,0 +1,91 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0734
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0734
+Problem:    The script to check translations can be improved.
+Solution:   Restore the view when no errors are found.  Check for matching
+            line break at the end of the message. (Christian Brabandt)
+Files:      src/po/check.vim
+
+
+*** ../vim-8.0.0733/src/po/check.vim	2016-08-26 15:45:00.000000000 +0200
+--- src/po/check.vim	2017-07-19 14:24:09.741636925 +0200
+***************
+*** 35,40 ****
+--- 35,41 ----
+  set nowrapscan
+  
+  " Start at the first "msgid" line.
++ let wsv = winsaveview()
+  1
+  /^msgid\>
+  
+***************
+*** 110,116 ****
+--- 111,153 ----
+    endif
+  endif
+  
++ func! CountNl(first, last)
++   let nl = 0
++   for lnum in range(a:first, a:last)
++     if getline(lnum) =~ '\\n'
++       let nl += 1
++     endif
++   endfor
++   return nl
++ endfunc
++ 
++ " Check that the \n at the end of the msid line is also present in the msgstr
++ " line.  Skip over the header.
++ /^"MIME-Version:
++ while 1
++   let lnum = search('^msgid\>')
++   if lnum <= 0
++     break
++   endif
++   let strlnum = search('^msgstr\>')
++   let end = search('^$')
++   if end <= 0
++     let end = line('$') + 1
++   endif
++   let origcount = CountNl(lnum, strlnum - 1)
++   let transcount = CountNl(strlnum, end - 1)
++   " Allow for a few more or less line breaks when there are 2 or more
++   if origcount != transcount && (origcount <= 2 || transcount <= 2)
++     echomsg 'Mismatching "\\n" in line ' . line('.')
++     if error == 0
++       let error = lnum
++     endif
++   endif
++ endwhile
++ 
+  if error == 0
++   " If all was OK restore the view.
++   call winrestview(wsv)
+    echomsg "OK"
+  else
+    exe error
+*** ../vim-8.0.0733/src/version.c	2017-07-19 13:23:02.992511319 +0200
+--- src/version.c	2017-07-19 14:33:03.669740594 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     734,
+  /**/
+
+-- 
+A bad peace is better than a good war. - Yiddish Proverb
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

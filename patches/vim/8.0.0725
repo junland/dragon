@@ -1,0 +1,273 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0725
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0725
+Problem:    A terminal window does not handle keyboard input.
+Solution:   Add terminal_loop().  ":term bash -i" sort of works now.
+Files:      src/main.c, src/terminal.c, src/proto/terminal.pro, src/normal.c
+
+
+*** ../vim-8.0.0724/src/main.c	2017-07-15 19:22:33.638179943 +0200
+--- src/main.c	2017-07-16 18:33:59.232137949 +0200
+***************
+*** 1354,1360 ****
+--- 1354,1367 ----
+  	    do_exmode(exmode_active == EXMODE_VIM);
+  	}
+  	else
++ 	{
++ #ifdef FEAT_TERMINAL
++ 	    if (curbuf->b_term != NULL && oa.op_type == OP_NOP
++ 							  && oa.regname == NUL)
++ 		terminal_loop();
++ #endif
+  	    normal_cmd(&oa, TRUE);
++ 	}
+      }
+  }
+  
+*** ../vim-8.0.0724/src/terminal.c	2017-07-16 13:48:18.190107174 +0200
+--- src/terminal.c	2017-07-16 19:52:06.571758057 +0200
+***************
+*** 15,21 ****
+   *
+   * The VTerm invokes callbacks when its screen contents changes.  The line
+   * range is stored in tl_dirty_row_start and tl_dirty_row_end.  Once in a
+!  * while, if the window is visible, the screen contents is drawn.
+   *
+   * If the terminal window has keyboard focus, typed keys are converted to the
+   * terminal encoding and writting to the job over a channel.
+--- 15,21 ----
+   *
+   * The VTerm invokes callbacks when its screen contents changes.  The line
+   * range is stored in tl_dirty_row_start and tl_dirty_row_end.  Once in a
+!  * while, if the terminal window is visible, the screen contents is drawn.
+   *
+   * If the terminal window has keyboard focus, typed keys are converted to the
+   * terminal encoding and writting to the job over a channel.
+***************
+*** 24,36 ****
+   * This will result in screen updates.
+   *
+   * TODO:
+   * - free b_term when closing terminal.
+   * - remove term from first_term list when closing terminal.
+   * - set buffer options to be scratch, hidden, nomodifiable, etc.
+   * - set buffer name to command, add (1) to avoid duplicates.
+   * - if buffer is wiped, cleanup terminal, may stop job.
+   * - if the job ends, write "-- JOB ENDED --" in the terminal
+!  * - command line completion (command name)
+   * - support fixed size when 'termsize' is "rowsXcols".
+   * - support minimal size when 'termsize' is "rows*cols".
+   * - support minimal size when 'termsize' is empty.
+--- 24,44 ----
+   * This will result in screen updates.
+   *
+   * TODO:
++  * - pressing Enter sends two CR and/or NL characters to "bash -i"?
+   * - free b_term when closing terminal.
+   * - remove term from first_term list when closing terminal.
+   * - set buffer options to be scratch, hidden, nomodifiable, etc.
+   * - set buffer name to command, add (1) to avoid duplicates.
+   * - if buffer is wiped, cleanup terminal, may stop job.
+   * - if the job ends, write "-- JOB ENDED --" in the terminal
+!  * - when closing window and job ended, delete the terminal
+!  * - when closing window and job has not ended, make terminal hidden?
+!  * - Use a pty for I/O with the job.
+!  * - Windows implementation:
+!  *   (WiP): https://github.com/mattn/vim/tree/terminal
+!  *	src/os_win32.c  mch_open_terminal()
+!      Using winpty ?
+!  * - command line completion for :terminal
+   * - support fixed size when 'termsize' is "rowsXcols".
+   * - support minimal size when 'termsize' is "rows*cols".
+   * - support minimal size when 'termsize' is empty.
+***************
+*** 157,162 ****
+--- 165,171 ----
+      vterm_screen_reset(screen, 1 /* hard */);
+  
+      /* By default NL means CR-NL. */
++     /* TODO: this causes two prompts when using ":term bash -i". */
+      vterm_input_write(vterm, "\x1b[20h", 5);
+  
+      argvars[0].v_type = VAR_STRING;
+***************
+*** 302,318 ****
+  
+  /* TODO: Use win_del_lines() to make scroll up efficient. */
+  
+- /* TODO: function to update the window.
+-  * Get the screen contents from vterm with vterm_screen_get_cell().
+-  * put in current_ScreenLine and call screen_line().
+-  */
+  
+! /* TODO: function to wait for input and send it to the job.
+   * Return when a CTRL-W command is typed that moves to another window.
+-  * Convert special keys to vterm keys:
+-  * - Write keys to vterm: vterm_keyboard_key()
+-  * - read the output (xterm escape sequences): vterm_output_read()
+-  * - Write output to channel.
+   */
+  
+  #endif /* FEAT_TERMINAL */
+--- 311,414 ----
+  
+  /* TODO: Use win_del_lines() to make scroll up efficient. */
+  
+  
+! /*
+!  * Wait for input and send it to the job.
+   * Return when a CTRL-W command is typed that moves to another window.
+   */
++     void
++ terminal_loop(void)
++ {
++     VTerm   *vterm = curbuf->b_term->tl_vterm;
++     char    buf[200];
++ 
++     for (;;)
++     {
++ 	int c;
++ 	VTermKey key = VTERM_KEY_NONE;
++ 	VTermModifier mod = VTERM_MOD_NONE;
++ 	size_t len;
++ 
++ 	update_screen(0);
++ 	setcursor();
++ 	out_flush();
++ 
++ 	c = vgetc();
++ 	switch (c)
++ 	{
++ 	    case Ctrl_W:
++ 		stuffcharReadbuff(Ctrl_W);
++ 		return;
++ 
++ 	    case CAR:		key = VTERM_KEY_ENTER; break;
++ 	    case ESC:		key = VTERM_KEY_ESCAPE; break;
++ 	    case K_BS:		key = VTERM_KEY_BACKSPACE; break;
++ 	    case K_DEL:		key = VTERM_KEY_DEL; break;
++ 	    case K_DOWN:	key = VTERM_KEY_DOWN; break;
++ 	    case K_END:		key = VTERM_KEY_END; break;
++ 	    case K_F10:		key = VTERM_KEY_FUNCTION(10); break;
++ 	    case K_F11:		key = VTERM_KEY_FUNCTION(11); break;
++ 	    case K_F12:		key = VTERM_KEY_FUNCTION(12); break;
++ 	    case K_F1:		key = VTERM_KEY_FUNCTION(1); break;
++ 	    case K_F2:		key = VTERM_KEY_FUNCTION(2); break;
++ 	    case K_F3:		key = VTERM_KEY_FUNCTION(3); break;
++ 	    case K_F4:		key = VTERM_KEY_FUNCTION(4); break;
++ 	    case K_F5:		key = VTERM_KEY_FUNCTION(5); break;
++ 	    case K_F6:		key = VTERM_KEY_FUNCTION(6); break;
++ 	    case K_F7:		key = VTERM_KEY_FUNCTION(7); break;
++ 	    case K_F8:		key = VTERM_KEY_FUNCTION(8); break;
++ 	    case K_F9:		key = VTERM_KEY_FUNCTION(9); break;
++ 	    case K_HOME:	key = VTERM_KEY_HOME; break;
++ 	    case K_INS:		key = VTERM_KEY_INS; break;
++ 	    case K_K0:		key = VTERM_KEY_KP_0; break;
++ 	    case K_K1:		key = VTERM_KEY_KP_1; break;
++ 	    case K_K2:		key = VTERM_KEY_KP_2; break;
++ 	    case K_K3:		key = VTERM_KEY_KP_3; break;
++ 	    case K_K4:		key = VTERM_KEY_KP_4; break;
++ 	    case K_K5:		key = VTERM_KEY_KP_5; break;
++ 	    case K_K6:		key = VTERM_KEY_KP_6; break;
++ 	    case K_K7:		key = VTERM_KEY_KP_7; break;
++ 	    case K_K8:		key = VTERM_KEY_KP_8; break;
++ 	    case K_K9:		key = VTERM_KEY_KP_9; break;
++ 	    case K_KDEL:	key = VTERM_KEY_DEL; break; /* TODO */
++ 	    case K_KDIVIDE:	key = VTERM_KEY_KP_DIVIDE; break;
++ 	    case K_KEND:	key = VTERM_KEY_KP_1; break; /* TODO */
++ 	    case K_KENTER:	key = VTERM_KEY_KP_ENTER; break;
++ 	    case K_KHOME:	key = VTERM_KEY_KP_7; break; /* TODO */
++ 	    case K_KINS:	key = VTERM_KEY_KP_0; break; /* TODO */
++ 	    case K_KMINUS:	key = VTERM_KEY_KP_MINUS; break;
++ 	    case K_KMULTIPLY:	key = VTERM_KEY_KP_MULT; break;
++ 	    case K_KPAGEDOWN:	key = VTERM_KEY_KP_3; break; /* TODO */
++ 	    case K_KPAGEUP:	key = VTERM_KEY_KP_9; break; /* TODO */
++ 	    case K_KPLUS:	key = VTERM_KEY_KP_PLUS; break;
++ 	    case K_KPOINT:	key = VTERM_KEY_KP_PERIOD; break;
++ 	    case K_LEFT:	key = VTERM_KEY_LEFT; break;
++ 	    case K_PAGEDOWN:	key = VTERM_KEY_PAGEDOWN; break;
++ 	    case K_PAGEUP:	key = VTERM_KEY_PAGEUP; break;
++ 	    case K_RIGHT:	key = VTERM_KEY_RIGHT; break;
++ 	    case K_UP:		key = VTERM_KEY_UP; break;
++ 	    case TAB:		key = VTERM_KEY_TAB; break;
++ 	}
++ 
++ 	/*
++ 	 * Convert special keys to vterm keys:
++ 	 * - Write keys to vterm: vterm_keyboard_key()
++ 	 * - Write output to channel.
++ 	 */
++ 	if (key != VTERM_KEY_NONE)
++ 	    /* Special key, let vterm convert it. */
++ 	    vterm_keyboard_key(vterm, key, mod);
++ 	else
++ 	    /* Normal character, let vterm convert it. */
++ 	    vterm_keyboard_unichar(vterm, c, mod);
++ 
++ 	/* Read back the converted escape sequence. */
++ 	len = vterm_output_read(vterm, buf, sizeof(buf));
++ 
++ 	/* TODO: if FAIL is returned, stop? */
++ 	channel_send(curbuf->b_term->tl_job->jv_channel, PART_IN,
++ 						     (char_u *)buf, len, NULL);
++     }
++ }
+  
+  #endif /* FEAT_TERMINAL */
+*** ../vim-8.0.0724/src/proto/terminal.pro	2017-07-16 13:48:18.190107174 +0200
+--- src/proto/terminal.pro	2017-07-16 18:30:55.789541102 +0200
+***************
+*** 2,5 ****
+--- 2,6 ----
+  void ex_terminal(exarg_T *eap);
+  void write_to_term(buf_T *buffer, char_u *msg, channel_T *channel);
+  void term_update_window(win_T *wp);
++ void terminal_loop(void);
+  /* vim: set ft=c : */
+*** ../vim-8.0.0724/src/normal.c	2017-06-18 22:40:36.524444661 +0200
+--- src/normal.c	2017-07-16 19:42:59.356050542 +0200
+***************
+*** 7846,7852 ****
+  nv_window(cmdarg_T *cap)
+  {
+  #ifdef FEAT_WINDOWS
+!     if (!checkclearop(cap->oap))
+  	do_window(cap->nchar, cap->count0, NUL); /* everything is in window.c */
+  #else
+      (void)checkclearop(cap->oap);
+--- 7846,7855 ----
+  nv_window(cmdarg_T *cap)
+  {
+  #ifdef FEAT_WINDOWS
+!     if (cap->nchar == ':')
+! 	/* "CTRL-W :" is the same as typing ":"; useful in a terminal window */
+! 	nv_colon(cap);
+!     else if (!checkclearop(cap->oap))
+  	do_window(cap->nchar, cap->count0, NUL); /* everything is in window.c */
+  #else
+      (void)checkclearop(cap->oap);
+*** ../vim-8.0.0724/src/version.c	2017-07-16 17:55:53.325531419 +0200
+--- src/version.c	2017-07-16 20:12:14.986360975 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     725,
+  /**/
+
+-- 
+"Hit any key to continue" is a lie.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

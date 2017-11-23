@@ -1,0 +1,92 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0682
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0682
+Problem:    No test for synIDtrans().
+Solution:   Add a test. (Dominique Pelle, closes #1796)
+Files:      src/testdir/test_syntax.vim
+
+
+*** ../vim-8.0.0681/src/testdir/test_syntax.vim	2017-06-24 22:29:02.037532934 +0200
+--- src/testdir/test_syntax.vim	2017-06-27 15:42:06.379769233 +0200
+***************
+*** 418,424 ****
+    hi Normal ctermbg=15
+    call assert_equal('light', &bg)
+  
+!   " manually-set &bg takes precendence over auto-detection
+    set bg=light
+    hi Normal ctermbg=4
+    call assert_equal('light', &bg)
+--- 418,424 ----
+    hi Normal ctermbg=15
+    call assert_equal('light', &bg)
+  
+!   " manually-set &bg takes precedence over auto-detection
+    set bg=light
+    hi Normal ctermbg=4
+    call assert_equal('light', &bg)
+***************
+*** 461,467 ****
+    bwipe!
+  endfunc
+  
+- 
+  func Test_conceal()
+    if !has('conceal')
+      return
+--- 461,466 ----
+***************
+*** 497,499 ****
+--- 496,522 ----
+    set conceallevel&
+    bw!
+  endfunc
++ 
++ fun Test_synstack_synIDtrans()
++   new
++   setfiletype c
++   syntax on
++   call setline(1, ' /* A comment with a TODO */')
++ 
++   call assert_equal([], synstack(1, 1))
++ 
++   norm f/
++   call assert_equal(['cComment', 'cCommentStart'], map(synstack(line("."), col(".")), 'synIDattr(v:val, "name")'))
++   call assert_equal(['Comment', 'Comment'],        map(synstack(line("."), col(".")), 'synIDattr(synIDtrans(v:val), "name")'))
++ 
++   norm fA
++   call assert_equal(['cComment'], map(synstack(line("."), col(".")), 'synIDattr(v:val, "name")'))
++   call assert_equal(['Comment'],  map(synstack(line("."), col(".")), 'synIDattr(synIDtrans(v:val), "name")'))
++ 
++   norm fT
++   call assert_equal(['cComment', 'cTodo'], map(synstack(line("."), col(".")), 'synIDattr(v:val, "name")'))
++   call assert_equal(['Comment', 'Todo'],   map(synstack(line("."), col(".")), 'synIDattr(synIDtrans(v:val), "name")'))
++ 
++   syn clear
++   bw!
++ endfunc
+*** ../vim-8.0.0681/src/version.c	2017-06-27 15:39:10.245139234 +0200
+--- src/version.c	2017-06-27 15:43:05.363310512 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     682,
+  /**/
+
+-- 
+Warning label on a superhero Halloween costume:
+"Caution: Cape does not enable user to fly."
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

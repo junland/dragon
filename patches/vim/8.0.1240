@@ -1,0 +1,266 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1240
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1240
+Problem:    MS-Windows: term_start() does not support environment.
+Solution:   Implement the environment argument. (Yasuhiro Matsumoto, closes
+            #2264)
+Files:      src/os_win32.c, src/proto/os_win32.pro, src/terminal.c,
+            src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.1239/src/os_win32.c	2017-08-17 11:22:41.836109216 +0200
+--- src/os_win32.c	2017-10-30 21:53:21.820698340 +0100
+***************
+*** 5033,5040 ****
+   * Turn the dictionary "env" into a NUL separated list that can be used as the
+   * environment argument of vim_create_process().
+   */
+!     static void
+! make_job_env(garray_T *gap, dict_T *env)
+  {
+      hashitem_T	*hi;
+      int		todo = (int)env->dv_hashtab.ht_used;
+--- 5033,5040 ----
+   * Turn the dictionary "env" into a NUL separated list that can be used as the
+   * environment argument of vim_create_process().
+   */
+!     void
+! win32_build_env(dict_T *env, garray_T *gap)
+  {
+      hashitem_T	*hi;
+      int		todo = (int)env->dv_hashtab.ht_used;
+***************
+*** 5133,5139 ****
+      }
+  
+      if (options->jo_env != NULL)
+! 	make_job_env(&ga, options->jo_env);
+  
+      ZeroMemory(&pi, sizeof(pi));
+      ZeroMemory(&si, sizeof(si));
+--- 5133,5139 ----
+      }
+  
+      if (options->jo_env != NULL)
+! 	win32_build_env(options->jo_env, &ga);
+  
+      ZeroMemory(&pi, sizeof(pi));
+      ZeroMemory(&si, sizeof(si));
+*** ../vim-8.0.1239/src/proto/os_win32.pro	2017-08-11 16:31:50.329234432 +0200
+--- src/proto/os_win32.pro	2017-10-30 21:53:21.820698340 +0100
+***************
+*** 67,70 ****
+--- 67,71 ----
+  void set_alist_count(void);
+  void fix_arg_enc(void);
+  int mch_setenv(char *var, char *value, int x);
++ void win32_build_env(dict_T *l, garray_T *gap);
+  /* vim: set ft=c : */
+*** ../vim-8.0.1239/src/terminal.c	2017-10-15 22:56:45.763420554 +0200
+--- src/terminal.c	2017-10-30 21:53:21.824698311 +0100
+***************
+*** 46,54 ****
+--- 46,63 ----
+   * - Redirecting output does not work on MS-Windows, Test_terminal_redir_file()
+   *   is disabled.
+   * - cursor blinks in terminal on widows with a timer. (xtal8, #2142)
++  * - When closing gvim with an active terminal buffer, the dialog suggests
++  *   saving the buffer.  Should say something else. (Manas Thakur, #2215)
++  *   Also: #2223
+   * - implement term_setsize()
++  * - Termdebug does not work when Vim build with mzscheme.  gdb hangs.
++  * - Termdebug: issue #2154 might be avoided by adding -quiet to gdb?
++  *   patch by Christian, 2017 Oct 23.
+   * - MS-Windows GUI: WinBar has  tearoff item
+   * - MS-Windows GUI: still need to type a key after shell exits?  #1924
++  * - What to store in a session file?  Shell at the prompt would be OK to
++  *   restore, but others may not.  Open the window and let the user start the
++  *   command?
+   * - add test for giving error for invalid 'termsize' value.
+   * - support minimal size when 'termsize' is "rows*cols".
+   * - support minimal size when 'termsize' is empty?
+***************
+*** 3390,3395 ****
+--- 3399,3405 ----
+  {
+      WCHAR	    *cmd_wchar = NULL;
+      WCHAR	    *cwd_wchar = NULL;
++     WCHAR	    *env_wchar = NULL;
+      channel_T	    *channel = NULL;
+      job_T	    *job = NULL;
+      DWORD	    error;
+***************
+*** 3398,3404 ****
+      HANDLE	    child_thread_handle;
+      void	    *winpty_err;
+      void	    *spawn_config = NULL;
+!     garray_T	    ga;
+      char_u	    *cmd;
+  
+      if (dyn_winpty_init(TRUE) == FAIL)
+--- 3408,3414 ----
+      HANDLE	    child_thread_handle;
+      void	    *winpty_err;
+      void	    *spawn_config = NULL;
+!     garray_T	    ga_cmd, ga_env;
+      char_u	    *cmd;
+  
+      if (dyn_winpty_init(TRUE) == FAIL)
+***************
+*** 3408,3417 ****
+  	cmd = argvar->vval.v_string;
+      else
+      {
+! 	ga_init2(&ga, (int)sizeof(char*), 20);
+! 	if (win32_build_cmd(argvar->vval.v_list, &ga) == FAIL)
+  	    goto failed;
+! 	cmd = ga.ga_data;
+      }
+  
+      cmd_wchar = enc_to_utf16(cmd, NULL);
+--- 3418,3427 ----
+  	cmd = argvar->vval.v_string;
+      else
+      {
+! 	ga_init2(&ga_cmd, (int)sizeof(char*), 20);
+! 	if (win32_build_cmd(argvar->vval.v_list, &ga_cmd) == FAIL)
+  	    goto failed;
+! 	cmd = ga_cmd.ga_data;
+      }
+  
+      cmd_wchar = enc_to_utf16(cmd, NULL);
+***************
+*** 3419,3424 ****
+--- 3429,3440 ----
+  	return FAIL;
+      if (opt->jo_cwd != NULL)
+  	cwd_wchar = enc_to_utf16(opt->jo_cwd, NULL);
++     if (opt->jo_env != NULL)
++     {
++ 	ga_init2(&ga_env, (int)sizeof(char*), 20);
++ 	win32_build_env(opt->jo_env, &ga_env);
++ 	env_wchar = ga_env.ga_data;
++     }
+  
+      job = job_alloc();
+      if (job == NULL)
+***************
+*** 3446,3452 ****
+  	    NULL,
+  	    cmd_wchar,
+  	    cwd_wchar,
+! 	    NULL,
+  	    &winpty_err);
+      if (spawn_config == NULL)
+  	goto failed;
+--- 3462,3468 ----
+  	    NULL,
+  	    cmd_wchar,
+  	    cwd_wchar,
+! 	    env_wchar,
+  	    &winpty_err);
+      if (spawn_config == NULL)
+  	goto failed;
+***************
+*** 3519,3525 ****
+  
+  failed:
+      if (argvar->v_type == VAR_LIST)
+! 	vim_free(ga.ga_data);
+      vim_free(cmd_wchar);
+      vim_free(cwd_wchar);
+      if (spawn_config != NULL)
+--- 3535,3543 ----
+  
+  failed:
+      if (argvar->v_type == VAR_LIST)
+! 	vim_free(ga_cmd.ga_data);
+!     if (opt->jo_env != NULL)
+! 	vim_free(ga_env.ga_data);
+      vim_free(cmd_wchar);
+      vim_free(cwd_wchar);
+      if (spawn_config != NULL)
+*** ../vim-8.0.1239/src/testdir/test_terminal.vim	2017-10-15 22:56:45.763420554 +0200
+--- src/testdir/test_terminal.vim	2017-10-30 21:53:21.824698311 +0100
+***************
+*** 11,17 ****
+  " Open a terminal with a shell, assign the job to g:job and return the buffer
+  " number.
+  func Run_shell_in_terminal(options)
+!   let buf = term_start(&shell, a:options)
+  
+    let termlist = term_list()
+    call assert_equal(1, len(termlist))
+--- 11,21 ----
+  " Open a terminal with a shell, assign the job to g:job and return the buffer
+  " number.
+  func Run_shell_in_terminal(options)
+!   if has('win32')
+!     let buf = term_start([&shell,'/k'], a:options)
+!   else
+!     let buf = term_start(&shell, a:options)
+!   endif
+  
+    let termlist = term_list()
+    call assert_equal(1, len(termlist))
+***************
+*** 430,442 ****
+  endfunc
+  
+  func Test_terminal_env()
+-   if !has('unix')
+-     return
+-   endif
+    let g:buf = Run_shell_in_terminal({'env': {'TESTENV': 'correct'}})
+    " Wait for the shell to display a prompt
+    call WaitFor('term_getline(g:buf, 1) != ""')
+!   call term_sendkeys(g:buf, "echo $TESTENV\r")
+    call term_wait(g:buf)
+    call Stop_shell_in_terminal(g:buf)
+    call WaitFor('getline(2) == "correct"')
+--- 434,447 ----
+  endfunc
+  
+  func Test_terminal_env()
+    let g:buf = Run_shell_in_terminal({'env': {'TESTENV': 'correct'}})
+    " Wait for the shell to display a prompt
+    call WaitFor('term_getline(g:buf, 1) != ""')
+!   if has('win32')
+!     call term_sendkeys(g:buf, "echo %TESTENV%\r")
+!   else
+!     call term_sendkeys(g:buf, "echo $TESTENV\r")
+!   endif
+    call term_wait(g:buf)
+    call Stop_shell_in_terminal(g:buf)
+    call WaitFor('getline(2) == "correct"')
+*** ../vim-8.0.1239/src/version.c	2017-10-30 21:48:36.482732724 +0100
+--- src/version.c	2017-10-30 21:54:43.064119637 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1240,
+  /**/
+
+-- 
+MONK: ... and the Lord spake, saying, "First shalt thou take out the Holy Pin,
+      then shalt thou count to three, no more, no less.  Three shalt be the
+      number thou shalt count, and the number of the counting shalt be three.
+      Four shalt thou not count, neither count thou two, excepting that thou
+      then proceed to three.  Five is right out.  Once the number three, being
+      the third number, be reached, then lobbest thou thy Holy Hand Grenade of
+      Antioch towards thou foe, who being naughty in my sight, shall snuff it.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

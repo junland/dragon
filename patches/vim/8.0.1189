@@ -1,0 +1,84 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1189
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1189
+Problem:    E172 is not actually useful, it's only on Unix anyway.
+Solution:   Remove the check and the error.
+Files:      src/ex_docmd.c, runtime/doc/message.txt
+
+
+*** ../vim-8.0.1188/src/ex_docmd.c	2017-09-26 17:40:40.591681236 +0200
+--- src/ex_docmd.c	2017-10-14 15:19:18.822307735 +0200
+***************
+*** 5085,5113 ****
+  	{
+  	    if (n == 2)
+  	    {
+- #ifdef UNIX
+- 		/*
+- 		 * Only for Unix we check for more than one file name.
+- 		 * For other systems spaces are considered to be part
+- 		 * of the file name.
+- 		 * Only check here if there is no wildcard, otherwise
+- 		 * ExpandOne() will check for errors. This allows
+- 		 * ":e `ls ve*.c`" on Unix.
+- 		 */
+- 		if (!has_wildcards)
+- 		    for (p = eap->arg; *p; ++p)
+- 		    {
+- 			/* skip escaped characters */
+- 			if (p[1] && (*p == '\\' || *p == Ctrl_V))
+- 			    ++p;
+- 			else if (VIM_ISWHITE(*p))
+- 			{
+- 			    *errormsgp = (char_u *)_("E172: Only one file name allowed");
+- 			    return FAIL;
+- 			}
+- 		    }
+- #endif
+- 
+  		/*
+  		 * Halve the number of backslashes (this is Vi compatible).
+  		 * For Unix and OS/2, when wildcards are expanded, this is
+--- 5085,5090 ----
+*** ../vim-8.0.1188/runtime/doc/message.txt	2016-09-12 12:45:26.000000000 +0200
+--- runtime/doc/message.txt	2017-10-14 15:20:42.997720626 +0200
+***************
+*** 462,473 ****
+  Something inside Vim went wrong and resulted in a NULL pointer.  If you know
+  how to reproduce this problem, please report it. |bugs|
+  
+- 							*E172*  >
+-   Only one file name allowed
+- 
+- The ":edit" command only accepts one file name.  When you want to specify
+- several files for editing use ":next" |:next|.
+- 
+  						*E41* *E82* *E83* *E342*  >
+    Out of memory!
+    Out of memory!  (allocating {number} bytes)
+--- 463,468 ----
+*** ../vim-8.0.1188/src/version.c	2017-10-13 22:33:28.124111493 +0200
+--- src/version.c	2017-10-14 15:20:14.285920869 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1189,
+  /**/
+
+-- 
+Yah, well, we had to carve our electrons out of driftwood we'd
+find.  In the winter.  Uphill.  Both ways.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

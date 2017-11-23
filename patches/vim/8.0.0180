@@ -1,0 +1,72 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0180
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0180
+Problem:    Error E937 is used both for duplicate key in JSON and for trying
+            to delete a buffer that is in use.
+Solution:   Rename the JSON error to E938. (Norio Takagi, closes #1376)
+Files:      src/json.c, src/testdir/test_json.vim
+
+
+*** ../vim-8.0.0179/src/json.c	2017-01-11 21:50:04.884673277 +0100
+--- src/json.c	2017-01-14 14:30:10.879950714 +0100
+***************
+*** 936,942 ****
+  			&& dict_find(top_item->jd_tv.vval.v_dict,
+  						 top_item->jd_key, -1) != NULL)
+  		{
+! 		    EMSG2(_("E937: Duplicate key in JSON: \"%s\""),
+  							     top_item->jd_key);
+  		    clear_tv(&top_item->jd_key_tv);
+  		    clear_tv(cur_item);
+--- 936,942 ----
+  			&& dict_find(top_item->jd_tv.vval.v_dict,
+  						 top_item->jd_key, -1) != NULL)
+  		{
+! 		    EMSG2(_("E938: Duplicate key in JSON: \"%s\""),
+  							     top_item->jd_key);
+  		    clear_tv(&top_item->jd_key_tv);
+  		    clear_tv(cur_item);
+*** ../vim-8.0.0179/src/testdir/test_json.vim	2017-01-11 21:50:04.884673277 +0100
+--- src/testdir/test_json.vim	2017-01-14 14:30:10.879950714 +0100
+***************
+*** 152,158 ****
+    call assert_fails('call json_decode("blah")', "E474:")
+    call assert_fails('call json_decode("true blah")', "E488:")
+    call assert_fails('call json_decode("<foobar>")', "E474:")
+!   call assert_fails('call json_decode("{\"a\":1,\"a\":2}")', "E937:")
+  
+    call assert_fails('call json_decode("{")', "E474:")
+    call assert_fails('call json_decode("{foobar}")', "E474:")
+--- 152,158 ----
+    call assert_fails('call json_decode("blah")', "E474:")
+    call assert_fails('call json_decode("true blah")', "E488:")
+    call assert_fails('call json_decode("<foobar>")', "E474:")
+!   call assert_fails('call json_decode("{\"a\":1,\"a\":2}")', "E938:")
+  
+    call assert_fails('call json_decode("{")', "E474:")
+    call assert_fails('call json_decode("{foobar}")', "E474:")
+*** ../vim-8.0.0179/src/version.c	2017-01-14 14:28:26.964592279 +0100
+--- src/version.c	2017-01-14 14:34:25.614377859 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     180,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+10E. You start counting in hex.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

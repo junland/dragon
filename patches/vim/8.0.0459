@@ -1,0 +1,70 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0459
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0459 (after 8.0.0457)
+Problem:    Old fix for :move messing up folding no longer needed, now that we
+            have a proper solution.
+Solution:   Revert patch 7.4.700. (Christian Brabandt)
+Files:      src/ex_cmds.c
+
+
+*** ../vim-8.0.0458/src/ex_cmds.c	2017-03-14 21:53:54.110075306 +0100
+--- src/ex_cmds.c	2017-03-14 22:33:24.388499490 +0100
+***************
+*** 799,814 ****
+      linenr_T	num_lines;  /* Num lines moved */
+      linenr_T	last_line;  /* Last line in file after adding new text */
+  #ifdef FEAT_FOLDING
+-     int		isFolded;
+      win_T	*win;
+      tabpage_T	*tp;
+- 
+-     /* Moving lines seems to corrupt the folds, delete folding info now
+-      * and recreate it when finished.  Don't do this for manual folding, it
+-      * would delete all folds. */
+-     isFolded = hasAnyFolding(curwin) && !foldmethodIsManual(curwin);
+-     if (isFolded)
+- 	deleteFoldRecurse(&curwin->w_folds);
+  #endif
+  
+      if (dest >= line1 && dest < line2)
+--- 799,806 ----
+***************
+*** 918,929 ****
+      else
+  	changed_lines(dest + 1, 0, line1 + num_lines, 0L);
+  
+- #ifdef FEAT_FOLDING
+- 	/* recreate folds */
+- 	if (isFolded)
+- 	    foldUpdateAll(curwin);
+- #endif
+- 
+      return OK;
+  }
+  
+--- 910,915 ----
+*** ../vim-8.0.0458/src/version.c	2017-03-14 22:17:10.675745424 +0100
+--- src/version.c	2017-03-15 20:44:16.747986112 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     459,
+  /**/
+
+-- 
+The difference between theory and practice, is that in theory, there
+is no difference between theory and practice.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

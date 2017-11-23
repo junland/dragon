@@ -1,0 +1,64 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0240
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0240 (after 8.0.0239)
+Problem:    The clang build on CI fails with one configuration.
+Solution:   Redo a previous patch that was accidentally reverted.
+Files:      .travis.yml
+
+
+*** ../vim-8.0.0239/.travis.yml	2017-01-26 20:09:51.787983875 +0100
+--- .travis.yml	2017-01-26 21:22:35.284086416 +0100
+***************
+*** 75,82 ****
+        - cscope
+  
+  before_install:
+!   - pip install --user cpp-coveralls
+!   - pip install --user requests[security]
+      # Lua is not installed on Travis OSX
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install lua; export LUA_PREFIX=/usr/local; fi
+  
+--- 75,84 ----
+        - cscope
+  
+  before_install:
+!   - if [ "$COVERAGE" = "yes" ]; then pip install --user cpp-coveralls; fi
+!     # needed for https support for coveralls
+!     # building cffi only works with gcc, not with clang
+!   - if [ "$COVERAGE" = "yes" ]; then CC=gcc pip install --user pyopenssl ndg-httpsclient pyasn1; fi
+      # Lua is not installed on Travis OSX
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install lua; export LUA_PREFIX=/usr/local; fi
+  
+*** ../vim-8.0.0239/src/version.c	2017-01-26 20:09:51.787983875 +0100
+--- src/version.c	2017-01-26 21:20:34.028864601 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     240,
+  /**/
+
+-- 
+A poem:                read aloud:
+
+<> !*''#               Waka waka bang splat tick tick hash,
+^"`$$-                 Caret quote back-tick dollar dollar dash,
+!*=@$_                 Bang splat equal at dollar under-score,
+%*<> ~#4               Percent splat waka waka tilde number four,
+&[]../                 Ampersand bracket bracket dot dot slash,
+|{,,SYSTEM HALTED      Vertical-bar curly-bracket comma comma CRASH.
+
+Fred Bremmer and Steve Kroese (Calvin College & Seminary of Grand Rapids, MI.)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

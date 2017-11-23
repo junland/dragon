@@ -1,0 +1,70 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0226
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0226
+Problem:    The test for patch 8.0.0224 misses the CR characters and passes
+            even without the fix. (Christian Brabandt)
+Solution:   Use double quotes and \<CR>.
+Files:      src/testidr/test_fileformat.vim
+
+
+*** ../vim-8.0.0225/src/testdir/test_fileformat.vim	2017-01-23 21:31:05.203482973 +0100
+--- src/testdir/test_fileformat.vim	2017-01-24 13:15:11.662900043 +0100
+***************
+*** 17,31 ****
+  endfunc
+  
+  func Test_fileformat_autocommand()
+! 	let filecnt=['', 'foobar', 'eins', '', 'zwei', 'drei', 'vier', 'fünf', '']
+! 	let ffs=&ffs
+! 	call writefile(filecnt, 'Xfile', 'b')
+! 	au BufReadPre Xfile set ffs=dos ff=dos
+! 	new Xfile
+! 	call assert_equal('dos', &l:ff)
+! 	call assert_equal('dos', &ffs)
+! 	" cleanup
+! 	let &ffs=ffs
+! 	au! BufReadPre Xfile
+! 	bw!
+  endfunc
+--- 17,33 ----
+  endfunc
+  
+  func Test_fileformat_autocommand()
+!   let filecnt = ["\<CR>", "foobar\<CR>", "eins\<CR>", "\<CR>", "zwei\<CR>", "drei", "vier", "fünf", ""]
+!   let ffs = &ffs
+!   call writefile(filecnt, 'Xfile', 'b')
+!   au BufReadPre Xfile set ffs=dos ff=dos
+!   new Xfile
+!   call assert_equal('dos', &l:ff)
+!   call assert_equal('dos', &ffs)
+! 
+!   " cleanup
+!   call delete('Xfile')
+!   let &ffs = ffs
+!   au! BufReadPre Xfile
+!   bw!
+  endfunc
+*** ../vim-8.0.0225/src/version.c	2017-01-23 21:53:48.578417996 +0100
+--- src/version.c	2017-01-24 13:16:32.414374314 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     226,
+  /**/
+
+-- 
+Nothing is impossible for the man who doesn't have to do it.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

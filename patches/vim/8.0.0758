@@ -1,0 +1,100 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0758
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0758
+Problem:    Possible crash when using a terminal window.
+Solution:   Check for NULL pointers. (Yasuhiro Matsumoto, closes #1864)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0757/src/terminal.c	2017-07-23 16:45:05.661761239 +0200
+--- src/terminal.c	2017-07-23 17:20:21.730846388 +0200
+***************
+*** 1084,1096 ****
+--- 1084,1102 ----
+      if (channel != NULL)
+  	channel_clear(channel);
+      if (job != NULL)
++     {
++ 	job->jv_channel = NULL;
+  	job_cleanup(job);
++     }
++     term->tl_job = NULL;
+      if (jo != NULL)
+  	CloseHandle(jo);
+      if (term->tl_winpty != NULL)
+  	winpty_free(term->tl_winpty);
++     term->tl_winpty = NULL;
+      if (term->tl_winpty_config != NULL)
+  	winpty_config_free(term->tl_winpty_config);
++     term->tl_winpty_config = NULL;
+      if (winpty_err != NULL)
+      {
+  	char_u *msg = utf16_to_enc(
+***************
+*** 1108,1116 ****
+      static void
+  term_free(term_T *term)
+  {
+!     winpty_free(term->tl_winpty);
+!     winpty_config_free(term->tl_winpty_config);
+!     vterm_free(term->tl_vterm);
+  }
+  
+  # else
+--- 1114,1125 ----
+      static void
+  term_free(term_T *term)
+  {
+!     if (term->tl_winpty != NULL)
+! 	winpty_free(term->tl_winpty);
+!     if (term->tl_winpty_config != NULL)
+! 	winpty_config_free(term->tl_winpty_config);
+!     if (term->tl_vterm != NULL)
+! 	vterm_free(term->tl_vterm);
+  }
+  
+  # else
+***************
+*** 1149,1155 ****
+      static void
+  term_free(term_T *term)
+  {
+!     vterm_free(term->tl_vterm);
+  }
+  # endif
+  
+--- 1158,1165 ----
+      static void
+  term_free(term_T *term)
+  {
+!     if (term->tl_vterm != NULL)
+! 	vterm_free(term->tl_vterm);
+  }
+  # endif
+  
+*** ../vim-8.0.0757/src/version.c	2017-07-23 17:15:14.141016533 +0200
+--- src/version.c	2017-07-23 17:21:56.266179508 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     758,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+219. Your spouse has his or her lawyer deliver the divorce papers...
+     via e-mail.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,79 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1323
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1323
+Problem:    Mouse events in a terminal window may cause endless loop.
+Solution:   Adjust position computation.  Don't stuff a mouse event when
+            coming from normal_cmd().
+Files:      src/normal.c, src/terminal.c
+
+
+*** ../vim-8.0.1322/src/normal.c	2017-11-18 22:13:04.753908641 +0100
+--- src/normal.c	2017-11-20 12:41:37.155773876 +0100
+***************
+*** 4633,4639 ****
+      {
+  # ifdef FEAT_TERMINAL
+  	if (term_use_loop())
+! 	    send_keys_to_term(curbuf->b_term, cap->cmdchar, TRUE);
+  	else
+  # endif
+  	if (mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
+--- 4633,4641 ----
+      {
+  # ifdef FEAT_TERMINAL
+  	if (term_use_loop())
+! 	    /* This window is a terminal window, send the mouse event there.
+! 	     * Set "typed" to FALSE to avoid an endless loop. */
+! 	    send_keys_to_term(curbuf->b_term, cap->cmdchar, FALSE);
+  	else
+  # endif
+  	if (mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
+*** ../vim-8.0.1322/src/terminal.c	2017-11-19 15:05:40.142159632 +0100
+--- src/terminal.c	2017-11-20 12:39:59.497228149 +0100
+***************
+*** 1302,1310 ****
+  	case K_MOUSELEFT:
+  	case K_MOUSERIGHT:
+  	    if (mouse_row < W_WINROW(curwin)
+! 		    || mouse_row >= (W_WINROW(curwin) + curwin->w_height)
+  		    || mouse_col < curwin->w_wincol
+! 		    || mouse_col >= W_ENDCOL(curwin)
+  		    || dragging_outside)
+  	    {
+  		/* click or scroll outside the current window */
+--- 1302,1310 ----
+  	case K_MOUSELEFT:
+  	case K_MOUSERIGHT:
+  	    if (mouse_row < W_WINROW(curwin)
+! 		    || mouse_row > (W_WINROW(curwin) + curwin->w_height)
+  		    || mouse_col < curwin->w_wincol
+! 		    || mouse_col > W_ENDCOL(curwin)
+  		    || dragging_outside)
+  	    {
+  		/* click or scroll outside the current window */
+*** ../vim-8.0.1322/src/version.c	2017-11-19 20:38:01.679936742 +0100
+--- src/version.c	2017-11-20 21:48:03.556159011 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1323,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+17. You turn on your intercom when leaving the room so you can hear if new
+    e-mail arrives.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

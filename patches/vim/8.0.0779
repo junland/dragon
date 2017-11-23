@@ -1,0 +1,59 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0779
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0779
+Problem:    :term without an argument uses empty buffer name but runs the
+            snell.
+Solution:   Change the command to the shell earlier.
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0778/src/terminal.c	2017-07-26 21:49:12.520320584 +0200
+--- src/terminal.c	2017-07-26 23:07:47.203448417 +0200
+***************
+*** 199,204 ****
+--- 199,207 ----
+      term->tl_next = first_term;
+      first_term = term;
+  
++     if (cmd == NULL || *cmd == NUL)
++ 	cmd = p_sh;
++ 
+      if (buflist_findname(cmd) == NULL)
+  	curbuf->b_ffname = vim_strsave(cmd);
+      else
+***************
+*** 227,235 ****
+  
+      set_term_and_win_size(term);
+  
+-     if (cmd == NULL || *cmd == NUL)
+- 	cmd = p_sh;
+- 
+      /* System dependent: setup the vterm and start the job in it. */
+      if (term_and_job_init(term, term->tl_rows, term->tl_cols, cmd) == OK)
+      {
+--- 230,235 ----
+*** ../vim-8.0.0778/src/version.c	2017-07-26 21:49:12.520320584 +0200
+--- src/version.c	2017-07-26 23:08:36.395103711 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     779,
+  /**/
+
+-- 
+XML is a nice language for computers.  Not for humans.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

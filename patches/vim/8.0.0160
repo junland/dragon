@@ -1,0 +1,141 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0160
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0160
+Problem:    EMSG() is sometimes used for internal errors.
+Solution:   Change them to IEMSG(). (Dominique Pelle)  And a few more.
+Files:      src/regexp_nfa.c, src/channel.c, src/eval.c
+
+
+*** ../vim-8.0.0159/src/regexp_nfa.c	2016-10-02 16:51:32.744592886 +0200
+--- src/regexp_nfa.c	2017-01-08 20:46:14.703544056 +0100
+***************
+*** 1359,1365 ****
+  		    rc_did_emsg = TRUE;
+  		    return FAIL;
+  		}
+! 		EMSGN("INTERNAL: Unknown character class char: %ld", c);
+  		return FAIL;
+  	    }
+  #ifdef FEAT_MBYTE
+--- 1359,1365 ----
+  		    rc_did_emsg = TRUE;
+  		    return FAIL;
+  		}
+! 		IEMSGN("INTERNAL: Unknown character class char: %ld", c);
+  		return FAIL;
+  	    }
+  #ifdef FEAT_MBYTE
+***************
+*** 4925,4931 ****
+  
+  	default:
+  	    /* should not be here :P */
+! 	    EMSGN(_(e_ill_char_class), class);
+  	    return FAIL;
+      }
+      return FAIL;
+--- 4925,4931 ----
+  
+  	default:
+  	    /* should not be here :P */
+! 	    IEMSGN(_(e_ill_char_class), class);
+  	    return FAIL;
+      }
+      return FAIL;
+***************
+*** 6688,6694 ****
+  
+  #ifdef DEBUG
+  		if (c < 0)
+! 		    EMSGN("INTERNAL: Negative state char: %ld", c);
+  #endif
+  		result = (c == curc);
+  
+--- 6688,6694 ----
+  
+  #ifdef DEBUG
+  		if (c < 0)
+! 		    IEMSGN("INTERNAL: Negative state char: %ld", c);
+  #endif
+  		result = (c == curc);
+  
+***************
+*** 7216,7222 ****
+      {
+  	/* TODO: only give this error for debugging? */
+  	if (post_ptr >= post_end)
+! 	    EMSGN("Internal error: estimated max number of states insufficient: %ld", post_end - post_start);
+  	goto fail;	    /* Cascaded (syntax?) error */
+      }
+  
+--- 7216,7222 ----
+      {
+  	/* TODO: only give this error for debugging? */
+  	if (post_ptr >= post_end)
+! 	    IEMSGN("Internal error: estimated max number of states insufficient: %ld", post_end - post_start);
+  	goto fail;	    /* Cascaded (syntax?) error */
+      }
+  
+*** ../vim-8.0.0159/src/channel.c	2016-12-01 15:34:04.083413947 +0100
+--- src/channel.c	2017-01-08 20:45:24.291925178 +0100
+***************
+*** 1567,1573 ****
+      int		dummy;
+  
+      if (safe_to_invoke_callback == 0)
+! 	EMSG("INTERNAL: Invoking callback when it is not safe");
+  
+      argv[0].v_type = VAR_CHANNEL;
+      argv[0].vval.v_channel = channel;
+--- 1567,1573 ----
+      int		dummy;
+  
+      if (safe_to_invoke_callback == 0)
+! 	IEMSG("INTERNAL: Invoking callback when it is not safe");
+  
+      argv[0].v_type = VAR_CHANNEL;
+      argv[0].vval.v_channel = channel;
+*** ../vim-8.0.0159/src/eval.c	2017-01-08 19:25:34.851896407 +0100
+--- src/eval.c	2017-01-08 20:45:31.043874131 +0100
+***************
+*** 270,276 ****
+  	p = &vimvars[i];
+  	if (STRLEN(p->vv_name) > 16)
+  	{
+! 	    EMSG("INTERNAL: name too long, increase size of dictitem16_T");
+  	    getout(1);
+  	}
+  	STRCPY(p->vv_di.di_key, p->vv_name);
+--- 270,276 ----
+  	p = &vimvars[i];
+  	if (STRLEN(p->vv_name) > 16)
+  	{
+! 	    IEMSG("INTERNAL: name too long, increase size of dictitem16_T");
+  	    getout(1);
+  	}
+  	STRCPY(p->vv_di.di_key, p->vv_name);
+*** ../vim-8.0.0159/src/version.c	2017-01-08 20:00:00.232408217 +0100
+--- src/version.c	2017-01-08 20:46:30.347426020 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     160,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+232. You start conversations with, "Have you gotten an ISDN line?"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

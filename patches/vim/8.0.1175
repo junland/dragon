@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1175
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1175 (after  8.0.1174)
+Problem:    Build failure without +termresponse.
+Solution:   Add #ifdef.
+Files:      src/syntax.c
+
+
+*** ../vim-8.0.1174/src/syntax.c	2017-10-04 18:04:09.401665188 +0200
+--- src/syntax.c	2017-10-04 19:32:41.280479551 +0200
+***************
+*** 7350,7359 ****
+--- 7350,7361 ----
+  	    else
+  		color = color_numbers_8[idx];
+  	}
++ #ifdef FEAT_TERMRESPONSE
+  	if (t_colors >= 256 && color == 15 && is_mac_terminal)
+  	    /* Terminal.app has a bug: 15 is light grey. Use white
+  	     * from the color cube instead. */
+  	    color = 231;
++ #endif
+      }
+      return color;
+  }
+*** ../vim-8.0.1174/src/version.c	2017-10-04 18:04:09.401665188 +0200
+--- src/version.c	2017-10-04 19:34:42.159826852 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1175,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+257. Your "hundred-and-one" lists include well over 101 items, since you
+     automatically interpret all numbers in hexadecimal notation.
+     (hex 101 = decimal 257)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

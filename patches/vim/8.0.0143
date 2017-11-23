@@ -1,0 +1,54 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0143
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0143
+Problem:    Line number of current buffer in getbufinfo() is wrong.
+Solution:   For the current buffer use the current line number. (Ken Takata)
+Files:      src/evalfunc.c
+
+
+*** ../vim-8.0.0142/src/evalfunc.c	2016-12-04 13:37:38.421300745 +0100
+--- src/evalfunc.c	2017-01-06 13:47:23.001211785 +0100
+***************
+*** 3973,3979 ****
+      dict_add_nr_str(dict, "bufnr", buf->b_fnum, NULL);
+      dict_add_nr_str(dict, "name", 0L,
+  	    buf->b_ffname != NULL ? buf->b_ffname : (char_u *)"");
+!     dict_add_nr_str(dict, "lnum", buflist_findlnum(buf), NULL);
+      dict_add_nr_str(dict, "loaded", buf->b_ml.ml_mfp != NULL, NULL);
+      dict_add_nr_str(dict, "listed", buf->b_p_bl, NULL);
+      dict_add_nr_str(dict, "changed", bufIsChanged(buf), NULL);
+--- 3973,3980 ----
+      dict_add_nr_str(dict, "bufnr", buf->b_fnum, NULL);
+      dict_add_nr_str(dict, "name", 0L,
+  	    buf->b_ffname != NULL ? buf->b_ffname : (char_u *)"");
+!     dict_add_nr_str(dict, "lnum", buf == curbuf ? curwin->w_cursor.lnum
+! 						: buflist_findlnum(buf), NULL);
+      dict_add_nr_str(dict, "loaded", buf->b_ml.ml_mfp != NULL, NULL);
+      dict_add_nr_str(dict, "listed", buf->b_p_bl, NULL);
+      dict_add_nr_str(dict, "changed", bufIsChanged(buf), NULL);
+*** ../vim-8.0.0142/src/version.c	2017-01-02 21:37:38.033792277 +0100
+--- src/version.c	2017-01-06 13:51:01.459726649 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     143,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+193. You ask your girlfriend to drive home so you can sit back with
+     your PDA and download the information to your laptop
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

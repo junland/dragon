@@ -1,0 +1,310 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0574
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0574
+Problem:    Get only one quickfix list after :caddbuf.
+Solution:   Reset qf_multiline. (Yegappan Lakshmanan)
+Files:      src/quickfix.c, src/testdir/test_quickfix.vim
+
+
+*** ../vim-8.0.0573/src/quickfix.c	2017-04-15 15:22:47.508245073 +0200
+--- src/quickfix.c	2017-04-20 22:35:30.607844825 +0200
+***************
+*** 2750,2761 ****
+--- 2750,2767 ----
+      vim_free(qi->qf_lists[idx].qf_title);
+      qi->qf_lists[idx].qf_title = NULL;
+      qi->qf_lists[idx].qf_index = 0;
++     qi->qf_lists[idx].qf_start = NULL;
+      qi->qf_lists[idx].qf_last = NULL;
++     qi->qf_lists[idx].qf_ptr = NULL;
++     qi->qf_lists[idx].qf_nonevalid = TRUE;
+  
+      qf_clean_dir_stack(&qi->qf_dir_stack);
+      qi->qf_directory = NULL;
+      qf_clean_dir_stack(&qi->qf_file_stack);
+      qi->qf_currfile = NULL;
++     qi->qf_multiline = FALSE;
++     qi->qf_multiignore = FALSE;
++     qi->qf_multiscan = FALSE;
+  }
+  
+  /*
+***************
+*** 4923,4928 ****
+--- 4929,4935 ----
+  	/* If the location list window is open, then create a new empty
+  	 * location list */
+  	qf_info_T *new_ll = ll_new_list();
++ 
+  	orig_wp->w_llist_ref = new_ll;
+  	if (llwin != NULL)
+  	{
+*** ../vim-8.0.0573/src/testdir/test_quickfix.vim	2017-04-02 15:15:44.825083189 +0200
+--- src/testdir/test_quickfix.vim	2017-04-20 22:37:45.246969386 +0200
+***************
+*** 24,31 ****
+      command! -nargs=* Xgetbuffer <mods>cgetbuffer <args>
+      command! -nargs=* Xaddbuffer <mods>caddbuffer <args>
+      command! -nargs=* Xrewind <mods>crewind <args>
+!     command! -nargs=* -bang Xnext <mods>cnext<bang> <args>
+!     command! -nargs=* -bang Xprev <mods>cprev<bang> <args>
+      command! -nargs=* -bang Xfirst <mods>cfirst<bang> <args>
+      command! -nargs=* -bang Xlast <mods>clast<bang> <args>
+      command! -nargs=* -bang Xnfile <mods>cnfile<bang> <args>
+--- 24,31 ----
+      command! -nargs=* Xgetbuffer <mods>cgetbuffer <args>
+      command! -nargs=* Xaddbuffer <mods>caddbuffer <args>
+      command! -nargs=* Xrewind <mods>crewind <args>
+!     command! -count -nargs=* -bang Xnext <mods><count>cnext<bang> <args>
+!     command! -count -nargs=* -bang Xprev <mods><count>cprev<bang> <args>
+      command! -nargs=* -bang Xfirst <mods>cfirst<bang> <args>
+      command! -nargs=* -bang Xlast <mods>clast<bang> <args>
+      command! -nargs=* -bang Xnfile <mods>cnfile<bang> <args>
+***************
+*** 56,63 ****
+      command! -nargs=* Xgetbuffer <mods>lgetbuffer <args>
+      command! -nargs=* Xaddbuffer <mods>laddbuffer <args>
+      command! -nargs=* Xrewind <mods>lrewind <args>
+!     command! -nargs=* -bang Xnext <mods>lnext<bang> <args>
+!     command! -nargs=* -bang Xprev <mods>lprev<bang> <args>
+      command! -nargs=* -bang Xfirst <mods>lfirst<bang> <args>
+      command! -nargs=* -bang Xlast <mods>llast<bang> <args>
+      command! -nargs=* -bang Xnfile <mods>lnfile<bang> <args>
+--- 56,63 ----
+      command! -nargs=* Xgetbuffer <mods>lgetbuffer <args>
+      command! -nargs=* Xaddbuffer <mods>laddbuffer <args>
+      command! -nargs=* Xrewind <mods>lrewind <args>
+!     command! -count -nargs=* -bang Xnext <mods><count>lnext<bang> <args>
+!     command! -count -nargs=* -bang Xprev <mods><count>lprev<bang> <args>
+      command! -nargs=* -bang Xfirst <mods>lfirst<bang> <args>
+      command! -nargs=* -bang Xlast <mods>llast<bang> <args>
+      command! -nargs=* -bang Xnfile <mods>lnfile<bang> <args>
+***************
+*** 395,401 ****
+    Xgetexpr ['Xqftestfile1:5:Line5',
+  		\ 'Xqftestfile1:6:Line6',
+  		\ 'Xqftestfile2:10:Line10',
+! 		\ 'Xqftestfile2:11:Line11']
+  
+    Xfirst
+    call assert_fails('Xprev', 'E553')
+--- 395,403 ----
+    Xgetexpr ['Xqftestfile1:5:Line5',
+  		\ 'Xqftestfile1:6:Line6',
+  		\ 'Xqftestfile2:10:Line10',
+! 		\ 'Xqftestfile2:11:Line11',
+! 		\ 'RegularLine1',
+! 		\ 'RegularLine2']
+  
+    Xfirst
+    call assert_fails('Xprev', 'E553')
+***************
+*** 407,412 ****
+--- 409,415 ----
+    call assert_equal('Xqftestfile1', bufname('%'))
+    call assert_equal(6, line('.'))
+    Xlast
++   Xprev
+    call assert_equal('Xqftestfile2', bufname('%'))
+    call assert_equal(11, line('.'))
+    call assert_fails('Xnext', 'E553')
+***************
+*** 415,420 ****
+--- 418,430 ----
+    call assert_equal('Xqftestfile1', bufname('%'))
+    call assert_equal(5, line('.'))
+  
++   10Xnext
++   call assert_equal('Xqftestfile2', bufname('%'))
++   call assert_equal(11, line('.'))
++   10Xprev
++   call assert_equal('Xqftestfile1', bufname('%'))
++   call assert_equal(5, line('.'))
++ 
+    Xexpr ""
+    call assert_fails('Xnext', 'E42:')
+  
+***************
+*** 455,463 ****
+--- 465,494 ----
+      let title_text = ':lhelpgrep quickfix'
+    endif
+    call assert_true(w:quickfix_title =~ title_text, w:quickfix_title)
++ 
++   " Jumping to a help topic should open the help window
++   only
++   Xnext
++   call assert_true(&buftype == 'help')
++   call assert_true(winnr('$') == 2)
++   " Jumping to the next match should reuse the help window
++   Xnext
++   call assert_true(&buftype == 'help')
++   call assert_true(winnr() == 1)
++   call assert_true(winnr('$') == 2)
++   " Jumping to the next match from the quickfix window should reuse the help
++   " window
++   Xopen
++   Xnext
++   call assert_true(&buftype == 'help')
++   call assert_true(winnr() == 1)
++   call assert_true(winnr('$') == 2)
++ 
+    " This wipes out the buffer, make sure that doesn't cause trouble.
+    Xclose
+  
++   new | only
++ 
+    " Search for non existing help string
+    call assert_fails('Xhelpgrep a1b2c3', 'E480:')
+  endfunc
+***************
+*** 596,605 ****
+      lrewind
+      enew
+      lopen
+!     lnext
+!     lnext
+!     lnext
+!     lnext
+      vert split
+      wincmd L
+      lopen
+--- 627,633 ----
+      lrewind
+      enew
+      lopen
+!     4lnext
+      vert split
+      wincmd L
+      lopen
+***************
+*** 1057,1062 ****
+--- 1085,1109 ----
+    call assert_equal(1, l[4].valid)
+    call assert_equal('unittests/dbfacadeTest.py', bufname(l[4].bufnr))
+  
++   " The following sequence of commands used to crash Vim
++   set efm=%W%m
++   cgetexpr ['msg1']
++   let l = getqflist()
++   call assert_equal(1, len(l), string(l))
++   call assert_equal('msg1', l[0].text)
++   set efm=%C%m
++   lexpr 'msg2'
++   let l = getloclist(0)
++   call assert_equal(1, len(l), string(l))
++   call assert_equal('msg2', l[0].text)
++   lopen
++   call setqflist([], 'r')
++   caddbuf
++   let l = getqflist()
++   call assert_equal(1, len(l), string(l))
++   call assert_equal('|| msg2', l[0].text)
++ 
++   new | only
+    let &efm = save_efm
+  endfunc
+  
+***************
+*** 1387,1404 ****
+    let winid = win_getid()
+    cfirst | cnext
+    call assert_equal(winid, win_getid())
+!   cnext | cnext
+    call assert_equal(winid, win_getid())
+!   cnext | cnext
+    call assert_equal(winid, win_getid())
+    enew
+  
+    set switchbuf=useopen
+    cfirst | cnext
+    call assert_equal(file1_winid, win_getid())
+!   cnext | cnext
+    call assert_equal(file2_winid, win_getid())
+!   cnext | cnext
+    call assert_equal(file2_winid, win_getid())
+  
+    enew | only
+--- 1434,1451 ----
+    let winid = win_getid()
+    cfirst | cnext
+    call assert_equal(winid, win_getid())
+!   2cnext
+    call assert_equal(winid, win_getid())
+!   2cnext
+    call assert_equal(winid, win_getid())
+    enew
+  
+    set switchbuf=useopen
+    cfirst | cnext
+    call assert_equal(file1_winid, win_getid())
+!   2cnext
+    call assert_equal(file2_winid, win_getid())
+!   2cnext
+    call assert_equal(file2_winid, win_getid())
+  
+    enew | only
+***************
+*** 1408,1416 ****
+    tabfirst
+    cfirst | cnext
+    call assert_equal(2, tabpagenr())
+!   cnext | cnext
+    call assert_equal(3, tabpagenr())
+!   cnext | cnext
+    call assert_equal(3, tabpagenr())
+    tabfirst | tabonly | enew
+  
+--- 1455,1463 ----
+    tabfirst
+    cfirst | cnext
+    call assert_equal(2, tabpagenr())
+!   2cnext
+    call assert_equal(3, tabpagenr())
+!   2cnext
+    call assert_equal(3, tabpagenr())
+    tabfirst | tabonly | enew
+  
+***************
+*** 1975,1977 ****
+--- 2022,2036 ----
+    call XfreeTests('c')
+    call XfreeTests('l')
+  endfunc
++ 
++ func Test_no_reuse_mem()
++   set efm=E,%W%m,
++   cgetexpr ['C']
++   set efm=%C%m
++   lexpr '0'
++   lopen
++   call setqflist([], 'r')
++   caddbuf
++ 
++   set efm&
++ endfunc
+*** ../vim-8.0.0573/src/version.c	2017-04-20 22:32:19.857087086 +0200
+--- src/version.c	2017-04-20 22:42:48.896998852 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     574,
+  /**/
+
+-- 
+Q: How does a UNIX Guru pick up a girl?
+A: look; grep; which; eval; nice; uname; talk; date;
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

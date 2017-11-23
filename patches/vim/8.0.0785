@@ -1,0 +1,201 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0785
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0785
+Problem:    Wildcards are not expanded for :terminal.
+Solution:   Add FILES to the command flags. (Yasuhiro Matsumoto, closes #1883)
+            Also complete commands.
+Files:      src/ex_cmds.h, src/ex_docmd.c
+
+
+*** ../vim-8.0.0784/src/ex_cmds.h	2017-07-16 15:30:51.323226561 +0200
+--- src/ex_cmds.h	2017-07-27 22:48:43.695440020 +0200
+***************
+*** 1484,1490 ****
+  			NEEDARG|EXTRA|TRLBAR|NOTRLCOM|CMDWIN,
+  			ADDR_LINES),
+  EX(CMD_terminal,	"terminal",	ex_terminal,
+! 			RANGE|NOTADR|EXTRA|TRLBAR|CMDWIN,
+  			ADDR_OTHER),
+  EX(CMD_tfirst,		"tfirst",	ex_tag,
+  			RANGE|NOTADR|BANG|TRLBAR|ZEROR,
+--- 1484,1490 ----
+  			NEEDARG|EXTRA|TRLBAR|NOTRLCOM|CMDWIN,
+  			ADDR_LINES),
+  EX(CMD_terminal,	"terminal",	ex_terminal,
+! 			RANGE|NOTADR|FILES|TRLBAR|CMDWIN,
+  			ADDR_OTHER),
+  EX(CMD_tfirst,		"tfirst",	ex_tag,
+  			RANGE|NOTADR|BANG|TRLBAR|ZEROR,
+*** ../vim-8.0.0784/src/ex_docmd.c	2017-07-23 19:50:39.036922744 +0200
+--- src/ex_docmd.c	2017-07-27 22:54:33.596919357 +0200
+***************
+*** 2632,2637 ****
+--- 2632,2638 ----
+       * Any others?
+       */
+      else if (ea.cmdidx == CMD_bang
++ 	    || ea.cmdidx == CMD_terminal
+  	    || ea.cmdidx == CMD_global
+  	    || ea.cmdidx == CMD_vglobal
+  	    || ea.usefilter)
+***************
+*** 3788,3794 ****
+  	xp->xp_context = EXPAND_FILES;
+  
+  	/* For a shell command more chars need to be escaped. */
+! 	if (usefilter || ea.cmdidx == CMD_bang)
+  	{
+  #ifndef BACKSLASH_IN_FILENAME
+  	    xp->xp_shell = TRUE;
+--- 3789,3795 ----
+  	xp->xp_context = EXPAND_FILES;
+  
+  	/* For a shell command more chars need to be escaped. */
+! 	if (usefilter || ea.cmdidx == CMD_bang || ea.cmdidx == CMD_terminal)
+  	{
+  #ifndef BACKSLASH_IN_FILENAME
+  	    xp->xp_shell = TRUE;
+***************
+*** 5040,5052 ****
+  	if (!eap->usefilter
+  		&& !escaped
+  		&& eap->cmdidx != CMD_bang
+- 		&& eap->cmdidx != CMD_make
+- 		&& eap->cmdidx != CMD_lmake
+  		&& eap->cmdidx != CMD_grep
+- 		&& eap->cmdidx != CMD_lgrep
+  		&& eap->cmdidx != CMD_grepadd
+- 		&& eap->cmdidx != CMD_lgrepadd
+  		&& eap->cmdidx != CMD_hardcopy
+  #ifndef UNIX
+  		&& !(eap->argt & NOSPC)
+  #endif
+--- 5041,5054 ----
+  	if (!eap->usefilter
+  		&& !escaped
+  		&& eap->cmdidx != CMD_bang
+  		&& eap->cmdidx != CMD_grep
+  		&& eap->cmdidx != CMD_grepadd
+  		&& eap->cmdidx != CMD_hardcopy
++ 		&& eap->cmdidx != CMD_lgrep
++ 		&& eap->cmdidx != CMD_lgrepadd
++ 		&& eap->cmdidx != CMD_lmake
++ 		&& eap->cmdidx != CMD_make
++ 		&& eap->cmdidx != CMD_terminal
+  #ifndef UNIX
+  		&& !(eap->argt & NOSPC)
+  #endif
+***************
+*** 5076,5082 ****
+  	}
+  
+  	/* For a shell command a '!' must be escaped. */
+! 	if ((eap->usefilter || eap->cmdidx == CMD_bang)
+  			    && vim_strpbrk(repl, (char_u *)"!") != NULL)
+  	{
+  	    char_u	*l;
+--- 5078,5085 ----
+  	}
+  
+  	/* For a shell command a '!' must be escaped. */
+! 	if ((eap->usefilter || eap->cmdidx == CMD_bang
+! 						|| eap->cmdidx == CMD_terminal)
+  			    && vim_strpbrk(repl, (char_u *)"!") != NULL)
+  	{
+  	    char_u	*l;
+***************
+*** 10516,10522 ****
+  
+      g_do_tagpreview = p_pvh;
+      prepare_tagpreview(TRUE);
+!     keep_help_flag = curwin_save->w_buffer->b_help;
+      do_exedit(eap, NULL);
+      keep_help_flag = FALSE;
+      if (curwin != curwin_save && win_valid(curwin_save))
+--- 10519,10525 ----
+  
+      g_do_tagpreview = p_pvh;
+      prepare_tagpreview(TRUE);
+!     keep_help_flag = bt_help(curwin_save->w_buffer);
+      do_exedit(eap, NULL);
+      keep_help_flag = FALSE;
+      if (curwin != curwin_save && win_valid(curwin_save))
+***************
+*** 11265,11271 ****
+  	{
+  	    if (ses_do_win(wp)
+  		    && wp->w_buffer->b_ffname != NULL
+! 		    && !wp->w_buffer->b_help
+  #ifdef FEAT_QUICKFIX
+  		    && !bt_nofile(wp->w_buffer)
+  #endif
+--- 11268,11274 ----
+  	{
+  	    if (ses_do_win(wp)
+  		    && wp->w_buffer->b_ffname != NULL
+! 		    && !bt_help(wp->w_buffer)
+  #ifdef FEAT_QUICKFIX
+  		    && !bt_nofile(wp->w_buffer)
+  #endif
+***************
+*** 11549,11555 ****
+  #endif
+         )
+  	return (ssop_flags & SSOP_BLANK);
+!     if (wp->w_buffer->b_help)
+  	return (ssop_flags & SSOP_HELP);
+      return TRUE;
+  }
+--- 11552,11558 ----
+  #endif
+         )
+  	return (ssop_flags & SSOP_BLANK);
+!     if (bt_help(wp->w_buffer))
+  	return (ssop_flags & SSOP_HELP);
+      return TRUE;
+  }
+***************
+*** 11679,11685 ****
+       */
+      if ((*flagp & SSOP_FOLDS)
+  	    && wp->w_buffer->b_ffname != NULL
+! 	    && (*wp->w_buffer->b_p_bt == NUL || wp->w_buffer->b_help))
+      {
+  	if (put_folds(fd, wp) == FAIL)
+  	    return FAIL;
+--- 11682,11688 ----
+       */
+      if ((*flagp & SSOP_FOLDS)
+  	    && wp->w_buffer->b_ffname != NULL
+! 	    && (*wp->w_buffer->b_p_bt == NUL || bt_help(wp->w_buffer)))
+      {
+  	if (put_folds(fd, wp) == FAIL)
+  	    return FAIL;
+*** ../vim-8.0.0784/src/version.c	2017-07-27 22:14:55.305968217 +0200
+--- src/version.c	2017-07-27 22:55:58.076310490 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     785,
+  /**/
+
+-- 
+MAN:     You don't frighten us, English pig-dog!  Go and boil your bottoms,
+         son of a silly person.  I blow my nose on you, so-called Arthur-king,
+         you and your silly English K...kaniggets.
+   He puts hands to his ears and blows a raspberry.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

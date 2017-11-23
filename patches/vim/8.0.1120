@@ -1,0 +1,143 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1120
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1120 (after 8.0.1108)
+Problem:    :tm means :tmap instead of :tmenu. (Taro Muraoka)
+Solution:   Move the new entry below the old entry. (closes #2102)
+Files:      src/ex_cmds.h, runtime/doc/map.txt
+
+
+*** ../vim-8.0.1119/src/ex_cmds.h	2017-09-14 20:37:49.955213800 +0200
+--- src/ex_cmds.h	2017-09-17 20:18:54.131162441 +0200
+***************
+*** 1498,1512 ****
+  EX(CMD_tlast,		"tlast",	ex_tag,
+  			BANG|TRLBAR,
+  			ADDR_LINES),
+  EX(CMD_tmap,		"tmap",		ex_map,
+  			EXTRA|TRLBAR|NOTRLCOM|USECTRLV|CMDWIN,
+  			ADDR_LINES),
+  EX(CMD_tmapclear,	"tmapclear",	ex_mapclear,
+  			EXTRA|TRLBAR|CMDWIN,
+  			ADDR_LINES),
+- EX(CMD_tmenu,		"tmenu",	ex_menu,
+- 			RANGE|NOTADR|ZEROR|EXTRA|TRLBAR|NOTRLCOM|USECTRLV|CMDWIN,
+- 			ADDR_LINES),
+  EX(CMD_tnext,		"tnext",	ex_tag,
+  			RANGE|NOTADR|BANG|TRLBAR|ZEROR,
+  			ADDR_LINES),
+--- 1498,1512 ----
+  EX(CMD_tlast,		"tlast",	ex_tag,
+  			BANG|TRLBAR,
+  			ADDR_LINES),
++ EX(CMD_tmenu,		"tmenu",	ex_menu,
++ 			RANGE|NOTADR|ZEROR|EXTRA|TRLBAR|NOTRLCOM|USECTRLV|CMDWIN,
++ 			ADDR_LINES),
+  EX(CMD_tmap,		"tmap",		ex_map,
+  			EXTRA|TRLBAR|NOTRLCOM|USECTRLV|CMDWIN,
+  			ADDR_LINES),
+  EX(CMD_tmapclear,	"tmapclear",	ex_mapclear,
+  			EXTRA|TRLBAR|CMDWIN,
+  			ADDR_LINES),
+  EX(CMD_tnext,		"tnext",	ex_tag,
+  			RANGE|NOTADR|BANG|TRLBAR|ZEROR,
+  			ADDR_LINES),
+***************
+*** 1528,1537 ****
+  EX(CMD_tselect,		"tselect",	ex_tag,
+  			BANG|TRLBAR|WORD1,
+  			ADDR_LINES),
+! EX(CMD_tunmap,		"tunmap",	ex_unmap,
+  			EXTRA|TRLBAR|NOTRLCOM|USECTRLV|CMDWIN,
+  			ADDR_LINES),
+! EX(CMD_tunmenu,		"tunmenu",	ex_menu,
+  			EXTRA|TRLBAR|NOTRLCOM|USECTRLV|CMDWIN,
+  			ADDR_LINES),
+  EX(CMD_undo,		"undo",		ex_undo,
+--- 1528,1537 ----
+  EX(CMD_tselect,		"tselect",	ex_tag,
+  			BANG|TRLBAR|WORD1,
+  			ADDR_LINES),
+! EX(CMD_tunmenu,		"tunmenu",	ex_menu,
+  			EXTRA|TRLBAR|NOTRLCOM|USECTRLV|CMDWIN,
+  			ADDR_LINES),
+! EX(CMD_tunmap,		"tunmap",	ex_unmap,
+  			EXTRA|TRLBAR|NOTRLCOM|USECTRLV|CMDWIN,
+  			ADDR_LINES),
+  EX(CMD_undo,		"undo",		ex_undo,
+*** ../vim-8.0.1119/runtime/doc/map.txt	2017-09-14 20:37:49.955213800 +0200
+--- runtime/doc/map.txt	2017-09-17 20:21:02.202388721 +0200
+***************
+*** 55,61 ****
+  :im[ap]	{lhs} {rhs}		|mapmode-i|		*:im* *:imap*
+  :lm[ap]	{lhs} {rhs}		|mapmode-l|		*:lm* *:lmap*
+  :cm[ap]	{lhs} {rhs}		|mapmode-c|		*:cm* *:cmap*
+! :tm[ap]	{lhs} {rhs}		|mapmode-t|		*:tm* *:tmap*
+  			Map the key sequence {lhs} to {rhs} for the modes
+  			where the map command applies.  The result, including
+  			{rhs}, is then further scanned for mappings.  This
+--- 55,61 ----
+  :im[ap]	{lhs} {rhs}		|mapmode-i|		*:im* *:imap*
+  :lm[ap]	{lhs} {rhs}		|mapmode-l|		*:lm* *:lmap*
+  :cm[ap]	{lhs} {rhs}		|mapmode-c|		*:cm* *:cmap*
+! :tm[ap]	{lhs} {rhs}		|mapmode-t|		*:tma* *:tmap*
+  			Map the key sequence {lhs} to {rhs} for the modes
+  			where the map command applies.  The result, including
+  			{rhs}, is then further scanned for mappings.  This
+***************
+*** 89,95 ****
+  :iu[nmap] {lhs}			|mapmode-i|		*:iu*   *:iunmap*
+  :lu[nmap] {lhs}			|mapmode-l|		*:lu*   *:lunmap*
+  :cu[nmap] {lhs}			|mapmode-c|		*:cu*   *:cunmap*
+! :tu[nmap] {lhs}			|mapmode-t|		*:tu*   *:tunmap*
+  			Remove the mapping of {lhs} for the modes where the
+  			map command applies.  The mapping may remain defined
+  			for other modes where it applies.
+--- 89,95 ----
+  :iu[nmap] {lhs}			|mapmode-i|		*:iu*   *:iunmap*
+  :lu[nmap] {lhs}			|mapmode-l|		*:lu*   *:lunmap*
+  :cu[nmap] {lhs}			|mapmode-c|		*:cu*   *:cunmap*
+! :tu[nmap] {lhs}			|mapmode-t|		*:tunma* *:tunmap*
+  			Remove the mapping of {lhs} for the modes where the
+  			map command applies.  The mapping may remain defined
+  			for other modes where it applies.
+***************
+*** 429,435 ****
+  	i	Insert
+  	l	":lmap" mappings for Insert, Command-line and Lang-Arg
+  	c	Command-line
+!         t       Terminal-Job
+  
+  Just before the {rhs} a special character can appear:
+  	*	indicates that it is not remappable
+--- 429,435 ----
+  	i	Insert
+  	l	":lmap" mappings for Insert, Command-line and Lang-Arg
+  	c	Command-line
+! 	t	Terminal-Job
+  
+  Just before the {rhs} a special character can appear:
+  	*	indicates that it is not remappable
+*** ../vim-8.0.1119/src/version.c	2017-09-17 19:07:58.528464083 +0200
+--- src/version.c	2017-09-17 20:31:05.786745333 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1120,
+  /**/
+
+-- 
+Drink wet cement and get really stoned.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

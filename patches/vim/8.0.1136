@@ -1,0 +1,2049 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1136
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1136
+Problem:    W_WIDTH() is always the same.
+Solution:   Expand the macro.
+Files:      src/charset.c, src/edit.c, src/evalfunc.c, src/ex_cmds.c,
+            src/ex_docmd.c, src/getchar.c, src/gui.c, src/gui_beval.c,
+            src/gui_mac.c, src/if_lua.c, src/if_mzsch.c, src/if_py_both.h,
+            src/if_ruby.c, src/misc1.c, src/misc2.c, src/move.c, src/normal.c,
+            src/popupmnu.c, src/quickfix.c, src/screen.c, src/search.c,
+            src/structs.h, src/ui.c, src/vim.h, src/window.c
+
+
+*** ../vim-8.0.1135/src/charset.c	2017-09-16 20:54:47.086560482 +0200
+--- src/charset.c	2017-09-22 15:13:26.454730545 +0200
+***************
+*** 1100,1106 ****
+  	 */
+  	numberextra = win_col_off(wp);
+  	col2 = col;
+! 	colmax = (colnr_T)(W_WIDTH(wp) - numberextra - col_adj);
+  	if (col >= colmax)
+  	{
+  	    colmax += col_adj;
+--- 1100,1106 ----
+  	 */
+  	numberextra = win_col_off(wp);
+  	col2 = col;
+! 	colmax = (colnr_T)(wp->w_width - numberextra - col_adj);
+  	if (col >= colmax)
+  	{
+  	    colmax += col_adj;
+***************
+*** 1151,1160 ****
+  
+  	numberextra = numberwidth;
+  	col += numberextra + mb_added;
+! 	if (col >= (colnr_T)W_WIDTH(wp))
+  	{
+! 	    col -= W_WIDTH(wp);
+! 	    numberextra = W_WIDTH(wp) - (numberextra - win_col_off2(wp));
+  	    if (col >= numberextra && numberextra > 0)
+  		col %= numberextra;
+  	    if (*p_sbr != NUL)
+--- 1151,1160 ----
+  
+  	numberextra = numberwidth;
+  	col += numberextra + mb_added;
+! 	if (col >= (colnr_T)wp->w_width)
+  	{
+! 	    col -= wp->w_width;
+! 	    numberextra = wp->w_width - (numberextra - win_col_off2(wp));
+  	    if (col >= numberextra && numberextra > 0)
+  		col %= numberextra;
+  	    if (*p_sbr != NUL)
+***************
+*** 1170,1187 ****
+  
+  	    numberwidth -= win_col_off2(wp);
+  	}
+! 	if (col == 0 || col + size + sbrlen > (colnr_T)W_WIDTH(wp))
+  	{
+  	    added = 0;
+  	    if (*p_sbr != NUL)
+  	    {
+! 		if (size + sbrlen + numberwidth > (colnr_T)W_WIDTH(wp))
+  		{
+  		    /* calculate effective window width */
+! 		    int width = (colnr_T)W_WIDTH(wp) - sbrlen - numberwidth;
+! 		    int prev_width = col ? ((colnr_T)W_WIDTH(wp) - (sbrlen + col)) : 0;
+  		    if (width == 0)
+! 			width = (colnr_T)W_WIDTH(wp);
+  		    added += ((size - prev_width) / width) * vim_strsize(p_sbr);
+  		    if ((size - prev_width) % width)
+  			/* wrapped, add another length of 'sbr' */
+--- 1170,1187 ----
+  
+  	    numberwidth -= win_col_off2(wp);
+  	}
+! 	if (col == 0 || col + size + sbrlen > (colnr_T)wp->w_width)
+  	{
+  	    added = 0;
+  	    if (*p_sbr != NUL)
+  	    {
+! 		if (size + sbrlen + numberwidth > (colnr_T)wp->w_width)
+  		{
+  		    /* calculate effective window width */
+! 		    int width = (colnr_T)wp->w_width - sbrlen - numberwidth;
+! 		    int prev_width = col ? ((colnr_T)wp->w_width - (sbrlen + col)) : 0;
+  		    if (width == 0)
+! 			width = (colnr_T)wp->w_width;
+  		    added += ((size - prev_width) / width) * vim_strsize(p_sbr);
+  		    if ((size - prev_width) % width)
+  			/* wrapped, add another length of 'sbr' */
+***************
+*** 1248,1254 ****
+  
+      if (wp->w_width == 0)	/* there is no border */
+  	return FALSE;
+!     width1 = W_WIDTH(wp) - win_col_off(wp);
+      if ((int)vcol < width1 - 1)
+  	return FALSE;
+      if ((int)vcol == width1 - 1)
+--- 1248,1254 ----
+  
+      if (wp->w_width == 0)	/* there is no border */
+  	return FALSE;
+!     width1 = wp->w_width - win_col_off(wp);
+      if ((int)vcol < width1 - 1)
+  	return FALSE;
+      if ((int)vcol == width1 - 1)
+*** ../vim-8.0.1135/src/edit.c	2017-09-22 14:35:46.588623440 +0200
+--- src/edit.c	2017-09-22 15:13:38.746655122 +0200
+***************
+*** 1783,1789 ****
+  #ifdef FEAT_RIGHTLEFT
+  	if (curwin->w_p_rl)
+  	{
+! 	    pc_col += W_WIDTH(curwin) - 1 - curwin->w_wcol;
+  # ifdef FEAT_MBYTE
+  	    if (has_mbyte)
+  	    {
+--- 1783,1789 ----
+  #ifdef FEAT_RIGHTLEFT
+  	if (curwin->w_p_rl)
+  	{
+! 	    pc_col += curwin->w_width - 1 - curwin->w_wcol;
+  # ifdef FEAT_MBYTE
+  	    if (has_mbyte)
+  	    {
+***************
+*** 1865,1871 ****
+      }
+  #endif
+      curs_columns(FALSE);	    /* recompute w_wrow and w_wcol */
+!     if (curwin->w_wcol < W_WIDTH(curwin))
+      {
+  	edit_putchar('$', FALSE);
+  	dollar_vcol = curwin->w_virtcol;
+--- 1865,1871 ----
+      }
+  #endif
+      curs_columns(FALSE);	    /* recompute w_wrow and w_wcol */
+!     if (curwin->w_wcol < curwin->w_width)
+      {
+  	edit_putchar('$', FALSE);
+  	dollar_vcol = curwin->w_virtcol;
+***************
+*** 6820,6826 ****
+  /*
+   * Find out textwidth to be used for formatting:
+   *	if 'textwidth' option is set, use it
+!  *	else if 'wrapmargin' option is set, use W_WIDTH(curwin) - 'wrapmargin'
+   *	if invalid value, use 0.
+   *	Set default to window width (maximum 79) for "gq" operator.
+   */
+--- 6820,6826 ----
+  /*
+   * Find out textwidth to be used for formatting:
+   *	if 'textwidth' option is set, use it
+!  *	else if 'wrapmargin' option is set, use curwin->w_width - 'wrapmargin'
+   *	if invalid value, use 0.
+   *	Set default to window width (maximum 79) for "gq" operator.
+   */
+***************
+*** 6835,6841 ****
+      {
+  	/* The width is the window width minus 'wrapmargin' minus all the
+  	 * things that add to the margin. */
+! 	textwidth = W_WIDTH(curwin) - curbuf->b_p_wm;
+  #ifdef FEAT_CMDWIN
+  	if (cmdwin_type != 0)
+  	    textwidth -= 1;
+--- 6835,6841 ----
+      {
+  	/* The width is the window width minus 'wrapmargin' minus all the
+  	 * things that add to the margin. */
+! 	textwidth = curwin->w_width - curbuf->b_p_wm;
+  #ifdef FEAT_CMDWIN
+  	if (cmdwin_type != 0)
+  	    textwidth -= 1;
+***************
+*** 6854,6860 ****
+  	textwidth = 0;
+      if (ff && textwidth == 0)
+      {
+! 	textwidth = W_WIDTH(curwin) - 1;
+  	if (textwidth > 79)
+  	    textwidth = 79;
+      }
+--- 6854,6860 ----
+  	textwidth = 0;
+      if (ff && textwidth == 0)
+      {
+! 	textwidth = curwin->w_width - 1;
+  	if (textwidth > 79)
+  	    textwidth = 79;
+      }
+***************
+*** 9447,9453 ****
+  	    int val, step = 6;
+  
+  	    if (mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
+! 		step = W_WIDTH(curwin);
+  	    val = curwin->w_leftcol + (dir == MSCR_RIGHT ? -step : step);
+  	    if (val < 0)
+  		val = 0;
+--- 9447,9453 ----
+  	    int val, step = 6;
+  
+  	    if (mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
+! 		step = curwin->w_width;
+  	    val = curwin->w_leftcol + (dir == MSCR_RIGHT ? -step : step);
+  	    if (val < 0)
+  		val = 0;
+*** ../vim-8.0.1135/src/evalfunc.c	2017-09-17 23:02:17.176074400 +0200
+--- src/evalfunc.c	2017-09-22 15:13:42.726630701 +0200
+***************
+*** 13239,13245 ****
+  
+  	check_cursor();
+  	win_new_height(curwin, curwin->w_height);
+! 	win_new_width(curwin, W_WIDTH(curwin));
+  	changed_window_setting();
+  
+  	if (curwin->w_topline <= 0)
+--- 13239,13245 ----
+  
+  	check_cursor();
+  	win_new_height(curwin, curwin->w_height);
+! 	win_new_width(curwin, curwin->w_width);
+  	changed_window_setting();
+  
+  	if (curwin->w_topline <= 0)
+*** ../vim-8.0.1135/src/ex_cmds.c	2017-09-16 20:54:47.094560435 +0200
+--- src/ex_cmds.c	2017-09-22 15:13:47.390602084 +0200
+***************
+*** 177,183 ****
+  	if (width <= 0)
+  	    width = curbuf->b_p_tw;
+  	if (width == 0 && curbuf->b_p_wm > 0)
+! 	    width = W_WIDTH(curwin) - curbuf->b_p_wm;
+  	if (width <= 0)
+  	    width = 80;
+      }
+--- 177,183 ----
+  	if (width <= 0)
+  	    width = curbuf->b_p_tw;
+  	if (width == 0 && curbuf->b_p_wm > 0)
+! 	    width = curwin->w_width - curbuf->b_p_wm;
+  	if (width <= 0)
+  	    width = 80;
+      }
+*** ../vim-8.0.1135/src/ex_docmd.c	2017-09-22 14:35:46.588623440 +0200
+--- src/ex_docmd.c	2017-09-22 15:13:51.154578988 +0200
+***************
+*** 8486,8492 ****
+      if (cmdmod.split & WSP_VERT)
+      {
+  	if (*eap->arg == '-' || *eap->arg == '+')
+! 	    n += W_WIDTH(curwin);
+  	else if (n == 0 && eap->arg[0] == NUL)	/* default is very wide */
+  	    n = 9999;
+  	win_setwidth_win((int)n, wp);
+--- 8486,8492 ----
+      if (cmdmod.split & WSP_VERT)
+      {
+  	if (*eap->arg == '-' || *eap->arg == '+')
+! 	    n += curwin->w_width;
+  	else if (n == 0 && eap->arg[0] == NUL)	/* default is very wide */
+  	    n = 9999;
+  	win_setwidth_win((int)n, wp);
+*** ../vim-8.0.1135/src/getchar.c	2017-09-16 20:54:47.098560411 +0200
+--- src/getchar.c	2017-09-22 15:14:03.450503544 +0200
+***************
+*** 2666,2673 ****
+  					++col;
+  				}
+  				curwin->w_wrow = curwin->w_cline_row
+! 					   + curwin->w_wcol / W_WIDTH(curwin);
+! 				curwin->w_wcol %= W_WIDTH(curwin);
+  				curwin->w_wcol += curwin_col_off();
+  #ifdef FEAT_MBYTE
+  				col = 0;	/* no correction needed */
+--- 2666,2673 ----
+  					++col;
+  				}
+  				curwin->w_wrow = curwin->w_cline_row
+! 					   + curwin->w_wcol / curwin->w_width;
+! 				curwin->w_wcol %= curwin->w_width;
+  				curwin->w_wcol += curwin_col_off();
+  #ifdef FEAT_MBYTE
+  				col = 0;	/* no correction needed */
+***************
+*** 2684,2690 ****
+  			else if (curwin->w_p_wrap && curwin->w_wrow)
+  			{
+  			    --curwin->w_wrow;
+! 			    curwin->w_wcol = W_WIDTH(curwin) - 1;
+  #ifdef FEAT_MBYTE
+  			    col = curwin->w_cursor.col - 1;
+  #endif
+--- 2684,2690 ----
+  			else if (curwin->w_p_wrap && curwin->w_wrow)
+  			{
+  			    --curwin->w_wrow;
+! 			    curwin->w_wcol = curwin->w_width - 1;
+  #ifdef FEAT_MBYTE
+  			    col = curwin->w_cursor.col - 1;
+  #endif
+*** ../vim-8.0.1135/src/gui.c	2017-09-16 20:54:47.098560411 +0200
+--- src/gui.c	2017-09-22 15:14:08.954469772 +0200
+***************
+*** 4564,4577 ****
+  	return;
+      }
+  
+!     size = W_WIDTH(curwin);
+      if (curwin->w_p_wrap)
+      {
+  	value = 0;
+  #ifdef SCROLL_PAST_END
+  	max = 0;
+  #else
+! 	max = W_WIDTH(curwin) - 1;
+  #endif
+      }
+      else
+--- 4564,4577 ----
+  	return;
+      }
+  
+!     size = curwin->w_width;
+      if (curwin->w_p_wrap)
+      {
+  	value = 0;
+  #ifdef SCROLL_PAST_END
+  	max = 0;
+  #else
+! 	max = curwin->w_width - 1;
+  #endif
+      }
+      else
+***************
+*** 4591,4597 ****
+  #endif
+  
+  #ifndef SCROLL_PAST_END
+! 	max += W_WIDTH(curwin) - 1;
+  #endif
+  	/* The line number isn't scrolled, thus there is less space when
+  	 * 'number' or 'relativenumber' is set (also for 'foldcolumn'). */
+--- 4591,4597 ----
+  #endif
+  
+  #ifndef SCROLL_PAST_END
+! 	max += curwin->w_width - 1;
+  #endif
+  	/* The line number isn't scrolled, thus there is less space when
+  	 * 'number' or 'relativenumber' is set (also for 'foldcolumn'). */
+*** ../vim-8.0.1135/src/gui_beval.c	2017-09-16 20:54:47.102560387 +0200
+--- src/gui_beval.c	2017-09-22 15:14:13.170443904 +0200
+***************
+*** 338,344 ****
+      row = Y_2_ROW(beval->y);
+      col = X_2_COL(beval->x);
+      wp = mouse_find_win(&row, &col);
+!     if (wp != NULL && row < wp->w_height && col < W_WIDTH(wp))
+      {
+  	/* Found a window and the cursor is in the text.  Now find the line
+  	 * number. */
+--- 338,344 ----
+      row = Y_2_ROW(beval->y);
+      col = X_2_COL(beval->x);
+      wp = mouse_find_win(&row, &col);
+!     if (wp != NULL && row < wp->w_height && col < wp->w_width)
+      {
+  	/* Found a window and the cursor is in the text.  Now find the line
+  	 * number. */
+*** ../vim-8.0.1135/src/gui_mac.c	2017-09-02 18:33:52.449554495 +0200
+--- src/gui_mac.c	2017-09-22 15:14:17.274418723 +0200
+***************
+*** 1612,1618 ****
+      else			/* Bottom scrollbar */
+      {
+  	sb_info = sb;
+! 	page = W_WIDTH(curwin) - 5;
+      }
+  
+      switch (partCode)
+--- 1612,1618 ----
+      else			/* Bottom scrollbar */
+      {
+  	sb_info = sb;
+! 	page = curwin->w_width - 5;
+      }
+  
+      switch (partCode)
+*** ../vim-8.0.1135/src/if_lua.c	2017-09-16 20:54:47.102560387 +0200
+--- src/if_lua.c	2017-09-22 15:14:21.518392684 +0200
+***************
+*** 1179,1185 ****
+      else if (strncmp(s, "col", 3) == 0)
+  	lua_pushinteger(L, w->w_cursor.col + 1);
+      else if (strncmp(s, "width", 5) == 0)
+! 	lua_pushinteger(L, W_WIDTH(w));
+      else if (strncmp(s, "height", 6) == 0)
+  	lua_pushinteger(L, w->w_height);
+      /* methods */
+--- 1179,1185 ----
+      else if (strncmp(s, "col", 3) == 0)
+  	lua_pushinteger(L, w->w_cursor.col + 1);
+      else if (strncmp(s, "width", 5) == 0)
+! 	lua_pushinteger(L, w->w_width);
+      else if (strncmp(s, "height", 6) == 0)
+  	lua_pushinteger(L, w->w_height);
+      /* methods */
+*** ../vim-8.0.1135/src/if_mzsch.c	2017-09-16 20:54:47.102560387 +0200
+--- src/if_mzsch.c	2017-09-22 15:14:25.938365564 +0200
+***************
+*** 2063,2069 ****
+      Vim_Prim	    *prim = (Vim_Prim *)data;
+      vim_mz_window   *win = get_window_arg(prim->name, 0, argc, argv);
+  
+!     return scheme_make_integer(W_WIDTH(win->win));
+  }
+  
+  /* (set-win-width {width} [window]) */
+--- 2063,2069 ----
+      Vim_Prim	    *prim = (Vim_Prim *)data;
+      vim_mz_window   *win = get_window_arg(prim->name, 0, argc, argv);
+  
+!     return scheme_make_integer(win->win->w_width);
+  }
+  
+  /* (set-win-width {width} [window]) */
+*** ../vim-8.0.1135/src/if_py_both.h	2017-09-22 14:35:46.596623391 +0200
+--- src/if_py_both.h	2017-09-22 15:17:21.489288977 +0200
+***************
+*** 3875,3881 ****
+      else if (strcmp(name, "row") == 0)
+  	return PyLong_FromLong((long)(self->win->w_winrow));
+      else if (strcmp(name, "width") == 0)
+! 	return PyLong_FromLong((long)(W_WIDTH(self->win)));
+      else if (strcmp(name, "col") == 0)
+  	return PyLong_FromLong((long)(self->win->w_wincol));
+      else if (strcmp(name, "vars") == 0)
+--- 3875,3881 ----
+      else if (strcmp(name, "row") == 0)
+  	return PyLong_FromLong((long)(self->win->w_winrow));
+      else if (strcmp(name, "width") == 0)
+! 	return PyLong_FromLong((long)(self->win->w_width));
+      else if (strcmp(name, "col") == 0)
+  	return PyLong_FromLong((long)(self->win->w_wincol));
+      else if (strcmp(name, "vars") == 0)
+*** ../vim-8.0.1135/src/if_ruby.c	2017-09-16 20:54:47.106560363 +0200
+--- src/if_ruby.c	2017-09-22 15:14:29.918341145 +0200
+***************
+*** 1470,1476 ****
+  
+  static VALUE window_width(VALUE self UNUSED)
+  {
+!     return INT2NUM(W_WIDTH(get_win(self)));
+  }
+  
+  static VALUE window_set_width(VALUE self UNUSED, VALUE width)
+--- 1470,1476 ----
+  
+  static VALUE window_width(VALUE self UNUSED)
+  {
+!     return INT2NUM(get_win(self->w_width));
+  }
+  
+  static VALUE window_set_width(VALUE self UNUSED, VALUE width)
+*** ../vim-8.0.1135/src/misc1.c	2017-09-16 20:54:47.106560363 +0200
+--- src/misc1.c	2017-09-22 15:14:36.806298883 +0200
+***************
+*** 495,501 ****
+      static varnumber_T prev_tick = 0;   /* changedtick of cached value */
+      int		    bri = 0;
+      /* window width minus window margin space, i.e. what rests for text */
+!     const int	    eff_wwidth = W_WIDTH(wp)
+  			    - ((wp->w_p_nu || wp->w_p_rnu)
+  				&& (vim_strchr(p_cpo, CPO_NUMCOL) == NULL)
+  						? number_width(wp) + 1 : 0);
+--- 495,501 ----
+      static varnumber_T prev_tick = 0;   /* changedtick of cached value */
+      int		    bri = 0;
+      /* window width minus window margin space, i.e. what rests for text */
+!     const int	    eff_wwidth = wp->w_width
+  			    - ((wp->w_p_nu || wp->w_p_rnu)
+  				&& (vim_strchr(p_cpo, CPO_NUMCOL) == NULL)
+  						? number_width(wp) + 1 : 0);
+***************
+*** 2026,2032 ****
+      /*
+       * Add column offset for 'number', 'relativenumber' and 'foldcolumn'.
+       */
+!     width = W_WIDTH(wp) - win_col_off(wp);
+      if (width <= 0)
+  	return 32000;
+      if (col <= width)
+--- 2026,2032 ----
+      /*
+       * Add column offset for 'number', 'relativenumber' and 'foldcolumn'.
+       */
+!     width = wp->w_width - win_col_off(wp);
+      if (width <= 0)
+  	return 32000;
+      if (col <= width)
+***************
+*** 2083,2089 ****
+      /*
+       * Add column offset for 'number', 'relativenumber', 'foldcolumn', etc.
+       */
+!     width = W_WIDTH(wp) - win_col_off(wp);
+      if (width <= 0)
+  	return 9999;
+  
+--- 2083,2089 ----
+      /*
+       * Add column offset for 'number', 'relativenumber', 'foldcolumn', etc.
+       */
+!     width = wp->w_width - win_col_off(wp);
+      if (width <= 0)
+  	return 9999;
+  
+*** ../vim-8.0.1135/src/misc2.c	2017-09-16 20:54:47.110560339 +0200
+--- src/misc2.c	2017-09-22 15:14:42.422264426 +0200
+***************
+*** 165,171 ****
+      else
+      {
+  #ifdef FEAT_VIRTUALEDIT
+! 	int width = W_WIDTH(curwin) - win_col_off(curwin);
+  
+  	if (finetune
+  		&& curwin->w_p_wrap
+--- 165,171 ----
+      else
+      {
+  #ifdef FEAT_VIRTUALEDIT
+! 	int width = curwin->w_width - win_col_off(curwin);
+  
+  	if (finetune
+  		&& curwin->w_p_wrap
+***************
+*** 310,316 ****
+  	    int b = (int)wcol - (int)col;
+  
+  	    /* The difference between wcol and col is used to set coladd. */
+! 	    if (b > 0 && b < (MAXCOL - 2 * W_WIDTH(curwin)))
+  		pos->coladd = b;
+  
+  	    col += b;
+--- 310,316 ----
+  	    int b = (int)wcol - (int)col;
+  
+  	    /* The difference between wcol and col is used to set coladd. */
+! 	    if (b > 0 && b < (MAXCOL - 2 * curwin->w_width))
+  		pos->coladd = b;
+  
+  	    col += b;
+***************
+*** 662,668 ****
+      int		retval = FALSE;
+  
+      changed_cline_bef_curs();
+!     lastcol = curwin->w_leftcol + W_WIDTH(curwin) - curwin_col_off() - 1;
+      validate_virtcol();
+  
+      /*
+--- 662,668 ----
+      int		retval = FALSE;
+  
+      changed_cline_bef_curs();
+!     lastcol = curwin->w_leftcol + curwin->w_width - curwin_col_off() - 1;
+      validate_virtcol();
+  
+      /*
+*** ../vim-8.0.1135/src/move.c	2017-09-16 20:54:47.110560339 +0200
+--- src/move.c	2017-09-22 15:15:04.746127459 +0200
+***************
+*** 855,868 ****
+  	col = curwin->w_virtcol;
+  	off = curwin_col_off();
+  	col += off;
+! 	width = W_WIDTH(curwin) - off + curwin_col_off2();
+  
+  	/* long line wrapping, adjust curwin->w_wrow */
+  	if (curwin->w_p_wrap
+! 		&& col >= (colnr_T)W_WIDTH(curwin)
+  		&& width > 0)
+  	    /* use same formula as what is used in curs_columns() */
+! 	    col -= ((col - W_WIDTH(curwin)) / width + 1) * width;
+  	if (col > (int)curwin->w_leftcol)
+  	    col -= curwin->w_leftcol;
+  	else
+--- 855,868 ----
+  	col = curwin->w_virtcol;
+  	off = curwin_col_off();
+  	col += off;
+! 	width = curwin->w_width - off + curwin_col_off2();
+  
+  	/* long line wrapping, adjust curwin->w_wrow */
+  	if (curwin->w_p_wrap
+! 		&& col >= (colnr_T)curwin->w_width
+  		&& width > 0)
+  	    /* use same formula as what is used in curs_columns() */
+! 	    col -= ((col - curwin->w_width) / width + 1) * width;
+  	if (col > (int)curwin->w_leftcol)
+  	    col -= curwin->w_leftcol;
+  	else
+***************
+*** 975,985 ****
+       */
+      curwin->w_wrow = curwin->w_cline_row;
+  
+!     textwidth = W_WIDTH(curwin) - extra;
+      if (textwidth <= 0)
+      {
+  	/* No room for text, put cursor in last char of window. */
+! 	curwin->w_wcol = W_WIDTH(curwin) - 1;
+  	curwin->w_wrow = curwin->w_height - 1;
+      }
+      else if (curwin->w_p_wrap && curwin->w_width != 0)
+--- 975,985 ----
+       */
+      curwin->w_wrow = curwin->w_cline_row;
+  
+!     textwidth = curwin->w_width - extra;
+      if (textwidth <= 0)
+      {
+  	/* No room for text, put cursor in last char of window. */
+! 	curwin->w_wcol = curwin->w_width - 1;
+  	curwin->w_wrow = curwin->w_height - 1;
+      }
+      else if (curwin->w_p_wrap && curwin->w_width != 0)
+***************
+*** 987,996 ****
+  	width = textwidth + curwin_col_off2();
+  
+  	/* long line wrapping, adjust curwin->w_wrow */
+! 	if (curwin->w_wcol >= W_WIDTH(curwin))
+  	{
+  	    /* this same formula is used in validate_cursor_col() */
+! 	    n = (curwin->w_wcol - W_WIDTH(curwin)) / width + 1;
+  	    curwin->w_wcol -= n * width;
+  	    curwin->w_wrow += n;
+  
+--- 987,996 ----
+  	width = textwidth + curwin_col_off2();
+  
+  	/* long line wrapping, adjust curwin->w_wrow */
+! 	if (curwin->w_wcol >= curwin->w_width)
+  	{
+  	    /* this same formula is used in validate_cursor_col() */
+! 	    n = (curwin->w_wcol - curwin->w_width) / width + 1;
+  	    curwin->w_wcol -= n * width;
+  	    curwin->w_wrow += n;
+  
+***************
+*** 1021,1027 ****
+  	 * extra
+  	 */
+  	off_left = (int)startcol - (int)curwin->w_leftcol - p_siso;
+! 	off_right = (int)endcol - (int)(curwin->w_leftcol + W_WIDTH(curwin)
+  								- p_siso) + 1;
+  	if (off_left < 0 || off_right > 0)
+  	{
+--- 1021,1027 ----
+  	 * extra
+  	 */
+  	off_left = (int)startcol - (int)curwin->w_leftcol - p_siso;
+! 	off_right = (int)endcol - (int)(curwin->w_leftcol + curwin->w_width
+  								- p_siso) + 1;
+  	if (off_left < 0 || off_right > 0)
+  	{
+***************
+*** 1249,1255 ****
+  	validate_virtcol();
+  	validate_cheight();
+  	wrow += curwin->w_cline_height - 1 -
+! 	    curwin->w_virtcol / W_WIDTH(curwin);
+      }
+      while (wrow >= curwin->w_height && curwin->w_cursor.lnum > 1)
+      {
+--- 1249,1255 ----
+  	validate_virtcol();
+  	validate_cheight();
+  	wrow += curwin->w_cline_height - 1 -
+! 	    curwin->w_virtcol / curwin->w_width;
+      }
+      while (wrow >= curwin->w_height && curwin->w_cursor.lnum > 1)
+      {
+***************
+*** 1454,1460 ****
+  	validate_cheight();
+  	validate_virtcol();
+  	end_row += curwin->w_cline_height - 1 -
+! 	    curwin->w_virtcol / W_WIDTH(curwin);
+      }
+      if (end_row < curwin->w_height - p_so)
+      {
+--- 1454,1460 ----
+  	validate_cheight();
+  	validate_virtcol();
+  	end_row += curwin->w_cline_height - 1 -
+! 	    curwin->w_virtcol / curwin->w_width;
+      }
+      if (end_row < curwin->w_height - p_so)
+      {
+***************
+*** 1512,1518 ****
+      if (curwin->w_p_wrap && curwin->w_width != 0)
+      {
+  	validate_virtcol();
+! 	start_row -= curwin->w_virtcol / W_WIDTH(curwin);
+      }
+      if (start_row >= p_so)
+      {
+--- 1512,1518 ----
+      if (curwin->w_p_wrap && curwin->w_width != 0)
+      {
+  	validate_virtcol();
+! 	start_row -= curwin->w_virtcol / curwin->w_width;
+      }
+      if (start_row >= p_so)
+      {
+*** ../vim-8.0.1135/src/normal.c	2017-09-17 23:02:17.172074424 +0200
+--- src/normal.c	2017-09-22 15:15:19.142039134 +0200
+***************
+*** 4448,4455 ****
+  
+      col_off1 = curwin_col_off();
+      col_off2 = col_off1 - curwin_col_off2();
+!     width1 = W_WIDTH(curwin) - col_off1;
+!     width2 = W_WIDTH(curwin) - col_off2;
+      if (width2 == 0)
+  	width2 = 1; /* avoid divide by zero */
+  
+--- 4448,4455 ----
+  
+      col_off1 = curwin_col_off();
+      col_off2 = col_off1 - curwin_col_off2();
+!     width1 = curwin->w_width - col_off1;
+!     width2 = curwin->w_width - col_off2;
+      if (width2 == 0)
+  	width2 = 1; /* avoid divide by zero */
+  
+***************
+*** 4634,4640 ****
+  	    int val, step = 6;
+  
+  	    if (mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
+! 		step = W_WIDTH(curwin);
+  	    val = curwin->w_leftcol + (cap->arg == MSCR_RIGHT ? -step : +step);
+  	    if (val < 0)
+  		val = 0;
+--- 4634,4640 ----
+  	    int val, step = 6;
+  
+  	    if (mod_mask & (MOD_MASK_SHIFT | MOD_MASK_CTRL))
+! 		step = curwin->w_width;
+  	    val = curwin->w_leftcol + (cap->arg == MSCR_RIGHT ? -step : +step);
+  	    if (val < 0)
+  		val = 0;
+***************
+*** 4886,4892 ****
+  
+  		/* "zH" - scroll screen right half-page */
+      case 'H':
+! 		cap->count1 *= W_WIDTH(curwin) / 2;
+  		/* FALLTHROUGH */
+  
+  		/* "zh" - scroll screen to the right */
+--- 4886,4892 ----
+  
+  		/* "zH" - scroll screen right half-page */
+      case 'H':
+! 		cap->count1 *= curwin->w_width / 2;
+  		/* FALLTHROUGH */
+  
+  		/* "zh" - scroll screen to the right */
+***************
+*** 4903,4909 ****
+  		break;
+  
+  		/* "zL" - scroll screen left half-page */
+!     case 'L':	cap->count1 *= W_WIDTH(curwin) / 2;
+  		/* FALLTHROUGH */
+  
+  		/* "zl" - scroll screen to the left */
+--- 4903,4909 ----
+  		break;
+  
+  		/* "zL" - scroll screen left half-page */
+!     case 'L':	cap->count1 *= curwin->w_width / 2;
+  		/* FALLTHROUGH */
+  
+  		/* "zl" - scroll screen to the left */
+***************
+*** 4947,4953 ****
+  		    else
+  #endif
+  		    getvcol(curwin, &curwin->w_cursor, NULL, NULL, &col);
+! 		    n = W_WIDTH(curwin) - curwin_col_off();
+  		    if ((long)col + p_siso < n)
+  			col = 0;
+  		    else
+--- 4947,4953 ----
+  		    else
+  #endif
+  		    getvcol(curwin, &curwin->w_cursor, NULL, NULL, &col);
+! 		    n = curwin->w_width - curwin_col_off();
+  		    if ((long)col + p_siso < n)
+  			col = 0;
+  		    else
+***************
+*** 8073,8079 ****
+  	oap->inclusive = FALSE;
+  	if (curwin->w_p_wrap && curwin->w_width != 0)
+  	{
+! 	    int		width1 = W_WIDTH(curwin) - curwin_col_off();
+  	    int		width2 = width1 + curwin_col_off2();
+  
+  	    validate_virtcol();
+--- 8073,8079 ----
+  	oap->inclusive = FALSE;
+  	if (curwin->w_p_wrap && curwin->w_width != 0)
+  	{
+! 	    int		width1 = curwin->w_width - curwin_col_off();
+  	    int		width2 = width1 + curwin_col_off2();
+  
+  	    validate_virtcol();
+***************
+*** 8087,8093 ****
+  	 * 'relativenumber' is on and lines are wrapping the middle can be more
+  	 * to the left. */
+  	if (cap->nchar == 'm')
+! 	    i += (W_WIDTH(curwin) - curwin_col_off()
+  		    + ((curwin->w_p_wrap && i > 0)
+  			? curwin_col_off2() : 0)) / 2;
+  	coladvance((colnr_T)i);
+--- 8087,8093 ----
+  	 * 'relativenumber' is on and lines are wrapping the middle can be more
+  	 * to the left. */
+  	if (cap->nchar == 'm')
+! 	    i += (curwin->w_width - curwin_col_off()
+  		    + ((curwin->w_p_wrap && i > 0)
+  			? curwin_col_off2() : 0)) / 2;
+  	coladvance((colnr_T)i);
+***************
+*** 8139,8145 ****
+  		curwin->w_curswant = MAXCOL;    /* so we stay at the end */
+  		if (cap->count1 == 1)
+  		{
+! 		    int		width1 = W_WIDTH(curwin) - col_off;
+  		    int		width2 = width1 + curwin_col_off2();
+  
+  		    validate_virtcol();
+--- 8139,8145 ----
+  		curwin->w_curswant = MAXCOL;    /* so we stay at the end */
+  		if (cap->count1 == 1)
+  		{
+! 		    int		width1 = curwin->w_width - col_off;
+  		    int		width2 = width1 + curwin_col_off2();
+  
+  		    validate_virtcol();
+***************
+*** 8171,8177 ****
+  	    }
+  	    else
+  	    {
+! 		i = curwin->w_leftcol + W_WIDTH(curwin) - col_off - 1;
+  		coladvance((colnr_T)i);
+  
+  		/* Make sure we stick in this column. */
+--- 8171,8177 ----
+  	    }
+  	    else
+  	    {
+! 		i = curwin->w_leftcol + curwin->w_width - col_off - 1;
+  		coladvance((colnr_T)i);
+  
+  		/* Make sure we stick in this column. */
+***************
+*** 9565,9571 ****
+      colnr_T	    start, end;
+  
+      if (VIsual_mode != Ctrl_V
+! 	    || (!initial && oap->end.col < W_WIDTH(curwin)))
+  	return;
+  
+      oap->block_mode = TRUE;
+--- 9565,9571 ----
+      colnr_T	    start, end;
+  
+      if (VIsual_mode != Ctrl_V
+! 	    || (!initial && oap->end.col < curwin->w_width))
+  	return;
+  
+      oap->block_mode = TRUE;
+*** ../vim-8.0.1135/src/popupmnu.c	2017-09-22 14:35:46.592623416 +0200
+--- src/popupmnu.c	2017-09-22 15:15:24.790004483 +0200
+***************
+*** 190,196 ****
+      /* Calculate column */
+  #ifdef FEAT_RIGHTLEFT
+      if (curwin->w_p_rl)
+! 	col = curwin->w_wincol + W_WIDTH(curwin) - curwin->w_wcol - 1;
+      else
+  #endif
+  	col = curwin->w_wincol + curwin->w_wcol;
+--- 190,196 ----
+      /* Calculate column */
+  #ifdef FEAT_RIGHTLEFT
+      if (curwin->w_p_rl)
+! 	col = curwin->w_wincol + curwin->w_width - curwin->w_wcol - 1;
+      else
+  #endif
+  	col = curwin->w_wincol + curwin->w_wcol;
+***************
+*** 312,318 ****
+  #ifdef FEAT_RIGHTLEFT
+  	if (curwin->w_p_rl)
+  	{
+! 	    if (pum_col < curwin->w_wincol + W_WIDTH(curwin) - 1)
+  		screen_putchar(' ', row, pum_col + 1, attr);
+  	}
+  	else
+--- 312,318 ----
+  #ifdef FEAT_RIGHTLEFT
+  	if (curwin->w_p_rl)
+  	{
+! 	    if (pum_col < curwin->w_wincol + curwin->w_width - 1)
+  		screen_putchar(' ', row, pum_col + 1, attr);
+  	}
+  	else
+*** ../vim-8.0.1135/src/quickfix.c	2017-09-20 22:42:58.450952128 +0200
+--- src/quickfix.c	2017-09-22 15:15:28.381982445 +0200
+***************
+*** 3148,3154 ****
+  	{
+  	    if (cmdmod.split & WSP_VERT)
+  	    {
+! 		if (height != W_WIDTH(win))
+  		    win_setwidth(height);
+  	    }
+  	    else if (height != win->w_height)
+--- 3148,3154 ----
+  	{
+  	    if (cmdmod.split & WSP_VERT)
+  	    {
+! 		if (height != win->w_width)
+  		    win_setwidth(height);
+  	    }
+  	    else if (height != win->w_height)
+*** ../vim-8.0.1135/src/screen.c	2017-09-22 14:35:46.592623416 +0200
+--- src/screen.c	2017-09-22 15:16:55.913445578 +0200
+***************
+*** 2353,2360 ****
+  	if (n > 0)
+  	{
+  	    /* draw the fold column at the right */
+! 	    if (n > W_WIDTH(wp))
+! 		n = W_WIDTH(wp);
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_ENDCOL(wp) - n, (int)W_ENDCOL(wp),
+  		    ' ', ' ', HL_ATTR(HLF_FC));
+--- 2353,2360 ----
+  	if (n > 0)
+  	{
+  	    /* draw the fold column at the right */
+! 	    if (n > wp->w_width)
+! 		n = wp->w_width;
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_ENDCOL(wp) - n, (int)W_ENDCOL(wp),
+  		    ' ', ' ', HL_ATTR(HLF_FC));
+***************
+*** 2366,2373 ****
+  	    int nn = n + 2;
+  
+  	    /* draw the sign column left of the fold column */
+! 	    if (nn > W_WIDTH(wp))
+! 		nn = W_WIDTH(wp);
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_ENDCOL(wp) - nn, (int)W_ENDCOL(wp) - n,
+  		    ' ', ' ', HL_ATTR(HLF_SC));
+--- 2366,2373 ----
+  	    int nn = n + 2;
+  
+  	    /* draw the sign column left of the fold column */
+! 	    if (nn > wp->w_width)
+! 		nn = wp->w_width;
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_ENDCOL(wp) - nn, (int)W_ENDCOL(wp) - n,
+  		    ' ', ' ', HL_ATTR(HLF_SC));
+***************
+*** 2402,2409 ****
+  	    int	    nn = n + fdc;
+  
+  	    /* draw the fold column at the left */
+! 	    if (nn > W_WIDTH(wp))
+! 		nn = W_WIDTH(wp);
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    wp->w_wincol + n, (int)wp->w_wincol + nn,
+  		    ' ', ' ', HL_ATTR(HLF_FC));
+--- 2402,2409 ----
+  	    int	    nn = n + fdc;
+  
+  	    /* draw the fold column at the left */
+! 	    if (nn > wp->w_width)
+! 		nn = wp->w_width;
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    wp->w_wincol + n, (int)wp->w_wincol + nn,
+  		    ' ', ' ', HL_ATTR(HLF_FC));
+***************
+*** 2416,2423 ****
+  	    int	    nn = n + 2;
+  
+  	    /* draw the sign column after the fold column */
+! 	    if (nn > W_WIDTH(wp))
+! 		nn = W_WIDTH(wp);
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    wp->w_wincol + n, (int)wp->w_wincol + nn,
+  		    ' ', ' ', HL_ATTR(HLF_SC));
+--- 2416,2423 ----
+  	    int	    nn = n + 2;
+  
+  	    /* draw the sign column after the fold column */
+! 	    if (nn > wp->w_width)
+! 		nn = wp->w_width;
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    wp->w_wincol + n, (int)wp->w_wincol + nn,
+  		    ' ', ' ', HL_ATTR(HLF_SC));
+***************
+*** 2482,2488 ****
+  	{
+  	    cells = (*mb_ptr2cells)(p);
+  	    c_len = (*mb_ptr2len)(p);
+! 	    if (col + cells > W_WIDTH(wp)
+  # ifdef FEAT_RIGHTLEFT
+  		    - (wp->w_p_rl ? col : 0)
+  # endif
+--- 2482,2488 ----
+  	{
+  	    cells = (*mb_ptr2cells)(p);
+  	    c_len = (*mb_ptr2len)(p);
+! 	    if (col + cells > wp->w_width
+  # ifdef FEAT_RIGHTLEFT
+  		    - (wp->w_p_rl ? col : 0)
+  # endif
+***************
+*** 2566,2573 ****
+      {
+  	int len = (int)STRLEN(text);
+  
+! 	if (len > W_WIDTH(wp) - col)
+! 	    len = W_WIDTH(wp) - col;
+  	if (len > 0)
+  	{
+  #ifdef FEAT_RIGHTLEFT
+--- 2566,2573 ----
+      {
+  	int len = (int)STRLEN(text);
+  
+! 	if (len > wp->w_width - col)
+! 	    len = wp->w_width - col;
+  	if (len > 0)
+  	{
+  #ifdef FEAT_RIGHTLEFT
+***************
+*** 2593,2599 ****
+  {
+      int fdc = wp->w_p_fdc;
+      int wmw = wp == curwin && p_wmw == 0 ? 1 : p_wmw;
+!     int wwidth = W_WIDTH(wp);
+  
+      if (fdc > wwidth - (col + wmw))
+  	fdc = wwidth - (col + wmw);
+--- 2593,2599 ----
+  {
+      int fdc = wp->w_p_fdc;
+      int wmw = wp == curwin && p_wmw == 0 ? 1 : p_wmw;
+!     int wwidth = wp->w_width;
+  
+      if (fdc > wwidth - (col + wmw))
+  	fdc = wwidth - (col + wmw);
+***************
+*** 2662,2672 ****
+  	{
+  	    int		i;
+  
+! 	    copy_text_attr(off + W_WIDTH(wp) - fdc - col, buf, fdc,
+  							     HL_ATTR(HLF_FC));
+  	    /* reverse the fold column */
+  	    for (i = 0; i < fdc; ++i)
+! 		ScreenLines[off + W_WIDTH(wp) - i - 1 - col] = buf[i];
+  	}
+  	else
+  #endif
+--- 2662,2672 ----
+  	{
+  	    int		i;
+  
+! 	    copy_text_attr(off + wp->w_width - fdc - col, buf, fdc,
+  							     HL_ATTR(HLF_FC));
+  	    /* reverse the fold column */
+  	    for (i = 0; i < fdc; ++i)
+! 		ScreenLines[off + wp->w_width - i - 1 - col] = buf[i];
+  	}
+  	else
+  #endif
+***************
+*** 2677,2683 ****
+  #ifdef FEAT_RIGHTLEFT
+  # define RL_MEMSET(p, v, l)  if (wp->w_p_rl) \
+  				for (ri = 0; ri < l; ++ri) \
+! 				   ScreenAttrs[off + (W_WIDTH(wp) - (p) - (l)) + ri] = v; \
+  			     else \
+  				for (ri = 0; ri < l; ++ri) \
+  				   ScreenAttrs[off + (p) + ri] = v
+--- 2677,2683 ----
+  #ifdef FEAT_RIGHTLEFT
+  # define RL_MEMSET(p, v, l)  if (wp->w_p_rl) \
+  				for (ri = 0; ri < l; ++ri) \
+! 				   ScreenAttrs[off + (wp->w_width - (p) - (l)) + ri] = v; \
+  			     else \
+  				for (ri = 0; ri < l; ++ri) \
+  				   ScreenAttrs[off + (p) + ri] = v
+***************
+*** 2688,2700 ****
+  
+      /* Set all attributes of the 'number' or 'relativenumber' column and the
+       * text */
+!     RL_MEMSET(col, HL_ATTR(HLF_FL), W_WIDTH(wp) - col);
+  
+  #ifdef FEAT_SIGNS
+      /* If signs are being displayed, add two spaces. */
+      if (signcolumn_on(wp))
+      {
+! 	len = W_WIDTH(wp) - col;
+  	if (len > 0)
+  	{
+  	    if (len > 2)
+--- 2688,2700 ----
+  
+      /* Set all attributes of the 'number' or 'relativenumber' column and the
+       * text */
+!     RL_MEMSET(col, HL_ATTR(HLF_FL), wp->w_width - col);
+  
+  #ifdef FEAT_SIGNS
+      /* If signs are being displayed, add two spaces. */
+      if (signcolumn_on(wp))
+      {
+! 	len = wp->w_width - col;
+  	if (len > 0)
+  	{
+  	    if (len > 2)
+***************
+*** 2702,2708 ****
+  # ifdef FEAT_RIGHTLEFT
+  	    if (wp->w_p_rl)
+  		/* the line number isn't reversed */
+! 		copy_text_attr(off + W_WIDTH(wp) - len - col,
+  					(char_u *)"  ", len, HL_ATTR(HLF_FL));
+  	    else
+  # endif
+--- 2702,2708 ----
+  # ifdef FEAT_RIGHTLEFT
+  	    if (wp->w_p_rl)
+  		/* the line number isn't reversed */
+! 		copy_text_attr(off + wp->w_width - len - col,
+  					(char_u *)"  ", len, HL_ATTR(HLF_FL));
+  	    else
+  # endif
+***************
+*** 2717,2723 ****
+       */
+      if (wp->w_p_nu || wp->w_p_rnu)
+      {
+! 	len = W_WIDTH(wp) - col;
+  	if (len > 0)
+  	{
+  	    int	    w = number_width(wp);
+--- 2717,2723 ----
+       */
+      if (wp->w_p_nu || wp->w_p_rnu)
+      {
+! 	len = wp->w_width - col;
+  	if (len > 0)
+  	{
+  	    int	    w = number_width(wp);
+***************
+*** 2747,2753 ****
+  #ifdef FEAT_RIGHTLEFT
+  	    if (wp->w_p_rl)
+  		/* the line number isn't reversed */
+! 		copy_text_attr(off + W_WIDTH(wp) - len - col, buf, len,
+  							     HL_ATTR(HLF_FL));
+  	    else
+  #endif
+--- 2747,2753 ----
+  #ifdef FEAT_RIGHTLEFT
+  	    if (wp->w_p_rl)
+  		/* the line number isn't reversed */
+! 		copy_text_attr(off + wp->w_width - len - col, buf, len,
+  							     HL_ATTR(HLF_FL));
+  	    else
+  #endif
+***************
+*** 2775,2781 ****
+      if (wp->w_p_rl)
+  	col -= txtcol;
+  #endif
+!     while (col < W_WIDTH(wp)
+  #ifdef FEAT_RIGHTLEFT
+  		    - (wp->w_p_rl ? txtcol : 0)
+  #endif
+--- 2775,2781 ----
+      if (wp->w_p_rl)
+  	col -= txtcol;
+  #endif
+!     while (col < wp->w_width
+  #ifdef FEAT_RIGHTLEFT
+  		    - (wp->w_p_rl ? txtcol : 0)
+  #endif
+***************
+*** 2837,2850 ****
+  	    if (VIsual_mode == Ctrl_V)
+  	    {
+  		/* Visual block mode: highlight the chars part of the block */
+! 		if (wp->w_old_cursor_fcol + txtcol < (colnr_T)W_WIDTH(wp))
+  		{
+  		    if (wp->w_old_cursor_lcol != MAXCOL
+  			     && wp->w_old_cursor_lcol + txtcol
+! 						       < (colnr_T)W_WIDTH(wp))
+  			len = wp->w_old_cursor_lcol;
+  		    else
+! 			len = W_WIDTH(wp) - txtcol;
+  		    RL_MEMSET(wp->w_old_cursor_fcol + txtcol, HL_ATTR(HLF_V),
+  					    len - (int)wp->w_old_cursor_fcol);
+  		}
+--- 2837,2850 ----
+  	    if (VIsual_mode == Ctrl_V)
+  	    {
+  		/* Visual block mode: highlight the chars part of the block */
+! 		if (wp->w_old_cursor_fcol + txtcol < (colnr_T)wp->w_width)
+  		{
+  		    if (wp->w_old_cursor_lcol != MAXCOL
+  			     && wp->w_old_cursor_lcol + txtcol
+! 						       < (colnr_T)wp->w_width)
+  			len = wp->w_old_cursor_lcol;
+  		    else
+! 			len = wp->w_width - txtcol;
+  		    RL_MEMSET(wp->w_old_cursor_fcol + txtcol, HL_ATTR(HLF_V),
+  					    len - (int)wp->w_old_cursor_fcol);
+  		}
+***************
+*** 2852,2858 ****
+  	    else
+  	    {
+  		/* Set all attributes of the text */
+! 		RL_MEMSET(txtcol, HL_ATTR(HLF_V), W_WIDTH(wp) - txtcol);
+  	    }
+  	}
+      }
+--- 2852,2858 ----
+  	    else
+  	    {
+  		/* Set all attributes of the text */
+! 		RL_MEMSET(txtcol, HL_ATTR(HLF_V), wp->w_width - txtcol);
+  	    }
+  	}
+      }
+***************
+*** 2872,2878 ****
+  		txtcol -= wp->w_skipcol;
+  	    else
+  		txtcol -= wp->w_leftcol;
+! 	    if (txtcol >= 0 && txtcol < W_WIDTH(wp))
+  		ScreenAttrs[off + txtcol] = hl_combine_attr(
+  				    ScreenAttrs[off + txtcol], HL_ATTR(HLF_MC));
+  	    txtcol = old_txtcol;
+--- 2872,2878 ----
+  		txtcol -= wp->w_skipcol;
+  	    else
+  		txtcol -= wp->w_leftcol;
+! 	    if (txtcol >= 0 && txtcol < wp->w_width)
+  		ScreenAttrs[off + txtcol] = hl_combine_attr(
+  				    ScreenAttrs[off + txtcol], HL_ATTR(HLF_MC));
+  	    txtcol = old_txtcol;
+***************
+*** 2888,2901 ****
+  	    txtcol -= wp->w_skipcol;
+  	else
+  	    txtcol -= wp->w_leftcol;
+! 	if (txtcol >= 0 && txtcol < W_WIDTH(wp))
+  	    ScreenAttrs[off + txtcol] = hl_combine_attr(
+  				 ScreenAttrs[off + txtcol], HL_ATTR(HLF_CUC));
+      }
+  #endif
+  
+!     screen_line(row + W_WINROW(wp), wp->w_wincol, (int)W_WIDTH(wp),
+! 						     (int)W_WIDTH(wp), FALSE);
+  
+      /*
+       * Update w_cline_height and w_cline_folded if the cursor line was
+--- 2888,2901 ----
+  	    txtcol -= wp->w_skipcol;
+  	else
+  	    txtcol -= wp->w_leftcol;
+! 	if (txtcol >= 0 && txtcol < wp->w_width)
+  	    ScreenAttrs[off + txtcol] = hl_combine_attr(
+  				 ScreenAttrs[off + txtcol], HL_ATTR(HLF_CUC));
+      }
+  #endif
+  
+!     screen_line(row + W_WINROW(wp), wp->w_wincol, (int)wp->w_width,
+! 						     (int)wp->w_width, FALSE);
+  
+      /*
+       * Update w_cline_height and w_cline_folded if the cursor line was
+***************
+*** 3724,3730 ****
+  	/* Rightleft window: process the text in the normal direction, but put
+  	 * it in current_ScreenLine[] from right to left.  Start at the
+  	 * rightmost column of the window. */
+! 	col = W_WIDTH(wp) - 1;
+  	off += col;
+      }
+  #endif
+--- 3724,3730 ----
+  	/* Rightleft window: process the text in the normal direction, but put
+  	 * it in current_ScreenLine[] from right to left.  Start at the
+  	 * rightmost column of the window. */
+! 	col = wp->w_width - 1;
+  	off += col;
+      }
+  #endif
+***************
+*** 3963,3969 ****
+  			n_extra = col + 1;
+  		    else
+  #  endif
+! 			n_extra = W_WIDTH(wp) - col;
+  		    char_attr = HL_ATTR(HLF_DED);
+  		}
+  # endif
+--- 3963,3969 ----
+  			n_extra = col + 1;
+  		    else
+  #  endif
+! 			n_extra = wp->w_width - col;
+  		    char_attr = HL_ATTR(HLF_DED);
+  		}
+  # endif
+***************
+*** 4016,4022 ****
+  #endif
+  		)
+  	{
+! 	    screen_line(screen_row, wp->w_wincol, col, -(int)W_WIDTH(wp),
+  						    HAS_RIGHTLEFT(wp->w_p_rl));
+  	    /* Pretend we have finished updating the window.  Except when
+  	     * 'cursorcolumn' is set. */
+--- 4016,4022 ----
+  #endif
+  		)
+  	{
+! 	    screen_line(screen_row, wp->w_wincol, col, -(int)wp->w_width,
+  						    HAS_RIGHTLEFT(wp->w_p_rl));
+  	    /* Pretend we have finished updating the window.  Except when
+  	     * 'cursorcolumn' is set. */
+***************
+*** 4285,4291 ****
+  # ifdef FEAT_RIGHTLEFT
+  			    wp->w_p_rl ? (col <= 0) :
+  # endif
+! 				    (col >= W_WIDTH(wp) - 1))
+  			    && (*mb_char2cells)(mb_c) == 2)
+  		    {
+  			c = '>';
+--- 4285,4291 ----
+  # ifdef FEAT_RIGHTLEFT
+  			    wp->w_p_rl ? (col <= 0) :
+  # endif
+! 				    (col >= wp->w_width - 1))
+  			    && (*mb_char2cells)(mb_c) == 2)
+  		    {
+  			c = '>';
+***************
+*** 4486,4492 ****
+  # ifdef FEAT_RIGHTLEFT
+  			    wp->w_p_rl ? (col <= 0) :
+  # endif
+! 				(col >= W_WIDTH(wp) - 1))
+  			&& (*mb_char2cells)(mb_c) == 2)
+  		{
+  		    c = '>';
+--- 4486,4492 ----
+  # ifdef FEAT_RIGHTLEFT
+  			    wp->w_p_rl ? (col <= 0) :
+  # endif
+! 				(col >= wp->w_width - 1))
+  			&& (*mb_char2cells)(mb_c) == 2)
+  		{
+  		    c = '>';
+***************
+*** 4703,4709 ****
+  		    /* TODO: is passing p for start of the line OK? */
+  		    n_extra = win_lbr_chartabsize(wp, line, p, (colnr_T)vcol,
+  								    NULL) - 1;
+! 		    if (c == TAB && n_extra + col > W_WIDTH(wp))
+  			n_extra = (int)wp->w_buffer->b_p_ts
+  				       - vcol % (int)wp->w_buffer->b_p_ts - 1;
+  
+--- 4703,4709 ----
+  		    /* TODO: is passing p for start of the line OK? */
+  		    n_extra = win_lbr_chartabsize(wp, line, p, (colnr_T)vcol,
+  								    NULL) - 1;
+! 		    if (c == TAB && n_extra + col > wp->w_width)
+  			n_extra = (int)wp->w_buffer->b_p_ts
+  				       - vcol % (int)wp->w_buffer->b_p_ts - 1;
+  
+***************
+*** 4920,4926 ****
+  # ifdef FEAT_RIGHTLEFT
+  				    wp->w_p_rl ? (col >= 0) :
+  # endif
+! 				    (col < W_WIDTH(wp)))
+  				&& !(noinvcur
+  				    && lnum == wp->w_cursor.lnum
+  				    && (colnr_T)vcol == wp->w_virtcol)))
+--- 4920,4926 ----
+  # ifdef FEAT_RIGHTLEFT
+  				    wp->w_p_rl ? (col >= 0) :
+  # endif
+! 				    (col < wp->w_width))
+  				&& !(noinvcur
+  				    && lnum == wp->w_cursor.lnum
+  				    && (colnr_T)vcol == wp->w_virtcol)))
+***************
+*** 5031,5037 ****
+  # ifdef FEAT_RIGHTLEFT
+  			    wp->w_p_rl ? (col >= 0) :
+  # endif
+! 			    (col < W_WIDTH(wp))))
+  		{
+  		    c = ' ';
+  		    --ptr;	    /* put it back at the NUL */
+--- 5031,5037 ----
+  # ifdef FEAT_RIGHTLEFT
+  			    wp->w_p_rl ? (col >= 0) :
+  # endif
+! 			    (col < wp->w_width)))
+  		{
+  		    c = ' ';
+  		    --ptr;	    /* put it back at the NUL */
+***************
+*** 5054,5060 ****
+  # ifdef FEAT_CONCEAL
+  				- boguscols
+  # endif
+! 					    < W_WIDTH(wp))))
+  		{
+  		    /* Highlight until the right side of the window */
+  		    c = ' ';
+--- 5054,5060 ----
+  # ifdef FEAT_CONCEAL
+  				- boguscols
+  # endif
+! 					    < wp->w_width)))
+  		{
+  		    /* Highlight until the right side of the window */
+  		    c = ' ';
+***************
+*** 5175,5181 ****
+  	{
+  #  ifdef FEAT_RIGHTLEFT
+  	    if (wp->w_p_rl)
+! 		wp->w_wcol = W_WIDTH(wp) - col + boguscols - 1;
+  	    else
+  #  endif
+  		wp->w_wcol = col - boguscols;
+--- 5175,5181 ----
+  	{
+  #  ifdef FEAT_RIGHTLEFT
+  	    if (wp->w_p_rl)
+! 		wp->w_wcol = wp->w_width - col + boguscols - 1;
+  	    else
+  #  endif
+  		wp->w_wcol = col - boguscols;
+***************
+*** 5338,5344 ****
+  		else
+  #endif
+  		{
+! 		    if (col >= W_WIDTH(wp))
+  			n = -1;
+  		}
+  		if (n != 0)
+--- 5338,5344 ----
+  		else
+  #endif
+  		{
+! 		    if (col >= wp->w_width)
+  			n = -1;
+  		}
+  		if (n != 0)
+***************
+*** 5442,5448 ****
+  	    if (((wp->w_p_cuc
+  		      && (int)wp->w_virtcol >= VCOL_HLC - eol_hl_off
+  		      && (int)wp->w_virtcol <
+! 					W_WIDTH(wp) * (row - startrow + 1) + v
+  		      && lnum != wp->w_cursor.lnum)
+  		    || draw_color_col)
+  # ifdef FEAT_RIGHTLEFT
+--- 5442,5448 ----
+  	    if (((wp->w_p_cuc
+  		      && (int)wp->w_virtcol >= VCOL_HLC - eol_hl_off
+  		      && (int)wp->w_virtcol <
+! 					wp->w_width * (row - startrow + 1) + v
+  		      && lnum != wp->w_cursor.lnum)
+  		    || draw_color_col)
+  # ifdef FEAT_RIGHTLEFT
+***************
+*** 5461,5467 ****
+  			if (rightmost_vcol < color_cols[i])
+  			    rightmost_vcol = color_cols[i];
+  
+! 		while (col < W_WIDTH(wp))
+  		{
+  		    ScreenLines[off] = ' ';
+  #ifdef FEAT_MBYTE
+--- 5461,5467 ----
+  			if (rightmost_vcol < color_cols[i])
+  			    rightmost_vcol = color_cols[i];
+  
+! 		while (col < wp->w_width)
+  		{
+  		    ScreenLines[off] = ' ';
+  #ifdef FEAT_MBYTE
+***************
+*** 5489,5495 ****
+  #endif
+  
+  	    screen_line(screen_row, wp->w_wincol, col,
+! 				  (int)W_WIDTH(wp), HAS_RIGHTLEFT(wp->w_p_rl));
+  	    row++;
+  
+  	    /*
+--- 5489,5495 ----
+  #endif
+  
+  	    screen_line(screen_row, wp->w_wincol, col,
+! 				  (int)wp->w_width, HAS_RIGHTLEFT(wp->w_p_rl));
+  	    row++;
+  
+  	    /*
+***************
+*** 5519,5525 ****
+  #ifdef FEAT_RIGHTLEFT
+  		    wp->w_p_rl ? col == 0 :
+  #endif
+! 		    col == W_WIDTH(wp) - 1)
+  		&& (*ptr != NUL
+  		    || (wp->w_p_list && lcs_eol_one > 0)
+  		    || (n_extra && (c_extra != NUL || *p_extra != NUL))))
+--- 5519,5525 ----
+  #ifdef FEAT_RIGHTLEFT
+  		    wp->w_p_rl ? col == 0 :
+  #endif
+! 		    col == wp->w_width - 1)
+  		&& (*ptr != NUL
+  		    || (wp->w_p_list && lcs_eol_one > 0)
+  		    || (n_extra && (c_extra != NUL || *p_extra != NUL))))
+***************
+*** 5784,5790 ****
+  #ifdef FEAT_RIGHTLEFT
+  	    wp->w_p_rl ? (col < 0) :
+  #endif
+! 				    (col >= W_WIDTH(wp)))
+  		&& (*ptr != NUL
+  #ifdef FEAT_DIFF
+  		    || filler_todo > 0
+--- 5784,5790 ----
+  #ifdef FEAT_RIGHTLEFT
+  	    wp->w_p_rl ? (col < 0) :
+  #endif
+! 				    (col >= wp->w_width))
+  		&& (*ptr != NUL
+  #ifdef FEAT_DIFF
+  		    || filler_todo > 0
+***************
+*** 5795,5805 ****
+  	{
+  #ifdef FEAT_CONCEAL
+  	    screen_line(screen_row, wp->w_wincol, col - boguscols,
+! 				  (int)W_WIDTH(wp), HAS_RIGHTLEFT(wp->w_p_rl));
+  	    boguscols = 0;
+  #else
+  	    screen_line(screen_row, wp->w_wincol, col,
+! 				  (int)W_WIDTH(wp), HAS_RIGHTLEFT(wp->w_p_rl));
+  #endif
+  	    ++row;
+  	    ++screen_row;
+--- 5795,5805 ----
+  	{
+  #ifdef FEAT_CONCEAL
+  	    screen_line(screen_row, wp->w_wincol, col - boguscols,
+! 				  (int)wp->w_width, HAS_RIGHTLEFT(wp->w_p_rl));
+  	    boguscols = 0;
+  #else
+  	    screen_line(screen_row, wp->w_wincol, col,
+! 				  (int)wp->w_width, HAS_RIGHTLEFT(wp->w_p_rl));
+  #endif
+  	    ++row;
+  	    ++screen_row;
+***************
+*** 5836,5842 ****
+  #ifdef FEAT_DIFF
+  		     && filler_todo <= 0
+  #endif
+! 		     && W_WIDTH(wp) == Columns)
+  	    {
+  		/* Remember that the line wraps, used for modeless copy. */
+  		LineWraps[screen_row - 1] = TRUE;
+--- 5836,5842 ----
+  #ifdef FEAT_DIFF
+  		     && filler_todo <= 0
+  #endif
+! 		     && wp->w_width == Columns)
+  	    {
+  		/* Remember that the line wraps, used for modeless copy. */
+  		LineWraps[screen_row - 1] = TRUE;
+***************
+*** 5873,5879 ****
+  		     * then output the same character again to let the
+  		     * terminal know about the wrap.  If the terminal doesn't
+  		     * auto-wrap, we overwrite the character. */
+! 		    if (screen_cur_col != W_WIDTH(wp))
+  			screen_char(LineOffset[screen_row - 1]
+  						      + (unsigned)Columns - 1,
+  					  screen_row - 1, (int)(Columns - 1));
+--- 5873,5879 ----
+  		     * then output the same character again to let the
+  		     * terminal know about the wrap.  If the terminal doesn't
+  		     * auto-wrap, we overwrite the character. */
+! 		    if (screen_cur_col != wp->w_width)
+  			screen_char(LineOffset[screen_row - 1]
+  						      + (unsigned)Columns - 1,
+  					  screen_row - 1, (int)(Columns - 1));
+***************
+*** 5899,5905 ****
+  #ifdef FEAT_RIGHTLEFT
+  	    if (wp->w_p_rl)
+  	    {
+! 		col = W_WIDTH(wp) - 1;	/* col is not used if breaking! */
+  		off += col;
+  	    }
+  #endif
+--- 5899,5905 ----
+  #ifdef FEAT_RIGHTLEFT
+  	    if (wp->w_p_rl)
+  	    {
+! 		col = wp->w_width - 1;	/* col is not used if breaking! */
+  		off += col;
+  	    }
+  #endif
+***************
+*** 6890,6898 ****
+  	    len += (int)STRLEN(p + len);
+  	}
+  
+! 	this_ru_col = ru_col - (Columns - W_WIDTH(wp));
+! 	if (this_ru_col < (W_WIDTH(wp) + 1) / 2)
+! 	    this_ru_col = (W_WIDTH(wp) + 1) / 2;
+  	if (this_ru_col <= 1)
+  	{
+  	    p = (char_u *)"<";		/* No room for file name! */
+--- 6890,6898 ----
+  	    len += (int)STRLEN(p + len);
+  	}
+  
+! 	this_ru_col = ru_col - (Columns - wp->w_width);
+! 	if (this_ru_col < (wp->w_width + 1) / 2)
+! 	    this_ru_col = (wp->w_width + 1) / 2;
+  	if (this_ru_col <= 1)
+  	{
+  	    p = (char_u *)"<";		/* No room for file name! */
+***************
+*** 7123,7129 ****
+      {
+  	row = W_WINROW(wp) + wp->w_height;
+  	fillchar = fillchar_status(&attr, wp);
+! 	maxwidth = W_WIDTH(wp);
+  
+  	if (draw_ruler)
+  	{
+--- 7123,7129 ----
+      {
+  	row = W_WINROW(wp) + wp->w_height;
+  	fillchar = fillchar_status(&attr, wp);
+! 	maxwidth = wp->w_width;
+  
+  	if (draw_ruler)
+  	{
+***************
+*** 7139,7148 ****
+  		if (*stl++ != '(')
+  		    stl = p_ruf;
+  	    }
+! 	    col = ru_col - (Columns - W_WIDTH(wp));
+! 	    if (col < (W_WIDTH(wp) + 1) / 2)
+! 		col = (W_WIDTH(wp) + 1) / 2;
+! 	    maxwidth = W_WIDTH(wp) - col;
+  	    if (!wp->w_status_height)
+  	    {
+  		row = Rows - 1;
+--- 7139,7148 ----
+  		if (*stl++ != '(')
+  		    stl = p_ruf;
+  	    }
+! 	    col = ru_col - (Columns - wp->w_width);
+! 	    if (col < (wp->w_width + 1) / 2)
+! 		col = (wp->w_width + 1) / 2;
+! 	    maxwidth = wp->w_width - col;
+  	    if (!wp->w_status_height)
+  	    {
+  		row = Rows - 1;
+***************
+*** 9422,9428 ****
+  #ifdef FEAT_RIGHTLEFT
+  		/* With 'rightleft' set and the cursor on a double-wide
+  		 * character, position it on the leftmost column. */
+! 		curwin->w_p_rl ? ((int)W_WIDTH(curwin) - curwin->w_wcol - (
+  # ifdef FEAT_MBYTE
+  			(has_mbyte
+  			   && (*mb_ptr2cells)(ml_get_cursor()) == 2
+--- 9422,9428 ----
+  #ifdef FEAT_RIGHTLEFT
+  		/* With 'rightleft' set and the cursor on a double-wide
+  		 * character, position it on the leftmost column. */
+! 		curwin->w_p_rl ? ((int)curwin->w_width - curwin->w_wcol - (
+  # ifdef FEAT_MBYTE
+  			(has_mbyte
+  			   && (*mb_ptr2cells)(ml_get_cursor()) == 2
+***************
+*** 9628,9634 ****
+       * a character in the lower right corner of the scroll region may cause a
+       * scroll-up .
+       */
+!     if (scroll_region || W_WIDTH(wp) != Columns)
+      {
+  	if (scroll_region && (wp->w_width == Columns || *T_CSV != NUL))
+  	    scroll_region_set(wp, row);
+--- 9628,9634 ----
+       * a character in the lower right corner of the scroll region may cause a
+       * scroll-up .
+       */
+!     if (scroll_region || wp->w_width != Columns)
+      {
+  	if (scroll_region && (wp->w_width == Columns || *T_CSV != NUL))
+  	    scroll_region_set(wp, row);
+***************
+*** 10729,10749 ****
+  
+      /* TODO: use fewer spaces if there is not enough room */
+      for (menu = wp->w_winbar->children;
+! 			  menu != NULL && col < W_WIDTH(wp); menu = menu->next)
+      {
+  	space_to_screenline(off + col, fill_attr);
+! 	if (++col >= W_WIDTH(wp))
+  	    break;
+  	if (col > 1)
+  	{
+  	    space_to_screenline(off + col, fill_attr);
+! 	    if (++col >= W_WIDTH(wp))
+  		break;
+  	}
+  
+  	wp->w_winbar_items[item_idx].wb_startcol = col;
+  	space_to_screenline(off + col, button_attr);
+! 	if (++col >= W_WIDTH(wp))
+  	    break;
+  
+  	next_col = text_to_screenline(wp, menu->name, col);
+--- 10729,10749 ----
+  
+      /* TODO: use fewer spaces if there is not enough room */
+      for (menu = wp->w_winbar->children;
+! 			  menu != NULL && col < wp->w_width; menu = menu->next)
+      {
+  	space_to_screenline(off + col, fill_attr);
+! 	if (++col >= wp->w_width)
+  	    break;
+  	if (col > 1)
+  	{
+  	    space_to_screenline(off + col, fill_attr);
+! 	    if (++col >= wp->w_width)
+  		break;
+  	}
+  
+  	wp->w_winbar_items[item_idx].wb_startcol = col;
+  	space_to_screenline(off + col, button_attr);
+! 	if (++col >= wp->w_width)
+  	    break;
+  
+  	next_col = text_to_screenline(wp, menu->name, col);
+***************
+*** 10756,10775 ****
+  	wp->w_winbar_items[item_idx].wb_menu = menu;
+  	++item_idx;
+  
+! 	if (col >= W_WIDTH(wp))
+  	    break;
+  	space_to_screenline(off + col, button_attr);
+  	++col;
+      }
+!     while (col < W_WIDTH(wp))
+      {
+  	space_to_screenline(off + col, fill_attr);
+  	++col;
+      }
+      wp->w_winbar_items[item_idx].wb_menu = NULL; /* end marker */
+  
+!     screen_line(wp->w_winrow, wp->w_wincol, (int)W_WIDTH(wp),
+! 						     (int)W_WIDTH(wp), FALSE);
+  }
+  #endif
+  /*
+--- 10756,10775 ----
+  	wp->w_winbar_items[item_idx].wb_menu = menu;
+  	++item_idx;
+  
+! 	if (col >= wp->w_width)
+  	    break;
+  	space_to_screenline(off + col, button_attr);
+  	++col;
+      }
+!     while (col < wp->w_width)
+      {
+  	space_to_screenline(off + col, fill_attr);
+  	++col;
+      }
+      wp->w_winbar_items[item_idx].wb_menu = NULL; /* end marker */
+  
+!     screen_line(wp->w_winrow, wp->w_wincol, (int)wp->w_width,
+! 						     (int)wp->w_width, FALSE);
+  }
+  #endif
+  /*
+***************
+*** 10901,10907 ****
+  	    row = W_WINROW(wp) + wp->w_height;
+  	    fillchar = fillchar_status(&attr, wp);
+  	    off = wp->w_wincol;
+! 	    width = W_WIDTH(wp);
+  	}
+  	else
+  	{
+--- 10901,10907 ----
+  	    row = W_WINROW(wp) + wp->w_height;
+  	    fillchar = fillchar_status(&attr, wp);
+  	    off = wp->w_wincol;
+! 	    width = wp->w_width;
+  	}
+  	else
+  	{
+*** ../vim-8.0.1135/src/search.c	2017-09-16 20:54:47.114560316 +0200
+--- src/search.c	2017-09-22 15:17:01.813409452 +0200
+***************
+*** 2608,2614 ****
+  	if (!curwin->w_p_wrap)
+  	    getvcol(curwin, lpos, NULL, &vcol, NULL);
+  	if (curwin->w_p_wrap || (vcol >= curwin->w_leftcol
+! 			       && vcol < curwin->w_leftcol + W_WIDTH(curwin)))
+  	{
+  	    mpos = *lpos;    /* save the pos, update_screen() may change it */
+  	    save_cursor = curwin->w_cursor;
+--- 2608,2614 ----
+  	if (!curwin->w_p_wrap)
+  	    getvcol(curwin, lpos, NULL, &vcol, NULL);
+  	if (curwin->w_p_wrap || (vcol >= curwin->w_leftcol
+! 			       && vcol < curwin->w_leftcol + curwin->w_width))
+  	{
+  	    mpos = *lpos;    /* save the pos, update_screen() may change it */
+  	    save_cursor = curwin->w_cursor;
+*** ../vim-8.0.1135/src/structs.h	2017-09-22 14:35:46.596623391 +0200
+--- src/structs.h	2017-09-22 15:17:31.065230344 +0200
+***************
+*** 2701,2708 ****
+  				       status/command/winbar line(s) */
+      int		w_status_height;    /* number of status lines (0 or 1) */
+      int		w_wincol;	    /* Leftmost column of window in screen. */
+!     int		w_width;	    /* Width of window, excluding separation.
+! 				       use W_WIDTH() */
+      int		w_vsep_width;	    /* Number of separator columns (0 or 1).
+  				       use W_VSEP_WIDTH() */
+      /*
+--- 2701,2707 ----
+  				       status/command/winbar line(s) */
+      int		w_status_height;    /* number of status lines (0 or 1) */
+      int		w_wincol;	    /* Leftmost column of window in screen. */
+!     int		w_width;	    /* Width of window, excluding separation. */
+      int		w_vsep_width;	    /* Number of separator columns (0 or 1).
+  				       use W_VSEP_WIDTH() */
+      /*
+*** ../vim-8.0.1135/src/ui.c	2017-09-22 14:35:46.596623391 +0200
+--- src/ui.c	2017-09-22 15:17:10.021359195 +0200
+***************
+*** 2739,2745 ****
+  #ifdef FEAT_FOLDING
+  			&& (
+  # ifdef FEAT_RIGHTLEFT
+! 			    wp->w_p_rl ? col < W_WIDTH(wp) - wp->w_p_fdc :
+  # endif
+  			    col >= wp->w_p_fdc
+  # ifdef FEAT_CMDWIN
+--- 2739,2745 ----
+  #ifdef FEAT_FOLDING
+  			&& (
+  # ifdef FEAT_RIGHTLEFT
+! 			    wp->w_p_rl ? col < wp->w_width - wp->w_p_fdc :
+  # endif
+  			    col >= wp->w_p_fdc
+  # ifdef FEAT_CMDWIN
+***************
+*** 2945,2951 ****
+      /* Check for position outside of the fold column. */
+      if (
+  # ifdef FEAT_RIGHTLEFT
+! 	    curwin->w_p_rl ? col < W_WIDTH(curwin) - curwin->w_p_fdc :
+  # endif
+  	    col >= curwin->w_p_fdc
+  #  ifdef FEAT_CMDWIN
+--- 2945,2951 ----
+      /* Check for position outside of the fold column. */
+      if (
+  # ifdef FEAT_RIGHTLEFT
+! 	    curwin->w_p_rl ? col < curwin->w_width - curwin->w_p_fdc :
+  # endif
+  	    col >= curwin->w_p_fdc
+  #  ifdef FEAT_CMDWIN
+***************
+*** 3020,3026 ****
+  
+  #ifdef FEAT_RIGHTLEFT
+      if (win->w_p_rl)
+! 	col = W_WIDTH(win) - 1 - col;
+  #endif
+  
+      lnum = win->w_topline;
+--- 3020,3026 ----
+  
+  #ifdef FEAT_RIGHTLEFT
+      if (win->w_p_rl)
+! 	col = win->w_width - 1 - col;
+  #endif
+  
+      lnum = win->w_topline;
+***************
+*** 3064,3070 ****
+  	off = win_col_off(win) - win_col_off2(win);
+  	if (col < off)
+  	    col = off;
+! 	col += row * (W_WIDTH(win) - off);
+  	/* add skip column (for long wrapping line) */
+  	col += win->w_skipcol;
+      }
+--- 3064,3070 ----
+  	off = win_col_off(win) - win_col_off2(win);
+  	if (col < off)
+  	    col = off;
+! 	col += row * (win->w_width - off);
+  	/* add skip column (for long wrapping line) */
+  	col += win->w_skipcol;
+      }
+*** ../vim-8.0.1135/src/vim.h	2017-09-22 14:35:46.596623391 +0200
+--- src/vim.h	2017-09-22 15:17:43.317155326 +0200
+***************
+*** 859,865 ****
+  #define FINDFILE_DIR	1	/* only directories */
+  #define FINDFILE_BOTH	2	/* files and directories */
+  
+- #define W_WIDTH(wp)	(wp->w_width)
+  #define W_ENDCOL(wp)	(wp->w_wincol + wp->w_width)
+  #define W_VSEP_WIDTH(wp) (wp->w_vsep_width)
+  #define W_STATUS_HEIGHT(wp) (wp->w_status_height)
+--- 859,864 ----
+*** ../vim-8.0.1135/src/window.c	2017-09-22 14:35:46.596623391 +0200
+--- src/window.c	2017-09-22 15:17:15.465325862 +0200
+***************
+*** 5777,5789 ****
+  	     */
+  	    wp->w_wrow = line_size;
+  	    if (wp->w_wrow >= wp->w_height
+! 				       && (W_WIDTH(wp) - win_col_off(wp)) > 0)
+  	    {
+! 		wp->w_skipcol += W_WIDTH(wp) - win_col_off(wp);
+  		--wp->w_wrow;
+  		while (wp->w_wrow >= wp->w_height)
+  		{
+! 		    wp->w_skipcol += W_WIDTH(wp) - win_col_off(wp)
+  							   + win_col_off2(wp);
+  		    --wp->w_wrow;
+  		}
+--- 5777,5789 ----
+  	     */
+  	    wp->w_wrow = line_size;
+  	    if (wp->w_wrow >= wp->w_height
+! 				       && (wp->w_width - win_col_off(wp)) > 0)
+  	    {
+! 		wp->w_skipcol += wp->w_width - win_col_off(wp);
+  		--wp->w_wrow;
+  		while (wp->w_wrow >= wp->w_height)
+  		{
+! 		    wp->w_skipcol += wp->w_width - win_col_off(wp)
+  							   + win_col_off2(wp);
+  		    --wp->w_wrow;
+  		}
+*** ../vim-8.0.1135/src/version.c	2017-09-22 14:35:46.600623367 +0200
+--- src/version.c	2017-09-22 15:11:29.091450727 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1136,
+  /**/
+
+-- 
+If Microsoft would build a car...
+... The airbag system would ask "are you SURE?" before deploying.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

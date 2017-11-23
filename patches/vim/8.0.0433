@@ -1,0 +1,371 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0433
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0433
+Problem:    Quite a few beeps when running tests.
+Solution:   Set 'belloff' for these tests. (Christian Brabandt)
+Files:      src/testdir/test103.in, src/testdir/test14.in,
+            src/testdir/test29.in, src/testdir/test30.in,
+            src/testdir/test32.in, src/testdir/test45.in,
+            src/testdir/test72.in, src/testdir/test73.in,
+            src/testdir/test77.in, src/testdir/test78.in,
+            src/testdir/test85.in, src/testdir/test94.in,
+            src/testdir/test_alot.vim, src/testdir/test_alot_utf8.vim,
+            src/testdir/test_close_count.in, src/testdir/test_cmdline.vim,
+            src/testdir/test_diffmode.vim, src/testdir/test_digraph.vim,
+            src/testdir/test_erasebackword.in, src/testdir/test_normal.vim,
+            src/testdir/test_packadd.vim, src/testdir/test_search.vim,
+            src/testdir/test_textobjects.vim, src/testdir/test_undo.vim,
+            src/testdir/test_usercommands.vim, src/testdir/test_visual.vim
+
+
+*** ../vim-8.0.0432/src/testdir/test103.in	2013-11-21 14:02:09.000000000 +0100
+--- src/testdir/test103.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 1,6 ****
+--- 1,7 ----
+  Test for visual mode not being reset causing E315 error.
+  STARTTEST
+  :so small.vim
++ :set belloff=all
+  :enew
+  :let g:msg="Everything's fine."
+  :function! TriggerTheProblem()
+*** ../vim-8.0.0432/src/testdir/test14.in	2014-01-14 21:13:39.000000000 +0100
+--- src/testdir/test14.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 6,11 ****
+--- 6,12 ----
+  
+  STARTTEST
+  :so small.vim
++ :set belloff=all
+  /Start cursor here
+  vaBiBD:?Bug?,/Piece/-2w! test.out
+  /^- Bug
+*** ../vim-8.0.0432/src/testdir/test29.in	2015-08-11 18:30:19.000000000 +0200
+--- src/testdir/test29.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 103,108 ****
+--- 103,109 ----
+  
+  STARTTEST
+  :" Test with backspace set to the non-compatible setting
++ :set belloff=all
+  /^\d\+ this
+  :set cp bs=2
+  Avim1
+*** ../vim-8.0.0432/src/testdir/test30.in	2015-02-27 17:42:21.000000000 +0100
+--- src/testdir/test30.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 4,9 ****
+--- 4,10 ----
+  
+  STARTTEST
+  :so small.vim
++ :set belloff=all
+  :" first write three test files, one in each format
+  :set fileformat=unix
+  :set fileformats=
+*** ../vim-8.0.0432/src/testdir/test32.in	2013-09-08 18:08:07.000000000 +0200
+--- src/testdir/test32.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 23,28 ****
+--- 23,29 ----
+  STARTTEST
+  :so small.vim
+  :se nocp viminfo+=nviminfo cpt=.,w ff=unix | $-2,$w!Xtestfile | set ff&
++ :set belloff=all
+  :se cot=
+  nO#include "Xtestfile"
+  ru
+*** ../vim-8.0.0432/src/testdir/test45.in	2015-04-15 12:31:42.000000000 +0200
+--- src/testdir/test45.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 2,7 ****
+--- 2,8 ----
+  
+  STARTTEST
+  :so small.vim
++ :set belloff=all
+  :" We also need the +syntax feature here.
+  :if !has("syntax")
+     e! test.ok
+*** ../vim-8.0.0432/src/testdir/test72.in	2014-11-05 16:34:30.000000000 +0100
+--- src/testdir/test72.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 4,9 ****
+--- 4,10 ----
+  
+  STARTTEST
+  :so small.vim
++ :set belloff=all
+  :"
+  :" Test 'undofile': first a simple one-line change.
+  :set nocompatible viminfo+=nviminfo visualbell
+***************
+*** 25,31 ****
+  :set undofile
+  :bwipe!
+  :e Xtestfile
+- :" TODO: this beeps
+  u:.w >>test.out
+  :"
+  :" Test 'undofile', add 10 lines, delete 6 lines, undo 3
+--- 26,31 ----
+*** ../vim-8.0.0432/src/testdir/test73.in	2016-06-08 21:40:30.000000000 +0200
+--- src/testdir/test73.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 2,7 ****
+--- 2,8 ----
+  
+  STARTTEST
+  :so small.vim
++ :set belloff=all
+  :" Do all test in a separate window to avoid E211 when we recursively
+  :" delete the Xfind directory during cleanup
+  :"
+*** ../vim-8.0.0432/src/testdir/test77.in	2013-06-19 20:03:54.000000000 +0200
+--- src/testdir/test77.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 10,15 ****
+--- 10,16 ----
+  
+  STARTTEST
+  :so small.vim
++ :set belloff=all
+  :if !executable("cksum")
+  : e! test.ok
+  : w! test.out
+*** ../vim-8.0.0432/src/testdir/test78.in	2011-07-15 13:26:22.000000000 +0200
+--- src/testdir/test78.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 6,12 ****
+  
+  STARTTEST
+  :so small.vim
+! :set nocp fileformat=unix undolevels=-1 viminfo+=nviminfo
+  :e! Xtest
+  ggdG
+  :let text = "\tabcdefghijklmnoparstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnoparstuvwxyz0123456789"
+--- 6,12 ----
+  
+  STARTTEST
+  :so small.vim
+! :set nocp fileformat=unix undolevels=-1 viminfo+=nviminfo belloff=all
+  :e! Xtest
+  ggdG
+  :let text = "\tabcdefghijklmnoparstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnoparstuvwxyz0123456789"
+*** ../vim-8.0.0432/src/testdir/test85.in	2013-04-15 13:12:43.000000000 +0200
+--- src/testdir/test85.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 2,7 ****
+--- 2,8 ----
+  
+  STARTTEST
+  :so small.vim
++ :set belloff=all
+  :so lua.vim
+  :set nocompatible viminfo+=nviminfo
+  :lua l = vim.list():add"item0":add"dictionary with list OK":add"item2"
+*** ../vim-8.0.0432/src/testdir/test94.in	2015-11-21 14:16:35.000000000 +0100
+--- src/testdir/test94.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 17,22 ****
+--- 17,23 ----
+  
+  STARTTEST
+  :so small.vim
++ :set belloff=all
+  :set enc=utf-8 nocp viminfo+=nviminfo
+  :
+  :" User functions
+*** ../vim-8.0.0432/src/testdir/test_alot.vim	2017-03-08 00:01:31.489347798 +0100
+--- src/testdir/test_alot.vim	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 1,6 ****
+--- 1,7 ----
+  " A series of tests that can run in one Vim invocation.
+  " This makes testing go faster, since Vim doesn't need to restart.
+  
++ set belloff=all
+  source test_assign.vim
+  source test_autocmd.vim
+  source test_changedtick.vim
+*** ../vim-8.0.0432/src/testdir/test_alot_utf8.vim	2017-01-28 13:47:48.518498595 +0100
+--- src/testdir/test_alot_utf8.vim	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 5,10 ****
+--- 5,11 ----
+  " runtest.vim.  Checking for the multi_byte feature is in the individual
+  " files, so that they can be run by themselves.
+  
++ set belloff=all
+  source test_expr_utf8.vim
+  source test_matchadd_conceal_utf8.vim
+  source test_regexp_utf8.vim
+*** ../vim-8.0.0432/src/testdir/test_close_count.in	2015-01-07 15:33:21.000000000 +0100
+--- src/testdir/test_close_count.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 2,7 ****
+--- 2,8 ----
+  
+  STARTTEST
+  :so small.vim
++ :set belloff=all
+  :let tests = []
+  :for i in range(5)
+  :new
+*** ../vim-8.0.0432/src/testdir/test_cmdline.vim	2017-03-02 23:05:45.545710576 +0100
+--- src/testdir/test_cmdline.vim	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 1,5 ****
+--- 1,7 ----
+  " Tests for editing the command line.
+  
++ set belloff=all
++ 
+  func Test_complete_tab()
+    call writefile(['testfile'], 'Xtestfile')
+    call feedkeys(":e Xtest\t\r", "tx")
+*** ../vim-8.0.0432/src/testdir/test_diffmode.vim	2017-03-05 18:02:59.999101021 +0100
+--- src/testdir/test_diffmode.vim	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 1,4 ****
+--- 1,5 ----
+  " Tests for diff mode
++ set belloff=all
+  
+  func Test_diff_fold_sync()
+    enew!
+*** ../vim-8.0.0432/src/testdir/test_digraph.vim	2016-08-18 21:34:47.000000000 +0200
+--- src/testdir/test_digraph.vim	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 3,8 ****
+--- 3,9 ----
+  if !has("digraphs") || !has("multi_byte")
+    finish
+  endif
++ set belloff=all
+  
+  func! Put_Dig(chars)
+    exe "norm! o\<c-k>".a:chars
+*** ../vim-8.0.0432/src/testdir/test_erasebackword.in	2015-01-30 03:19:14.000000000 +0100
+--- src/testdir/test_erasebackword.in	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 2,7 ****
+--- 2,8 ----
+  
+  STARTTEST
+  :so small.vim
++ :set belloff=all
+  :so mbyte.vim
+  :set encoding=utf-8
+  G
+*** ../vim-8.0.0432/src/testdir/test_normal.vim	2017-02-01 22:31:45.112052371 +0100
+--- src/testdir/test_normal.vim	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 1,5 ****
+--- 1,6 ----
+  " Test for various Normal mode commands
+  
++ set belloff=all
+  func! Setup_NewWindow()
+    10new
+    call setline(1, range(1,100))
+*** ../vim-8.0.0432/src/testdir/test_packadd.vim	2017-02-11 23:00:31.409774572 +0100
+--- src/testdir/test_packadd.vim	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 1,5 ****
+--- 1,7 ----
+  " Tests for 'packpath' and :packadd
+  
++ set belloff=all
++ 
+  func SetUp()
+    let s:topdir = expand('%:h') . '/Xdir'
+    exe 'set packpath=' . s:topdir
+*** ../vim-8.0.0432/src/testdir/test_search.vim	2017-03-01 22:17:01.946120304 +0100
+--- src/testdir/test_search.vim	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 1,5 ****
+--- 1,6 ----
+  " Test for the search command
+  
++ set belloff=all
+  func Test_search_cmdline()
+    if !exists('+incsearch')
+      return
+*** ../vim-8.0.0432/src/testdir/test_textobjects.vim	2016-07-23 21:55:05.000000000 +0200
+--- src/testdir/test_textobjects.vim	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 4,9 ****
+--- 4,10 ----
+    finish
+  endif
+  
++ set belloff=all
+  function! CpoM(line, useM, expected)
+    new
+  
+*** ../vim-8.0.0432/src/testdir/test_undo.vim	2017-01-17 22:09:41.310252893 +0100
+--- src/testdir/test_undo.vim	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 3,8 ****
+--- 3,9 ----
+  " undo-able pieces.  Do that by setting 'undolevels'.
+  " Also tests :earlier and :later.
+  
++ set belloff=all
+  func Test_undotree()
+    exe "normal Aabc\<Esc>"
+    set ul=100
+*** ../vim-8.0.0432/src/testdir/test_usercommands.vim	2017-01-26 22:07:28.518844549 +0100
+--- src/testdir/test_usercommands.vim	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 1,6 ****
+--- 1,7 ----
+  " Tests for user defined commands
+  
+  " Test for <mods> in user defined commands
++ set belloff=all
+  function Test_cmdmods()
+    let g:mods = ''
+  
+*** ../vim-8.0.0432/src/testdir/test_visual.vim	2017-02-18 23:11:57.345793837 +0100
+--- src/testdir/test_visual.vim	2017-03-08 22:48:59.304883131 +0100
+***************
+*** 3,8 ****
+--- 3,10 ----
+    finish
+  endif
+  
++ set belloff=all
++ 
+  func Test_block_shift_multibyte()
+    " Uses double-wide character.
+    if !has('multi_byte')
+*** ../vim-8.0.0432/src/version.c	2017-03-08 22:39:46.536941572 +0100
+--- src/version.c	2017-03-08 22:52:26.127401427 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     433,
+  /**/
+
+-- 
+From "know your smileys":
+ !-|	I-am-a-Cylon-Centurian-with-one-red-eye-bouncing-back-and-forth
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

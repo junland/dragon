@@ -1,0 +1,294 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0630
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0630
+Problem:    The :global command does not work recursively, which makes it
+            difficult to execute a command on a line where one pattern matches
+            and another does not match. (Miles Cranmer)
+Solution:   Allow for recursion if it is for only one line. (closes #1760)
+Files:      src/ex_cmds.c, src/testdir/test_global.vim, runtime/doc/repeat.txt
+
+
+*** ../vim-8.0.0629/src/ex_cmds.c	2017-06-05 16:01:53.917848222 +0200
+--- src/ex_cmds.c	2017-06-10 14:19:08.162746066 +0200
+***************
+*** 5903,5908 ****
+--- 5903,5919 ----
+      return FALSE;
+  }
+  
++     static void
++ global_exe_one(char_u *cmd, linenr_T lnum)
++ {
++     curwin->w_cursor.lnum = lnum;
++     curwin->w_cursor.col = 0;
++     if (*cmd == NUL || *cmd == '\n')
++ 	do_cmdline((char_u *)"p", NULL, NULL, DOCMD_NOWAIT);
++     else
++ 	do_cmdline(cmd, NULL, NULL, DOCMD_NOWAIT);
++ }
++ 
+  /*
+   * Execute a global command of the form:
+   *
+***************
+*** 5933,5941 ****
+      int		match;
+      int		which_pat;
+  
+!     if (global_busy)
+      {
+! 	EMSG(_("E147: Cannot do :global recursive"));	/* will increment global_busy */
+  	return;
+      }
+  
+--- 5944,5956 ----
+      int		match;
+      int		which_pat;
+  
+!     /* When nesting the command works on one line.  This allows for
+!      * ":g/found/v/notfound/command". */
+!     if (global_busy && (eap->line1 != 1
+! 				  || eap->line2 != curbuf->b_ml.ml_line_count))
+      {
+! 	/* will increment global_busy to break out of the loop */
+! 	EMSG(_("E147: Cannot do :global recursive with a range"));
+  	return;
+      }
+  
+***************
+*** 5993,6038 ****
+  	return;
+      }
+  
+!     /*
+!      * pass 1: set marks for each (not) matching line
+!      */
+!     for (lnum = eap->line1; lnum <= eap->line2 && !got_int; ++lnum)
+      {
+! 	/* a match on this line? */
+  	match = vim_regexec_multi(&regmatch, curwin, curbuf, lnum,
+! 							    (colnr_T)0, NULL);
+  	if ((type == 'g' && match) || (type == 'v' && !match))
+  	{
+! 	    ml_setmarked(lnum);
+! 	    ndone++;
+  	}
+- 	line_breakcheck();
+-     }
+  
+!     /*
+!      * pass 2: execute the command for each line that has been marked
+!      */
+!     if (got_int)
+! 	MSG(_(e_interr));
+!     else if (ndone == 0)
+!     {
+! 	if (type == 'v')
+! 	    smsg((char_u *)_("Pattern found in every line: %s"), pat);
+  	else
+! 	    smsg((char_u *)_("Pattern not found: %s"), pat);
+!     }
+!     else
+!     {
+  #ifdef FEAT_CLIPBOARD
+! 	start_global_changes();
+  #endif
+! 	global_exe(cmd);
+  #ifdef FEAT_CLIPBOARD
+! 	end_global_changes();
+  #endif
+      }
+  
+-     ml_clearmarked();	   /* clear rest of the marks */
+      vim_regfree(regmatch.regprog);
+  }
+  
+--- 6008,6065 ----
+  	return;
+      }
+  
+!     if (global_busy)
+      {
+! 	lnum = curwin->w_cursor.lnum;
+  	match = vim_regexec_multi(&regmatch, curwin, curbuf, lnum,
+! 							     (colnr_T)0, NULL);
+  	if ((type == 'g' && match) || (type == 'v' && !match))
++ 	    global_exe_one(cmd, lnum);
++     }
++     else
++     {
++ 	/*
++ 	 * pass 1: set marks for each (not) matching line
++ 	 */
++ 	for (lnum = eap->line1; lnum <= eap->line2 && !got_int; ++lnum)
+  	{
+! 	    /* a match on this line? */
+! 	    match = vim_regexec_multi(&regmatch, curwin, curbuf, lnum,
+! 							     (colnr_T)0, NULL);
+! 	    if ((type == 'g' && match) || (type == 'v' && !match))
+! 	    {
+! 		ml_setmarked(lnum);
+! 		ndone++;
+! 	    }
+! 	    line_breakcheck();
+  	}
+  
+! 	/*
+! 	 * pass 2: execute the command for each line that has been marked
+! 	 */
+! 	if (got_int)
+! 	    MSG(_(e_interr));
+! 	else if (ndone == 0)
+! 	{
+! 	    if (type == 'v')
+! 		smsg((char_u *)_("Pattern found in every line: %s"), pat);
+! 	    else
+! 		smsg((char_u *)_("Pattern not found: %s"), pat);
+! 	}
+  	else
+! 	{
+  #ifdef FEAT_CLIPBOARD
+! 	    start_global_changes();
+  #endif
+! 	    global_exe(cmd);
+  #ifdef FEAT_CLIPBOARD
+! 	    end_global_changes();
+  #endif
++ 	}
++ 
++ 	ml_clearmarked();	   /* clear rest of the marks */
+      }
+  
+      vim_regfree(regmatch.regprog);
+  }
+  
+***************
+*** 6063,6074 ****
+      old_lcount = curbuf->b_ml.ml_line_count;
+      while (!got_int && (lnum = ml_firstmarked()) != 0 && global_busy == 1)
+      {
+! 	curwin->w_cursor.lnum = lnum;
+! 	curwin->w_cursor.col = 0;
+! 	if (*cmd == NUL || *cmd == '\n')
+! 	    do_cmdline((char_u *)"p", NULL, NULL, DOCMD_NOWAIT);
+! 	else
+! 	    do_cmdline(cmd, NULL, NULL, DOCMD_NOWAIT);
+  	ui_breakcheck();
+      }
+  
+--- 6090,6096 ----
+      old_lcount = curbuf->b_ml.ml_line_count;
+      while (!got_int && (lnum = ml_firstmarked()) != 0 && global_busy == 1)
+      {
+! 	global_exe_one(cmd, lnum);
+  	ui_breakcheck();
+      }
+  
+***************
+*** 8514,8517 ****
+      }
+  }
+  #endif
+- 
+--- 8536,8538 ----
+*** ../vim-8.0.0629/src/testdir/test_global.vim	2017-03-29 19:20:25.385015086 +0200
+--- src/testdir/test_global.vim	2017-06-10 14:21:10.329986199 +0200
+***************
+*** 9,11 ****
+--- 9,20 ----
+    set clipboard&
+    bwipe!
+  endfunc
++ 
++ func Test_nested_global()
++   new
++   call setline(1, ['nothing', 'found', 'found bad', 'bad'])
++   call assert_fails('g/found/3v/bad/s/^/++/', 'E147')
++   g/found/v/bad/s/^/++/
++   call assert_equal(['nothing', '++found', 'found bad', 'bad'], getline(1, 4))
++   bwipe!
++ endfunc
+*** ../vim-8.0.0629/runtime/doc/repeat.txt	2016-09-12 12:45:48.000000000 +0200
+--- runtime/doc/repeat.txt	2017-06-10 14:28:11.879343419 +0200
+***************
+*** 46,52 ****
+  ==============================================================================
+  2. Multiple repeats					*multi-repeat*
+  
+! 						*:g* *:global* *E147* *E148*
+  :[range]g[lobal]/{pattern}/[cmd]
+  			Execute the Ex command [cmd] (default ":p") on the
+  			lines within [range] where {pattern} matches.
+--- 46,52 ----
+  ==============================================================================
+  2. Multiple repeats					*multi-repeat*
+  
+! 						*:g* *:global* *E148*
+  :[range]g[lobal]/{pattern}/[cmd]
+  			Execute the Ex command [cmd] (default ":p") on the
+  			lines within [range] where {pattern} matches.
+***************
+*** 79,86 ****
+  the command.  If an error message is given for a line, the command for that
+  line is aborted and the global command continues with the next marked or
+  unmarked line.
+  
+! To repeat a non-Ex command, you can use the ":normal" command: >
+  	:g/pat/normal {commands}
+  Make sure that {commands} ends with a whole command, otherwise Vim will wait
+  for you to type the rest of the command for each match.  The screen will not
+--- 79,93 ----
+  the command.  If an error message is given for a line, the command for that
+  line is aborted and the global command continues with the next marked or
+  unmarked line.
++ 								*E147* 
++ When the command is used recursively, it only works on one line.  Giving a
++ range is then not allowed. This is useful to find all lines that match a
++ pattern and do not match another pattern: >
++ 	:g/found/v/notfound/{cmd}
++ This first finds all lines containing "found", but only executes {cmd} when
++ there is no match for "notfound".
+  
+! To execute a non-Ex command, you can use the `:normal` command: >
+  	:g/pat/normal {commands}
+  Make sure that {commands} ends with a whole command, otherwise Vim will wait
+  for you to type the rest of the command for each match.  The screen will not
+***************
+*** 305,310 ****
+--- 312,322 ----
+  			Mark) in utf-8 format Vim will recognize it, no need
+  			to use ":scriptencoding utf-8" then.
+  
++ 			If you set the 'encoding' option in your |.vimrc|,
++ 			`:scriptencoding` must be placed after that. E.g.: >
++ 				set encoding=utf-8
++ 				scriptencoding utf-8
++ <
+  			When compiled without the |+multi_byte| feature this
+  			command is ignored.
+  			{not in Vi}
+*** ../vim-8.0.0629/src/version.c	2017-06-09 21:35:43.337681146 +0200
+--- src/version.c	2017-06-10 14:12:53.245080661 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     630,
+  /**/
+
+-- 
+How To Keep A Healthy Level Of Insanity:
+9. As often as possible, skip rather than walk.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

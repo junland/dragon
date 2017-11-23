@@ -1,0 +1,507 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0198
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0198
+Problem:    Some syntax arguments take effect even after "if 0". (Taylor
+            Venable)
+Solution:   Properly skip the syntax statements.  Make "syn case" and "syn
+            conceal" report the current state.  Fix that "syn clear" didn't
+            reset the conceal flag.  Add tests for :syntax skipping properly.
+Files:      src/syntax.c, src/testdir/test_syntax.vim
+
+
+*** ../vim-8.0.0197/src/syntax.c	2017-01-08 18:28:18.965762385 +0100
+--- src/syntax.c	2017-01-17 16:08:22.248409802 +0100
+***************
+*** 462,468 ****
+  static void clear_keywtab(hashtab_T *ht);
+  static void add_keyword(char_u *name, int id, int flags, short *cont_in_list, short *next_list, int conceal_char);
+  static char_u *get_group_name(char_u *arg, char_u **name_end);
+! static char_u *get_syn_options(char_u *arg, syn_opt_arg_T *opt, int *conceal_char);
+  static void syn_cmd_include(exarg_T *eap, int syncing);
+  static void syn_cmd_iskeyword(exarg_T *eap, int syncing);
+  static void syn_cmd_keyword(exarg_T *eap, int syncing);
+--- 462,468 ----
+  static void clear_keywtab(hashtab_T *ht);
+  static void add_keyword(char_u *name, int id, int flags, short *cont_in_list, short *next_list, int conceal_char);
+  static char_u *get_group_name(char_u *arg, char_u **name_end);
+! static char_u *get_syn_options(char_u *arg, syn_opt_arg_T *opt, int *conceal_char, int skip);
+  static void syn_cmd_include(exarg_T *eap, int syncing);
+  static void syn_cmd_iskeyword(exarg_T *eap, int syncing);
+  static void syn_cmd_keyword(exarg_T *eap, int syncing);
+***************
+*** 481,487 ****
+  static void init_syn_patterns(void);
+  static char_u *get_syn_pattern(char_u *arg, synpat_T *ci);
+  static void syn_cmd_sync(exarg_T *eap, int syncing);
+! static int get_id_list(char_u **arg, int keylen, short **list);
+  static void syn_combine_list(short **clstr1, short **clstr2, int list_op);
+  static void syn_incl_toplevel(int id, int *flagsp);
+  
+--- 481,487 ----
+  static void init_syn_patterns(void);
+  static char_u *get_syn_pattern(char_u *arg, synpat_T *ci);
+  static void syn_cmd_sync(exarg_T *eap, int syncing);
+! static int get_id_list(char_u **arg, int keylen, short **list, int skip);
+  static void syn_combine_list(short **clstr1, short **clstr2, int list_op);
+  static void syn_incl_toplevel(int id, int *flagsp);
+  
+***************
+*** 3434,3440 ****
+  	return;
+  
+      next = skiptowhite(arg);
+!     if (STRNICMP(arg, "on", 2) == 0 && next - arg == 2)
+  	curwin->w_s->b_syn_conceal = TRUE;
+      else if (STRNICMP(arg, "off", 3) == 0 && next - arg == 3)
+  	curwin->w_s->b_syn_conceal = FALSE;
+--- 3434,3447 ----
+  	return;
+  
+      next = skiptowhite(arg);
+!     if (*arg == NUL)
+!     {
+! 	if (curwin->w_s->b_syn_conceal)
+! 	    MSG(_("syn conceal on"));
+! 	else
+! 	    MSG(_("syn conceal off"));
+!     }
+!     else if (STRNICMP(arg, "on", 2) == 0 && next - arg == 2)
+  	curwin->w_s->b_syn_conceal = TRUE;
+      else if (STRNICMP(arg, "off", 3) == 0 && next - arg == 3)
+  	curwin->w_s->b_syn_conceal = FALSE;
+***************
+*** 3457,3463 ****
+  	return;
+  
+      next = skiptowhite(arg);
+!     if (STRNICMP(arg, "match", 5) == 0 && next - arg == 5)
+  	curwin->w_s->b_syn_ic = FALSE;
+      else if (STRNICMP(arg, "ignore", 6) == 0 && next - arg == 6)
+  	curwin->w_s->b_syn_ic = TRUE;
+--- 3464,3477 ----
+  	return;
+  
+      next = skiptowhite(arg);
+!     if (*arg == NUL)
+!     {
+! 	if (curwin->w_s->b_syn_ic)
+! 	    MSG(_("syntax case ignore"));
+! 	else
+! 	    MSG(_("syntax case match"));
+!     }
+!     else if (STRNICMP(arg, "match", 5) == 0 && next - arg == 5)
+  	curwin->w_s->b_syn_ic = FALSE;
+      else if (STRNICMP(arg, "ignore", 6) == 0 && next - arg == 6)
+  	curwin->w_s->b_syn_ic = TRUE;
+***************
+*** 3479,3485 ****
+  	return;
+  
+      next = skiptowhite(arg);
+!     if (STRNICMP(arg, "toplevel", 8) == 0 && next - arg == 8)
+  	curwin->w_s->b_syn_spell = SYNSPL_TOP;
+      else if (STRNICMP(arg, "notoplevel", 10) == 0 && next - arg == 10)
+  	curwin->w_s->b_syn_spell = SYNSPL_NOTOP;
+--- 3493,3508 ----
+  	return;
+  
+      next = skiptowhite(arg);
+!     if (*arg == NUL)
+!     {
+! 	if (curwin->w_s->b_syn_spell == SYNSPL_TOP)
+! 	    MSG(_("syntax spell toplevel"));
+! 	else if (curwin->w_s->b_syn_spell == SYNSPL_NOTOP)
+! 	    MSG(_("syntax spell notoplevel"));
+! 	else
+! 	    MSG(_("syntax spell default"));
+!     }
+!     else if (STRNICMP(arg, "toplevel", 8) == 0 && next - arg == 8)
+  	curwin->w_s->b_syn_spell = SYNSPL_TOP;
+      else if (STRNICMP(arg, "notoplevel", 10) == 0 && next - arg == 10)
+  	curwin->w_s->b_syn_spell = SYNSPL_NOTOP;
+***************
+*** 3556,3561 ****
+--- 3579,3587 ----
+      block->b_syn_ic = FALSE;	    /* Use case, by default */
+      block->b_syn_spell = SYNSPL_DEFAULT; /* default spell checking */
+      block->b_syn_containedin = FALSE;
++ #ifdef FEAT_CONCEAL
++     block->b_syn_conceal = FALSE;
++ #endif
+  
+      /* free the keywords */
+      clear_keywtab(&block->b_keywtab);
+***************
+*** 4543,4549 ****
+  get_syn_options(
+      char_u	    *arg,		/* next argument to be checked */
+      syn_opt_arg_T   *opt,		/* various things */
+!     int		    *conceal_char UNUSED)
+  {
+      char_u	*gname_start, *gname;
+      int		syn_id;
+--- 4569,4576 ----
+  get_syn_options(
+      char_u	    *arg,		/* next argument to be checked */
+      syn_opt_arg_T   *opt,		/* various things */
+!     int		    *conceal_char UNUSED,
+!     int		    skip)		/* TRUE if skipping over command */
+  {
+      char_u	*gname_start, *gname;
+      int		syn_id;
+***************
+*** 4626,4642 ****
+  		EMSG(_("E395: contains argument not accepted here"));
+  		return NULL;
+  	    }
+! 	    if (get_id_list(&arg, 8, &opt->cont_list) == FAIL)
+  		return NULL;
+  	}
+  	else if (flagtab[fidx].argtype == 2)
+  	{
+! 	    if (get_id_list(&arg, 11, &opt->cont_in_list) == FAIL)
+  		return NULL;
+  	}
+  	else if (flagtab[fidx].argtype == 3)
+  	{
+! 	    if (get_id_list(&arg, 9, &opt->next_list) == FAIL)
+  		return NULL;
+  	}
+  	else if (flagtab[fidx].argtype == 11 && arg[5] == '=')
+--- 4653,4669 ----
+  		EMSG(_("E395: contains argument not accepted here"));
+  		return NULL;
+  	    }
+! 	    if (get_id_list(&arg, 8, &opt->cont_list, skip) == FAIL)
+  		return NULL;
+  	}
+  	else if (flagtab[fidx].argtype == 2)
+  	{
+! 	    if (get_id_list(&arg, 11, &opt->cont_in_list, skip) == FAIL)
+  		return NULL;
+  	}
+  	else if (flagtab[fidx].argtype == 3)
+  	{
+! 	    if (get_id_list(&arg, 9, &opt->next_list, skip) == FAIL)
+  		return NULL;
+  	}
+  	else if (flagtab[fidx].argtype == 11 && arg[5] == '=')
+***************
+*** 4846,4852 ****
+  
+      if (rest != NULL)
+      {
+! 	syn_id = syn_check_group(arg, (int)(group_name_end - arg));
+  	if (syn_id != 0)
+  	    /* allocate a buffer, for removing backslashes in the keyword */
+  	    keyword_copy = alloc((unsigned)STRLEN(rest) + 1);
+--- 4873,4882 ----
+  
+      if (rest != NULL)
+      {
+! 	if (eap->skip)
+! 	    syn_id = -1;
+! 	else
+! 	    syn_id = syn_check_group(arg, (int)(group_name_end - arg));
+  	if (syn_id != 0)
+  	    /* allocate a buffer, for removing backslashes in the keyword */
+  	    keyword_copy = alloc((unsigned)STRLEN(rest) + 1);
+***************
+*** 4868,4874 ****
+  	    p = keyword_copy;
+  	    for ( ; rest != NULL && !ends_excmd(*rest); rest = skipwhite(rest))
+  	    {
+! 		rest = get_syn_options(rest, &syn_opt_arg, &conceal_char);
+  		if (rest == NULL || ends_excmd(*rest))
+  		    break;
+  		/* Copy the keyword, removing backslashes, and add a NUL. */
+--- 4898,4905 ----
+  	    p = keyword_copy;
+  	    for ( ; rest != NULL && !ends_excmd(*rest); rest = skipwhite(rest))
+  	    {
+! 		rest = get_syn_options(rest, &syn_opt_arg, &conceal_char,
+! 								    eap->skip);
+  		if (rest == NULL || ends_excmd(*rest))
+  		    break;
+  		/* Copy the keyword, removing backslashes, and add a NUL. */
+***************
+*** 4981,4987 ****
+      syn_opt_arg.cont_list = NULL;
+      syn_opt_arg.cont_in_list = NULL;
+      syn_opt_arg.next_list = NULL;
+!     rest = get_syn_options(rest, &syn_opt_arg, &conceal_char);
+  
+      /* get the pattern. */
+      init_syn_patterns();
+--- 5012,5018 ----
+      syn_opt_arg.cont_list = NULL;
+      syn_opt_arg.cont_in_list = NULL;
+      syn_opt_arg.next_list = NULL;
+!     rest = get_syn_options(rest, &syn_opt_arg, &conceal_char, eap->skip);
+  
+      /* get the pattern. */
+      init_syn_patterns();
+***************
+*** 4991,4997 ****
+  	syn_opt_arg.flags |= HL_HAS_EOL;
+  
+      /* Get options after the pattern */
+!     rest = get_syn_options(rest, &syn_opt_arg, &conceal_char);
+  
+      if (rest != NULL)		/* all arguments are valid */
+      {
+--- 5022,5028 ----
+  	syn_opt_arg.flags |= HL_HAS_EOL;
+  
+      /* Get options after the pattern */
+!     rest = get_syn_options(rest, &syn_opt_arg, &conceal_char, eap->skip);
+  
+      if (rest != NULL)		/* all arguments are valid */
+      {
+***************
+*** 5117,5123 ****
+      while (rest != NULL && !ends_excmd(*rest))
+      {
+  	/* Check for option arguments */
+! 	rest = get_syn_options(rest, &syn_opt_arg, &conceal_char);
+  	if (rest == NULL || ends_excmd(*rest))
+  	    break;
+  
+--- 5148,5154 ----
+      while (rest != NULL && !ends_excmd(*rest))
+      {
+  	/* Check for option arguments */
+! 	rest = get_syn_options(rest, &syn_opt_arg, &conceal_char, eap->skip);
+  	if (rest == NULL || ends_excmd(*rest))
+  	    break;
+  
+***************
+*** 5628,5639 ****
+  		break;
+  
+  	    clstr_list = NULL;
+! 	    if (get_id_list(&rest, opt_len, &clstr_list) == FAIL)
+  	    {
+  		EMSG2(_(e_invarg2), rest);
+  		break;
+  	    }
+! 	    syn_combine_list(&SYN_CLSTR(curwin->w_s)[scl_id].scl_list,
+  			     &clstr_list, list_op);
+  	    got_clstr = TRUE;
+  	}
+--- 5659,5671 ----
+  		break;
+  
+  	    clstr_list = NULL;
+! 	    if (get_id_list(&rest, opt_len, &clstr_list, eap->skip) == FAIL)
+  	    {
+  		EMSG2(_(e_invarg2), rest);
+  		break;
+  	    }
+! 	    if (scl_id >= 0)
+! 		syn_combine_list(&SYN_CLSTR(curwin->w_s)[scl_id].scl_list,
+  			     &clstr_list, list_op);
+  	    got_clstr = TRUE;
+  	}
+***************
+*** 5931,5938 ****
+  get_id_list(
+      char_u	**arg,
+      int		keylen,		/* length of keyword */
+!     short	**list)		/* where to store the resulting list, if not
+  				   NULL, the list is silently skipped! */
+  {
+      char_u	*p = NULL;
+      char_u	*end;
+--- 5963,5971 ----
+  get_id_list(
+      char_u	**arg,
+      int		keylen,		/* length of keyword */
+!     short	**list,		/* where to store the resulting list, if not
+  				   NULL, the list is silently skipped! */
++     int		skip)
+  {
+      char_u	*p = NULL;
+      char_u	*end;
+***************
+*** 6015,6021 ****
+  	    }
+  	    else if (name[1] == '@')
+  	    {
+! 		id = syn_check_cluster(name + 2, (int)(end - p - 1));
+  	    }
+  	    else
+  	    {
+--- 6048,6055 ----
+  	    }
+  	    else if (name[1] == '@')
+  	    {
+! 		if (!skip)
+! 		    id = syn_check_cluster(name + 2, (int)(end - p - 1));
+  	    }
+  	    else
+  	    {
+*** ../vim-8.0.0197/src/testdir/test_syntax.vim	2017-01-08 18:28:18.965762385 +0100
+--- src/testdir/test_syntax.vim	2017-01-17 16:20:07.603838000 +0100
+***************
+*** 162,164 ****
+--- 162,295 ----
+    call feedkeys(":syn match \<C-A>\<C-B>\"\<CR>", 'tx')
+    call assert_match('^"syn match Boolean Character ', @:)
+  endfunc
++ 
++ func Test_syntax_arg_skipped()
++   syn clear
++   syntax case ignore
++   if 0
++     syntax case match
++   endif
++   call assert_match('case ignore', execute('syntax case'))
++ 
++   syn keyword Foo foo
++   call assert_match('Foo', execute('syntax'))
++   syn clear
++   call assert_match('case match', execute('syntax case'))
++   call assert_notmatch('Foo', execute('syntax'))
++ 
++   if has('conceal')
++     syn clear
++     syntax conceal on
++     if 0
++       syntax conceal off
++     endif
++     call assert_match('conceal on', execute('syntax conceal'))
++     syn clear
++     call assert_match('conceal off', execute('syntax conceal'))
++   endif
++ 
++   syntax region Tar start=/</ end=/>/
++   if 0
++     syntax region NotTest start=/</ end=/>/ contains=@Spell
++   endif
++   call assert_match('Tar', execute('syntax'))
++   call assert_notmatch('NotTest', execute('syntax'))
++   call assert_notmatch('Spell', execute('syntax'))
++ 
++   hi Foo ctermfg=blue
++   let a = execute('hi Foo')
++   if 0
++     syntax rest
++   endif
++   call assert_equal(a, execute('hi Foo'))
++ 
++   set ft=tags
++   syn off
++   if 0
++     syntax enable
++   endif
++   call assert_match('No Syntax items defined', execute('syntax'))
++   syntax enable
++   call assert_match('tagComment', execute('syntax'))
++   set ft=
++ 
++   syn clear
++   if 0
++     syntax include @Spell nothing
++   endif
++   call assert_notmatch('Spell', execute('syntax'))
++ 
++   syn clear
++   syn iskeyword 48-57,$,_
++   call assert_match('48-57,$,_', execute('syntax iskeyword'))
++   if 0
++     syn clear
++     syn iskeyword clear
++   endif
++   call assert_match('48-57,$,_', execute('syntax iskeyword'))
++   syn iskeyword clear
++   call assert_match('not set', execute('syntax iskeyword'))
++   syn iskeyword 48-57,$,_
++   syn clear
++   call assert_match('not set', execute('syntax iskeyword'))
++ 
++   syn clear
++   syn keyword Foo foo
++   if 0
++     syn keyword NotAdded bar
++   endif
++   call assert_match('Foo', execute('syntax'))
++   call assert_notmatch('NotAdded', execute('highlight'))
++ 
++   syn clear
++   syn keyword Foo foo
++   call assert_match('Foo', execute('syntax'))
++   call assert_match('Foo', execute('syntax list'))
++   call assert_notmatch('Foo', execute('if 0 | syntax | endif'))
++   call assert_notmatch('Foo', execute('if 0 | syntax list | endif'))
++ 
++   syn clear
++   syn match Fopi /asdf/
++   if 0
++     syn match Fopx /asdf/
++   endif
++   call assert_match('Fopi', execute('syntax'))
++   call assert_notmatch('Fopx', execute('syntax'))
++ 
++   syn clear
++   syn spell toplevel
++   call assert_match('spell toplevel', execute('syntax spell'))
++   if 0
++     syn spell notoplevel
++   endif
++   call assert_match('spell toplevel', execute('syntax spell'))
++   syn spell notoplevel
++   call assert_match('spell notoplevel', execute('syntax spell'))
++   syn spell default
++   call assert_match('spell default', execute('syntax spell'))
++ 
++   syn clear
++   if 0
++     syntax cluster Spell
++   endif
++   call assert_notmatch('Spell', execute('syntax'))
++ 
++   syn clear
++   syn keyword Foo foo
++   syn sync ccomment
++   syn sync maxlines=5
++   if 0
++     syn sync maxlines=11
++   endif
++   call assert_match('on C-style comments', execute('syntax sync'))
++   call assert_match('maximal 5 lines', execute('syntax sync'))
++   syn clear
++   syn keyword Foo foo
++   if 0
++     syn sync ccomment
++   endif
++   call assert_notmatch('on C-style comments', execute('syntax sync'))
++ 
++   syn clear
++ endfunc
++ 
+*** ../vim-8.0.0197/src/version.c	2017-01-16 22:53:54.018441223 +0100
+--- src/version.c	2017-01-17 13:51:35.186807534 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     198,
+  /**/
+
+-- 
+Microsoft's definition of a boolean: TRUE, FALSE, MAYBE
+"Embrace and extend"...?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,96 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0150
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0150
+Problem:    When the pattern of :filter does not have a separator then
+            completion of the command fails.
+Solution:   Skip over the pattern. (Ozaki Kiichi, clodes #1299)
+Files:      src/ex_docmd.c, src/testdir/test_filter_cmd.vim
+
+
+*** ../vim-8.0.0149/src/ex_docmd.c	2017-01-02 17:25:54.860363256 +0100
+--- src/ex_docmd.c	2017-01-07 20:31:37.557787760 +0100
+***************
+*** 3871,3877 ****
+  	case CMD_cfdo:
+  	case CMD_confirm:
+  	case CMD_debug:
+- 	case CMD_filter:
+  	case CMD_folddoclosed:
+  	case CMD_folddoopen:
+  	case CMD_hide:
+--- 3871,3876 ----
+***************
+*** 3896,3901 ****
+--- 3895,3910 ----
+  	case CMD_windo:
+  	    return arg;
+  
++ 	case CMD_filter:
++ 	    if (*arg != NUL)
++ 		arg = skip_vimgrep_pat(arg, NULL, NULL);
++ 	    if (arg == NULL || *arg == NUL)
++ 	    {
++ 		xp->xp_context = EXPAND_NOTHING;
++ 		return NULL;
++ 	    }
++ 	    return skipwhite(arg);
++ 
+  #ifdef FEAT_CMDL_COMPL
+  # ifdef FEAT_SEARCH_EXTRA
+  	case CMD_match:
+*** ../vim-8.0.0149/src/testdir/test_filter_cmd.vim	2016-09-08 22:01:02.000000000 +0200
+--- src/testdir/test_filter_cmd.vim	2017-01-07 20:31:37.561787729 +0100
+***************
+*** 52,54 ****
+--- 52,76 ----
+    call assert_fails('filter! /pat/', 'E476:')
+    call assert_fails('filter! /pat/ asdf', 'E492:')
+  endfunc
++ 
++ function s:complete_filter_cmd(filtcmd)
++   let keystroke = "\<TAB>\<C-R>=execute('let cmdline = getcmdline()')\<CR>\<C-C>"
++   let cmdline = ''
++   call feedkeys(':' . a:filtcmd . keystroke, 'ntx')
++   return cmdline
++ endfunction
++ 
++ func Test_filter_cmd_completion()
++   " Do not complete pattern
++   call assert_equal("filter \t", s:complete_filter_cmd('filter '))
++   call assert_equal("filter pat\t", s:complete_filter_cmd('filter pat'))
++   call assert_equal("filter /pat\t", s:complete_filter_cmd('filter /pat'))
++   call assert_equal("filter /pat/\t", s:complete_filter_cmd('filter /pat/'))
++ 
++   " Complete after string pattern
++   call assert_equal('filter pat print', s:complete_filter_cmd('filter pat pri'))
++ 
++   " Complete after regexp pattern
++   call assert_equal('filter /pat/ print', s:complete_filter_cmd('filter /pat/ pri'))
++   call assert_equal('filter #pat# print', s:complete_filter_cmd('filter #pat# pri'))
++ endfunc
+*** ../vim-8.0.0149/src/version.c	2017-01-07 16:14:53.894018391 +0100
+--- src/version.c	2017-01-07 20:34:08.628639702 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     150,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+211. Your husband leaves you...taking the computer with him and you
+     call him crying, and beg him to bring the computer back.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

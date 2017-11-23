@@ -1,0 +1,101 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0186
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0186
+Problem:    The error message from assert_notequal() is confusing.
+Solution:   Only mention the expected value.
+Files:      src/eval.c, src/testdir/test_assert.vim
+
+
+*** ../vim-8.0.0185/src/eval.c	2017-01-12 20:06:30.148523006 +0100
+--- src/eval.c	2017-01-14 18:40:19.035549604 +0100
+***************
+*** 9256,9261 ****
+--- 9256,9263 ----
+      {
+  	if (atype == ASSERT_MATCH || atype == ASSERT_NOTMATCH)
+  	    ga_concat(gap, (char_u *)"Pattern ");
++ 	else if (atype == ASSERT_NOTEQUAL)
++ 	    ga_concat(gap, (char_u *)"Expected not equal to ");
+  	else
+  	    ga_concat(gap, (char_u *)"Expected ");
+  	if (exp_str == NULL)
+***************
+*** 9265,9280 ****
+  	}
+  	else
+  	    ga_concat_esc(gap, exp_str);
+! 	if (atype == ASSERT_MATCH)
+! 	    ga_concat(gap, (char_u *)" does not match ");
+! 	else if (atype == ASSERT_NOTMATCH)
+! 	    ga_concat(gap, (char_u *)" does match ");
+! 	else if (atype == ASSERT_NOTEQUAL)
+! 	    ga_concat(gap, (char_u *)" differs from ");
+! 	else
+! 	    ga_concat(gap, (char_u *)" but got ");
+! 	ga_concat_esc(gap, tv2string(got_tv, &tofree, numbuf, 0));
+! 	vim_free(tofree);
+      }
+  }
+  
+--- 9267,9283 ----
+  	}
+  	else
+  	    ga_concat_esc(gap, exp_str);
+! 	if (atype != ASSERT_NOTEQUAL)
+! 	{
+! 	    if (atype == ASSERT_MATCH)
+! 		ga_concat(gap, (char_u *)" does not match ");
+! 	    else if (atype == ASSERT_NOTMATCH)
+! 		ga_concat(gap, (char_u *)" does match ");
+! 	    else
+! 		ga_concat(gap, (char_u *)" but got ");
+! 	    ga_concat_esc(gap, tv2string(got_tv, &tofree, numbuf, 0));
+! 	    vim_free(tofree);
+! 	}
+      }
+  }
+  
+*** ../vim-8.0.0185/src/testdir/test_assert.vim	2016-12-04 13:37:38.425300719 +0100
+--- src/testdir/test_assert.vim	2017-01-14 19:22:57.331531549 +0100
+***************
+*** 32,38 ****
+    call assert_notequal([1, 2, 3], s)
+  
+    call assert_notequal('foo', s)
+!   call assert_match("Expected 'foo' differs from 'foo'", v:errors[0])
+    call remove(v:errors, 0)
+  endfunc
+  
+--- 32,38 ----
+    call assert_notequal([1, 2, 3], s)
+  
+    call assert_notequal('foo', s)
+!   call assert_match("Expected not equal to 'foo'", v:errors[0])
+    call remove(v:errors, 0)
+  endfunc
+  
+*** ../vim-8.0.0185/src/version.c	2017-01-14 19:38:32.449616516 +0100
+--- src/version.c	2017-01-14 20:05:13.187463800 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     186,
+  /**/
+
+-- 
+GOD: That is your purpose Arthur ... the Quest for the Holy Grail ...
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

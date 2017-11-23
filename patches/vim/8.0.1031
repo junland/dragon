@@ -1,0 +1,376 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1031
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1031
+Problem:    "text" argument for getqflist() is confusing. (Lcd47)
+Solution:   Use "lines" instead. (Yegappan Lakshmanan)
+Files:      runtime/doc/eval.txt, src/quickfix.c,
+            src/testdir/test_quickfix.vim
+
+
+*** ../vim-8.0.1030/runtime/doc/eval.txt	2017-08-30 20:33:51.754040917 +0200
+--- runtime/doc/eval.txt	2017-09-01 18:31:11.845762705 +0200
+***************
+*** 4636,4649 ****
+  				|quickfix-ID|; zero means the id for the
+  				current list or the list specifed by 'nr'
+  			items	quickfix list entries
+  			nr	get information for this quickfix list; zero
+  				means the current quickfix list and '$' means
+  				the last quickfix list
+- 			text	use 'errorformat' to extract items from the
+- 				text and return the resulting entries. The
+- 				value can be a string with one line or a list
+- 				with multiple lines. The current quickfix list
+- 				is not modified.
+  			title	get the list title
+  			winid	get the |window-ID| (if opened)
+  			all	all of the above quickfix properties
+--- 4636,4648 ----
+  				|quickfix-ID|; zero means the id for the
+  				current list or the list specifed by 'nr'
+  			items	quickfix list entries
++ 			lines	use 'errorformat' to extract items from a list
++ 				of lines and return the resulting entries.
++ 				Only a |List| type is accepted.  The current
++ 				quickfix list is not modified.
+  			nr	get information for this quickfix list; zero
+  				means the current quickfix list and '$' means
+  				the last quickfix list
+  			title	get the list title
+  			winid	get the |window-ID| (if opened)
+  			all	all of the above quickfix properties
+***************
+*** 4671,4676 ****
+--- 4670,4676 ----
+  		Examples: >
+  			:echo getqflist({'all': 1})
+  			:echo getqflist({'nr': 2, 'title': 1})
++ 			:echo getqflist({'lines' : ["F1:10:L10"]})
+  <
+  
+  getreg([{regname} [, 1 [, {list}]]])			*getreg()*
+***************
+*** 7069,7081 ****
+  		argument is ignored.  The following items can be specified in
+  		{what}:
+  		    context	any Vim type can be stored as a context
+- 		    text	use 'errorformat' to extract items from the
+- 				text and add the resulting entries to the
+- 				quickfix list {nr}.  The value can be a string
+- 				with one line or a list with multiple lines.
+  		    id		quickfix list identifier |quickfix-ID|
+  		    items	list of quickfix entries. Same as the {list}
+  				argument.
+  		    nr		list number in the quickfix stack; zero
+  				means the current quickfix list and '$' means
+  				the last quickfix list
+--- 7071,7082 ----
+  		argument is ignored.  The following items can be specified in
+  		{what}:
+  		    context	any Vim type can be stored as a context
+  		    id		quickfix list identifier |quickfix-ID|
+  		    items	list of quickfix entries. Same as the {list}
+  				argument.
++ 		    lines	use 'errorformat' to parse a list of lines and
++ 				add the resulting entries to the quickfix list
++ 				{nr} or {id}.  Only a |List| value is supported.
+  		    nr		list number in the quickfix stack; zero
+  				means the current quickfix list and '$' means
+  				the last quickfix list
+***************
+*** 7089,7096 ****
+  		specify the list.
+  
+  		Examples: >
+! 			:call setqflist([], 'r', {'title': 'My search'})
+! 			:call setqflist([], 'r', {'nr': 2, 'title': 'Errors'})
+  <
+  		Returns zero for success, -1 for failure.
+  
+--- 7090,7098 ----
+  		specify the list.
+  
+  		Examples: >
+! 		   :call setqflist([], 'r', {'title': 'My search'})
+! 		   :call setqflist([], 'r', {'nr': 2, 'title': 'Errors'})
+! 		   :call setqflist([], 'a', {'id':myid, 'lines':["F1:10:L10"]})
+  <
+  		Returns zero for success, -1 for failure.
+  
+*** ../vim-8.0.1030/src/quickfix.c	2017-08-31 20:57:57.786313453 +0200
+--- src/quickfix.c	2017-09-01 18:32:27.881257635 +0200
+***************
+*** 4643,4657 ****
+   * Parse text from 'di' and return the quickfix list items
+   */
+      static int
+! qf_get_list_from_text(dictitem_T *di, dict_T *retdict)
+  {
+      int		status = FAIL;
+      qf_info_T	*qi;
+  
+!     /* Only string and list values are supported */
+!     if ((di->di_tv.v_type == VAR_STRING && di->di_tv.vval.v_string != NULL)
+! 	    || (di->di_tv.v_type == VAR_LIST
+! 		&& di->di_tv.vval.v_list != NULL))
+      {
+  	list_T	*l = list_alloc();
+  
+--- 4643,4655 ----
+   * Parse text from 'di' and return the quickfix list items
+   */
+      static int
+! qf_get_list_from_lines(dictitem_T *di, dict_T *retdict)
+  {
+      int		status = FAIL;
+      qf_info_T	*qi;
+  
+!     /* Only a List value is supported */
+!     if (di->di_tv.v_type == VAR_LIST && di->di_tv.vval.v_list != NULL)
+      {
+  	list_T	*l = list_alloc();
+  
+***************
+*** 4693,4700 ****
+      dictitem_T	*di;
+      int		flags = QF_GETLIST_NONE;
+  
+!     if ((di = dict_find(what, (char_u *)"text", -1)) != NULL)
+! 	return qf_get_list_from_text(di, retdict);
+  
+      if (wp != NULL)
+  	qi = GET_LOC_LIST(wp);
+--- 4691,4698 ----
+      dictitem_T	*di;
+      int		flags = QF_GETLIST_NONE;
+  
+!     if ((di = dict_find(what, (char_u *)"lines", -1)) != NULL)
+! 	return qf_get_list_from_lines(di, retdict);
+  
+      if (wp != NULL)
+  	qi = GET_LOC_LIST(wp);
+***************
+*** 5053,5064 ****
+  	}
+      }
+  
+!     if ((di = dict_find(what, (char_u *)"text", -1)) != NULL)
+      {
+! 	/* Only string and list values are supported */
+! 	if ((di->di_tv.v_type == VAR_STRING && di->di_tv.vval.v_string != NULL)
+! 		|| (di->di_tv.v_type == VAR_LIST
+! 					     && di->di_tv.vval.v_list != NULL))
+  	{
+  	    if (action == 'r')
+  		qf_free_items(qi, qf_idx);
+--- 5051,5060 ----
+  	}
+      }
+  
+!     if ((di = dict_find(what, (char_u *)"lines", -1)) != NULL)
+      {
+! 	/* Only a List value is supported */
+! 	if (di->di_tv.v_type == VAR_LIST && di->di_tv.vval.v_list != NULL)
+  	{
+  	    if (action == 'r')
+  		qf_free_items(qi, qf_idx);
+*** ../vim-8.0.1030/src/testdir/test_quickfix.vim	2017-08-31 20:57:57.786313453 +0200
+--- src/testdir/test_quickfix.vim	2017-09-01 18:32:27.885257609 +0200
+***************
+*** 2299,2323 ****
+    call s:setup_commands(a:cchar)
+  
+    let t = ["File1:10:Line10", "File1:20:Line20"]
+!   call g:Xsetlist([], ' ', {'text' : t})
+!   call g:Xsetlist([], 'a', {'text' : "File1:30:Line30"})
+  
+    let l = g:Xgetlist()
+    call assert_equal(3, len(l))
+    call assert_equal(20, l[1].lnum)
+    call assert_equal('Line30', l[2].text)
+!   call g:Xsetlist([], 'r', {'text' : "File2:5:Line5"})
+    let l = g:Xgetlist()
+    call assert_equal(1, len(l))
+    call assert_equal('Line5', l[0].text)
+!   call assert_equal(-1, g:Xsetlist([], 'a', {'text' : 10}))
+  
+    call g:Xsetlist([], 'f')
+    " Add entries to multiple lists
+!   call g:Xsetlist([], 'a', {'nr' : 1, 'text' : ["File1:10:Line10"]})
+!   call g:Xsetlist([], 'a', {'nr' : 2, 'text' : ["File2:20:Line20"]})
+!   call g:Xsetlist([], 'a', {'nr' : 1, 'text' : ["File1:15:Line15"]})
+!   call g:Xsetlist([], 'a', {'nr' : 2, 'text' : ["File2:25:Line25"]})
+    call assert_equal('Line15', g:Xgetlist({'nr':1, 'items':1}).items[1].text)
+    call assert_equal('Line25', g:Xgetlist({'nr':2, 'items':1}).items[1].text)
+  endfunc
+--- 2299,2324 ----
+    call s:setup_commands(a:cchar)
+  
+    let t = ["File1:10:Line10", "File1:20:Line20"]
+!   call g:Xsetlist([], ' ', {'lines' : t})
+!   call g:Xsetlist([], 'a', {'lines' : ["File1:30:Line30"]})
+  
+    let l = g:Xgetlist()
+    call assert_equal(3, len(l))
+    call assert_equal(20, l[1].lnum)
+    call assert_equal('Line30', l[2].text)
+!   call g:Xsetlist([], 'r', {'lines' : ["File2:5:Line5"]})
+    let l = g:Xgetlist()
+    call assert_equal(1, len(l))
+    call assert_equal('Line5', l[0].text)
+!   call assert_equal(-1, g:Xsetlist([], 'a', {'lines' : 10}))
+!   call assert_equal(-1, g:Xsetlist([], 'a', {'lines' : "F1:10:L10"}))
+  
+    call g:Xsetlist([], 'f')
+    " Add entries to multiple lists
+!   call g:Xsetlist([], 'a', {'nr' : 1, 'lines' : ["File1:10:Line10"]})
+!   call g:Xsetlist([], 'a', {'nr' : 2, 'lines' : ["File2:20:Line20"]})
+!   call g:Xsetlist([], 'a', {'nr' : 1, 'lines' : ["File1:15:Line15"]})
+!   call g:Xsetlist([], 'a', {'nr' : 2, 'lines' : ["File2:25:Line25"]})
+    call assert_equal('Line15', g:Xgetlist({'nr':1, 'items':1}).items[1].text)
+    call assert_equal('Line25', g:Xgetlist({'nr':2, 'items':1}).items[1].text)
+  endfunc
+***************
+*** 2334,2343 ****
+    call g:Xsetlist([], 'f')
+    Xexpr "" | Xexpr ""
+  
+!   call g:Xsetlist([], 'a', {'nr' : 1, 'text' : "Entering dir 'Xone/a'"})
+!   call g:Xsetlist([], 'a', {'nr' : 2, 'text' : "Entering dir 'Xtwo/a'"})
+!   call g:Xsetlist([], 'a', {'nr' : 1, 'text' : "one.txt:3:one one one"})
+!   call g:Xsetlist([], 'a', {'nr' : 2, 'text' : "two.txt:5:two two two"})
+  
+    let l1 = g:Xgetlist({'nr':1, 'items':1})
+    let l2 = g:Xgetlist({'nr':2, 'items':1})
+--- 2335,2344 ----
+    call g:Xsetlist([], 'f')
+    Xexpr "" | Xexpr ""
+  
+!   call g:Xsetlist([], 'a', {'nr' : 1, 'lines' : ["Entering dir 'Xone/a'"]})
+!   call g:Xsetlist([], 'a', {'nr' : 2, 'lines' : ["Entering dir 'Xtwo/a'"]})
+!   call g:Xsetlist([], 'a', {'nr' : 1, 'lines' : ["one.txt:3:one one one"]})
+!   call g:Xsetlist([], 'a', {'nr' : 2, 'lines' : ["two.txt:5:two two two"]})
+  
+    let l1 = g:Xgetlist({'nr':1, 'items':1})
+    let l2 = g:Xgetlist({'nr':2, 'items':1})
+***************
+*** 2371,2380 ****
+    call g:Xsetlist([], 'f')
+    Xexpr "" | Xexpr ""
+  
+!   call g:Xsetlist([], 'a', {'nr' : 1, 'text' : "[one.txt]"})
+!   call g:Xsetlist([], 'a', {'nr' : 2, 'text' : "[two.txt]"})
+!   call g:Xsetlist([], 'a', {'nr' : 1, 'text' : "(3,5) one one one"})
+!   call g:Xsetlist([], 'a', {'nr' : 2, 'text' : "(5,9) two two two"})
+  
+    let l1 = g:Xgetlist({'nr':1, 'items':1})
+    let l2 = g:Xgetlist({'nr':2, 'items':1})
+--- 2372,2381 ----
+    call g:Xsetlist([], 'f')
+    Xexpr "" | Xexpr ""
+  
+!   call g:Xsetlist([], 'a', {'nr' : 1, 'lines' : ["[one.txt]"]})
+!   call g:Xsetlist([], 'a', {'nr' : 2, 'lines' : ["[two.txt]"]})
+!   call g:Xsetlist([], 'a', {'nr' : 1, 'lines' : ["(3,5) one one one"]})
+!   call g:Xsetlist([], 'a', {'nr' : 2, 'lines' : ["(5,9) two two two"]})
+  
+    let l1 = g:Xgetlist({'nr':1, 'items':1})
+    let l2 = g:Xgetlist({'nr':2, 'items':1})
+***************
+*** 2523,2550 ****
+  
+  " Test for getting the quickfix list items from some text without modifying
+  " the quickfix stack
+! func XgetListFromText(cchar)
+    call s:setup_commands(a:cchar)
+    call g:Xsetlist([], 'f')
+  
+!   let l = g:Xgetlist({'text' : "File1:10:Line10"}).items
+!   call assert_equal(1, len(l))
+!   call assert_equal('Line10', l[0].text)
+! 
+!   let l = g:Xgetlist({'text' : ["File2:20:Line20", "File2:30:Line30"]}).items
+    call assert_equal(2, len(l))
+    call assert_equal(30, l[1].lnum)
+  
+!   call assert_equal({}, g:Xgetlist({'text' : 10}))
+!   call assert_equal([], g:Xgetlist({'text' : []}).items)
+  
+    " Make sure that the quickfix stack is not modified
+    call assert_equal(0, g:Xgetlist({'nr' : '$'}).nr)
+  endfunc
+  
+! func Test_get_list_from_text()
+!   call XgetListFromText('c')
+!   call XgetListFromText('l')
+  endfunc
+  
+  " Tests for the quickfix list id
+--- 2524,2549 ----
+  
+  " Test for getting the quickfix list items from some text without modifying
+  " the quickfix stack
+! func XgetListFromLines(cchar)
+    call s:setup_commands(a:cchar)
+    call g:Xsetlist([], 'f')
+  
+!   let l = g:Xgetlist({'lines' : ["File2:20:Line20", "File2:30:Line30"]}).items
+    call assert_equal(2, len(l))
+    call assert_equal(30, l[1].lnum)
+  
+!   call assert_equal({}, g:Xgetlist({'lines' : 10}))
+!   call assert_equal({}, g:Xgetlist({'lines' : 'File1:10:Line10'}))
+!   call assert_equal([], g:Xgetlist({'lines' : []}).items)
+!   call assert_equal([], g:Xgetlist({'lines' : [10, 20]}).items)
+  
+    " Make sure that the quickfix stack is not modified
+    call assert_equal(0, g:Xgetlist({'nr' : '$'}).nr)
+  endfunc
+  
+! func Test_get_list_from_lines()
+!   call XgetListFromLines('c')
+!   call XgetListFromLines('l')
+  endfunc
+  
+  " Tests for the quickfix list id
+***************
+*** 2567,2573 ****
+  
+    call g:Xsetlist([], 'a', {'id':start_id, 'context':[1,2]})
+    call assert_equal([1,2], g:Xgetlist({'nr':1, 'context':1}).context)
+!   call g:Xsetlist([], 'a', {'id':start_id+1, 'text':'F1:10:L10'})
+    call assert_equal('L10', g:Xgetlist({'nr':2, 'items':1}).items[0].text)
+    call assert_equal(-1, g:Xsetlist([], 'a', {'id':999, 'title':'Vim'}))
+    call assert_equal(-1, g:Xsetlist([], 'a', {'id':'abc', 'title':'Vim'}))
+--- 2566,2572 ----
+  
+    call g:Xsetlist([], 'a', {'id':start_id, 'context':[1,2]})
+    call assert_equal([1,2], g:Xgetlist({'nr':1, 'context':1}).context)
+!   call g:Xsetlist([], 'a', {'id':start_id+1, 'lines':['F1:10:L10']})
+    call assert_equal('L10', g:Xgetlist({'nr':2, 'items':1}).items[0].text)
+    call assert_equal(-1, g:Xsetlist([], 'a', {'id':999, 'title':'Vim'}))
+    call assert_equal(-1, g:Xsetlist([], 'a', {'id':'abc', 'title':'Vim'}))
+*** ../vim-8.0.1030/src/version.c	2017-08-31 21:35:41.374946920 +0200
+--- src/version.c	2017-09-01 18:27:42.979146728 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1031,
+  /**/
+
+-- 
+Don't believe everything you hear or anything you say.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

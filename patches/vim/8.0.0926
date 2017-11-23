@@ -1,0 +1,53 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0926
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0926
+Problem:    When job in terminal window ends topline may be wrong.
+Solution:   When the job ends adjust topline so that the active part of the
+            terminal is displayed.
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0925/src/terminal.c	2017-08-13 15:16:44.477362088 +0200
+--- src/terminal.c	2017-08-13 15:59:57.025195969 +0200
+***************
+*** 926,931 ****
+--- 926,938 ----
+  	    wp->w_cursor.lnum = term->tl_buffer->b_ml.ml_line_count;
+  	    wp->w_cursor.col = 0;
+  	    wp->w_valid = 0;
++ 	    if (wp->w_cursor.lnum >= wp->w_height)
++ 	    {
++ 		linenr_T min_topline = wp->w_cursor.lnum - wp->w_height + 1;
++ 
++ 		if (wp->w_topline < min_topline)
++ 		    wp->w_topline = min_topline;
++ 	    }
+  	    redraw_win_later(wp, NOT_VALID);
+  	}
+      }
+*** ../vim-8.0.0925/src/version.c	2017-08-13 15:37:53.293473851 +0200
+--- src/version.c	2017-08-13 15:57:28.930123975 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     926,
+  /**/
+
+-- 
+ARTHUR: If you do not open these doors, we will take this castle by force ...
+   [A bucket of slops land on ARTHUR.  He tries to retain his dignity.]
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

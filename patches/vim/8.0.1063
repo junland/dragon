@@ -1,0 +1,112 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1063
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1063
+Problem:    Coverity warns for NULL check and using variable pointer as an
+            array.
+Solution:   Remove the NULL check.  Make "argvar" an array.
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.1062/src/terminal.c	2017-09-05 23:01:06.368378676 +0200
+--- src/terminal.c	2017-09-05 23:21:09.112405915 +0200
+***************
+*** 462,468 ****
+      void
+  ex_terminal(exarg_T *eap)
+  {
+!     typval_T	argvar;
+      jobopt_T	opt;
+      char_u	*cmd;
+      char_u	*tofree = NULL;
+--- 462,468 ----
+      void
+  ex_terminal(exarg_T *eap)
+  {
+!     typval_T	argvar[2];
+      jobopt_T	opt;
+      char_u	*cmd;
+      char_u	*tofree = NULL;
+***************
+*** 525,532 ****
+  	}
+  	cmd = skipwhite(p);
+      }
+!     if (cmd == NULL || *cmd == NUL)
+! 	/* Make a copy, an autocommand may set 'shell'. */
+  	tofree = cmd = vim_strsave(p_sh);
+  
+      if (eap->addr_count > 0)
+--- 525,532 ----
+  	}
+  	cmd = skipwhite(p);
+      }
+!     if (*cmd == NUL)
+! 	/* Make a copy of 'shell', an autocommand may change the option. */
+  	tofree = cmd = vim_strsave(p_sh);
+  
+      if (eap->addr_count > 0)
+***************
+*** 539,547 ****
+  	opt.jo_in_bot = eap->line2;
+      }
+  
+!     argvar.v_type = VAR_STRING;
+!     argvar.vval.v_string = cmd;
+!     term_start(&argvar, &opt, eap->forceit);
+      vim_free(tofree);
+  }
+  
+--- 539,548 ----
+  	opt.jo_in_bot = eap->line2;
+      }
+  
+!     argvar[0].v_type = VAR_STRING;
+!     argvar[0].vval.v_string = cmd;
+!     argvar[1].v_type = VAR_UNKNOWN;
+!     term_start(argvar, &opt, eap->forceit);
+      vim_free(tofree);
+  }
+  
+***************
+*** 2886,2892 ****
+  	    && STRCMP(job_status(buf->b_term->tl_job), "dead") == 0)
+      {
+  	/* The job is dead, keep reading channel I/O until the channel is
+! 	 * closed. */
+  	ch_log(NULL, "term_wait(): waiting for channel to close");
+  	while (buf->b_term != NULL && !buf->b_term->tl_channel_closed)
+  	{
+--- 2887,2894 ----
+  	    && STRCMP(job_status(buf->b_term->tl_job), "dead") == 0)
+      {
+  	/* The job is dead, keep reading channel I/O until the channel is
+! 	 * closed. buf->b_term may become NULL if the terminal was closed while
+! 	 * waiting. */
+  	ch_log(NULL, "term_wait(): waiting for channel to close");
+  	while (buf->b_term != NULL && !buf->b_term->tl_channel_closed)
+  	{
+*** ../vim-8.0.1062/src/version.c	2017-09-05 23:29:29.025108125 +0200
+--- src/version.c	2017-09-05 23:30:16.420793483 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1063,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+90. Instead of calling you to dinner, your spouse sends e-mail.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

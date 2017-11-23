@@ -1,0 +1,59 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0469
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0469
+Problem:    Compiler warnings on MS-Windows.
+Solution:   Add type casts. (Christian Brabandt)
+Files:      src/fold.c
+
+
+*** ../vim-8.0.0468/src/fold.c	2017-03-16 15:59:10.684531392 +0100
+--- src/fold.c	2017-03-16 22:06:37.872827685 +0100
+***************
+*** 3137,3145 ****
+       * order. We have to swap folds in the range [move_end, dest_index) with
+       * those in the range [move_start, move_end).
+       */
+!     foldReverseOrder(gap, move_start, dest_index - 1);
+!     foldReverseOrder(gap, move_start, move_start + dest_index - move_end - 1);
+!     foldReverseOrder(gap, move_start + dest_index - move_end, dest_index - 1);
+  }
+  #undef fold_end
+  #undef valid_fold
+--- 3137,3147 ----
+       * order. We have to swap folds in the range [move_end, dest_index) with
+       * those in the range [move_start, move_end).
+       */
+!     foldReverseOrder(gap, (linenr_T)move_start, (linenr_T)dest_index - 1);
+!     foldReverseOrder(gap, (linenr_T)move_start,
+! 			   (linenr_T)(move_start + dest_index - move_end - 1));
+!     foldReverseOrder(gap, (linenr_T)(move_start + dest_index - move_end),
+! 						   (linenr_T)(dest_index - 1));
+  }
+  #undef fold_end
+  #undef valid_fold
+*** ../vim-8.0.0468/src/version.c	2017-03-16 19:58:19.420253384 +0100
+--- src/version.c	2017-03-16 22:05:56.789124414 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     469,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+136. You decide to stay in a low-paying job teaching just for the
+     free Internet access.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

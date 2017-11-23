@@ -1,0 +1,128 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0031
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0031
+Problem:    After ":bwipeout" 'fileformat' is not set to the right default.
+Solution:   Get the default from 'fileformats'. (Mike Williams)
+Files:      src/option.c, src/Makefile, src/testdir/test_fileformat.vim,
+            src/testdir/test_alot.vim
+
+
+*** ../vim-8.0.0030/src/option.c	2016-10-12 14:19:55.750357722 +0200
+--- src/option.c	2016-10-12 17:36:42.482477038 +0200
+***************
+*** 10729,10735 ****
+  #ifdef FEAT_MBYTE
+  		buf->b_p_fenc = vim_strsave(p_fenc);
+  #endif
+! 		buf->b_p_ff = vim_strsave(p_ff);
+  #if defined(FEAT_QUICKFIX)
+  		buf->b_p_bh = empty_option;
+  		buf->b_p_bt = empty_option;
+--- 10729,10747 ----
+  #ifdef FEAT_MBYTE
+  		buf->b_p_fenc = vim_strsave(p_fenc);
+  #endif
+! 		switch (*p_ffs)
+! 		{
+! 		    case 'm':
+! 			buf->b_p_ff = vim_strsave((char_u *)FF_MAC); break;
+! 		    case 'd':
+! 			buf->b_p_ff = vim_strsave((char_u *)FF_DOS); break;
+! 		    case 'u':
+! 			buf->b_p_ff = vim_strsave((char_u *)FF_UNIX); break;
+! 		    default:
+! 			buf->b_p_ff = vim_strsave(p_ff);
+! 		}
+! 		if (buf->b_p_ff != NULL)
+! 		    buf->b_start_ffc = *buf->b_p_ff;
+  #if defined(FEAT_QUICKFIX)
+  		buf->b_p_bh = empty_option;
+  		buf->b_p_bt = empty_option;
+*** ../vim-8.0.0030/src/Makefile	2016-09-29 20:54:42.399110777 +0200
+--- src/Makefile	2016-10-12 16:24:51.984989904 +0200
+***************
+*** 2081,2086 ****
+--- 2081,2087 ----
+  	test_farsi \
+  	test_feedkeys \
+  	test_file_perm \
++ 	test_fileformat \
+  	test_filter_cmd \
+  	test_filter_map \
+  	test_fnameescape \
+*** ../vim-8.0.0030/src/testdir/test_fileformat.vim	2016-10-12 17:43:54.755416077 +0200
+--- src/testdir/test_fileformat.vim	2016-10-12 16:29:46.522911119 +0200
+***************
+*** 0 ****
+--- 1,17 ----
++ " Test behavior of fileformat after bwipeout of last buffer
++ 
++ func Test_fileformat_after_bw()
++   bwipeout
++   set fileformat&
++   if &fileformat == 'dos'
++     let test_fileformats = 'unix'
++   elseif &fileformat == 'unix'
++     let test_fileformats = 'mac'
++   else  " must be mac
++     let test_fileformats = 'dos'
++   endif
++   exec 'set fileformats='.test_fileformats
++   bwipeout!
++   call assert_equal(test_fileformats, &fileformat)
++   set fileformats&
++ endfunc
+*** ../vim-8.0.0030/src/testdir/test_alot.vim	2016-09-29 20:54:42.403110749 +0200
+--- src/testdir/test_alot.vim	2016-10-12 16:24:26.933166652 +0200
+***************
+*** 12,21 ****
+  source test_expr.vim
+  source test_expand_dllpath.vim
+  source test_feedkeys.vim
+- source test_fnamemodify.vim
+  source test_file_perm.vim
+  source test_filter_cmd.vim
+  source test_filter_map.vim
+  source test_glob2regpat.vim
+  source test_goto.vim
+  source test_help_tagjump.vim
+--- 12,22 ----
+  source test_expr.vim
+  source test_expand_dllpath.vim
+  source test_feedkeys.vim
+  source test_file_perm.vim
++ source test_fileformat.vim
+  source test_filter_cmd.vim
+  source test_filter_map.vim
++ source test_fnamemodify.vim
+  source test_glob2regpat.vim
+  source test_goto.vim
+  source test_help_tagjump.vim
+*** ../vim-8.0.0030/src/version.c	2016-10-12 14:50:50.233115689 +0200
+--- src/version.c	2016-10-12 16:27:46.415758987 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     31,
+  /**/
+
+-- 
+   Arthur pulls Pin out.  The MONK blesses the grenade as ...
+ARTHUR:  (quietly) One, two, five ...
+GALAHAD: Three, sir!
+ARTHUR:  Three.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

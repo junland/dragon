@@ -1,0 +1,93 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0199
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0199
+Problem:    Warning for an unused parameter when the libcall feature is
+            disabled.  Warning for a function type cast when compiling with
+            -pedantic.
+Solution:   Add UNUSED.  Use a different type cast. (Damien Molinier)
+Files:      src/evalfunc.c, src/os_unix.c
+
+
+*** ../vim-8.0.0198/src/evalfunc.c	2017-01-12 20:06:30.152522974 +0100
+--- src/evalfunc.c	2017-01-17 16:39:38.488220223 +0100
+***************
+*** 6859,6868 ****
+      }
+  }
+  
+- static void libcall_common(typval_T *argvars, typval_T *rettv, int type);
+- 
+      static void
+! libcall_common(typval_T *argvars, typval_T *rettv, int type)
+  {
+  #ifdef FEAT_LIBCALL
+      char_u		*string_in;
+--- 6859,6866 ----
+      }
+  }
+  
+      static void
+! libcall_common(typval_T *argvars UNUSED, typval_T *rettv, int type)
+  {
+  #ifdef FEAT_LIBCALL
+      char_u		*string_in;
+*** ../vim-8.0.0198/src/os_unix.c	2016-11-26 15:13:29.406218061 +0100
+--- src/os_unix.c	2017-01-17 16:43:25.938736519 +0100
+***************
+*** 6918,6924 ****
+  	    if (argstring != NULL)
+  	    {
+  # if defined(USE_DLOPEN)
+! 		ProcAdd = (STRPROCSTR)dlsym(hinstLib, (const char *)funcname);
+  		dlerr = (char *)dlerror();
+  # else
+  		if (shl_findsym(&hinstLib, (const char *)funcname,
+--- 6918,6924 ----
+  	    if (argstring != NULL)
+  	    {
+  # if defined(USE_DLOPEN)
+! 		*(void **)(&ProcAdd) = dlsym(hinstLib, (const char *)funcname);
+  		dlerr = (char *)dlerror();
+  # else
+  		if (shl_findsym(&hinstLib, (const char *)funcname,
+***************
+*** 6940,6946 ****
+  	    else
+  	    {
+  # if defined(USE_DLOPEN)
+! 		ProcAddI = (INTPROCSTR)dlsym(hinstLib, (const char *)funcname);
+  		dlerr = (char *)dlerror();
+  # else
+  		if (shl_findsym(&hinstLib, (const char *)funcname,
+--- 6940,6946 ----
+  	    else
+  	    {
+  # if defined(USE_DLOPEN)
+! 		*(void **)(&ProcAddI) = dlsym(hinstLib, (const char *)funcname);
+  		dlerr = (char *)dlerror();
+  # else
+  		if (shl_findsym(&hinstLib, (const char *)funcname,
+*** ../vim-8.0.0198/src/version.c	2017-01-17 16:27:01.617153072 +0100
+--- src/version.c	2017-01-17 16:42:22.903147732 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     199,
+  /**/
+
+-- 
+If I tell you "you have a beautiful body", would you hold it against me?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

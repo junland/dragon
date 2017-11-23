@@ -1,0 +1,58 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0505
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0505
+Problem:    Failed window split for :stag not handled. (Coverity CID 99204)
+Solution:   If the split fails skip to the end. (bstaletic, closes #1577)
+Files:      src/tag.c
+
+
+*** ../vim-8.0.0504/src/tag.c	2017-03-21 17:08:46.678923883 +0100
+--- src/tag.c	2017-03-25 14:58:59.126199223 +0100
+***************
+*** 3203,3210 ****
+       * open a new tab page. */
+      if (postponed_split || cmdmod.tab != 0)
+      {
+! 	win_split(postponed_split > 0 ? postponed_split : 0,
+! 						       postponed_split_flags);
+  	RESET_BINDING(curwin);
+      }
+  #endif
+--- 3203,3214 ----
+       * open a new tab page. */
+      if (postponed_split || cmdmod.tab != 0)
+      {
+! 	if (win_split(postponed_split > 0 ? postponed_split : 0,
+! 						postponed_split_flags) == FAIL)
+! 	{
+! 	    --RedrawingDisabled;
+! 	    goto erret;
+! 	}
+  	RESET_BINDING(curwin);
+      }
+  #endif
+*** ../vim-8.0.0504/src/version.c	2017-03-25 14:50:37.925991956 +0100
+--- src/version.c	2017-03-25 15:00:00.273735027 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     505,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+203. You're an active member of more than 20 newsgroups.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

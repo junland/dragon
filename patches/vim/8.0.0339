@@ -1,0 +1,66 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0339
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0339
+Problem:    Illegal memory access with vi'
+Solution:   For quoted text objects bail out if the Visual area spans more
+            than one line.
+Files:      src/search.c, src/testdir/test_visual.vim
+
+
+*** ../vim-8.0.0338/src/search.c	2017-02-17 11:39:54.990547790 +0100
+--- src/search.c	2017-02-18 23:02:48.410031369 +0100
+***************
+*** 4357,4362 ****
+--- 4357,4366 ----
+      /* Correct cursor when 'selection' is exclusive */
+      if (VIsual_active)
+      {
++ 	/* this only works within one line */
++ 	if (VIsual.lnum != curwin->w_cursor.lnum)
++ 	    return FALSE;
++ 
+  	vis_bef_curs = lt(VIsual, curwin->w_cursor);
+  	if (*p_sel == 'e' && vis_bef_curs)
+  	    dec_cursor();
+*** ../vim-8.0.0338/src/testdir/test_visual.vim	2017-02-17 11:39:54.994547761 +0100
+--- src/testdir/test_visual.vim	2017-02-18 22:50:10.315826096 +0100
+***************
+*** 43,45 ****
+--- 43,52 ----
+    normal vapo
+    bwipe!
+  endfunc
++ 
++ func Test_Visual_inner_quote()
++   new
++   normal oxX
++   normal vki'
++   bwipe!
++ endfunc
+*** ../vim-8.0.0338/src/version.c	2017-02-18 22:43:15.718991813 +0100
+--- src/version.c	2017-02-18 23:04:15.217360964 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     339,
+  /**/
+
+-- 
+Our job was to build a computer information system for the branch banks.  We
+were the perfect people for the job: Dean had seen a computer once, and I had
+heard Dean talk about it.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

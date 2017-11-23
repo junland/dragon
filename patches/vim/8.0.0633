@@ -1,0 +1,65 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0633
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0633
+Problem:    The client-server test is still a bit flaky.
+Solution:   Wait a bit for the GUI to start.  Check that the version number
+            can be obtained.
+Files:      src/testdir/test_clientserver.vim
+
+
+*** ../vim-8.0.0632/src/testdir/test_clientserver.vim	2017-03-25 20:14:28.053457561 +0100
+--- src/testdir/test_clientserver.vim	2017-06-10 17:00:47.810558784 +0200
+***************
+*** 45,51 ****
+    call assert_equal('yes', remote_expr(name, "testvar", "", 2))
+  
+    if has('unix') && has('gui') && !has('gui_running')
+!     " Running in a terminal and the GUI is avaiable: Tell the server to open
+      " the GUI and check that the remote command still works.
+      " Need to wait for the GUI to start up, otherwise the send hangs in trying
+      " to send to the terminal window.
+--- 45,51 ----
+    call assert_equal('yes', remote_expr(name, "testvar", "", 2))
+  
+    if has('unix') && has('gui') && !has('gui_running')
+!     " Running in a terminal and the GUI is available: Tell the server to open
+      " the GUI and check that the remote command still works.
+      " Need to wait for the GUI to start up, otherwise the send hangs in trying
+      " to send to the terminal window.
+***************
+*** 56,62 ****
+--- 56,64 ----
+        call remote_send(name, ":gui -f\<CR>")
+      endif
+      " Wait for the server to be up and answering requests.
++     sleep 100m
+      call WaitFor('remote_expr("' . name . '", "v:version", "", 1) != ""')
++     call assert_true(remote_expr(name, "v:version", "", 1) != "")
+  
+      call remote_send(name, ":let testvar = 'maybe'\<CR>")
+      call WaitFor('remote_expr("' . name . '", "testvar", "", 1) == "maybe"')
+*** ../vim-8.0.0632/src/version.c	2017-06-10 16:30:27.965876961 +0200
+--- src/version.c	2017-06-10 17:05:16.708817530 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     633,
+  /**/
+
+-- 
+How To Keep A Healthy Level Of Insanity:
+13. Go to a poetry recital and ask why the poems don't rhyme.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

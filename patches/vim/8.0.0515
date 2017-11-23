@@ -1,0 +1,100 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0515
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0515
+Problem:    ml_get errors in silent Ex mode. (Dominique Pelle)
+Solution:   Clear valid flags when setting the cursor.  Set the topline when
+            not in full screen mode.
+Files:      src/ex_docmd.c, src/testdir/test_startup.vim
+
+
+*** ../vim-8.0.0514/src/ex_docmd.c	2017-03-26 21:46:23.353430049 +0200
+--- src/ex_docmd.c	2017-03-27 22:39:20.852928005 +0200
+***************
+*** 10361,10366 ****
+--- 10361,10367 ----
+  	    {
+  		curwin->w_cursor.lnum = eap->line1++;
+  		curwin->w_cursor.col = 0;
++ 		check_cursor_moved(curwin);
+  	    }
+  
+  	    exec_normal_cmd(
+*** ../vim-8.0.0514/src/move.c	2017-03-12 18:23:35.853850026 +0100
+--- src/move.c	2017-03-27 22:53:22.227398947 +0200
+***************
+*** 177,187 ****
+      int		save_so = p_so;
+  #endif
+  
+!     if (!screen_valid(TRUE))
+! 	return;
+! 
+!     /* If the window height is zero just use the cursor line. */
+!     if (curwin->w_height == 0)
+      {
+  	curwin->w_topline = curwin->w_cursor.lnum;
+  	curwin->w_botline = curwin->w_topline;
+--- 177,185 ----
+      int		save_so = p_so;
+  #endif
+  
+!     /* If there is no valid screen and when the window height is zero just use
+!      * the cursor line. */
+!     if (!screen_valid(TRUE) || curwin->w_height == 0)
+      {
+  	curwin->w_topline = curwin->w_cursor.lnum;
+  	curwin->w_botline = curwin->w_topline;
+***************
+*** 2592,2597 ****
+--- 2590,2596 ----
+      n = (curwin->w_p_scr <= curwin->w_height) ?
+  				    curwin->w_p_scr : curwin->w_height;
+  
++     update_topline();
+      validate_botline();
+      room = curwin->w_empty_rows;
+  #ifdef FEAT_DIFF
+*** ../vim-8.0.0514/src/testdir/test_startup.vim	2017-03-04 14:37:14.649120059 +0100
+--- src/testdir/test_startup.vim	2017-03-27 22:59:47.917072616 +0200
+***************
+*** 197,199 ****
+--- 197,210 ----
+    " Only expect "vim" to appear in v:progname.
+    call assert_match('vim\c', v:progname)
+  endfunc
++ 
++ func Test_silent_ex_mode()
++   if !has('unix') || has('gui_running')
++     " can't get output of Vim.
++     return
++   endif
++ 
++   " This caused an ml_get error.
++   let out = system(GetVimCommand() . '-u NONE -es -c''set verbose=1|h|exe "%norm\<c-y>\<c-d>"'' -c cq')
++   call assert_notmatch('E315:', out)
++ endfunc
+*** ../vim-8.0.0514/src/version.c	2017-03-26 21:46:23.353430049 +0200
+--- src/version.c	2017-03-27 23:01:16.796591740 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     515,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+221. Your wife melts your keyboard in the oven.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

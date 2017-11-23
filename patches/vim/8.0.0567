@@ -1,0 +1,67 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0567
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0567
+Problem:    Call for requesting color and ambiwidth is too early. (Hirohito
+            Higashi)
+Solution:   Move the call down to below resetting "starting".
+Files:      src/main.c
+
+
+*** ../vim-8.0.0566/src/main.c	2017-04-02 18:19:48.376143576 +0200
+--- src/main.c	2017-04-18 18:47:16.909399297 +0200
+***************
+*** 666,677 ****
+  
+      starttermcap();	    /* start termcap if not done by wait_return() */
+      TIME_MSG("start termcap");
+- #if defined(FEAT_TERMRESPONSE)
+- # if defined(FEAT_MBYTE)
+-     may_req_ambiguous_char_width();
+- # endif
+-     may_req_bg_color();
+- #endif
+  
+  #ifdef FEAT_MOUSE
+      setmouse();				/* may start using the mouse */
+--- 666,671 ----
+***************
+*** 801,806 ****
+--- 795,805 ----
+      /* Requesting the termresponse is postponed until here, so that a "-c q"
+       * argument doesn't make it appear in the shell Vim was started from. */
+      may_req_termresponse();
++ 
++ # if defined(FEAT_MBYTE)
++     may_req_ambiguous_char_width();
++ # endif
++     may_req_bg_color();
+  #endif
+  
+      /* start in insert mode */
+*** ../vim-8.0.0566/src/version.c	2017-04-15 15:37:09.646798989 +0200
+--- src/version.c	2017-04-18 18:49:24.664614475 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     567,
+  /**/
+
+-- 
+DEAD PERSON:  I'm getting better!
+CUSTOMER:     No, you're not -- you'll be stone dead in a moment.
+MORTICIAN:    Oh, I can't take him like that -- it's against regulations.
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

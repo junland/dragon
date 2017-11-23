@@ -1,0 +1,53 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0525
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0525
+Solution:   Completion for user command argument not tested.
+Problem:    Add a test.
+Files:      src/testdir/test_cmdline.vim
+
+
+*** ../vim-8.0.0524/src/testdir/test_cmdline.vim	2017-03-26 13:50:02.536929400 +0200
+--- src/testdir/test_cmdline.vim	2017-03-29 21:20:48.757909722 +0200
+***************
+*** 348,353 ****
+--- 348,362 ----
+    bw!
+  endfunc
+  
++ func Test_cmdline_complete_user_cmd()
++   command! -complete=color -nargs=1 Foo :
++   call feedkeys(":Foo \<Tab>\<Home>\"\<cr>", 'tx')
++   call assert_equal('"Foo blue', @:)
++   call feedkeys(":Foo b\<Tab>\<Home>\"\<cr>", 'tx')
++   call assert_equal('"Foo blue', @:)
++   delcommand Foo
++ endfunc
++ 
+  " using a leading backslash here
+  set cpo+=C
+  
+*** ../vim-8.0.0524/src/version.c	2017-03-29 20:38:53.309068287 +0200
+--- src/version.c	2017-03-29 21:26:09.543973934 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     525,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+236. You start saving URL's in your digital watch.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

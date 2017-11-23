@@ -1,0 +1,180 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0536
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0536
+Problem:    Quickfix window not updated when freeing quickfix stack.
+Solution:   Update the quickfix window. (Yegappan Lakshmanan)
+Files:      src/quickfix.c, src/testdir/test_quickfix.vim
+
+
+*** ../vim-8.0.0535/src/quickfix.c	2017-03-29 14:19:21.882199174 +0200
+--- src/quickfix.c	2017-04-02 15:13:20.097970139 +0200
+***************
+*** 4866,4874 ****
+--- 4866,4915 ----
+      return retval;
+  }
+  
++ /*
++  * Find the non-location list window with the specified location list.
++  */
++     static win_T *
++ find_win_with_ll(qf_info_T *qi)
++ {
++     win_T	*wp = NULL;
++ 
++     FOR_ALL_WINDOWS(wp)
++ 	if ((wp->w_llist == qi) && !bt_quickfix(wp->w_buffer))
++ 	    return wp;
++ 
++     return NULL;
++ }
++ 
++ /*
++  * Free the entire quickfix/location list stack.
++  * If the quickfix/location list window is open, then clear it.
++  */
+      static void
+  qf_free_stack(win_T *wp, qf_info_T *qi)
+  {
++     win_T	*qfwin = qf_find_win(qi);
++     win_T	*llwin = NULL;
++     win_T	*orig_wp = wp;
++ 
++     if (qfwin != NULL)
++     {
++ 	/* If the quickfix/location list window is open, then clear it */
++ 	if (qi->qf_curlist < qi->qf_listcount)
++ 	    qf_free(qi, qi->qf_curlist);
++ 	qf_update_buffer(qi, NULL);
++     }
++ 
++     if (wp != NULL && IS_LL_WINDOW(wp))
++     {
++ 	/* If in the location list window, then use the non-location list
++ 	 * window with this location list (if present)
++ 	 */
++ 	llwin = find_win_with_ll(qi);
++ 	if (llwin != NULL)
++ 	    wp = llwin;
++     }
++ 
+      qf_free_all(wp);
+      if (wp == NULL)
+      {
+***************
+*** 4876,4881 ****
+--- 4917,4934 ----
+  	qi->qf_curlist = 0;
+  	qi->qf_listcount = 0;
+      }
++     else if (IS_LL_WINDOW(orig_wp))
++     {
++ 	/* If the location list window is open, then create a new empty
++ 	 * location list */
++ 	qf_info_T *new_ll = ll_new_list();
++ 	orig_wp->w_llist_ref = new_ll;
++ 	if (llwin != NULL)
++ 	{
++ 	    llwin->w_llist = new_ll;
++ 	    new_ll->qf_refcount++;
++ 	}
++     }
+  }
+  
+  /*
+*** ../vim-8.0.0535/src/testdir/test_quickfix.vim	2017-03-29 14:19:21.886199149 +0200
+--- src/testdir/test_quickfix.vim	2017-04-02 15:10:55.930856569 +0200
+***************
+*** 1912,1914 ****
+--- 1912,1977 ----
+    call XvimgrepTests('c')
+    call XvimgrepTests('l')
+  endfunc
++ 
++ func XfreeTests(cchar)
++   call s:setup_commands(a:cchar)
++ 
++   enew | only
++ 
++   " Deleting the quickfix stack should work even When the current list is
++   " somewhere in the middle of the stack
++   Xexpr ['Xfile1:10:10:Line 10', 'Xfile1:15:15:Line 15']
++   Xexpr ['Xfile2:20:20:Line 20', 'Xfile2:25:25:Line 25']
++   Xexpr ['Xfile3:30:30:Line 30', 'Xfile3:35:35:Line 35']
++   Xolder
++   call g:Xsetlist([], 'f')
++   call assert_equal(0, len(g:Xgetlist()))
++ 
++   " After deleting the stack, adding a new list should create a stack with a
++   " single list.
++   Xexpr ['Xfile1:10:10:Line 10', 'Xfile1:15:15:Line 15']
++   call assert_equal(1, g:Xgetlist({'all':1}).nr)
++ 
++   " Deleting the stack from a quickfix window should update/clear the
++   " quickfix/location list window.
++   Xexpr ['Xfile1:10:10:Line 10', 'Xfile1:15:15:Line 15']
++   Xexpr ['Xfile2:20:20:Line 20', 'Xfile2:25:25:Line 25']
++   Xexpr ['Xfile3:30:30:Line 30', 'Xfile3:35:35:Line 35']
++   Xolder
++   Xwindow
++   call g:Xsetlist([], 'f')
++   call assert_equal(2, winnr('$'))
++   call assert_equal(1, line('$'))
++   Xclose
++ 
++   " Deleting the stack from a non-quickfix window should update/clear the
++   " quickfix/location list window.
++   Xexpr ['Xfile1:10:10:Line 10', 'Xfile1:15:15:Line 15']
++   Xexpr ['Xfile2:20:20:Line 20', 'Xfile2:25:25:Line 25']
++   Xexpr ['Xfile3:30:30:Line 30', 'Xfile3:35:35:Line 35']
++   Xolder
++   Xwindow
++   wincmd p
++   call g:Xsetlist([], 'f')
++   call assert_equal(0, len(g:Xgetlist()))
++   wincmd p
++   call assert_equal(2, winnr('$'))
++   call assert_equal(1, line('$'))
++ 
++   " After deleting the location list stack, if the location list window is
++   " opened, then a new location list should be created. So opening the
++   " location list window again should not create a new window.
++   if a:cchar == 'l'
++       lexpr ['Xfile1:10:10:Line 10', 'Xfile1:15:15:Line 15']
++       wincmd p
++       lopen
++       call assert_equal(2, winnr('$'))
++   endif
++   Xclose
++ endfunc
++ 
++ " Tests for the quickifx free functionality
++ func Test_qf_free()
++   call XfreeTests('c')
++   call XfreeTests('l')
++ endfunc
+*** ../vim-8.0.0535/src/version.c	2017-04-01 21:21:26.578627608 +0200
+--- src/version.c	2017-04-02 15:15:04.773328435 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     536,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+253. You wait for a slow loading web page before going to the toilet.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

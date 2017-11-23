@@ -1,0 +1,318 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0368
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0368
+Problem:    Not all options are tested with a range of values.
+Solution:   Generate a test script from the source code.
+Files:      Filelist, src/gen_opt_test.vim, src/testdir/test_options.vim,
+            src/Makefile
+
+
+*** ../vim-8.0.0367/Filelist	2017-02-23 19:32:18.068709554 +0100
+--- Filelist	2017-02-25 18:16:57.298760316 +0100
+***************
+*** 97,102 ****
+--- 97,103 ----
+  		src/tee/tee.c \
+  		src/xxd/xxd.c \
+  		src/main.aap \
++ 		src/gen_opt_test.vim \
+  		src/testdir/main.aap \
+  		src/testdir/README.txt \
+  		src/testdir/Make_all.mak \
+*** ../vim-8.0.0367/src/gen_opt_test.vim	2017-02-25 20:39:44.794990022 +0100
+--- src/gen_opt_test.vim	2017-02-25 20:37:27.243850294 +0100
+***************
+*** 0 ****
+--- 1,190 ----
++ " Script to generate testdir/opt_test.vim from option.c
++ 
++ if 0
++   finish
++ endif
++ 
++ set cpo=&vim
++ set nomore
++ 
++ let script = [
++       \ 'let save_columns = &columns',
++       \ 'let save_lines = &lines',
++       \ 'let save_term = &term',
++       \ ]
++ 
++ edit option.c
++ /#define p_term
++ let end = line('.')
++ 
++ " Two lists with values: values that work and values that fail.
++ " When not listed, "othernum" or "otherstring" is used.
++ let test_values = {
++       \ 'cmdheight': [[1, 2, 10], [-1, 0]],
++       \ 'cmdwinheight': [[1, 2, 10], [-1, 0]],
++       \ 'columns': [[12, 80], [-1, 0, 10]],
++       \ 'conceallevel': [[0, 1, 2, 3], [-1, 4, 99]],
++       \ 'foldcolumn': [[0, 1, 4, 12], [-1, 13, 999]],
++       \ 'helpheight': [[0, 10, 100], [-1]],
++       \ 'history': [[0, 1, 100], [-1, 10001]],
++       \ 'iminsert': [[0, 1, 2], [-1, 3, 999]],
++       \ 'imsearch': [[-1, 0, 1, 2], [-2, 3, 999]],
++       \ 'lines': [[2, 24], [-1, 0, 1]],
++       \ 'numberwidth': [[1, 4, 8, 10], [-1, 0, 11]],
++       \ 'regexpengine': [[0, 1, 2], [-1, 3, 999]],
++       \ 'report': [[0, 1, 2, 9999], [-1]],
++       \ 'scroll': [[0, 1, 2, 20], [-1]],
++       \ 'scrolljump': [[-50, -1, 0, 1, 2, 20], [999]],
++       \ 'scrolloff': [[0, 1, 2, 20], [-1]],
++       \ 'shiftwidth': [[0, 1, 8, 999], [-1]],
++       \ 'sidescroll': [[0, 1, 8, 999], [-1]],
++       \ 'sidescrolloff': [[0, 1, 8, 999], [-1]],
++       \ 'tabstop': [[1, 4, 8, 12], [-1, 0]],
++       \ 'textwidth': [[0, 1, 8, 99], [-1]],
++       \ 'timeoutlen': [[0, 8, 99999], [-1]],
++       \ 'titlelen': [[0, 1, 8, 9999], [-1]],
++       \ 'updatecount': [[0, 1, 8, 9999], [-1]],
++       \ 'updatetime': [[0, 1, 8, 9999], [-1]],
++       \ 'verbose': [[-1, 0, 1, 8, 9999], []],
++       \ 'winheight': [[1, 10, 999], [-1, 0]],
++       \ 'winminheight': [[0, 1], [-1]],
++       \ 'winminwidth': [[0, 1, 10], [-1]],
++       \ 'winwidth': [[1, 10, 999], [-1, 0]],
++       \
++       \ 'ambiwidth': [['', 'single'], ['xxx']],
++       \ 'background': [['', 'light', 'dark'], ['xxx']],
++       \ 'backspace': [[0, 2, '', 'eol', 'eol,start'], ['xxx']],
++       \ 'backupcopy': [['yes', 'auto'], ['', 'xxx', 'yes,no']],
++       \ 'backupext': [['xxx'], ['']],
++       \ 'belloff': [['', 'all', 'copy,error'], ['xxx']],
++       \ 'breakindentopt': [['', 'min:3', 'sbr'], ['xxx', 'min', 'min:x']],
++       \ 'browsedir': [['', 'last', '/tmp/'], ['xxx']],
++       \ 'bufhidden': [['', 'hide', 'wipe'], ['xxx', 'hide,wipe']],
++       \ 'buftype': [['', 'help', 'nofile'], ['xxx', 'help,nofile']],
++       \ 'casemap': [['', 'internal'], ['xxx']],
++       \ 'cedit': [['', '\<Esc>'], ['xxx', 'f']],
++       \ 'clipboard': [['', 'unnamed', 'autoselect,unnamed'], ['xxx']],
++       \ 'colorcolumn': [['', '8', '+2'], ['xxx']],
++       \ 'comments': [['', 'b:#'], ['xxx']],
++       \ 'commentstring': [['', '/*%s*/'], ['xxx']],
++       \ 'complete': [['', 'w,b'], ['xxx']],
++       \ 'concealcursor': [['', 'n', 'nvic'], ['xxx']],
++       \ 'completeopt': [['', 'menu', 'menu,longest'], ['xxx', 'menu,,,longest,']],
++       \ 'cryptmethod': [['', 'zip'], ['xxx']],
++       \ 'cscopequickfix': [['', 's-', 's-,c+,e0'], ['xxx', 's,g,d']],
++       \ 'debug': [['', 'msg', 'msg', 'beep'], ['xxx']],
++       \ 'diffopt': [['', 'filler', 'icase,iwhite'], ['xxx']],
++       \ 'display': [['', 'lastline', 'lastline,uhex'], ['xxx']],
++       \ 'eadirection': [['', 'both', 'ver'], ['xxx', 'ver,hor']],
++       \ 'encoding': [['latin1'], ['xxx', '']],
++       \ 'eventignore': [['', 'WinEnter', 'WinLeave,winenter'], ['xxx']],
++       \ 'fileencoding': [['', 'latin1', 'xxx'], []],
++       \ 'fileformat': [['', 'dos', 'unix'], ['xxx']],
++       \ 'fileformats': [['', 'dos', 'dos,unix'], ['xxx']],
++       \ 'fillchars': [['', 'vert:x'], ['xxx']],
++       \ 'foldclose': [['', 'all'], ['xxx']],
++       \ 'foldmethod': [['manual', 'indent'], ['', 'xxx', 'expr,diff']],
++       \ 'foldopen': [['', 'all', 'hor,jump'], ['xxx']],
++       \ 'foldmarker': [['((,))'], ['', 'xxx']],
++       \ 'formatoptions': [['', 'vt', 'v,t'], ['xxx']],
++       \ 'guicursor': [['', 'n:block-Cursor'], ['xxx']],
++       \ 'helplang': [['', 'de', 'de,it'], ['xxx']],
++       \ 'highlight': [['', 'e:Error'], ['xxx']],
++       \ 'isfname': [['', '@', '@,48-52'], ['xxx', '@48']],
++       \ 'isident': [['', '@', '@,48-52'], ['xxx', '@48']],
++       \ 'iskeyword': [['', '@', '@,48-52'], ['xxx', '@48']],
++       \ 'isprint': [['', '@', '@,48-52'], ['xxx', '@48']],
++       \ 'keymap': [['', 'accents'], ['xxx']],
++       \ 'keymodel': [['', 'startsel', 'startsel,stopsel'], ['xxx']],
++       \ 'langmap': [['', 'xX', 'aA,bB'], ['xxx']],
++       \ 'listchars': [['', 'eol:x', 'eol:x,space:y'], ['xxx']],
++       \ 'matchpairs': [['', '(:)', '(:),<:>'], ['xxx']],
++       \ 'mkspellmem': [['10000,100,12'], ['', 'xxx']],
++       \ 'mouse': [['', 'a', 'nvi'], ['xxx', 'n,v,i']],
++       \ 'mousemodel': [['', 'popup'], ['xxx']],
++       \ 'mouseshape': [['', 'n:arrow'], ['xxx']],
++       \ 'nrformats': [['', 'alpha', 'alpha,hex,bin'], ['xxx']],
++       \ 'printmbfont': [['', 'r:some', 'b:Bold,c:yes'], ['xxx']],
++       \ 'printoptions': [['', 'header:0', 'left:10pc,top:5pc'], ['xxx']],
++       \ 'scrollopt': [['', 'ver', 'ver,hor'], ['xxx']],
++       \ 'selection': [['old', 'inclusive'], ['', 'xxx']],
++       \ 'selectmode': [['', 'mouse', 'key,cmd'], ['xxx']],
++       \ 'sessionoptions': [['', 'blank', 'help,options,slash'], ['xxx']],
++       \ 'signcolumn': [['', 'auto', 'no'], ['xxx', 'no,yes']],
++       \ 'spellfile': [['', 'file.en.add'], ['xxx', '/tmp/file']],
++       \ 'spellsuggest': [['', 'best', 'double,33'], ['xxx']],
++       \ 'switchbuf': [['', 'useopen', 'split,newtab'], ['xxx']],
++       \ 'tagcase': [['smart', 'match'], ['', 'xxx', 'smart,match']],
++       \ 'term': [['ansi'], ['', 'gui']],
++       \ 'toolbar': [['', 'icons', 'text'], ['xxx']],
++       \ 'toolbariconsize': [['', 'tiny', 'huge'], ['xxx']],
++       \ 'ttymouse': [['', 'xterm'], ['xxx']],
++       \ 'ttytype': [['ansi'], ['', 'gui']],
++       \ 'viewoptions': [['', 'cursor', 'unix,slash'], ['xxx']],
++       \ 'viminfo': [['', '''50', '"30'], ['xxx']],
++       \ 'virtualedit': [['', 'all', 'all,block'], ['xxx']],
++       \ 'whichwrap': [['', 'b,s', 'bs'], ['xxx']],
++       \ 'wildmode': [['', 'full', 'list:full', 'full,longest'], ['xxx']],
++       \ 'wildoptions': [['', 'tagfile'], ['xxx']],
++       \ 'winaltkeys': [['menu', 'no'], ['', 'xxx']],
++       \
++       \ 'luadll': [[], []],
++       \ 'macatsui': [[], []],
++       \ 'perldll': [[], []],
++       \ 'pythondll': [[], []],
++       \ 'pythonthreedll': [[], []],
++       \ 'pyxversion': [[], []],
++       \ 'rubydll': [[], []],
++       \ 'tcldll': [[], []],
++       \
++       \ 'othernum': [[-1, 0, 100], []],
++       \ 'otherstring': [['', 'xxx'], []],
++       \}
++ 
++ 1
++ /struct vimoption options
++ while 1
++   /{"
++   if line('.') > end
++     break
++   endif
++   let line = getline('.')
++   let name = substitute(line, '.*{"\([^"]*\)".*', '\1', '')
++   let shortname = substitute(line, '.*"\([^"]*\)".*', '\1', '')
++ 
++   if has_key(test_values, name)
++     let a = test_values[name]
++   elseif line =~ 'P_NUM'
++     let a = test_values['othernum']
++   else
++     let a = test_values['otherstring']
++   endif
++   if len(a[0]) > 0 || len(a[1]) > 0
++     if line =~ 'P_BOOL'
++       call add(script, 'set ' . name)
++       call add(script, 'set ' . shortname)
++       call add(script, 'set no' . name)
++       call add(script, 'set no' . shortname)
++     else
++       for val in a[0]
++ 	call add(script, 'set ' . name . '=' . val)
++ 	call add(script, 'set ' . shortname . '=' . val)
++       endfor
++       for val in a[1]
++ 	call add(script, "call assert_fails('set " . name . "=" . val . "')")
++ 	call add(script, "call assert_fails('set " . shortname . "=" . val . "')")
++       endfor
++     endif
++ 
++     call add(script, 'set ' . name . '&')
++     call add(script, 'set ' . shortname . '&')
++   endif
++ endwhile
++ 
++ call add(script, 'let &term = save_term')
++ call add(script, 'let &columns = save_columns')
++ call add(script, 'let &lines = save_lines')
++ 
++ call writefile(script, 'testdir/opt_test.vim')
++ 
++ qa!
+*** ../vim-8.0.0367/src/testdir/test_options.vim	2017-02-23 18:08:51.328806464 +0100
+--- src/testdir/test_options.vim	2017-02-25 20:26:27.319902222 +0100
+***************
+*** 275,277 ****
+--- 275,295 ----
+      call assert_equal(&ttytype, &term)
+    endif
+  endfunc
++ 
++ func Test_set_all()
++   set tw=75
++   set iskeyword=a-z,A-Z
++   set nosplitbelow
++   let out = execute('set all')
++   call assert_match('textwidth=75', out)
++   call assert_match('iskeyword=a-z,A-Z', out)
++   call assert_match('nosplitbelow', out)
++   set tw& iskeyword& splitbelow&
++ endfunc
++ 
++ func Test_set_values()
++   " The file is only generated when running "make test" in the src directory.
++   if filereadable('opt_test.vim')
++     source opt_test.vim
++   endif
++ endfunc
+*** ../vim-8.0.0367/src/Makefile	2017-02-25 14:20:56.784372170 +0100
+--- src/Makefile	2017-02-25 20:22:22.541404084 +0100
+***************
+*** 2025,2030 ****
+--- 2025,2031 ----
+  #
+  scripttests:
+  	$(MAKE) -f Makefile $(VIMTARGET)
++ 	$(MAKE) -f Makefile testdir/opt_test.vim
+  	if test -n "$(MAKEMO)" -a -f $(PODIR)/Makefile; then \
+  		cd $(PODIR); $(MAKE) -f Makefile check VIM=../$(VIMTARGET); \
+  	fi
+***************
+*** 2033,2038 ****
+--- 2034,2041 ----
+  	fi
+  	cd testdir; $(MAKE) -f Makefile $(GUI_TESTTARGET) VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
++ testdir/opt_test.vim: option.c gen_opt_test.vim
++ 	./$(VIMTARGET) -u gen_opt_test.vim --noplugin --not-a-term
+  
+  # Run the tests with the GUI.  Assumes vim/gvim was already built
+  testgui:
+***************
+*** 2753,2758 ****
+--- 2756,2762 ----
+  	-rm -f *.o objects/* core $(VIMTARGET).core $(VIMTARGET) vim xxd/*.o
+  	-rm -f $(TOOLS) auto/osdef.h auto/pathdef.c auto/if_perl.c auto/gui_gtk_gresources.c auto/gui_gtk_gresources.h
+  	-rm -f conftest* *~ auto/link.sed
++ 	-rm -f testdir/opt_test.vim
+  	-rm -f $(UNITTEST_TARGETS)
+  	-rm -f runtime pixmaps
+  	-rm -rf $(APPDIR)
+***************
+*** 2767,2773 ****
+  
+  shadow:	runtime pixmaps
+  	mkdir $(SHADOWDIR)
+! 	cd $(SHADOWDIR); ln -s ../*.[chm] ../*.in ../*.sh ../*.xs ../*.xbm ../gui_gtk_res.xml ../toolcheck ../proto ../vimtutor ../gvimtutor ../mkinstalldirs .
+  	mkdir $(SHADOWDIR)/auto
+  	cd $(SHADOWDIR)/auto; ln -s ../../auto/configure .
+  	mkdir $(SHADOWDIR)/po
+--- 2771,2777 ----
+  
+  shadow:	runtime pixmaps
+  	mkdir $(SHADOWDIR)
+! 	cd $(SHADOWDIR); ln -s ../*.[chm] ../*.in ../*.vim ../*.sh ../*.xs ../*.xbm ../gui_gtk_res.xml ../toolcheck ../proto ../vimtutor ../gvimtutor ../mkinstalldirs .
+  	mkdir $(SHADOWDIR)/auto
+  	cd $(SHADOWDIR)/auto; ln -s ../../auto/configure .
+  	mkdir $(SHADOWDIR)/po
+*** ../vim-8.0.0367/src/version.c	2017-02-25 16:01:41.062484813 +0100
+--- src/version.c	2017-02-25 20:38:31.223450054 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     368,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+25. You believe nothing looks sexier than a man in boxer shorts illuminated
+    only by a 17" inch svga monitor.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

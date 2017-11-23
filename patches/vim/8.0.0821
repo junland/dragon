@@ -1,0 +1,188 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0821
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0821
+Problem:    Cannot get the title and status of a terminal window.
+Solution:   Implement term_gettitle() and term_getstatus().
+Files:      src/evalfunc.c, src/terminal.c, src/proto/terminal.pro,
+            runtime/doc/eval.txt
+
+
+*** ../vim-8.0.0820/src/evalfunc.c	2017-07-30 18:28:34.812431688 +0200
+--- src/evalfunc.c	2017-07-30 19:31:45.393255262 +0200
+***************
+*** 836,841 ****
+--- 836,843 ----
+      {"term_getjob",	1, 1, f_term_getjob},
+      {"term_getline",	1, 2, f_term_getline},
+      {"term_getsize",	1, 1, f_term_getsize},
++     {"term_getstatus",	1, 1, f_term_getstatus},
++     {"term_gettitle",	1, 1, f_term_gettitle},
+      {"term_list",	0, 0, f_term_list},
+      {"term_scrape",	1, 2, f_term_scrape},
+      {"term_sendkeys",	2, 2, f_term_sendkeys},
+*** ../vim-8.0.0820/src/terminal.c	2017-07-30 19:01:57.510088673 +0200
+--- src/terminal.c	2017-07-30 19:31:57.929165889 +0200
+***************
+*** 36,50 ****
+   * that buffer, attributes come from the scrollback buffer tl_scrollback.
+   *
+   * TODO:
+-  * - Problem with statusline (Zyx, Christian)
+   * - Make CTRL-W "" paste register content to the job?
+   * - in bash mouse clicks are inserting characters.
+   * - mouse scroll: when over other window, scroll that window.
+   * - For the scrollback buffer store lines in the buffer, only attributes in
+   *   tl_scrollback.
+-  * - Add term_status(): "" if not a terminal, "running" if job running,
+-  *   "finished" if finished, "running,vim" when job is running and in
+-  *   Terminal mode, "running,vim,pending" when job output is pending.
+   * - When the job ends:
+   *   - Need an option or argument to drop the window+buffer right away, to be
+   *     used for a shell or Vim. 'termfinish'; "close", "open" (open window when
+--- 36,46 ----
+***************
+*** 560,566 ****
+  }
+  
+  /*
+!  * Return TRUE if the job for "buf" is still running.
+   */
+      static int
+  term_job_running(term_T *term)
+--- 556,562 ----
+  }
+  
+  /*
+!  * Return TRUE if the job for "term" is still running.
+   */
+      static int
+  term_job_running(term_T *term)
+***************
+*** 1799,1804 ****
+--- 1795,1840 ----
+  }
+  
+  /*
++  * "term_getstatus(buf)" function
++  */
++     void
++ f_term_getstatus(typval_T *argvars, typval_T *rettv)
++ {
++     buf_T	*buf = term_get_buf(argvars);
++     term_T	*term;
++     char_u	val[100];
++ 
++     rettv->v_type = VAR_STRING;
++     if (buf == NULL)
++ 	return;
++     term = buf->b_term;
++ 
++     if (term_job_running(term))
++ 	STRCPY(val, "running");
++     else
++ 	STRCPY(val, "finished");
++     if (term->tl_terminal_mode)
++ 	STRCAT(val, ",terminal");
++     rettv->vval.v_string = vim_strsave(val);
++ }
++ 
++ /*
++  * "term_gettitle(buf)" function
++  */
++     void
++ f_term_gettitle(typval_T *argvars, typval_T *rettv)
++ {
++     buf_T	*buf = term_get_buf(argvars);
++ 
++     rettv->v_type = VAR_STRING;
++     if (buf == NULL)
++ 	return;
++ 
++     if (buf->b_term->tl_title != NULL)
++ 	rettv->vval.v_string = vim_strsave(buf->b_term->tl_title);
++ }
++ 
++ /*
+   * "term_list()" function
+   */
+      void
+*** ../vim-8.0.0820/src/proto/terminal.pro	2017-07-30 18:28:34.816431660 +0200
+--- src/proto/terminal.pro	2017-07-30 19:31:44.297263076 +0200
+***************
+*** 20,25 ****
+--- 20,27 ----
+  void f_term_getjob(typval_T *argvars, typval_T *rettv);
+  void f_term_getline(typval_T *argvars, typval_T *rettv);
+  void f_term_getsize(typval_T *argvars, typval_T *rettv);
++ void f_term_getstatus(typval_T *argvars, typval_T *rettv);
++ void f_term_gettitle(typval_T *argvars, typval_T *rettv);
+  void f_term_list(typval_T *argvars, typval_T *rettv);
+  void f_term_scrape(typval_T *argvars, typval_T *rettv);
+  void f_term_sendkeys(typval_T *argvars, typval_T *rettv);
+*** ../vim-8.0.0820/runtime/doc/eval.txt	2017-07-30 18:28:34.812431688 +0200
+--- runtime/doc/eval.txt	2017-07-30 19:37:08.738949845 +0200
+***************
+*** 2374,2379 ****
+--- 2374,2381 ----
+  term_getjob({buf})		Job	get the job associated with a terminal
+  term_getline({buf}[, {row}])	String	get a line of text from a terminal
+  term_getsize({buf})		List	get the size of a terminal
++ term_getstatus({buf})		String	get the status of a terminal
++ term_gettitle({buf})		String	get the title of a terminal
+  term_list()			List	get the list of terminal buffers
+  term_scrape({buf}[, {row}])	List	get row of a terminal screen
+  term_sendkeys({buf}, {keys})	none	send keystrokes to a terminal
+***************
+*** 7937,7942 ****
+--- 7947,7972 ----
+  		buffer does not exist or is not a terminal window, an empty
+  		list is returned.
+  
++ term_getstatus({buf})					*term_getstatus()*
++ 		Get the status of terminal {buf}. This returns a comma
++ 		separated list of these items:
++ 			running		job is running
++ 			finished	job has finished
++ 			terminal	in Terminal-Normal mode
++ 		One of "running" or "finished" is always present.
++ 
++ 		{buf} must be the buffer number of a terminal window. If the
++ 		buffer does not exist or is not a terminal window, an empty
++ 		string is returned.
++ 
++ term_gettitle({buf})					*term_gettitle()*
++ 		Get the title of terminal {buf}. This is the title that the
++ 		job in the terminal has set.
++ 
++ 		{buf} must be the buffer number of a terminal window. If the
++ 		buffer does not exist or is not a terminal window, an empty
++ 		string is returned.
++ 
+  term_list()						*term_list()*
+  		Return a list with the buffer numbers of all buffers for
+  		terminal windows.
+*** ../vim-8.0.0820/src/version.c	2017-07-30 19:01:57.514088644 +0200
+--- src/version.c	2017-07-30 19:24:29.908373419 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     821,
+  /**/
+
+-- 
+You were lucky to have a LAKE! There were a hundred and sixty of
+us living in a small shoebox in the middle of the road.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

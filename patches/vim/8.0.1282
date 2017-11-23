@@ -1,0 +1,64 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1282
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1282 (after 8.0.1282)
+Problem:    script-local variable defined in the wrong script
+Solution:   Move variable to autoload/filetype.vim.
+Files:      runtime/filetype.vim, runtime/autoload/filetype.vim
+
+
+*** ../vim-8.0.1281/runtime/filetype.vim	2017-11-09 20:43:52.206128466 +0100
+--- runtime/filetype.vim	2017-11-09 20:50:50.279836748 +0100
+***************
+*** 1542,1548 ****
+  au BufNewFile,BufRead *.hog,snort.conf,vision.conf	setf hog
+  au BufNewFile,BufRead *.rules			call filetype#FTRules()
+  
+- let s:ft_rules_udev_rules_pattern = '^\s*\cudev_rules\s*=\s*"\([^"]\{-1,}\)/*".*'
+  " Spec (Linux RPM)
+  au BufNewFile,BufRead *.spec			setf spec
+  
+--- 1542,1547 ----
+*** ../vim-8.0.1281/runtime/autoload/filetype.vim	2017-11-09 20:43:52.210128405 +0100
+--- runtime/autoload/filetype.vim	2017-11-09 20:50:59.971690951 +0100
+***************
+*** 560,565 ****
+--- 560,566 ----
+    endif
+  endfunc
+  
++ let s:ft_rules_udev_rules_pattern = '^\s*\cudev_rules\s*=\s*"\([^"]\{-1,}\)/*".*'
+  func filetype#FTRules()
+    let path = expand('<amatch>:p')
+    if path =~ '^/\(etc/udev/\%(rules\.d/\)\=.*\.rules\|lib/udev/\%(rules\.d/\)\=.*\.rules\)$'
+*** ../vim-8.0.1281/src/version.c	2017-11-09 20:43:52.210128405 +0100
+--- src/version.c	2017-11-09 21:04:36.463221189 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1282,
+  /**/
+
+-- 
+CART DRIVER: Bring out your dead!
+   We follow the cart through a wretched, impoverished plague-ridden village.
+   A few starved mongrels run about in the mud scavenging.  In the open
+   doorway of one house perhaps we jug glimpse a pair of legs dangling from
+   the ceiling.  In another doorway an OLD WOMAN is beating a cat against a
+   wall rather like one does with a mat.  The cart passes round a dead donkey
+   or cow in the mud.  And a MAN tied to a cart is being hammered to death by
+   four NUNS with huge mallets.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

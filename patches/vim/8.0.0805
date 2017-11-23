@@ -1,0 +1,66 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0805
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0805
+Problem:    GUI test fails with gnome2.
+Solution:   Set $HOME to an existing directory.
+Files:      src/testdir/setup.vim, src/testdir/runtest.vim
+
+
+*** ../vim-8.0.0804/src/testdir/setup.vim	2017-07-08 17:03:15.369760968 +0200
+--- src/testdir/setup.vim	2017-07-29 20:34:00.729452297 +0200
+***************
+*** 14,18 ****
+    endif
+  
+    " Make sure $HOME does not get read or written.
+!   let $HOME = '/does/not/exist'
+  endif
+--- 14,20 ----
+    endif
+  
+    " Make sure $HOME does not get read or written.
+!   " It must exist, gnome tries to create $HOME/.gnome2
+!   let $HOME = getcwd() . '/XfakeHOME'
+!   call mkdir($HOME)
+  endif
+*** ../vim-8.0.0804/src/testdir/runtest.vim	2017-03-19 20:04:05.534628090 +0100
+--- src/testdir/runtest.vim	2017-07-29 20:38:05.331715400 +0200
+***************
+*** 158,163 ****
+--- 158,166 ----
+    " Don't write viminfo on exit.
+    set viminfo=
+  
++   " Clean up files created by setup.vim
++   call delete('XfakeHOME', 'rf')
++ 
+    if s:fail == 0
+      " Success, create the .res file so that make knows it's done.
+      exe 'split ' . fnamemodify(g:testname, ':r') . '.res'
+*** ../vim-8.0.0804/src/version.c	2017-07-29 20:11:34.730999092 +0200
+--- src/version.c	2017-07-29 20:32:26.090124302 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     805,
+  /**/
+
+-- 
+GALAHAD: No look, really, this isn't nescess ...
+PIGLET:  We must examine you.
+GALAHAD: There's nothing wrong with ... that.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

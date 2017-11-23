@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0005
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0005
+Problem:    Netbeans test fails with Python 3. (Jonathonf)
+Solution:   Encode the string before sending it. (closes #1070)
+Files:      src/testdir/test_netbeans.py
+
+
+*** ../vim-8.0.0004/src/testdir/test_netbeans.py	2016-09-09 15:27:58.000000000 +0200
+--- src/testdir/test_netbeans.py	2016-09-14 22:22:03.574860055 +0200
+***************
+*** 52,58 ****
+                  return
+  
+              if len(response) > 0:
+!                 self.request.sendall(response)
+                  # Write the respoinse into the file, so that the test can knows
+                  # the command was sent.
+                  with open("Xnetbeans", "a") as myfile:
+--- 52,58 ----
+                  return
+  
+              if len(response) > 0:
+!                 self.request.sendall(response.encode('utf-8'))
+                  # Write the respoinse into the file, so that the test can knows
+                  # the command was sent.
+                  with open("Xnetbeans", "a") as myfile:
+*** ../vim-8.0.0004/src/version.c	2016-09-14 22:16:09.863803610 +0200
+--- src/version.c	2016-09-14 22:22:39.922351477 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     5,
+  /**/
+
+-- 
+In his lifetime van Gogh painted 486 oil paintings. Oddly enough, 8975
+of them are to be found in the United States.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

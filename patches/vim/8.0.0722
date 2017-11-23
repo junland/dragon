@@ -1,0 +1,51 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0722
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0722
+Problem:    Screen is messed by timer up at inputlist() prompt.
+Solution:   Set state to ASKMORE. (closes #1843)
+Files:      src/misc1.c
+
+
+*** ../vim-8.0.0721/src/misc1.c	2017-06-27 17:09:33.926938934 +0200
+--- src/misc1.c	2017-07-16 15:41:58.074189688 +0200
+***************
+*** 3592,3598 ****
+      save_cmdline_row = cmdline_row;
+      cmdline_row = 0;
+      save_State = State;
+!     State = CMDLINE;
+  
+      i = get_number(TRUE, mouse_used);
+      if (KeyTyped)
+--- 3592,3598 ----
+      save_cmdline_row = cmdline_row;
+      cmdline_row = 0;
+      save_State = State;
+!     State = ASKMORE;	/* prevents a screen update when using a timer */
+  
+      i = get_number(TRUE, mouse_used);
+      if (KeyTyped)
+*** ../vim-8.0.0721/src/version.c	2017-07-16 15:30:51.323226561 +0200
+--- src/version.c	2017-07-16 15:42:52.829768224 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     722,
+  /**/
+
+-- 
+"Hit any key to continue" is very confusing when you have two keyboards.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

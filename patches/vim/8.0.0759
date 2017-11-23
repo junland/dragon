@@ -1,0 +1,149 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0759
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0759
+Problem:    MS-Windows: terminal does not adjust size to the Vim window size.
+Solution:   Add a call to winpty_set_size(). (Yasuhiro Matsumoto, closes #1863)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0758/src/terminal.c	2017-07-23 17:22:30.693936657 +0200
+--- src/terminal.c	2017-07-23 17:26:40.452177637 +0200
+***************
+*** 118,123 ****
+--- 118,124 ----
+   * Functions with separate implementation for MS-Windows and Unix-like systems.
+   */
+  static int term_and_job_init(term_T *term, int rows, int cols, char_u *cmd);
++ static void term_report_winsize(term_T *term, int rows, int cols);
+  static void term_free(term_T *term);
+  
+  /**************************************
+***************
+*** 765,788 ****
+  	vterm_set_size(vterm, rows, cols);
+  	ch_logn(term->tl_job->jv_channel, "Resizing terminal to %d lines",
+  									 rows);
+! 
+! #if defined(UNIX)
+! 	/* Use an ioctl() to report the new window size to the job. */
+! 	if (term->tl_job != NULL && term->tl_job->jv_channel != NULL)
+! 	{
+! 	    int fd = -1;
+! 	    int part;
+! 
+! 	    for (part = PART_OUT; part < PART_COUNT; ++part)
+! 	    {
+! 		fd = term->tl_job->jv_channel->ch_part[part].ch_fd;
+! 		if (isatty(fd))
+! 		    break;
+! 	    }
+! 	    if (part < PART_COUNT && mch_report_winsize(fd, rows, cols) == OK)
+! 		mch_stop_job(term->tl_job, (char_u *)"winch");
+! 	}
+! #endif
+      }
+  
+      /* The cursor may have been moved when resizing. */
+--- 766,772 ----
+  	vterm_set_size(vterm, rows, cols);
+  	ch_logn(term->tl_job->jv_channel, "Resizing terminal to %d lines",
+  									 rows);
+! 	term_report_winsize(term, rows, cols);
+      }
+  
+      /* The cursor may have been moved when resizing. */
+***************
+*** 921,926 ****
+--- 905,911 ----
+  void (*winpty_spawn_config_free)(void*);
+  void (*winpty_error_free)(void*);
+  LPCWSTR (*winpty_error_msg)(void*);
++ BOOL (*winpty_set_size)(void*, int, int, void*);
+  
+  /**************************************
+   * 2. MS-Windows implementation.
+***************
+*** 953,958 ****
+--- 938,944 ----
+  	{"winpty_spawn_config_free", (FARPROC*)&winpty_spawn_config_free},
+  	{"winpty_spawn_config_new", (FARPROC*)&winpty_spawn_config_new},
+  	{"winpty_error_msg", (FARPROC*)&winpty_error_msg},
++ 	{"winpty_set_size", (FARPROC*)&winpty_set_size},
+  	{NULL, NULL}
+      };
+  
+***************
+*** 1122,1127 ****
+--- 1108,1122 ----
+  	vterm_free(term->tl_vterm);
+  }
+  
++ /*
++  * Request size to terminal.
++  */
++     static void
++ term_report_winsize(term_T *term, int rows, int cols)
++ {
++     winpty_set_size(term->tl_winpty, cols, rows, NULL);
++ }
++ 
+  # else
+  
+  /**************************************
+***************
+*** 1161,1166 ****
+--- 1156,1185 ----
+      if (term->tl_vterm != NULL)
+  	vterm_free(term->tl_vterm);
+  }
++ 
++ /*
++  * Request size to terminal.
++  */
++     static void
++ term_report_winsize(term_T *term, int rows, int cols)
++ {
++     /* Use an ioctl() to report the new window size to the job. */
++     if (term->tl_job != NULL && term->tl_job->jv_channel != NULL)
++     {
++ 	int fd = -1;
++ 	int part;
++ 
++ 	for (part = PART_OUT; part < PART_COUNT; ++part)
++ 	{
++ 	    fd = term->tl_job->jv_channel->ch_part[part].ch_fd;
++ 	    if (isatty(fd))
++ 		break;
++ 	}
++ 	if (part < PART_COUNT && mch_report_winsize(fd, rows, cols) == OK)
++ 	    mch_stop_job(term->tl_job, (char_u *)"winch");
++     }
++ }
++ 
+  # endif
+  
+  #endif /* FEAT_TERMINAL */
+*** ../vim-8.0.0758/src/version.c	2017-07-23 17:22:30.697936628 +0200
+--- src/version.c	2017-07-23 17:26:51.772098027 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     759,
+  /**/
+
+-- 
+How do I set the laser printer to stun? 
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

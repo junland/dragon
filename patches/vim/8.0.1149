@@ -1,0 +1,249 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1149
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1149
+Problem:    libvterm colors differ from xterm.
+Solution:   Use the xterm colors for libvterm.
+Files:      src/terminal.c, src/libvterm/src/pen.c,
+            src/testdir/xterm_ramp.vim, Filelist
+
+
+*** ../vim-8.0.1148/src/terminal.c	2017-09-22 14:35:46.596623391 +0200
+--- src/terminal.c	2017-09-26 13:55:12.362483973 +0200
+***************
+*** 41,50 ****
+   * - in GUI vertical split causes problems.  Cursor is flickering. (Hirohito
+   *   Higashi, 2017 Sep 19)
+   * - Shift-Tab does not work.
+!  * - click in Window toolbar of other window: save/restore Insert and Visual
+   * - Redirecting output does not work on MS-Windows, Test_terminal_redir_file()
+   *   is disabled.
+   * - implement term_setsize()
+   * - MS-Windows GUI: still need to type a key after shell exits?  #1924
+   * - add test for giving error for invalid 'termsize' value.
+   * - support minimal size when 'termsize' is "rows*cols".
+--- 41,52 ----
+   * - in GUI vertical split causes problems.  Cursor is flickering. (Hirohito
+   *   Higashi, 2017 Sep 19)
+   * - Shift-Tab does not work.
+!  * - double click in Window toolbar starts Visual mode.
+   * - Redirecting output does not work on MS-Windows, Test_terminal_redir_file()
+   *   is disabled.
++  * - cursor blinks in terminal on widows with a timer. (xtal8, #2142)
+   * - implement term_setsize()
++  * - MS-Windows GUI: WinBar has  tearoff item
+   * - MS-Windows GUI: still need to type a key after shell exits?  #1924
+   * - add test for giving error for invalid 'termsize' value.
+   * - support minimal size when 'termsize' is "rows*cols".
+***************
+*** 1791,1813 ****
+      {
+  	if (red == blue && red == green)
+  	{
+! 	    /* 24-color greyscale */
+  	    static int cutoff[23] = {
+! 		0x05, 0x10, 0x1B, 0x26, 0x31, 0x3C, 0x47, 0x52,
+! 		0x5D, 0x68, 0x73, 0x7F, 0x8A, 0x95, 0xA0, 0xAB,
+! 		0xB6, 0xC1, 0xCC, 0xD7, 0xE2, 0xED, 0xF9};
+  	    int i;
+  
+  	    for (i = 0; i < 23; ++i)
+  		if (red < cutoff[i])
+  		    return i + 233;
+  	    return 256;
+  	}
+  
+! 	/* 216-color cube */
+! 	return 17 + ((red + 25) / 0x33) * 36
+! 		  + ((green + 25) / 0x33) * 6
+! 		  + (blue + 25) / 0x33;
+      }
+      return 0;
+  }
+--- 1793,1830 ----
+      {
+  	if (red == blue && red == green)
+  	{
+! 	    /* 24-color greyscale plus white and black */
+  	    static int cutoff[23] = {
+! 		    0x0D, 0x17, 0x21, 0x2B, 0x35, 0x3F, 0x49, 0x53, 0x5D, 0x67,
+! 		    0x71, 0x7B, 0x85, 0x8F, 0x99, 0xA3, 0xAD, 0xB7, 0xC1, 0xCB,
+! 		    0xD5, 0xDF, 0xE9};
+  	    int i;
+  
++ 	    if (red < 5)
++ 		return 17; /* 00/00/00 */
++ 	    if (red > 245) /* ff/ff/ff */
++ 		return 232;
+  	    for (i = 0; i < 23; ++i)
+  		if (red < cutoff[i])
+  		    return i + 233;
+  	    return 256;
+  	}
++ 	{
++ 	    static int cutoff[5] = {0x2F, 0x73, 0x9B, 0xC3, 0xEB};
++ 	    int ri, gi, bi;
+  
+! 	    /* 216-color cube */
+! 	    for (ri = 0; ri < 5; ++ri)
+! 		if (red < cutoff[ri])
+! 		    break;
+! 	    for (gi = 0; gi < 5; ++gi)
+! 		if (green < cutoff[gi])
+! 		    break;
+! 	    for (bi = 0; bi < 5; ++bi)
+! 		if (blue < cutoff[bi])
+! 		    break;
+! 	    return 17 + ri * 36 + gi * 6 + bi;
+! 	}
+      }
+      return 0;
+  }
+***************
+*** 2426,2441 ****
+  };
+  
+  static int cube_value[] = {
+!     0x00, 0x33, 0x66, 0x99, 0xCC, 0xFF,
+  };
+  
+  static int grey_ramp[] = {
+!     0x00, 0x0B, 0x16, 0x21, 0x2C, 0x37, 0x42, 0x4D, 0x58, 0x63, 0x6E, 0x79,
+!     0x85, 0x90, 0x9B, 0xA6, 0xB1, 0xBC, 0xC7, 0xD2, 0xDD, 0xE8, 0xF3, 0xFF,
+  };
+  
+  /*
+   * Convert a cterm color number 0 - 255 to RGB.
+   */
+      static void
+  cterm_color2rgb(int nr, VTermColor *rgb)
+--- 2443,2459 ----
+  };
+  
+  static int cube_value[] = {
+!     0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF
+  };
+  
+  static int grey_ramp[] = {
+!     0x08, 0x12, 0x1C, 0x26, 0x30, 0x3A, 0x44, 0x4E, 0x58, 0x62, 0x6C, 0x76,
+!     0x80, 0x8A, 0x94, 0x9E, 0xA8, 0xB2, 0xBC, 0xC6, 0xD0, 0xDA, 0xE4, 0xEE
+  };
+  
+  /*
+   * Convert a cterm color number 0 - 255 to RGB.
++  * This is compatible with xterm.
+   */
+      static void
+  cterm_color2rgb(int nr, VTermColor *rgb)
+*** ../vim-8.0.1148/src/libvterm/src/pen.c	2017-07-29 22:41:12.587256652 +0200
+--- src/libvterm/src/pen.c	2017-09-26 13:50:31.720213827 +0200
+***************
+*** 25,36 ****
+  };
+  
+  static int ramp6[] = {
+!   0x00, 0x33, 0x66, 0x99, 0xCC, 0xFF,
+  };
+  
+  static int ramp24[] = {
+!   0x00, 0x0B, 0x16, 0x21, 0x2C, 0x37, 0x42, 0x4D, 0x58, 0x63, 0x6E, 0x79,
+!   0x85, 0x90, 0x9B, 0xA6, 0xB1, 0xBC, 0xC7, 0xD2, 0xDD, 0xE8, 0xF3, 0xFF,
+  };
+  
+  static int lookup_colour_ansi(const VTermState *state, long index, VTermColor *col)
+--- 25,37 ----
+  };
+  
+  static int ramp6[] = {
+!   0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF,
+  };
+  
++ /* Use 0x81 instead of 0x80 to be able to distinguish from ansi black */
+  static int ramp24[] = {
+!   0x08, 0x12, 0x1C, 0x26, 0x30, 0x3A, 0x44, 0x4E, 0x58, 0x62, 0x6C, 0x76,
+!   0x81, 0x8A, 0x94, 0x9E, 0xA8, 0xB2, 0xBC, 0xC6, 0xD0, 0xDA, 0xE4, 0xEE,
+  };
+  
+  static int lookup_colour_ansi(const VTermState *state, long index, VTermColor *col)
+*** ../vim-8.0.1148/src/testdir/xterm_ramp.vim	2017-09-26 13:58:57.769088699 +0200
+--- src/testdir/xterm_ramp.vim	2017-09-26 13:54:00.202930815 +0200
+***************
+*** 0 ****
+--- 1,40 ----
++ " Script to generate a file that shows al 256 xterm colors
++ 
++ new
++ call setline(1, 'ANSI')
++ 
++ " ANSI colors
++ let s = ''
++ for nr in range(0, 7)
++   let s .= "\033[4" . nr . "m    "
++ endfor
++ for nr in range(8, 15)
++   let s .= "\033[10" . (nr - 8) . "m    "
++ endfor
++ let s .= "\033[107m|"
++ call setline(2, s)
++ 
++ " 6 x 6 x 6 color cube
++ call setline(3, 'color cube')
++ for high in range(0, 5)
++   let s = ''
++   for low in range(0, 35)
++     let nr = low + high * 36
++     let s .= "\033[48;5;" . (nr + 16) . "m  "
++   endfor
++   let s .= "\033[107m|"
++   call setline(high + 4, s)
++ endfor
++ 
++ " 24 shades of grey
++ call setline(10, 'grey ramp')
++ let s = ''
++ for nr in range(0, 23)
++     let s .= "\033[48;5;" . (nr + 232) . "m   "
++ endfor
++ let s .= "\033[107m|"
++ call setline(11, s)
++ 
++ set binary
++ write! <sfile>:h/xterm_ramp.txt
++ quit
+*** ../vim-8.0.1148/Filelist	2017-09-08 20:49:47.620907422 +0200
+--- Filelist	2017-09-26 13:58:15.853348096 +0200
+***************
+*** 136,141 ****
+--- 136,142 ----
+  		src/testdir/bench*.vim \
+  		src/testdir/samples/*.txt \
+  		src/testdir/if_ver*.vim \
++ 		src/testdir/xterm_ramp.vim \
+  		src/proto.h \
+  		src/proto/arabic.pro \
+  		src/proto/blowfish.pro \
+*** ../vim-8.0.1148/src/version.c	2017-09-26 12:28:41.546679685 +0200
+--- src/version.c	2017-09-26 12:49:04.035047507 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1149,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+199. You read this entire list of symptoms, looking for something
+     that doesn't describe you.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

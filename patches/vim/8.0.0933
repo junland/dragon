@@ -1,0 +1,106 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0933
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0933
+Problem:    Terminal test tries to start GUI when it's not possible.
+Solution:   Check if the GUI can run. (James McCoy, closes #1971)
+Files:      src/testdir/shared.vim, src/testdir/test_terminal.vim,
+            src/testdir/test_gui.vim, src/testdir/test_gui_init.vim
+
+
+*** ../vim-8.0.0932/src/testdir/shared.vim	2017-07-19 19:55:54.490463807 +0200
+--- src/testdir/shared.vim	2017-08-13 20:12:13.585619560 +0200
+***************
+*** 215,217 ****
+--- 215,221 ----
+    endif
+    return 1
+  endfunc
++ 
++ func CanRunGui()
++   return has('gui') && ($DISPLAY != "" || has('gui_running'))
++ endfunc
+*** ../vim-8.0.0932/src/testdir/test_terminal.vim	2017-08-13 17:13:03.017546297 +0200
+--- src/testdir/test_terminal.vim	2017-08-13 20:12:29.661519715 +0200
+***************
+*** 417,423 ****
+  
+  " must be last, we can't go back from GUI to terminal
+  func Test_zz_terminal_in_gui()
+!   if !has('gui')
+      return
+    endif
+    gui -f
+--- 417,423 ----
+  
+  " must be last, we can't go back from GUI to terminal
+  func Test_zz_terminal_in_gui()
+!   if !CanRunGui()
+      return
+    endif
+    gui -f
+*** ../vim-8.0.0932/src/testdir/test_gui.vim	2017-03-18 20:18:42.067950195 +0100
+--- src/testdir/test_gui.vim	2017-08-13 20:14:47.064666344 +0200
+***************
+*** 1,6 ****
+  " Tests specifically for the GUI
+  
+! if !has('gui') || ($DISPLAY == "" && !has('gui_running'))
+    finish
+  endif
+  
+--- 1,7 ----
+  " Tests specifically for the GUI
+  
+! source shared.vim
+! if !CanRunGui()
+    finish
+  endif
+  
+*** ../vim-8.0.0932/src/testdir/test_gui_init.vim	2017-03-12 17:10:14.417925081 +0100
+--- src/testdir/test_gui_init.vim	2017-08-13 20:15:28.296410271 +0200
+***************
+*** 1,7 ****
+  " Tests specifically for the GUI features/options that need to be set up at
+  " startup to take effect at runtime.
+  
+! if !has('gui') || ($DISPLAY == "" && !has('gui_running'))
+    finish
+  endif
+  
+--- 1,8 ----
+  " Tests specifically for the GUI features/options that need to be set up at
+  " startup to take effect at runtime.
+  
+! source shared.vim
+! if !CanRunGui()
+    finish
+  endif
+  
+*** ../vim-8.0.0932/src/version.c	2017-08-13 20:06:14.963846989 +0200
+--- src/version.c	2017-08-13 20:25:27.820678894 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     933,
+  /**/
+
+-- 
+INSPECTOR END OF FILM: Move along.  There's nothing to see!  Keep moving!
+   [Suddenly he notices the cameras.]
+INSPECTOR END OF FILM: (to Camera) All right, put that away sonny.
+   [He walks over to it and puts his hand over the lens.]
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

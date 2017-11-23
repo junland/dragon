@@ -1,0 +1,69 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0978
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0978
+Problem:    Writing to terminal job is not tested.
+Solution:   Add a test.
+Files:      src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0977/src/testdir/test_terminal.vim	2017-08-20 18:09:09.767276733 +0200
+--- src/testdir/test_terminal.vim	2017-08-20 19:30:20.409170064 +0200
+***************
+*** 470,472 ****
+--- 470,495 ----
+    unlet g:lnum
+    bwipe
+  endfunc
++ 
++ func Test_terminal_write_stdin()
++   " Todo: make this work on all systems.
++   if !has('unix')
++     return
++   endif
++   new
++   call setline(1, ['one', 'two', 'three'])
++   %term wc
++   call WaitFor('getline(1) != ""')
++   let nrs = split(getline(1))
++   call assert_equal(['3', '3', '14'], nrs)
++   bwipe
++ 
++   call setline(1, ['one', 'two', 'three', 'four'])
++   2,3term wc
++   call WaitFor('getline(1) != ""')
++   let nrs = split(getline(1))
++   call assert_equal(['2', '2', '10'], nrs)
++   bwipe
++ 
++   bwipe!
++ endfunc
+*** ../vim-8.0.0977/src/version.c	2017-08-20 19:22:51.063988066 +0200
+--- src/version.c	2017-08-20 19:32:41.856283677 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     978,
+  /**/
+
+-- 
+A salesperson says:            Translation:
+"backward compatible"          Old technology
+"Premium"                      Overpriced
+"Can't keep it on the shelf"   Unavailable
+"Stands alone"                 Piece of shit
+"Proprietary"                  Incompatible
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

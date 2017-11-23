@@ -1,0 +1,58 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0217
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0217 (after 8.0.0215)
+Problem:    Build fails without the cscope feature.
+Solution:   Add #ifdef.
+Files:      src/tag.c
+
+
+*** ../vim-8.0.0216/src/tag.c	2017-01-22 15:39:57.170763849 +0100
+--- src/tag.c	2017-01-22 16:13:02.762181077 +0100
+***************
+*** 1754,1760 ****
+  	     * The file name is followed by a ','.
+  	     * Remember etag file name in ebuf.
+  	     */
+! 	    if (*lbuf == Ctrl_L && !use_cscope)
+  	    {
+  		is_etag = 1;		/* in case at the start */
+  		state = TS_LINEAR;
+--- 1754,1764 ----
+  	     * The file name is followed by a ','.
+  	     * Remember etag file name in ebuf.
+  	     */
+! 	    if (*lbuf == Ctrl_L
+! # ifdef FEAT_CSCOPE
+! 				&& !use_cscope
+! # endif
+! 				)
+  	    {
+  		is_etag = 1;		/* in case at the start */
+  		state = TS_LINEAR;
+*** ../vim-8.0.0216/src/version.c	2017-01-22 15:56:21.692532206 +0100
+--- src/version.c	2017-01-22 16:11:51.294635029 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     217,
+  /**/
+
+-- 
+Luxury. We used to have to get out of the lake at three o'clock in the 
+morning, clean the lake, eat a handful of hot gravel, go to work at the 
+mill every day for tuppence a month, come home, and Dad would beat us 
+around the head and neck with a broken bottle, if we were LUCKY!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

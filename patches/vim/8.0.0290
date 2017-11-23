@@ -1,0 +1,74 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0290
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0290
+Problem:    If a wide character doesn't fit at the end of the screen line, and
+            the line doesn't fit on the screen, then the cursor position may
+            be wrong. (anliting)
+Solution:   Don't skip over wide character. (Christian Brabandt, closes #1408)
+Files:      src/screen.c
+
+
+*** ../vim-8.0.0289/src/screen.c	2017-02-01 18:37:08.817093810 +0100
+--- src/screen.c	2017-02-01 21:17:52.625323188 +0100
+***************
+*** 2903,2909 ****
+      int		endrow,
+      int		nochange UNUSED)	/* not updating for changed text */
+  {
+!     int		col;			/* visual column on screen */
+      unsigned	off;			/* offset in ScreenLines/ScreenAttrs */
+      int		c = 0;			/* init for GCC */
+      long	vcol = 0;		/* virtual column (for tabs) */
+--- 2903,2909 ----
+      int		endrow,
+      int		nochange UNUSED)	/* not updating for changed text */
+  {
+!     int		col = 0;		/* visual column on screen */
+      unsigned	off;			/* offset in ScreenLines/ScreenAttrs */
+      int		c = 0;			/* init for GCC */
+      long	vcol = 0;		/* virtual column (for tabs) */
+***************
+*** 3429,3435 ****
+  #else
+  	    --ptr;
+  #endif
+! 	    n_skip = v - vcol;
+  	}
+  
+  	/*
+--- 3429,3439 ----
+  #else
+  	    --ptr;
+  #endif
+! #ifdef FEAT_MBYTE
+!            /* character fits on the screen, don't need to skip it */
+!            if ((*mb_ptr2cells)(ptr) >= c && col == 0)
+! #endif
+! 	       n_skip = v - vcol;
+  	}
+  
+  	/*
+*** ../vim-8.0.0289/src/version.c	2017-02-01 20:53:18.659092738 +0100
+--- src/version.c	2017-02-01 21:21:35.671846143 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     290,
+  /**/
+
+-- 
+I bought a book on hair loss, but the pages kept falling out.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

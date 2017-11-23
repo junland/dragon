@@ -1,0 +1,63 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0146
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0146
+Problem:    When using 'termguicolors' on MS-Windows the RGB definition causes
+            the colors to be wrong.
+Solution:   Undefined RGB and use our own. (Gabriel Barta)
+Files:      src/term.c
+
+
+*** ../vim-8.0.0145/src/term.c	2016-08-29 22:42:20.000000000 +0200
+--- src/term.c	2017-01-06 18:12:36.362031160 +0100
+***************
+*** 6069,6076 ****
+      guicolor_T
+  gui_get_color_cmn(char_u *name)
+  {
+!     /* On MS-Windows an RGB macro is available and it's different from ours,
+!      * but does what is needed. */
+  # ifndef RGB
+  #  define RGB(r, g, b)	((r<<16) | (g<<8) | (b))
+  # endif
+--- 6069,6080 ----
+      guicolor_T
+  gui_get_color_cmn(char_u *name)
+  {
+!     /* On MS-Windows an RGB macro is available and it produces 0x00bbggrr color
+!      * values as used by the MS-Windows GDI api.  It should be used only for
+!      * MS-Windows GDI builds. */
+! # if defined(RGB) && defined(WIN32) && !defined(FEAT_GUI)
+! #  undef RGB
+! # endif
+  # ifndef RGB
+  #  define RGB(r, g, b)	((r<<16) | (g<<8) | (b))
+  # endif
+*** ../vim-8.0.0145/src/version.c	2017-01-06 17:59:54.739385570 +0100
+--- src/version.c	2017-01-06 18:14:50.405089487 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     146,
+  /**/
+
+-- 
+Some of the well known MS-Windows errors:
+	ETIME		Wrong time, wait a little while
+	ECRASH		Try again...
+	EDETECT		Unable to detect errors
+	EOVER		You lost!  Play another game?
+	ENOCLUE		Eh, what did you want?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,109 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0917
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0917
+Problem:    MS-Windows:CTRL-C handling in terminal window is wrong
+Solution:   Pass CTRL-C as a key. Turn CTRL-BREAK into a key stroke. (Yasuhiro
+            Matsumoto, closes #1965)
+Files:      src/os_win32.c, src/terminal.c
+
+
+*** ../vim-8.0.0916/src/os_win32.c	2017-08-12 14:52:11.739135421 +0200
+--- src/os_win32.c	2017-08-12 16:37:49.225894690 +0200
+***************
+*** 3741,3746 ****
+--- 3741,3749 ----
+  handler_routine(
+      DWORD dwCtrlType)
+  {
++     INPUT_RECORD ir;
++     DWORD out;
++ 
+      switch (dwCtrlType)
+      {
+      case CTRL_C_EVENT:
+***************
+*** 3750,3755 ****
+--- 3753,3768 ----
+  
+      case CTRL_BREAK_EVENT:
+  	g_fCBrkPressed	= TRUE;
++ 	ctrl_break_was_pressed = TRUE;
++ 	/* ReadConsoleInput is blocking, send a key event to continue. */
++ 	ir.EventType = KEY_EVENT;
++ 	ir.Event.KeyEvent.bKeyDown = TRUE;
++ 	ir.Event.KeyEvent.wRepeatCount = 1;
++ 	ir.Event.KeyEvent.wVirtualKeyCode = VK_CANCEL;
++ 	ir.Event.KeyEvent.wVirtualScanCode = 0;
++ 	ir.Event.KeyEvent.dwControlKeyState = 0;
++ 	ir.Event.KeyEvent.uChar.UnicodeChar = 0;
++ 	WriteConsoleInput(g_hConIn, &ir, 1, &out);
+  	return TRUE;
+  
+      /* fatal events: shut down gracefully */
+*** ../vim-8.0.0916/src/terminal.c	2017-08-12 16:01:00.686997023 +0200
+--- src/terminal.c	2017-08-12 16:38:18.789717164 +0200
+***************
+*** 1207,1218 ****
+  	may_send_sigint(c, curbuf->b_term->tl_job->jv_pid, 0);
+  #endif
+  #ifdef WIN3264
+! 	/* On Windows we do not know whether the job can handle CTRL-C itself
+! 	 * or not.  Therefore CTRL-C only sends a CTRL_C_EVENT to avoid killing
+! 	 * the shell instead of a command running in the shell.
+  	 * Use CTRL-BREAK to kill the job. */
+- 	if (c == Ctrl_C)
+- 	    mch_signal_job(curbuf->b_term->tl_job, (char_u *)"int");
+  	if (ctrl_break_was_pressed)
+  	    mch_signal_job(curbuf->b_term->tl_job, (char_u *)"kill");
+  #endif
+--- 1207,1214 ----
+  	may_send_sigint(c, curbuf->b_term->tl_job->jv_pid, 0);
+  #endif
+  #ifdef WIN3264
+! 	/* On Windows winpty handles CTRL-C, don't send a CTRL_C_EVENT.
+  	 * Use CTRL-BREAK to kill the job. */
+  	if (ctrl_break_was_pressed)
+  	    mch_signal_job(curbuf->b_term->tl_job, (char_u *)"kill");
+  #endif
+***************
+*** 1544,1550 ****
+  		    ch_log(NULL, "terminal job finished, opening window");
+  		    vim_snprintf(buf, sizeof(buf),
+  			    term->tl_opencmd == NULL
+! 				? "botright sbuf %d" : term->tl_opencmd, fnum);
+  		    do_cmdline_cmd((char_u *)buf);
+  		}
+  		else
+--- 1540,1547 ----
+  		    ch_log(NULL, "terminal job finished, opening window");
+  		    vim_snprintf(buf, sizeof(buf),
+  			    term->tl_opencmd == NULL
+! 				    ? "botright sbuf %d"
+! 				    : (char *)term->tl_opencmd, fnum);
+  		    do_cmdline_cmd((char_u *)buf);
+  		}
+  		else
+*** ../vim-8.0.0916/src/version.c	2017-08-12 16:01:00.690997000 +0200
+--- src/version.c	2017-08-12 16:35:49.086616430 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     917,
+  /**/
+
+-- 
+My Go, this amn keyboar oesn't have a .
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

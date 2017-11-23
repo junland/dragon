@@ -1,0 +1,428 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0684
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0684
+Problem:    Old style tests are not nice.
+Solution:   Turn two tests into new style. (pschuh, closes #1797)
+Files:      src/Makefile, src/testdir/Make_all.mak, src/testdir/Make_vms.mms,
+            src/testdir/test82.in, src/testdir/test82.ok,
+            src/testdir/test90.in, src/testdir/test90.ok,
+            src/testdir/test_sha256.vim, src/testdir/test_utf8_comparisons.vim
+
+
+*** ../vim-8.0.0683/src/Makefile	2017-06-22 21:42:43.790885065 +0200
+--- src/Makefile	2017-06-27 18:16:04.992108486 +0200
+***************
+*** 2089,2096 ****
+  	test50 test51 test52 test53 test54 test55 test56 test57 test59 \
+  	test60 test64 test66 test67 test68 test69 \
+  	test70 test72 test73 test74 test75 test77 test78 test79 \
+! 	test80 test82 test83 test84 test85 test86 test87 test88 \
+! 	test90 test91 test94 test95 test97 test98 test99 \
+  	test100 test101 test103 test104 test107 test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+--- 2089,2096 ----
+  	test50 test51 test52 test53 test54 test55 test56 test57 test59 \
+  	test60 test64 test66 test67 test68 test69 \
+  	test70 test72 test73 test74 test75 test77 test78 test79 \
+! 	test80 test83 test84 test85 test86 test87 test88 \
+! 	test91 test94 test95 test97 test98 test99 \
+  	test100 test101 test103 test104 test107 test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+***************
+*** 2207,2212 ****
+--- 2207,2213 ----
+  	test_search \
+  	test_searchpos \
+  	test_set \
++ 	test_sha256 \
+  	test_signs \
+  	test_smartindent \
+  	test_sort \
+***************
+*** 2233,2238 ****
+--- 2234,2240 ----
+  	test_unlet \
+  	test_usercommands \
+  	test_utf8 \
++ 	test_utf8_comparisons \
+  	test_viminfo \
+  	test_vimscript \
+  	test_visual \
+*** ../vim-8.0.0683/src/testdir/Make_all.mak	2017-06-22 21:42:43.790885065 +0200
+--- src/testdir/Make_all.mak	2017-06-27 18:16:04.992108486 +0200
+***************
+*** 60,69 ****
+  	test77.out \
+  	test79.out \
+  	test80.out \
+- 	test82.out \
+  	test84.out \
+  	test88.out \
+- 	test90.out \
+  	test91.out \
+  	test94.out \
+  	test95.out \
+--- 60,67 ----
+*** ../vim-8.0.0683/src/testdir/Make_vms.mms	2017-06-22 21:42:43.790885065 +0200
+--- src/testdir/Make_vms.mms	2017-06-27 18:16:04.992108486 +0200
+***************
+*** 91,98 ****
+         test66.out test67.out test68.out test69.out \
+         test72.out test75.out \
+         test77a.out test78.out test79.out test80.out \
+!        test82.out test84.out test88.out \
+!        test90.out test91.out test94.out \
+         test95.out test98.out test99.out \
+         test103.out test104.out \
+         test107.out test108.out\
+--- 91,98 ----
+         test66.out test67.out test68.out test69.out \
+         test72.out test75.out \
+         test77a.out test78.out test79.out test80.out \
+!        test84.out test88.out \
+!        test91.out test94.out \
+         test95.out test98.out test99.out \
+         test103.out test104.out \
+         test107.out test108.out\
+*** ../vim-8.0.0683/src/testdir/test82.in	2015-08-11 18:30:19.000000000 +0200
+--- src/testdir/test82.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,103 ****
+- Tests for case-insensitive UTF-8 comparisons (utf_strnicmp() in mbyte.c)
+- Also test "g~ap".
+- 
+- STARTTEST
+- :so small.vim
+- :if !has("multi_byte")
+- : e! test.ok
+- : w! test.out
+- : qa!
+- :endif
+- :set enc=utf8
+- ggdG:
+- :
+- :function! Ch(a, op, b, expected)
+- :  if eval(printf('"%s" %s "%s"', a:a, a:op, a:b)) != a:expected
+- :    call append(line('$'), printf('"%s" %s "%s" should return %d', a:a, a:op, a:b, a:expected))
+- :  else
+- :    let b:passed += 1
+- :  endif
+- :endfunction
+- :
+- :function! Chk(a, b, result)
+- :  if a:result == 0
+- :    call Ch(a:a, '==?', a:b, 1)
+- :    call Ch(a:a, '!=?', a:b, 0)
+- :    call Ch(a:a, '<=?', a:b, 1)
+- :    call Ch(a:a, '>=?', a:b, 1)
+- :    call Ch(a:a, '<?', a:b, 0)
+- :    call Ch(a:a, '>?', a:b, 0)
+- :  elseif a:result > 0
+- :    call Ch(a:a, '==?', a:b, 0)
+- :    call Ch(a:a, '!=?', a:b, 1)
+- :    call Ch(a:a, '<=?', a:b, 0)
+- :    call Ch(a:a, '>=?', a:b, 1)
+- :    call Ch(a:a, '<?', a:b, 0)
+- :    call Ch(a:a, '>?', a:b, 1)
+- :  else
+- :    call Ch(a:a, '==?', a:b, 0)
+- :    call Ch(a:a, '!=?', a:b, 1)
+- :    call Ch(a:a, '<=?', a:b, 1)
+- :    call Ch(a:a, '>=?', a:b, 0)
+- :    call Ch(a:a, '<?', a:b, 1)
+- :    call Ch(a:a, '>?', a:b, 0)
+- :  endif
+- :endfunction
+- :
+- :function! Check(a, b, result)
+- :  call Chk(a:a, a:b, a:result)
+- :  call Chk(a:b, a:a, -a:result)
+- :endfunction
+- :
+- :function! LT(a, b)
+- :  call Check(a:a, a:b, -1)
+- :endfunction
+- :
+- :function! GT(a, b)
+- :  call Check(a:a, a:b, 1)
+- :endfunction
+- :
+- :function! EQ(a, b)
+- :  call Check(a:a, a:b, 0)
+- :endfunction
+- :
+- :let b:passed=0
+- :call EQ('', '')
+- :call LT('', 'a')
+- :call EQ('abc', 'abc')
+- :call EQ('Abc', 'abC')
+- :call LT('ab', 'abc')
+- :call LT('AB', 'abc')
+- :call LT('ab', 'aBc')
+- :call EQ('\xd0\xb9\xd1\x86\xd1\x83\xd0\xba\xd0\xb5\xd0\xbd', '\xd0\xb9\xd0\xa6\xd0\xa3\xd0\xba\xd0\x95\xd0\xbd')
+- :call LT('\xd0\xb9\xd1\x86\xd1\x83\xd0\xba\xd0\xb5\xd0\xbd', '\xd0\xaf\xd1\x86\xd1\x83\xd0\xba\xd0\xb5\xd0\xbd')
+- :call EQ('\xe2\x84\xaa', 'k')
+- :call LT('\xe2\x84\xaa', 'kkkkkk')
+- :call EQ('\xe2\x84\xaa\xe2\x84\xaa\xe2\x84\xaa', 'kkk')
+- :call LT('kk', '\xe2\x84\xaa\xe2\x84\xaa\xe2\x84\xaa')
+- :call EQ('\xe2\x84\xaa\xe2\x84\xa6k\xe2\x84\xaak\xcf\x89', 'k\xcf\x89\xe2\x84\xaakk\xe2\x84\xa6')
+- :call EQ('Abc\x80', 'AbC\x80')
+- :call LT('Abc\x80', 'AbC\x81')
+- :call LT('Abc', 'AbC\x80')
+- :call LT('abc\x80DEF', 'abc\x80def')  " case folding stops at the first bad character
+- :call LT('\xc3XYZ', '\xc3xyz')
+- :call EQ('\xef\xbc\xba', '\xef\xbd\x9a')  " FF3A (upper), FF5A (lower)
+- :call GT('\xef\xbc\xba', '\xef\xbc\xff')  " first string is ok and equals \xef\xbd\x9a after folding, second string is illegal and was left unchanged, then the strings were bytewise compared
+- :call LT('\xc3', '\xc3\x83')
+- :call EQ('\xc3\xa3xYz', '\xc3\x83XyZ')
+- :for n in range(0x60, 0xFF) | call LT(printf('xYz\x%.2X', n-1), printf('XyZ\x%.2X', n)) | endfor
+- :for n in range(0x80, 0xBF) | call EQ(printf('xYz\xc2\x%.2XUvW', n), printf('XyZ\xc2\x%.2XuVw', n)) | endfor
+- :for n in range(0xC0, 0xFF) | call LT(printf('xYz\xc2\x%.2XUvW', n), printf('XyZ\xc2\x%.2XuVw', n)) | endfor
+- :call append(0, printf('%d checks passed', b:passed))
+- :"
+- :" test that g~ap changes one paragraph only.
+- :new
+- iabcd
+- 
+- defggg0g~ap:let lns = getline(1,3)
+- :q!
+- :call append(line('$'), lns)
+- :"
+- :wq! test.out
+- ENDTEST
+- 
+--- 0 ----
+*** ../vim-8.0.0683/src/testdir/test82.ok	2013-08-09 19:33:24.000000000 +0200
+--- src/testdir/test82.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,5 ****
+- 3732 checks passed
+- 
+- ABCD
+- 
+- defg
+--- 0 ----
+*** ../vim-8.0.0683/src/testdir/test90.in	2015-08-11 18:30:19.000000000 +0200
+--- src/testdir/test90.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,53 ****
+- Tests for sha256() function.    vim: set ft=vim et ts=2 sw=2 :
+- 
+- STARTTEST
+- :so small.vim
+- :if !has('cryptv') || !exists('*sha256')
+-    e! test.ok
+-    wq! test.out
+- :endif
+- :"
+- :let testcase='test for empty string: '
+- :if sha256("") ==# 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+- : let res='ok'
+- :else
+- : let res='ng'
+- :endif
+- :$put =testcase.res
+- :"
+- :let testcase='test for 1 char: '
+- :if sha256("a") ==# 'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb'
+- : let res='ok'
+- :else
+- : let res='ng'
+- :endif
+- :$put =testcase.res
+- :"
+- :let testcase='test for 3 chars: '
+- :if sha256("abc") ==# 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
+- : let res='ok'
+- :else
+- : let res='ng'
+- :endif
+- :$put =testcase.res
+- :"
+- :let testcase='test for contains meta char: '
+- :if sha256("foo\nbar") ==# '807eff6267f3f926a21d234f7b0cf867a86f47e07a532f15e8cc39ed110ca776'
+- : let res='ok'
+- :else
+- : let res='ng'
+- :endif
+- :$put =testcase.res
+- :"
+- :let testcase='test for contains non-ascii char: '
+- :if sha256("\xde\xad\xbe\xef") ==# '5f78c33274e43fa9de5659265c1d917e25c03722dcb0b8d27db8d5feaa813953'
+- : let res='ok'
+- :else
+- : let res='ng'
+- :endif
+- :$put =testcase.res
+- :"
+- :/^start:/,$wq! test.out
+- ENDTEST
+- 
+- start:
+--- 0 ----
+*** ../vim-8.0.0683/src/testdir/test90.ok	2013-02-13 17:20:36.000000000 +0100
+--- src/testdir/test90.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,6 ****
+- start:
+- test for empty string: ok
+- test for 1 char: ok
+- test for 3 chars: ok
+- test for contains meta char: ok
+- test for contains non-ascii char: ok
+--- 0 ----
+*** ../vim-8.0.0683/src/testdir/test_sha256.vim	2017-06-27 18:28:24.082415741 +0200
+--- src/testdir/test_sha256.vim	2017-06-27 18:18:14.563109880 +0200
+***************
+*** 0 ****
+--- 1,22 ----
++ " Tests for the sha256() function.
++ 
++ if !has('cryptv') || !exists('*sha256')
++   finish
++ endif
++ 
++ function Test_sha256()
++   " test for empty string:
++   call assert_equal(sha256(""), 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')
++ 
++   "'test for 1 char:
++   call assert_equal(sha256("a"), 'ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb')
++   "
++   "test for 3 chars:
++   call assert_equal(sha256("abc"), 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
++ 
++   " test for contains meta char:
++   call assert_equal(sha256("foo\nbar"), '807eff6267f3f926a21d234f7b0cf867a86f47e07a532f15e8cc39ed110ca776')
++ 
++   " test for contains non-ascii char:
++   call assert_equal(sha256("\xde\xad\xbe\xef"), '5f78c33274e43fa9de5659265c1d917e25c03722dcb0b8d27db8d5feaa813953')
++ endfunction
+*** ../vim-8.0.0683/src/testdir/test_utf8_comparisons.vim	2017-06-27 18:28:24.086415710 +0200
+--- src/testdir/test_utf8_comparisons.vim	2017-06-27 18:20:28.674076140 +0200
+***************
+*** 0 ****
+--- 1,95 ----
++ " Tests for case-insensitive UTF-8 comparisons (utf_strnicmp() in mbyte.c)
++ " Also test "g~ap".
++ 
++ if !has("multi_byte")
++   finish
++ endif
++ 
++ function! Ch(a, op, b, expected)
++   call assert_equal(eval(printf('"%s" %s "%s"', a:a, a:op, a:b)), a:expected,
++         \ printf('"%s" %s "%s" should return %d', a:a, a:op, a:b, a:expected))
++ endfunction
++ 
++ function! Chk(a, b, result)
++   if a:result == 0
++     call Ch(a:a, '==?', a:b, 1)
++     call Ch(a:a, '!=?', a:b, 0)
++     call Ch(a:a, '<=?', a:b, 1)
++     call Ch(a:a, '>=?', a:b, 1)
++     call Ch(a:a, '<?', a:b, 0)
++     call Ch(a:a, '>?', a:b, 0)
++   elseif a:result > 0
++     call Ch(a:a, '==?', a:b, 0)
++     call Ch(a:a, '!=?', a:b, 1)
++     call Ch(a:a, '<=?', a:b, 0)
++     call Ch(a:a, '>=?', a:b, 1)
++     call Ch(a:a, '<?', a:b, 0)
++     call Ch(a:a, '>?', a:b, 1)
++   else
++     call Ch(a:a, '==?', a:b, 0)
++     call Ch(a:a, '!=?', a:b, 1)
++     call Ch(a:a, '<=?', a:b, 1)
++     call Ch(a:a, '>=?', a:b, 0)
++     call Ch(a:a, '<?', a:b, 1)
++     call Ch(a:a, '>?', a:b, 0)
++   endif
++ endfunction
++ 
++ function! Check(a, b, result)
++   call Chk(a:a, a:b, a:result)
++   call Chk(a:b, a:a, -a:result)
++ endfunction
++ 
++ function! LT(a, b)
++   call Check(a:a, a:b, -1)
++ endfunction
++ 
++ function! GT(a, b)
++   call Check(a:a, a:b, 1)
++ endfunction
++ 
++ function! EQ(a, b)
++   call Check(a:a, a:b, 0)
++ endfunction
++ 
++ function Test_comparisons()
++   call EQ('', '')
++   call LT('', 'a')
++   call EQ('abc', 'abc')
++   call EQ('Abc', 'abC')
++   call LT('ab', 'abc')
++   call LT('AB', 'abc')
++   call LT('ab', 'aBc')
++   call EQ('\xd0\xb9\xd1\x86\xd1\x83\xd0\xba\xd0\xb5\xd0\xbd', '\xd0\xb9\xd0\xa6\xd0\xa3\xd0\xba\xd0\x95\xd0\xbd')
++   call LT('\xd0\xb9\xd1\x86\xd1\x83\xd0\xba\xd0\xb5\xd0\xbd', '\xd0\xaf\xd1\x86\xd1\x83\xd0\xba\xd0\xb5\xd0\xbd')
++   call EQ('\xe2\x84\xaa', 'k')
++   call LT('\xe2\x84\xaa', 'kkkkkk')
++   call EQ('\xe2\x84\xaa\xe2\x84\xaa\xe2\x84\xaa', 'kkk')
++   call LT('kk', '\xe2\x84\xaa\xe2\x84\xaa\xe2\x84\xaa')
++   call EQ('\xe2\x84\xaa\xe2\x84\xa6k\xe2\x84\xaak\xcf\x89', 'k\xcf\x89\xe2\x84\xaakk\xe2\x84\xa6')
++   call EQ('Abc\x80', 'AbC\x80')
++   call LT('Abc\x80', 'AbC\x81')
++   call LT('Abc', 'AbC\x80')
++   call LT('abc\x80DEF', 'abc\x80def')  " case folding stops at the first bad character
++   call LT('\xc3XYZ', '\xc3xyz')
++   call EQ('\xef\xbc\xba', '\xef\xbd\x9a')  " FF3A (upper), FF5A (lower)
++   call GT('\xef\xbc\xba', '\xef\xbc\xff')  " first string is ok and equals \xef\xbd\x9a after folding, second string is illegal and was left unchanged, then the strings were bytewise compared
++   call LT('\xc3', '\xc3\x83')
++   call EQ('\xc3\xa3xYz', '\xc3\x83XyZ')
++   for n in range(0x60, 0xFF)
++     call LT(printf('xYz\x%.2X', n-1), printf('XyZ\x%.2X', n))
++   endfor
++   for n in range(0x80, 0xBF)
++     call EQ(printf('xYz\xc2\x%.2XUvW', n), printf('XyZ\xc2\x%.2XuVw', n))
++   endfor
++   for n in range(0xC0, 0xFF)
++     call LT(printf('xYz\xc2\x%.2XUvW', n), printf('XyZ\xc2\x%.2XuVw', n))
++   endfor
++ endfunction
++ 
++ " test that g~ap changes one paragraph only.
++ function Test_gap()
++   new
++   call feedkeys("iabcd\n\ndefggg0g~ap", "tx")
++   call assert_equal(["ABCD", "", "defg"], getline(1,3))
++ endfunction
+*** ../vim-8.0.0683/src/version.c	2017-06-27 17:09:33.926938934 +0200
+--- src/version.c	2017-06-27 18:17:22.427511707 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     684,
+  /**/
+
+
+-- 
+From "know your smileys":
+ :-{}	Too much lipstick
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,191 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0513
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0513 (after 8.0.0201)
+Problem:    Getting name of cleared highlight group is wrong. (Matt Wozniski)
+Solution:   Only skip over cleared names for completion. (closes #1592)
+            Also fix that a cleared group causes duplicate completions.
+Files:      src/syntax.c, src/proto/syntax.pro, src/evalfunc.c,
+            src/ex_cmds.c, src/testdir/test_syntax.vim,
+            src/testdir/test_cmdline.vim
+
+
+*** ../vim-8.0.0512/src/syntax.c	2017-03-18 21:37:23.865273985 +0100
+--- src/syntax.c	2017-03-26 13:39:29.389387004 +0200
+***************
+*** 9949,9965 ****
+      || defined(FEAT_SIGNS) || defined(PROTO)
+  /*
+   * Function given to ExpandGeneric() to obtain the list of group names.
+-  * Also used for synIDattr() function.
+   */
+      char_u *
+  get_highlight_name(expand_T *xp UNUSED, int idx)
+  {
+      if (idx < 0)
+  	return NULL;
+!     /* Items are never removed from the table, skip the ones that were cleared.
+!      */
+!     while (idx < highlight_ga.ga_len && HL_TABLE()[idx].sg_cleared)
+! 	++idx;
+  
+  #ifdef FEAT_CMDL_COMPL
+      if (idx == highlight_ga.ga_len && include_none != 0)
+--- 9949,9975 ----
+      || defined(FEAT_SIGNS) || defined(PROTO)
+  /*
+   * Function given to ExpandGeneric() to obtain the list of group names.
+   */
+      char_u *
+  get_highlight_name(expand_T *xp UNUSED, int idx)
+  {
++     return get_highlight_name_ext(xp, idx, TRUE);
++ }
++ 
++ /*
++  * Obtain a highlight group name.
++  * When "skip_cleared" is TRUE don't return a cleared entry.
++  */
++     char_u *
++ get_highlight_name_ext(expand_T *xp UNUSED, int idx, int skip_cleared)
++ {
+      if (idx < 0)
+  	return NULL;
+! 
+!     /* Items are never removed from the table, skip the ones that were
+!      * cleared. */
+!     if (skip_cleared && idx < highlight_ga.ga_len && HL_TABLE()[idx].sg_cleared)
+! 	return (char_u *)"";
+  
+  #ifdef FEAT_CMDL_COMPL
+      if (idx == highlight_ga.ga_len && include_none != 0)
+*** ../vim-8.0.0512/src/proto/syntax.pro	2016-09-12 13:04:20.000000000 +0200
+--- src/proto/syntax.pro	2017-03-26 13:36:05.610812928 +0200
+***************
+*** 52,56 ****
+--- 52,57 ----
+  int highlight_changed(void);
+  void set_context_in_highlight_cmd(expand_T *xp, char_u *arg);
+  char_u *get_highlight_name(expand_T *xp, int idx);
++ char_u *get_highlight_name_ext(expand_T *xp, int idx, int skip_cleared);
+  void free_highlight_fonts(void);
+  /* vim: set ft=c : */
+*** ../vim-8.0.0512/src/evalfunc.c	2017-03-21 17:08:46.678923883 +0100
+--- src/evalfunc.c	2017-03-26 13:35:21.707120035 +0200
+***************
+*** 11746,11752 ****
+  		break;
+  
+  	case 'n':					/* name */
+! 		p = get_highlight_name(NULL, id - 1);
+  		break;
+  
+  	case 'r':					/* reverse */
+--- 11746,11752 ----
+  		break;
+  
+  	case 'n':					/* name */
+! 		p = get_highlight_name_ext(NULL, id - 1, FALSE);
+  		break;
+  
+  	case 'r':					/* reverse */
+*** ../vim-8.0.0512/src/ex_cmds.c	2017-03-16 17:23:26.815815927 +0100
+--- src/ex_cmds.c	2017-03-26 13:35:28.495072555 +0200
+***************
+*** 7962,7968 ****
+      if (sp->sn_line_hl > 0)
+      {
+  	MSG_PUTS(" linehl=");
+! 	p = get_highlight_name(NULL, sp->sn_line_hl - 1);
+  	if (p == NULL)
+  	    MSG_PUTS("NONE");
+  	else
+--- 7962,7968 ----
+      if (sp->sn_line_hl > 0)
+      {
+  	MSG_PUTS(" linehl=");
+! 	p = get_highlight_name_ext(NULL, sp->sn_line_hl - 1, FALSE);
+  	if (p == NULL)
+  	    MSG_PUTS("NONE");
+  	else
+***************
+*** 7971,7977 ****
+      if (sp->sn_text_hl > 0)
+      {
+  	MSG_PUTS(" texthl=");
+! 	p = get_highlight_name(NULL, sp->sn_text_hl - 1);
+  	if (p == NULL)
+  	    MSG_PUTS("NONE");
+  	else
+--- 7971,7977 ----
+      if (sp->sn_text_hl > 0)
+      {
+  	MSG_PUTS(" texthl=");
+! 	p = get_highlight_name_ext(NULL, sp->sn_text_hl - 1, FALSE);
+  	if (p == NULL)
+  	    MSG_PUTS("NONE");
+  	else
+*** ../vim-8.0.0512/src/testdir/test_syntax.vim	2017-01-17 18:14:50.666847164 +0100
+--- src/testdir/test_syntax.vim	2017-03-26 13:28:32.021983864 +0200
+***************
+*** 326,338 ****
+--- 326,341 ----
+    syntax keyword Bar tar
+    call assert_match('Foo', execute('syntax'))
+    call assert_match('Bar', execute('syntax'))
++   call assert_equal('Foo', synIDattr(hlID("Foo"), "name"))
+    syn clear Foo
+    call assert_notmatch('Foo', execute('syntax'))
+    call assert_match('Bar', execute('syntax'))
++   call assert_equal('Foo', synIDattr(hlID("Foo"), "name"))
+    syn clear Foo Bar
+    call assert_notmatch('Foo', execute('syntax'))
+    call assert_notmatch('Bar', execute('syntax'))
+    hi clear Foo
++   call assert_equal('Foo', synIDattr(hlID("Foo"), "name"))
+    hi clear Bar
+  endfunc
+  
+*** ../vim-8.0.0512/src/testdir/test_cmdline.vim	2017-03-08 22:55:14.914181221 +0100
+--- src/testdir/test_cmdline.vim	2017-03-26 13:46:08.250580277 +0200
+***************
+*** 71,76 ****
+--- 71,84 ----
+    call assert_equal('"hi default', getreg(':'))
+    call feedkeys(":hi c\<S-Tab>\<Home>\"\<CR>", 'xt')
+    call assert_equal('"hi clear', getreg(':'))
++ 
++   " A cleared group does not show up in completions.
++   hi Anders ctermfg=green
++   call assert_equal(['Aardig', 'Anders'], getcompletion('A', 'highlight'))
++   hi clear Aardig
++   call assert_equal(['Anders'], getcompletion('A', 'highlight'))
++   hi clear Anders
++   call assert_equal([], getcompletion('A', 'highlight'))
+  endfunc
+  
+  func Test_expr_completion()
+*** ../vim-8.0.0512/src/version.c	2017-03-25 20:16:23.656639924 +0100
+--- src/version.c	2017-03-26 13:30:01.601357981 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     513,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+216. Your pet rock leaves home.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

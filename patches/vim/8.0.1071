@@ -1,0 +1,89 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1071
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1071
+Problem:    $TERM names starting with "putty" and "cygwin" are likely to have
+            a dark background, but are not recognized.
+Solution:   Only check the first few characters of $TERM to match "putty" or
+            "cygwin". (Christian Brabandt)
+Files:      src/option.c
+
+
+*** ../vim-8.0.1070/src/option.c	2017-09-02 18:33:52.453554469 +0200
+--- src/option.c	2017-09-07 22:37:23.295474873 +0200
+***************
+*** 4024,4031 ****
+   * This is just guessing!  Recognized are:
+   * "linux"	    Linux console
+   * "screen.linux"   Linux console with screen
+!  * "cygwin"	    Cygwin shell
+!  * "putty"	    Putty program
+   * We also check the COLORFGBG environment variable, which is set by
+   * rxvt and derivatives. This variable contains either two or three
+   * values separated by semicolons; we want the last value in either
+--- 4024,4031 ----
+   * This is just guessing!  Recognized are:
+   * "linux"	    Linux console
+   * "screen.linux"   Linux console with screen
+!  * "cygwin.*"	    Cygwin shell
+!  * "putty.*"	    Putty program
+   * We also check the COLORFGBG environment variable, which is set by
+   * rxvt and derivatives. This variable contains either two or three
+   * values separated by semicolons; we want the last value in either
+***************
+*** 4035,4049 ****
+  term_bg_default(void)
+  {
+  #if defined(WIN3264)
+!     /* DOS console nearly always black */
+      return (char_u *)"dark";
+  #else
+      char_u	*p;
+  
+      if (STRCMP(T_NAME, "linux") == 0
+  	    || STRCMP(T_NAME, "screen.linux") == 0
+! 	    || STRCMP(T_NAME, "cygwin") == 0
+! 	    || STRCMP(T_NAME, "putty") == 0
+  	    || ((p = mch_getenv((char_u *)"COLORFGBG")) != NULL
+  		&& (p = vim_strrchr(p, ';')) != NULL
+  		&& ((p[1] >= '0' && p[1] <= '6') || p[1] == '8')
+--- 4035,4049 ----
+  term_bg_default(void)
+  {
+  #if defined(WIN3264)
+!     /* DOS console is nearly always black */
+      return (char_u *)"dark";
+  #else
+      char_u	*p;
+  
+      if (STRCMP(T_NAME, "linux") == 0
+  	    || STRCMP(T_NAME, "screen.linux") == 0
+! 	    || STRNCMP(T_NAME, "cygwin", 6) == 0
+! 	    || STRNCMP(T_NAME, "putty", 5) == 0
+  	    || ((p = mch_getenv((char_u *)"COLORFGBG")) != NULL
+  		&& (p = vim_strrchr(p, ';')) != NULL
+  		&& ((p[1] >= '0' && p[1] <= '6') || p[1] == '8')
+*** ../vim-8.0.1070/src/version.c	2017-09-07 22:24:37.372486913 +0200
+--- src/version.c	2017-09-07 22:36:04.779993764 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1071,
+  /**/
+
+-- 
+From "know your smileys":
+ (:-#	Said something he shouldn't have
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

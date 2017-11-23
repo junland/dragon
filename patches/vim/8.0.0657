@@ -1,0 +1,422 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0657
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0657
+Problem:    Cannot get and set quickfix list items.
+Solution:   Add the "items" argument to getqflist() and setqflist(). (Yegappan
+            Lakshmanan)
+Files:      runtime/doc/eval.txt, src/quickfix.c,
+            src/testdir/test_quickfix.vim
+
+
+*** ../vim-8.0.0656/runtime/doc/eval.txt	2017-06-22 19:11:45.015344791 +0200
+--- runtime/doc/eval.txt	2017-06-22 21:22:46.076559393 +0200
+***************
+*** 4585,4590 ****
+--- 4586,4592 ----
+  		returns only the items listed in {what} as a dictionary. The
+  		following string items are supported in {what}:
+  			context	get the context stored with |setqflist()|
++ 			items	quickfix list entries
+  			nr	get information for this quickfix list; zero
+  				means the current quickfix list and '$' means
+  				the last quickfix list
+***************
+*** 4601,4606 ****
+--- 4603,4609 ----
+  
+  		The returned dictionary contains the following entries:
+  			context	context information stored with |setqflist()|
++ 			items	quickfix list entries
+  			nr	quickfix list number
+  			title	quickfix list title text
+  			winid	quickfix |window-ID| (if opened)
+***************
+*** 6994,6999 ****
+--- 7000,7007 ----
+  		argument is ignored.  The following items can be specified in
+  		{what}:
+  		    context	any Vim type can be stored as a context
++ 		    items	list of quickfix entries. Same as the {list}
++ 				argument.
+  		    nr		list number in the quickfix stack; zero
+  				means the current quickfix list and '$' means
+  				the last quickfix list
+*** ../vim-8.0.0656/src/quickfix.c	2017-06-17 18:44:16.990001010 +0200
+--- src/quickfix.c	2017-06-22 21:22:46.076559393 +0200
+***************
+*** 47,65 ****
+   */
+  #define LISTCOUNT   10
+  
+  typedef struct qf_list_S
+  {
+      qfline_T	*qf_start;	/* pointer to the first error */
+      qfline_T	*qf_last;	/* pointer to the last error */
+      qfline_T	*qf_ptr;	/* pointer to the current error */
+!     int		qf_count;	/* number of errors (0 means no error list) */
+      int		qf_index;	/* current index in the error list */
+      int		qf_nonevalid;	/* TRUE if not a single valid entry found */
+      char_u	*qf_title;	/* title derived from the command that created
+! 				 * the error list */
+      typval_T	*qf_ctx;	/* context set by setqflist/setloclist */
+  } qf_list_T;
+  
+  struct qf_info_S
+  {
+      /*
+--- 47,78 ----
+   */
+  #define LISTCOUNT   10
+  
++ /*
++  * Quickfix/Location list definition
++  * Contains a list of entries (qfline_T). qf_start points to the first entry
++  * and qf_last points to the last entry. qf_count contains the list size.
++  *
++  * Usually the list contains one or more entries. But an empty list can be
++  * created using setqflist()/setloclist() with a title and/or user context
++  * information and entries can be added later using setqflist()/setloclist().
++  */
+  typedef struct qf_list_S
+  {
+      qfline_T	*qf_start;	/* pointer to the first error */
+      qfline_T	*qf_last;	/* pointer to the last error */
+      qfline_T	*qf_ptr;	/* pointer to the current error */
+!     int		qf_count;	/* number of errors (0 means empty list) */
+      int		qf_index;	/* current index in the error list */
+      int		qf_nonevalid;	/* TRUE if not a single valid entry found */
+      char_u	*qf_title;	/* title derived from the command that created
+! 				 * the error list or set by setqflist */
+      typval_T	*qf_ctx;	/* context set by setqflist/setloclist */
+  } qf_list_T;
+  
++ /*
++  * Quickfix/Location list stack definition
++  * Contains a list of quickfix/location lists (qf_list_T)
++  */
+  struct qf_info_S
+  {
+      /*
+***************
+*** 1347,1352 ****
+--- 1360,1368 ----
+      static void
+  qf_store_title(qf_info_T *qi, int qf_idx, char_u *title)
+  {
++     vim_free(qi->qf_lists[qf_idx].qf_title);
++     qi->qf_lists[qf_idx].qf_title = NULL;
++ 
+      if (title != NULL)
+      {
+  	char_u *p = alloc((int)STRLEN(title) + 2);
+***************
+*** 2735,2744 ****
+  }
+  
+  /*
+!  * Free all the entries in the error list "idx".
+   */
+      static void
+! qf_free(qf_info_T *qi, int idx)
+  {
+      qfline_T	*qfp;
+      qfline_T	*qfpnext;
+--- 2751,2761 ----
+  }
+  
+  /*
+!  * Free all the entries in the error list "idx". Note that other information
+!  * associated with the list like context and title are not freed.
+   */
+      static void
+! qf_free_items(qf_info_T *qi, int idx)
+  {
+      qfline_T	*qfp;
+      qfline_T	*qfpnext;
+***************
+*** 2763,2772 ****
+  	qi->qf_lists[idx].qf_start = qfpnext;
+  	--qi->qf_lists[idx].qf_count;
+      }
+!     vim_free(qi->qf_lists[idx].qf_title);
+!     qi->qf_lists[idx].qf_title = NULL;
+!     free_tv(qi->qf_lists[idx].qf_ctx);
+!     qi->qf_lists[idx].qf_ctx = NULL;
+      qi->qf_lists[idx].qf_index = 0;
+      qi->qf_lists[idx].qf_start = NULL;
+      qi->qf_lists[idx].qf_last = NULL;
+--- 2780,2786 ----
+  	qi->qf_lists[idx].qf_start = qfpnext;
+  	--qi->qf_lists[idx].qf_count;
+      }
+! 
+      qi->qf_lists[idx].qf_index = 0;
+      qi->qf_lists[idx].qf_start = NULL;
+      qi->qf_lists[idx].qf_last = NULL;
+***************
+*** 2783,2788 ****
+--- 2797,2817 ----
+  }
+  
+  /*
++  * Free error list "idx". Frees all the entries in the quickfix list,
++  * associated context information and the title.
++  */
++     static void
++ qf_free(qf_info_T *qi, int idx)
++ {
++     qf_free_items(qi, idx);
++ 
++     vim_free(qi->qf_lists[idx].qf_title);
++     qi->qf_lists[idx].qf_title = NULL;
++     free_tv(qi->qf_lists[idx].qf_ctx);
++     qi->qf_lists[idx].qf_ctx = NULL;
++ }
++ 
++ /*
+   * qf_mark_adjust: adjust marks
+   */
+     void
+***************
+*** 4698,4710 ****
+  	} else if ((di->di_tv.v_type == VAR_STRING) &&
+  		(STRCMP(di->di_tv.vval.v_string, "$") == 0))
+  	{
+! 	    {
+! 		/* Get the last quickfix list number */
+! 		if (qi->qf_listcount > 0)
+! 		    qf_idx = qi->qf_listcount - 1;
+! 		else
+! 		    qf_idx = -1;	/* Quickfix stack is empty */
+! 	    }
+  	    flags |= QF_GETLIST_NR;
+  	}
+  	else
+--- 4727,4737 ----
+  	} else if ((di->di_tv.v_type == VAR_STRING) &&
+  		(STRCMP(di->di_tv.vval.v_string, "$") == 0))
+  	{
+! 	    /* Get the last quickfix list number */
+! 	    if (qi->qf_listcount > 0)
+! 		qf_idx = qi->qf_listcount - 1;
+! 	    else
+! 		qf_idx = -1;	/* Quickfix stack is empty */
+  	    flags |= QF_GETLIST_NR;
+  	}
+  	else
+***************
+*** 4724,4729 ****
+--- 4751,4759 ----
+  
+  	if (dict_find(what, (char_u *)"context", -1) != NULL)
+  	    flags |= QF_GETLIST_CONTEXT;
++ 
++ 	if (dict_find(what, (char_u *)"items", -1) != NULL)
++ 	    flags |= QF_GETLIST_ITEMS;
+      }
+  
+      if (flags & QF_GETLIST_TITLE)
+***************
+*** 4743,4748 ****
+--- 4773,4787 ----
+  	if (win != NULL)
+  	    status = dict_add_nr_str(retdict, "winid", win->w_id, NULL);
+      }
++     if ((status == OK) && (flags & QF_GETLIST_ITEMS))
++     {
++ 	list_T	*l = list_alloc();
++ 	if (l != NULL)
++ 	{
++ 	    (void)get_errorlist(wp, qf_idx, l);
++ 	    dict_add_list(retdict, "items", l);
++ 	}
++     }
+  
+      if ((status == OK) && (flags & QF_GETLIST_CONTEXT))
+      {
+***************
+*** 4802,4808 ****
+  #endif
+      else if (action == 'r')
+      {
+! 	qf_free(qi, qf_idx);
+  	qf_store_title(qi, qf_idx, title);
+      }
+  
+--- 4841,4847 ----
+  #endif
+      else if (action == 'r')
+      {
+! 	qf_free_items(qi, qf_idx);
+  	qf_store_title(qi, qf_idx, title);
+      }
+  
+***************
+*** 4915,4929 ****
+  	    /* for zero use the current list */
+  	    if (di->di_tv.vval.v_number != 0)
+  		qf_idx = di->di_tv.vval.v_number - 1;
+! 	    if (qf_idx < 0 || qf_idx >= qi->qf_listcount)
+  		return FAIL;
+  	} else if (di->di_tv.v_type == VAR_STRING &&
+  		STRCMP(di->di_tv.vval.v_string, "$") == 0 &&
+  		qi->qf_listcount > 0)
+  	    qf_idx = qi->qf_listcount - 1;
+  	else
+  	    return FAIL;
+- 	newlist = FALSE;	/* use the specified list */
+      }
+  
+      if (newlist)
+--- 4954,4980 ----
+  	    /* for zero use the current list */
+  	    if (di->di_tv.vval.v_number != 0)
+  		qf_idx = di->di_tv.vval.v_number - 1;
+! 
+! 	    if ((action == ' ' || action == 'a') &&
+! 		    qf_idx == qi->qf_listcount)
+! 		/*
+! 		 * When creating a new list, accept qf_idx pointing to the next
+! 		 * non-available list
+! 		 */
+! 		newlist = TRUE;
+! 	    else if (qf_idx < 0 || qf_idx >= qi->qf_listcount)
+  		return FAIL;
++ 	    else
++ 		newlist = FALSE;	/* use the specified list */
+  	} else if (di->di_tv.v_type == VAR_STRING &&
+  		STRCMP(di->di_tv.vval.v_string, "$") == 0 &&
+  		qi->qf_listcount > 0)
++ 	{
+  	    qf_idx = qi->qf_listcount - 1;
++ 	    newlist = FALSE;
++ 	}
+  	else
+  	    return FAIL;
+      }
+  
+      if (newlist)
+***************
+*** 4944,4949 ****
+--- 4995,5011 ----
+  	    retval = OK;
+  	}
+      }
++     if ((di = dict_find(what, (char_u *)"items", -1)) != NULL)
++     {
++ 	if (di->di_tv.v_type == VAR_LIST)
++ 	{
++ 	    char_u *title_save = vim_strsave(qi->qf_lists[qf_idx].qf_title);
++ 
++ 	    retval = qf_add_entries(qi, qf_idx, di->di_tv.vval.v_list,
++ 		    title_save, action == ' ' ? 'a' : action);
++ 	    vim_free(title_save);
++ 	}
++     }
+  
+      if ((di = dict_find(what, (char_u *)"context", -1)) != NULL)
+      {
+*** ../vim-8.0.0656/src/testdir/test_quickfix.vim	2017-06-11 16:07:20.702719866 +0200
+--- src/testdir/test_quickfix.vim	2017-06-22 21:22:46.076559393 +0200
+***************
+*** 1835,1840 ****
+--- 1835,1907 ----
+      call test_garbagecollect_now()
+      let m = g:Xgetlist({'context' : 1})
+      call assert_equal(["red", "blue", "green"], m.context)
++ 
++     " Test for setting/getting items
++     Xexpr ""
++     let qfprev = g:Xgetlist({'nr':0})
++     call g:Xsetlist([], ' ', {'title':'Green',
++ 		\ 'items' : [{'filename':'F1', 'lnum':10}]})
++     let qfcur = g:Xgetlist({'nr':0})
++     call assert_true(qfcur.nr == qfprev.nr + 1)
++     let l = g:Xgetlist({'items':1})
++     call assert_equal('F1', bufname(l.items[0].bufnr))
++     call assert_equal(10, l.items[0].lnum)
++     call g:Xsetlist([], 'a', {'items' : [{'filename':'F2', 'lnum':20},
++ 		\  {'filename':'F2', 'lnum':30}]})
++     let l = g:Xgetlist({'items':1})
++     call assert_equal('F2', bufname(l.items[2].bufnr))
++     call assert_equal(30, l.items[2].lnum)
++     call g:Xsetlist([], 'r', {'items' : [{'filename':'F3', 'lnum':40}]})
++     let l = g:Xgetlist({'items':1})
++     call assert_equal('F3', bufname(l.items[0].bufnr))
++     call assert_equal(40, l.items[0].lnum)
++     call g:Xsetlist([], 'r', {'items' : []})
++     let l = g:Xgetlist({'items':1})
++     call assert_equal(0, len(l.items))
++ 
++     " Save and restore the quickfix stack
++     call g:Xsetlist([], 'f')
++     call assert_equal(0, g:Xgetlist({'nr':'$'}).nr)
++     Xexpr "File1:10:Line1"
++     Xexpr "File2:20:Line2"
++     Xexpr "File3:30:Line3"
++     let last_qf = g:Xgetlist({'nr':'$'}).nr
++     call assert_equal(3, last_qf)
++     let qstack = []
++     for i in range(1, last_qf)
++ 	let qstack = add(qstack, g:Xgetlist({'nr':i, 'all':1}))
++     endfor
++     call g:Xsetlist([], 'f')
++     for i in range(len(qstack))
++ 	call g:Xsetlist([], ' ', qstack[i])
++     endfor
++     call assert_equal(3, g:Xgetlist({'nr':'$'}).nr)
++     call assert_equal(10, g:Xgetlist({'nr':1, 'items':1}).items[0].lnum)
++     call assert_equal(20, g:Xgetlist({'nr':2, 'items':1}).items[0].lnum)
++     call assert_equal(30, g:Xgetlist({'nr':3, 'items':1}).items[0].lnum)
++     call g:Xsetlist([], 'f')
++ 
++     " Swap two quickfix lists
++     Xexpr "File1:10:Line10"
++     Xexpr "File2:20:Line20"
++     Xexpr "File3:30:Line30"
++     call g:Xsetlist([], 'r', {'nr':1,'title':'Colors','context':['Colors']})
++     call g:Xsetlist([], 'r', {'nr':2,'title':'Fruits','context':['Fruits']})
++     let l1=g:Xgetlist({'nr':1,'all':1})
++     let l2=g:Xgetlist({'nr':2,'all':1})
++     let l1.nr=2
++     let l2.nr=1
++     call g:Xsetlist([], 'r', l1)
++     call g:Xsetlist([], 'r', l2)
++     let newl1=g:Xgetlist({'nr':1,'all':1})
++     let newl2=g:Xgetlist({'nr':2,'all':1})
++     call assert_equal(':Fruits', newl1.title)
++     call assert_equal(['Fruits'], newl1.context)
++     call assert_equal('Line20', newl1.items[0].text)
++     call assert_equal(':Colors', newl2.title)
++     call assert_equal(['Colors'], newl2.context)
++     call assert_equal('Line10', newl2.items[0].text)
++     call g:Xsetlist([], 'f')
+  endfunc
+  
+  func Test_qf_property()
+*** ../vim-8.0.0656/src/version.c	2017-06-22 20:39:13.393435240 +0200
+--- src/version.c	2017-06-22 21:28:33.985747647 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     657,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+61. Your best friends know your e-mail address, but neither your phone number
+    nor the address where you live.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

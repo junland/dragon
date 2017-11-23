@@ -1,0 +1,205 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1148
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1148
+Problem:    "gN" doesn't work on last match with 'wrapscan' off. (fcpg)
+Solution:   Adjust for searching backward. (Christian Brabandt)
+Files:      src/search.c, src/testdir/test_gn.vim
+
+
+*** ../vim-8.0.1147/src/search.c	2017-09-22 15:20:27.744148592 +0200
+--- src/search.c	2017-09-26 12:19:50.293967527 +0200
+***************
+*** 4611,4617 ****
+  
+  #endif /* FEAT_TEXTOBJ */
+  
+! static int is_one_char(char_u *pattern, int move, pos_T *cur);
+  
+  /*
+   * Find next search match under cursor, cursor at end.
+--- 4611,4617 ----
+  
+  #endif /* FEAT_TEXTOBJ */
+  
+! static int is_one_char(char_u *pattern, int move, pos_T *cur, int direction);
+  
+  /*
+   * Find next search match under cursor, cursor at end.
+***************
+*** 4632,4637 ****
+--- 4632,4638 ----
+      int		flags = 0;
+      pos_T	save_VIsual = VIsual;
+      int		one_char;
++     int		direction = forward ? FORWARD : BACKWARD;
+  
+      /* wrapping should not occur */
+      p_ws = FALSE;
+***************
+*** 4658,4665 ****
+      else
+  	orig_pos = pos = curwin->w_cursor;
+  
+!     /* Is the pattern is zero-width? */
+!     one_char = is_one_char(spats[last_idx].pat, TRUE, &curwin->w_cursor);
+      if (one_char == -1)
+      {
+  	p_ws = old_p_ws;
+--- 4659,4668 ----
+      else
+  	orig_pos = pos = curwin->w_cursor;
+  
+!     /* Is the pattern is zero-width?, this time, don't care about the direction
+!      */
+!     one_char = is_one_char(spats[last_idx].pat, TRUE, &curwin->w_cursor,
+! 								      FORWARD);
+      if (one_char == -1)
+      {
+  	p_ws = old_p_ws;
+***************
+*** 4718,4728 ****
+      }
+  
+      start_pos = pos;
+!     flags = forward ? SEARCH_END : 0;
+  
+      /* Check again from the current cursor position,
+       * since the next match might actually by only one char wide */
+!     one_char = is_one_char(spats[last_idx].pat, FALSE, &pos);
+      if (one_char < 0)
+  	/* search failed, abort */
+  	return FAIL;
+--- 4721,4731 ----
+      }
+  
+      start_pos = pos;
+!     flags = forward ? SEARCH_END : SEARCH_START;
+  
+      /* Check again from the current cursor position,
+       * since the next match might actually by only one char wide */
+!     one_char = is_one_char(spats[last_idx].pat, FALSE, &pos, direction);
+      if (one_char < 0)
+  	/* search failed, abort */
+  	return FAIL;
+***************
+*** 4730,4736 ****
+      /* move to match, except for zero-width matches, in which case, we are
+       * already on the next match */
+      if (!one_char)
+! 	result = searchit(curwin, curbuf, &pos, (forward ? FORWARD : BACKWARD),
+  		    spats[last_idx].pat, 0L, flags | SEARCH_KEEP, RE_SEARCH, 0,
+  								   NULL, NULL);
+  
+--- 4733,4739 ----
+      /* move to match, except for zero-width matches, in which case, we are
+       * already on the next match */
+      if (!one_char)
+! 	result = searchit(curwin, curbuf, &pos, direction,
+  		    spats[last_idx].pat, 0L, flags | SEARCH_KEEP, RE_SEARCH, 0,
+  								   NULL, NULL);
+  
+***************
+*** 4779,4788 ****
+   * Check if the pattern is one character long or zero-width.
+   * If move is TRUE, check from the beginning of the buffer, else from position
+   * "cur".
+   * Returns TRUE, FALSE or -1 for failure.
+   */
+      static int
+! is_one_char(char_u *pattern, int move, pos_T *cur)
+  {
+      regmmatch_T	regmatch;
+      int		nmatched = 0;
+--- 4782,4792 ----
+   * Check if the pattern is one character long or zero-width.
+   * If move is TRUE, check from the beginning of the buffer, else from position
+   * "cur".
++  * "direction" is FORWARD or BACKWARD.
+   * Returns TRUE, FALSE or -1 for failure.
+   */
+      static int
+! is_one_char(char_u *pattern, int move, pos_T *cur, int direction)
+  {
+      regmmatch_T	regmatch;
+      int		nmatched = 0;
+***************
+*** 4812,4818 ****
+  	flag = SEARCH_START;
+      }
+  
+!     if (searchit(curwin, curbuf, &pos, FORWARD, pattern, 1,
+  			 SEARCH_KEEP + flag, RE_SEARCH, 0, NULL, NULL) != FAIL)
+      {
+  	/* Zero-width pattern should match somewhere, then we can check if
+--- 4816,4822 ----
+  	flag = SEARCH_START;
+      }
+  
+!     if (searchit(curwin, curbuf, &pos, direction, pattern, 1,
+  			 SEARCH_KEEP + flag, RE_SEARCH, 0, NULL, NULL) != FAIL)
+      {
+  	/* Zero-width pattern should match somewhere, then we can check if
+***************
+*** 4825,4831 ****
+  			       pos.lnum, regmatch.startpos[0].col, NULL, NULL);
+  	    if (!nmatched)
+  		break;
+! 	} while (regmatch.startpos[0].col < pos.col);
+  
+  	if (!called_emsg)
+  	{
+--- 4829,4836 ----
+  			       pos.lnum, regmatch.startpos[0].col, NULL, NULL);
+  	    if (!nmatched)
+  		break;
+! 	} while (direction == FORWARD ? regmatch.startpos[0].col < pos.col
+! 				      : regmatch.startpos[0].col > pos.col);
+  
+  	if (!called_emsg)
+  	{
+*** ../vim-8.0.1147/src/testdir/test_gn.vim	2017-06-05 19:56:01.124964522 +0200
+--- src/testdir/test_gn.vim	2017-09-26 12:14:22.655974916 +0200
+***************
+*** 111,116 ****
+--- 111,125 ----
+    call assert_equal(['foo  baz'], getline(1,'$'))
+    sil! %d_
+  
++   " search upwards with nowrapscan set
++   call setline('.', ['foo', 'bar', 'foo', 'baz'])
++   set nowrapscan
++   let @/='foo'
++   $
++   norm! dgN
++   call assert_equal(['foo', 'bar', '', 'baz'], getline(1,'$'))
++   sil! %d_
++ 
+    set wrapscan&vim
+    set belloff&vim
+  endfu
+*** ../vim-8.0.1147/src/version.c	2017-09-26 11:15:49.005509564 +0200
+--- src/version.c	2017-09-26 12:16:17.903268534 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1148,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+198. You read all the quotes at Netaholics Anonymous and keep thinking
+     "What's wrong with that?"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,631 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0478
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0478
+Problem:    Tests use assert_true(0) and assert_false(1) to report errors.
+Solution:   Use assert_report().
+Files:      src/testdir/test_cscope.vim, src/testdir/test_expr.vim,
+            src/testdir/test_perl.vim, src/testdir/test_channel.vim,
+            src/testdir/test_cursor_func.vim, src/testdir/test_gui.vim,
+            src/testdir/test_menu.vim, src/testdir/test_popup.vim,
+            src/testdir/test_viminfo.vim, src/testdir/test_vimscript.vim,
+            src/testdir/test_assert.vim
+
+
+*** ../vim-8.0.0477/src/testdir/test_cscope.vim	2016-08-30 10:54:57.000000000 +0200
+--- src/testdir/test_cscope.vim	2017-03-18 19:45:22.050506789 +0100
+***************
+*** 28,34 ****
+        cscope add Xcscope.out
+        set cscopeverbose
+      catch
+!       call assert_true(0)
+      endtry
+      call assert_fails('cscope add', 'E560')
+      call assert_fails('cscope add Xcscope.out', 'E568')
+--- 28,34 ----
+        cscope add Xcscope.out
+        set cscopeverbose
+      catch
+!       call assert_report('exception thrown')
+      endtry
+      call assert_fails('cscope add', 'E560')
+      call assert_fails('cscope add Xcscope.out', 'E568')
+*** ../vim-8.0.0477/src/testdir/test_expr.vim	2017-02-23 13:50:34.935755831 +0100
+--- src/testdir/test_expr.vim	2017-03-18 19:45:35.178411690 +0100
+***************
+*** 87,93 ****
+  func Test_loop_over_null_list()
+    let null_list = test_null_list()
+    for i in null_list
+!     call assert_true(0, 'should not get here')
+    endfor
+  endfunc
+  
+--- 87,93 ----
+  func Test_loop_over_null_list()
+    let null_list = test_null_list()
+    for i in null_list
+!     call assert_report('should not get here')
+    endfor
+  endfunc
+  
+*** ../vim-8.0.0477/src/testdir/test_perl.vim	2017-02-23 13:45:54.173548198 +0100
+--- src/testdir/test_perl.vim	2017-03-18 19:45:55.742262728 +0100
+***************
+*** 132,138 ****
+    catch
+      return v:exception
+    endtry
+!   call assert_true(0, 'no exception for `perleval("'.a:expr.'")`')
+    return ''
+  endfunc
+  
+--- 132,138 ----
+    catch
+      return v:exception
+    endtry
+!   call assert_report('no exception for `perleval("'.a:expr.'")`')
+    return ''
+  endfunc
+  
+*** ../vim-8.0.0477/src/testdir/test_channel.vim	2017-02-06 21:56:04.996335436 +0100
+--- src/testdir/test_channel.vim	2017-03-18 19:48:16.813240955 +0100
+***************
+*** 8,17 ****
+  
+  let s:python = PythonProg()
+  if s:python == ''
+!   " Can't run this test.
+    finish
+  endif
+  
+  let s:chopt = {}
+  
+  " Run "testfunc" after sarting the server and stop the server afterwards.
+--- 8,21 ----
+  
+  let s:python = PythonProg()
+  if s:python == ''
+!   " Can't run this test without Python.
+    finish
+  endif
+  
++ " Uncomment the next line to see what happens. Output is in
++ " src/testdir/channellog.
++ " call ch_logfile('channellog', 'w')
++ 
+  let s:chopt = {}
+  
+  " Run "testfunc" after sarting the server and stop the server afterwards.
+***************
+*** 31,37 ****
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    unlet s:chopt.drop
+    if ch_status(handle) == "fail"
+!     call assert_false(1, "Can't open channel")
+      return
+    endif
+    if has('job')
+--- 35,41 ----
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    unlet s:chopt.drop
+    if ch_status(handle) == "fail"
+!     call assert_report("Can't open channel")
+      return
+    endif
+    if has('job')
+***************
+*** 93,99 ****
+    call ch_sendexpr(handle, 'hello!', {'callback': 'Ch_requestHandler'})
+    call WaitFor('exists("g:Ch_responseHandle")')
+    if !exists('g:Ch_responseHandle')
+!     call assert_false(1, 'g:Ch_responseHandle was not set')
+    else
+      call assert_equal(handle, g:Ch_responseHandle)
+      unlet g:Ch_responseHandle
+--- 97,103 ----
+    call ch_sendexpr(handle, 'hello!', {'callback': 'Ch_requestHandler'})
+    call WaitFor('exists("g:Ch_responseHandle")')
+    if !exists('g:Ch_responseHandle')
+!     call assert_report('g:Ch_responseHandle was not set')
+    else
+      call assert_equal(handle, g:Ch_responseHandle)
+      unlet g:Ch_responseHandle
+***************
+*** 104,110 ****
+    call ch_sendexpr(handle, 'hello!', {'callback': function('Ch_requestHandler')})
+    call WaitFor('exists("g:Ch_responseHandle")')
+    if !exists('g:Ch_responseHandle')
+!     call assert_false(1, 'g:Ch_responseHandle was not set')
+    else
+      call assert_equal(handle, g:Ch_responseHandle)
+      unlet g:Ch_responseHandle
+--- 108,114 ----
+    call ch_sendexpr(handle, 'hello!', {'callback': function('Ch_requestHandler')})
+    call WaitFor('exists("g:Ch_responseHandle")')
+    if !exists('g:Ch_responseHandle')
+!     call assert_report('g:Ch_responseHandle was not set')
+    else
+      call assert_equal(handle, g:Ch_responseHandle)
+      unlet g:Ch_responseHandle
+***************
+*** 116,122 ****
+    call ch_sendexpr(handle, 'hello!', {'callback': {a, b -> Ch_requestHandler(a, b)}})
+    call WaitFor('exists("g:Ch_responseHandle")')
+    if !exists('g:Ch_responseHandle')
+!     call assert_false(1, 'g:Ch_responseHandle was not set')
+    else
+      call assert_equal(handle, g:Ch_responseHandle)
+      unlet g:Ch_responseHandle
+--- 120,126 ----
+    call ch_sendexpr(handle, 'hello!', {'callback': {a, b -> Ch_requestHandler(a, b)}})
+    call WaitFor('exists("g:Ch_responseHandle")')
+    if !exists('g:Ch_responseHandle')
+!     call assert_report('g:Ch_responseHandle was not set')
+    else
+      call assert_equal(handle, g:Ch_responseHandle)
+      unlet g:Ch_responseHandle
+***************
+*** 209,215 ****
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    call assert_equal(v:t_channel, type(handle))
+    if ch_status(handle) == "fail"
+!     call assert_false(1, "Can't open channel")
+      return
+    endif
+  
+--- 213,219 ----
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    call assert_equal(v:t_channel, type(handle))
+    if ch_status(handle) == "fail"
+!     call assert_report("Can't open channel")
+      return
+    endif
+  
+***************
+*** 217,223 ****
+  
+    let newhandle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(newhandle) == "fail"
+!     call assert_false(1, "Can't open second channel")
+      return
+    endif
+    call assert_equal('got it', ch_evalexpr(newhandle, 'hello!'))
+--- 221,227 ----
+  
+    let newhandle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(newhandle) == "fail"
+!     call assert_report("Can't open second channel")
+      return
+    endif
+    call assert_equal('got it', ch_evalexpr(newhandle, 'hello!'))
+***************
+*** 238,244 ****
+  func Ch_server_crash(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_false(1, "Can't open channel")
+      return
+    endif
+  
+--- 242,248 ----
+  func Ch_server_crash(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_report("Can't open channel")
+      return
+    endif
+  
+***************
+*** 263,269 ****
+  func Ch_channel_handler(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_false(1, "Can't open channel")
+      return
+    endif
+  
+--- 267,273 ----
+  func Ch_channel_handler(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_report("Can't open channel")
+      return
+    endif
+  
+***************
+*** 306,312 ****
+  func Ch_channel_zero(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_false(1, "Can't open channel")
+      return
+    endif
+  
+--- 310,316 ----
+  func Ch_channel_zero(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_report("Can't open channel")
+      return
+    endif
+  
+***************
+*** 373,379 ****
+  func Ch_raw_one_time_callback(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_false(1, "Can't open channel")
+      return
+    endif
+    call ch_setoptions(handle, {'mode': 'raw'})
+--- 377,383 ----
+  func Ch_raw_one_time_callback(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_report("Can't open channel")
+      return
+    endif
+    call ch_setoptions(handle, {'mode': 'raw'})
+***************
+*** 429,435 ****
+      endif
+    catch
+      if v:exception !~ 'Connection reset by peer'
+!       call assert_false(1, "Caught exception: " . v:exception)
+      endif
+    endtry
+  endfunc
+--- 433,439 ----
+      endif
+    catch
+      if v:exception !~ 'Connection reset by peer'
+!       call assert_report("Caught exception: " . v:exception)
+      endif
+    endtry
+  endfunc
+***************
+*** 1343,1349 ****
+    let channel = ch_open('localhost:' . a:port, s:chopt)
+    unlet s:chopt.waittime
+    if ch_status(channel) == "fail"
+!     call assert_false(1, "Can't open channel")
+      return
+    endif
+    call assert_equal('got it', ch_evalexpr(channel, 'hello!'))
+--- 1347,1353 ----
+    let channel = ch_open('localhost:' . a:port, s:chopt)
+    unlet s:chopt.waittime
+    if ch_status(channel) == "fail"
+!     call assert_report("Can't open channel")
+      return
+    endif
+    call assert_equal('got it', ch_evalexpr(channel, 'hello!'))
+***************
+*** 1365,1371 ****
+  function Ch_test_call(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_false(1, "Can't open channel")
+      return
+    endif
+  
+--- 1369,1375 ----
+  function Ch_test_call(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_report("Can't open channel")
+      return
+    endif
+  
+***************
+*** 1463,1469 ****
+  function Ch_test_close_callback(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_false(1, "Can't open channel")
+      return
+    endif
+    call ch_setoptions(handle, {'close_cb': 'MyCloseCb'})
+--- 1467,1473 ----
+  function Ch_test_close_callback(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_report("Can't open channel")
+      return
+    endif
+    call ch_setoptions(handle, {'close_cb': 'MyCloseCb'})
+***************
+*** 1481,1487 ****
+  function Ch_test_close_partial(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_false(1, "Can't open channel")
+      return
+    endif
+    let g:Ch_d = {}
+--- 1485,1491 ----
+  function Ch_test_close_partial(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_report("Can't open channel")
+      return
+    endif
+    let g:Ch_d = {}
+***************
+*** 1631,1637 ****
+  function Ch_test_close_lambda(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_false(1, "Can't open channel")
+      return
+    endif
+    let g:Ch_close_ret = ''
+--- 1635,1641 ----
+  function Ch_test_close_lambda(port)
+    let handle = ch_open('localhost:' . a:port, s:chopt)
+    if ch_status(handle) == "fail"
+!     call assert_report("Can't open channel")
+      return
+    endif
+    let g:Ch_close_ret = ''
+***************
+*** 1646,1651 ****
+    call ch_log('Test_close_lambda()')
+    call s:run_server('Ch_test_close_lambda')
+  endfunc
+- 
+- " Uncomment this to see what happens, output is in src/testdir/channellog.
+- " call ch_logfile('channellog', 'w')
+--- 1650,1652 ----
+*** ../vim-8.0.0477/src/testdir/test_cursor_func.vim	2017-03-09 18:19:58.161107848 +0100
+--- src/testdir/test_cursor_func.vim	2017-03-18 19:49:16.440809138 +0100
+***************
+*** 1,13 ****
+  " Tests for cursor().
+  
+  func Test_wrong_arguments()
+!   try
+!     call cursor(1. 3)
+!     " not reached
+!     call assert_false(1)
+!   catch
+!     call assert_exception('E474:')
+!   endtry
+  endfunc
+  
+  func Test_move_cursor()
+--- 1,7 ----
+  " Tests for cursor().
+  
+  func Test_wrong_arguments()
+!   call assert_fails('call cursor(1. 3)', 'E474:')
+  endfunc
+  
+  func Test_move_cursor()
+*** ../vim-8.0.0477/src/testdir/test_gui.vim	2017-03-12 17:10:14.417925081 +0100
+--- src/testdir/test_gui.vim	2017-03-18 19:49:25.036746891 +0100
+***************
+*** 505,511 ****
+        " Case 2: guifontset is invalid
+        try
+          set guifontset=-*-notexist-*
+!         call assert_false(1, "'set guifontset=-*-notexist-*' should have failed")
+        catch
+          call assert_exception('E598')
+        endtry
+--- 505,511 ----
+        " Case 2: guifontset is invalid
+        try
+          set guifontset=-*-notexist-*
+!         call assert_report("'set guifontset=-*-notexist-*' should have failed")
+        catch
+          call assert_exception('E598')
+        endtry
+*** ../vim-8.0.0477/src/testdir/test_menu.vim	2017-03-04 21:40:56.393176702 +0100
+--- src/testdir/test_menu.vim	2017-03-18 20:09:29.675990125 +0100
+***************
+*** 8,14 ****
+    try
+      source $VIMRUNTIME/menu.vim
+    catch
+!     call assert_false(1, 'error while loading menus: ' . v:exception)
+    endtry
+    call assert_match('browse confirm w', execute(':menu File.Save'))
+    source $VIMRUNTIME/delmenu.vim
+--- 8,14 ----
+    try
+      source $VIMRUNTIME/menu.vim
+    catch
+!     call assert_report('error while loading menus: ' . v:exception)
+    endtry
+    call assert_match('browse confirm w', execute(':menu File.Save'))
+    source $VIMRUNTIME/delmenu.vim
+*** ../vim-8.0.0477/src/testdir/test_popup.vim	2017-02-21 23:00:32.779008036 +0100
+--- src/testdir/test_popup.vim	2017-03-18 20:09:46.351868087 +0100
+***************
+*** 562,568 ****
+    %d
+    try
+      call feedkeys("o/*\<cr>\<cr>\<c-x>\<c-u>/\<esc>", 'tx')
+!     call assert_false(1, 'completefunc not set, should have failed')
+    catch
+      call assert_exception('E764:')
+    endtry
+--- 562,568 ----
+    %d
+    try
+      call feedkeys("o/*\<cr>\<cr>\<c-x>\<c-u>/\<esc>", 'tx')
+!     call assert_report('completefunc not set, should have failed')
+    catch
+      call assert_exception('E764:')
+    endtry
+*** ../vim-8.0.0477/src/testdir/test_viminfo.vim	2016-10-15 20:46:13.580656069 +0200
+--- src/testdir/test_viminfo.vim	2017-03-18 20:10:20.411618845 +0100
+***************
+*** 450,462 ****
+    let lnum = line('.')
+    while 1
+      if lnum == line('$')
+!       call assert_false(1, 'mark not found in Xtestfileintab')
+        break
+      endif
+      let lnum += 1
+      let line = getline(lnum)
+      if line == ''
+!       call assert_false(1, 'mark not found in Xtestfileintab')
+        break
+      endif
+      if line =~ "^\t\""
+--- 450,462 ----
+    let lnum = line('.')
+    while 1
+      if lnum == line('$')
+!       call assert_report('mark not found in Xtestfileintab')
+        break
+      endif
+      let lnum += 1
+      let line = getline(lnum)
+      if line == ''
+!       call assert_report('mark not found in Xtestfileintab')
+        break
+      endif
+      if line =~ "^\t\""
+*** ../vim-8.0.0477/src/testdir/test_vimscript.vim	2017-02-23 19:00:28.516904176 +0100
+--- src/testdir/test_vimscript.vim	2017-03-18 20:11:23.239159142 +0100
+***************
+*** 1256,1269 ****
+                      \ '.',
+                      \ ])
+      catch
+!         call assert_false(1, "Can't define function")
+      endtry
+      try
+          call DefineFunction('T_Append', [
+                      \ 'append',
+                      \ 'abc',
+                      \ ])
+!         call assert_false(1, "Shouldn't be able to define function")
+      catch
+          call assert_exception('Vim(function):E126: Missing :endfunction')
+      endtry
+--- 1256,1269 ----
+                      \ '.',
+                      \ ])
+      catch
+!         call assert_report("Can't define function")
+      endtry
+      try
+          call DefineFunction('T_Append', [
+                      \ 'append',
+                      \ 'abc',
+                      \ ])
+!         call assert_report("Shouldn't be able to define function")
+      catch
+          call assert_exception('Vim(function):E126: Missing :endfunction')
+      endtry
+***************
+*** 1276,1289 ****
+                      \ '.',
+                      \ ])
+      catch
+!         call assert_false(1, "Can't define function")
+      endtry
+      try
+          call DefineFunction('T_Change', [
+                      \ 'change',
+                      \ 'abc',
+                      \ ])
+!         call assert_false(1, "Shouldn't be able to define function")
+      catch
+          call assert_exception('Vim(function):E126: Missing :endfunction')
+      endtry
+--- 1276,1289 ----
+                      \ '.',
+                      \ ])
+      catch
+!         call assert_report("Can't define function")
+      endtry
+      try
+          call DefineFunction('T_Change', [
+                      \ 'change',
+                      \ 'abc',
+                      \ ])
+!         call assert_report("Shouldn't be able to define function")
+      catch
+          call assert_exception('Vim(function):E126: Missing :endfunction')
+      endtry
+***************
+*** 1296,1309 ****
+                      \ '.',
+                      \ ])
+      catch
+!         call assert_false(1, "Can't define function")
+      endtry
+      try
+          call DefineFunction('T_Insert', [
+                      \ 'insert',
+                      \ 'abc',
+                      \ ])
+!         call assert_false(1, "Shouldn't be able to define function")
+      catch
+          call assert_exception('Vim(function):E126: Missing :endfunction')
+      endtry
+--- 1296,1309 ----
+                      \ '.',
+                      \ ])
+      catch
+!         call assert_report("Can't define function")
+      endtry
+      try
+          call DefineFunction('T_Insert', [
+                      \ 'insert',
+                      \ 'abc',
+                      \ ])
+!         call assert_report("Shouldn't be able to define function")
+      catch
+          call assert_exception('Vim(function):E126: Missing :endfunction')
+      endtry
+*** ../vim-8.0.0477/src/testdir/test_assert.vim	2017-03-09 18:19:58.165107821 +0100
+--- src/testdir/test_assert.vim	2017-03-18 20:12:22.898722685 +0100
+***************
+*** 36,41 ****
+--- 36,47 ----
+    call remove(v:errors, 0)
+  endfunc
+  
++ func Test_assert_report()
++   call assert_report('something is wrong')
++   call assert_match('something is wrong', v:errors[0])
++   call remove(v:errors, 0)
++ endfunc
++ 
+  func Test_assert_exception()
+    try
+      nocommand
+*** ../vim-8.0.0477/src/version.c	2017-03-18 19:41:45.904072837 +0100
+--- src/version.c	2017-03-18 20:15:56.241162424 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     478,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+151. You find yourself engaged to someone you've never actually met,
+     except through e-mail.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

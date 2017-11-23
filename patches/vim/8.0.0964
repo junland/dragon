@@ -1,0 +1,76 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0964
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0964
+Problem:    Channel write buffer does not work with poll().
+Solution:   Use the same mechanism as with select().
+Files:      src/channel.c
+
+
+*** ../vim-8.0.0963/src/channel.c	2017-08-18 21:53:18.065438824 +0200
+--- src/channel.c	2017-08-19 15:49:44.039587778 +0200
+***************
+*** 3018,3024 ****
+      {
+  	chanpart_T  *in_part = &ch->ch_part[PART_IN];
+  
+! 	if (in_part->ch_fd != INVALID_FD && in_part->ch_bufref.br_buf != NULL)
+  	{
+  	    in_part->ch_poll_idx = nfd;
+  	    fds[nfd].fd = in_part->ch_fd;
+--- 3018,3026 ----
+      {
+  	chanpart_T  *in_part = &ch->ch_part[PART_IN];
+  
+! 	if (in_part->ch_fd != INVALID_FD
+! 		&& (in_part->ch_bufref.br_buf != NULL
+! 		    || in_part->ch_writeque.wq_next != NULL))
+  	{
+  	    in_part->ch_poll_idx = nfd;
+  	    fds[nfd].fd = in_part->ch_fd;
+***************
+*** 3946,3958 ****
+  	idx = in_part->ch_poll_idx;
+  	if (ret > 0 && idx != -1 && (fds[idx].revents & POLLOUT))
+  	{
+! 	    if (in_part->ch_buf_append)
+! 	    {
+! 		if (in_part->ch_bufref.br_buf != NULL)
+! 		    channel_write_new_lines(in_part->ch_bufref.br_buf);
+! 	    }
+! 	    else
+! 		channel_write_in(channel);
+  	    --ret;
+  	}
+      }
+--- 3948,3954 ----
+  	idx = in_part->ch_poll_idx;
+  	if (ret > 0 && idx != -1 && (fds[idx].revents & POLLOUT))
+  	{
+! 	    channel_write_input(channel);
+  	    --ret;
+  	}
+      }
+*** ../vim-8.0.0963/src/version.c	2017-08-19 15:39:56.015220381 +0200
+--- src/version.c	2017-08-19 15:51:09.043060268 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     964,
+  /**/
+
+-- 
+I have read and understood the above. X________________
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

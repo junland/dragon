@@ -1,0 +1,184 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0164
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0164
+Problem:    Outdated and misplaced comments.
+Solution:   Fix the comments.
+Files:      src/charset.c, src/getchar.c, src/list.c, src/misc2.c,
+            src/testdir/README.txt
+
+
+*** ../vim-8.0.0163/src/charset.c	2016-08-29 22:42:20.000000000 +0200
+--- src/charset.c	2016-12-09 18:50:34.664105987 +0100
+***************
+*** 887,893 ****
+  
+  /*
+   * return TRUE if 'c' is a keyword character: Letters and characters from
+!  * 'iskeyword' option for current buffer.
+   * For multi-byte characters mb_get_class() is used (builtin rules).
+   */
+      int
+--- 887,893 ----
+  
+  /*
+   * return TRUE if 'c' is a keyword character: Letters and characters from
+!  * 'iskeyword' option for the current buffer.
+   * For multi-byte characters mb_get_class() is used (builtin rules).
+   */
+      int
+*** ../vim-8.0.0163/src/getchar.c	2016-11-10 20:01:41.189582944 +0100
+--- src/getchar.c	2016-12-05 22:45:38.020621662 +0100
+***************
+*** 978,1000 ****
+  
+      addlen = (int)STRLEN(str);
+  
+-     /*
+-      * Easy case: there is room in front of typebuf.tb_buf[typebuf.tb_off]
+-      */
+      if (offset == 0 && addlen <= typebuf.tb_off)
+      {
+  	typebuf.tb_off -= addlen;
+  	mch_memmove(typebuf.tb_buf + typebuf.tb_off, str, (size_t)addlen);
+      }
+- 
+-     /*
+-      * Need to allocate a new buffer.
+-      * In typebuf.tb_buf there must always be room for 3 * MAXMAPLEN + 4
+-      * characters.  We add some extra room to avoid having to allocate too
+-      * often.
+-      */
+      else
+      {
+  	newoff = MAXMAPLEN + 4;
+  	newlen = typebuf.tb_len + addlen + newoff + 4 * (MAXMAPLEN + 4);
+  	if (newlen < 0)		    /* string is getting too long */
+--- 978,999 ----
+  
+      addlen = (int)STRLEN(str);
+  
+      if (offset == 0 && addlen <= typebuf.tb_off)
+      {
++ 	/*
++ 	 * Easy case: there is room in front of typebuf.tb_buf[typebuf.tb_off]
++ 	 */
+  	typebuf.tb_off -= addlen;
+  	mch_memmove(typebuf.tb_buf + typebuf.tb_off, str, (size_t)addlen);
+      }
+      else
+      {
++ 	/*
++ 	 * Need to allocate a new buffer.
++ 	 * In typebuf.tb_buf there must always be room for 3 * MAXMAPLEN + 4
++ 	 * characters.  We add some extra room to avoid having to allocate too
++ 	 * often.
++ 	 */
+  	newoff = MAXMAPLEN + 4;
+  	newlen = typebuf.tb_len + addlen + newoff + 4 * (MAXMAPLEN + 4);
+  	if (newlen < 0)		    /* string is getting too long */
+***************
+*** 2009,2015 ****
+  	    {
+  		/* KeyTyped = FALSE;  When the command that stuffed something
+  		 * was typed, behave like the stuffed command was typed.
+! 		 * needed for CTRL-W CTRl-] to open a fold, for example. */
+  		KeyStuffed = TRUE;
+  	    }
+  	    if (typebuf.tb_no_abbr_cnt == 0)
+--- 2008,2014 ----
+  	    {
+  		/* KeyTyped = FALSE;  When the command that stuffed something
+  		 * was typed, behave like the stuffed command was typed.
+! 		 * needed for CTRL-W CTRL-] to open a fold, for example. */
+  		KeyStuffed = TRUE;
+  	    }
+  	    if (typebuf.tb_no_abbr_cnt == 0)
+*** ../vim-8.0.0163/src/list.c	2016-08-29 22:42:20.000000000 +0200
+--- src/list.c	2017-01-08 13:03:51.304048264 +0100
+***************
+*** 885,891 ****
+  }
+  
+  /*
+!  * Write list of strings to file
+   */
+      int
+  write_list(FILE *fd, list_T *list, int binary)
+--- 885,891 ----
+  }
+  
+  /*
+!  * Write "list" of strings to file "fd".
+   */
+      int
+  write_list(FILE *fd, list_T *list, int binary)
+*** ../vim-8.0.0163/src/misc2.c	2016-12-01 23:03:24.516958281 +0100
+--- src/misc2.c	2016-12-07 23:00:37.327201834 +0100
+***************
+*** 403,409 ****
+      int
+  dec_cursor(void)
+  {
+!  return dec(&curwin->w_cursor);
+  }
+  
+      int
+--- 403,409 ----
+      int
+  dec_cursor(void)
+  {
+!     return dec(&curwin->w_cursor);
+  }
+  
+      int
+*** ../vim-8.0.0163/src/testdir/README.txt	2016-09-03 22:32:37.000000000 +0200
+--- src/testdir/README.txt	2016-11-30 22:06:57.762556025 +0100
+***************
+*** 14,23 ****
+  TO ADD A NEW STYLE TEST:
+  
+  1) Create a test_<subject>.vim file.
+! 2) Add test_<subject>.vim to NEW_TESTS in Make_all.mak in alphabetical order.
+! 3) Use make test_<subject>.res to run a single test in src/testdir/.
+     Use make test_<subject>  to run a single test in src/.
+- 4) Also add an entry in src/Makefile.
+  
+  What you can use (see test_assert.vim for an example):
+  - Call assert_equal(), assert_true(), assert_false(), etc.
+--- 14,23 ----
+  TO ADD A NEW STYLE TEST:
+  
+  1) Create a test_<subject>.vim file.
+! 2) Add test_<subject>.res to NEW_TESTS in Make_all.mak in alphabetical order.
+! 3) Also add an entry in src/Makefile.
+! 4) Use make test_<subject>.res to run a single test in src/testdir/.
+     Use make test_<subject>  to run a single test in src/.
+  
+  What you can use (see test_assert.vim for an example):
+  - Call assert_equal(), assert_true(), assert_false(), etc.
+*** ../vim-8.0.0163/src/version.c	2017-01-09 21:10:29.300184895 +0100
+--- src/version.c	2017-01-10 13:49:52.691765462 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     164,
+  /**/
+
+-- 
+"Women marry men hoping they will change. Men marry women hoping
+they will not. So each is inevitably disappointed."
+ - Einstein
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

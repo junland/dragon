@@ -1,0 +1,123 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0930
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0930
+Problem:    Terminal buffers are stored in the viminfo file while they can't
+            be useful.
+Solution:   Skip terminal buffers for file marks and buffer list
+Files:      src/buffer.c, src/mark.c
+
+
+*** ../vim-8.0.0929/src/buffer.c	2017-08-04 21:37:48.732574980 +0200
+--- src/buffer.c	2017-08-13 17:28:11.639924931 +0200
+***************
+*** 5659,5664 ****
+--- 5659,5667 ----
+  #ifdef FEAT_QUICKFIX
+  		|| bt_quickfix(buf)
+  #endif
++ #ifdef FEAT_TERMINAL
++ 		|| bt_terminal(buf)
++ #endif
+  		|| removable(buf->b_ffname))
+  	    continue;
+  
+*** ../vim-8.0.0929/src/mark.c	2017-03-16 17:23:26.823815869 +0100
+--- src/mark.c	2017-08-13 17:51:51.015250237 +0200
+***************
+*** 1649,1654 ****
+--- 1649,1667 ----
+      }
+  }
+  
++ /*
++  * Return TRUE if marks for "buf" should not be written.
++  */
++     static int
++ skip_for_viminfo(buf_T *buf)
++ {
++     return
++ #ifdef FEAT_TERMINAL
++ 	    bt_terminal(buf) ||
++ #endif
++ 	    removable(buf->b_ffname);
++ }
++ 
+      void
+  write_viminfo_filemarks(FILE *fp)
+  {
+***************
+*** 1681,1687 ****
+       * Move '0 to '1, '1 to '2, etc. until the matching one or '9
+       * Set the '0 mark to current cursor position.
+       */
+!     if (curbuf->b_ffname != NULL && !removable(curbuf->b_ffname))
+      {
+  	name = buflist_nr2name(curbuf->b_fnum, TRUE, FALSE);
+  	for (i = NMARKS; i < NMARKS + EXTRA_MARKS - 1; ++i)
+--- 1694,1700 ----
+       * Move '0 to '1, '1 to '2, etc. until the matching one or '9
+       * Set the '0 mark to current cursor position.
+       */
+!     if (curbuf->b_ffname != NULL && !skip_for_viminfo(curbuf))
+      {
+  	name = buflist_nr2name(curbuf->b_fnum, TRUE, FALSE);
+  	for (i = NMARKS; i < NMARKS + EXTRA_MARKS - 1; ++i)
+***************
+*** 1757,1763 ****
+  	    --idx;
+  	if (fm->fmark.fnum == 0
+  		|| ((buf = buflist_findnr(fm->fmark.fnum)) != NULL
+! 		    && !removable(buf->b_ffname)))
+  	    write_one_filemark(fp, fm, '-', '\'');
+      }
+  #endif
+--- 1770,1776 ----
+  	    --idx;
+  	if (fm->fmark.fnum == 0
+  		|| ((buf = buflist_findnr(fm->fmark.fnum)) != NULL
+! 		    && !skip_for_viminfo(buf)))
+  	    write_one_filemark(fp, fm, '-', '\'');
+      }
+  #endif
+***************
+*** 1917,1923 ****
+  		    }
+  	    }
+  	    if (is_mark_set && buf->b_ffname != NULL
+! 		      && buf->b_ffname[0] != NUL && !removable(buf->b_ffname))
+  	    {
+  		if (buflist == NULL)
+  		    write_buffer_marks(buf, fp_out);
+--- 1930,1937 ----
+  		    }
+  	    }
+  	    if (is_mark_set && buf->b_ffname != NULL
+! 		      && buf->b_ffname[0] != NUL
+! 		      && !skip_for_viminfo(buf))
+  	    {
+  		if (buflist == NULL)
+  		    write_buffer_marks(buf, fp_out);
+*** ../vim-8.0.0929/src/version.c	2017-08-13 17:38:07.956276729 +0200
+--- src/version.c	2017-08-13 18:09:25.384681824 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     930,
+  /**/
+
+-- 
+Why is "abbreviation" such a long word?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,71 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0004
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0004
+Problem:    A string argument for function() that is not a function name
+            results in an error message with NULL. (Christian Brabandt)
+Solution:   Use the argument for the error message.
+Files:      src/evalfunc.c, src/testdir/test_expr.vim
+
+
+*** ../vim-8.0.0003/src/evalfunc.c	2016-09-10 13:39:30.000000000 +0200
+--- src/evalfunc.c	2016-09-13 23:04:02.917786784 +0200
+***************
+*** 3612,3618 ****
+  
+      if (s == NULL || *s == NUL || (use_string && VIM_ISDIGIT(*s))
+  					 || (is_funcref && trans_name == NULL))
+! 	EMSG2(_(e_invarg2), s);
+      /* Don't check an autoload name for existence here. */
+      else if (trans_name != NULL && (is_funcref
+  				? find_func(trans_name) == NULL
+--- 3612,3618 ----
+  
+      if (s == NULL || *s == NUL || (use_string && VIM_ISDIGIT(*s))
+  					 || (is_funcref && trans_name == NULL))
+! 	EMSG2(_(e_invarg2), use_string ? get_tv_string(&argvars[0]) : s);
+      /* Don't check an autoload name for existence here. */
+      else if (trans_name != NULL && (is_funcref
+  				? find_func(trans_name) == NULL
+*** ../vim-8.0.0003/src/testdir/test_expr.vim	2016-09-04 21:41:26.000000000 +0200
+--- src/testdir/test_expr.vim	2016-09-13 23:03:20.426385157 +0200
+***************
+*** 439,444 ****
+--- 439,447 ----
+    let s:fref = function(s:f)
+    call assert_equal(v:t_string, s:fref('x'))
+    call assert_fails("call function('s:f')", 'E700:')
++ 
++   call assert_fails("call function('foo()')", 'E475:')
++   call assert_fails("call function('foo()')", 'foo()')
+  endfunc
+  
+  func Test_funcref()
+*** ../vim-8.0.0003/src/version.c	2016-09-12 19:51:07.689659657 +0200
+--- src/version.c	2016-09-14 22:06:19.364036465 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     4,
+  /**/
+
+-- 
+    A KNIGHT rides into shot and hacks him to the ground.  He rides off.
+    We stay for a moment on the glade.  A MIDDLE-AGED LADY in a C. & A.
+    twin-set emerges from the trees and looks in horror at the body of her
+    HUSBAND.
+MRS HISTORIAN: FRANK!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

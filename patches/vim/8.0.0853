@@ -1,0 +1,54 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0853
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0853
+Problem:    Crash when running terminal with unknown command.
+Solution:   Check "term" not to be NULL. (Yasuhiro Matsumoto, closes #1932)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0852/src/terminal.c	2017-08-03 17:06:40.973493469 +0200
+--- src/terminal.c	2017-08-03 19:13:38.857755280 +0200
+***************
+*** 629,635 ****
+  {
+      /* Also consider the job finished when the channel is closed, to avoid a
+       * race condition when updating the title. */
+!     return term->tl_job != NULL
+  	&& term->tl_job->jv_status == JOB_STARTED
+  	&& channel_is_open(term->tl_job->jv_channel);
+  }
+--- 629,636 ----
+  {
+      /* Also consider the job finished when the channel is closed, to avoid a
+       * race condition when updating the title. */
+!     return term != NULL
+! 	&& term->tl_job != NULL
+  	&& term->tl_job->jv_status == JOB_STARTED
+  	&& channel_is_open(term->tl_job->jv_channel);
+  }
+*** ../vim-8.0.0852/src/version.c	2017-08-03 18:54:54.857872933 +0200
+--- src/version.c	2017-08-03 19:14:31.829372677 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     853,
+  /**/
+
+
+-- 
+"Hegel was right when he said that we learn from history that man can
+never learn anything from history."       (George Bernard Shaw)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

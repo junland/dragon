@@ -1,0 +1,516 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1085
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1085
+Problem:    The terminal debugger can't set breakpoints.
+Solution:   Add :Break and :Delete commands.  Also commands for stepping
+            through code.
+Files:      runtime/pack/dist/opt/termdebug/plugin/termdebug.vim,
+            runtime/doc/terminal.txt
+
+
+*** ../vim-8.0.1084/runtime/pack/dist/opt/termdebug/plugin/termdebug.vim	2017-09-08 20:49:47.620907422 +0200
+--- runtime/pack/dist/opt/termdebug/plugin/termdebug.vim	2017-09-09 22:18:08.690593267 +0200
+***************
+*** 20,37 ****
+  command -nargs=* -complete=file Termdebug call s:StartDebug(<q-args>)
+  
+  " Name of the gdb command, defaults to "gdb".
+! if !exists('debugger')
+!   let debugger = 'gdb'
+  endif
+  
+  " Sign used to highlight the line where the program has stopped.
+  sign define debugPC linehl=debugPC
+  if &background == 'light'
+!   hi debugPC term=reverse ctermbg=lightblue guibg=lightblue
+  else
+!   hi debugPC term=reverse ctermbg=darkblue guibg=darkblue
+  endif
+! let s:pc_id = 12
+  
+  func s:StartDebug(cmd)
+    let s:startwin = win_getid(winnr())
+--- 20,45 ----
+  command -nargs=* -complete=file Termdebug call s:StartDebug(<q-args>)
+  
+  " Name of the gdb command, defaults to "gdb".
+! if !exists('termdebugger')
+!   let termdebugger = 'gdb'
+  endif
+  
+  " Sign used to highlight the line where the program has stopped.
++ " There can be only one.
+  sign define debugPC linehl=debugPC
++ let s:pc_id = 12
++ let s:break_id = 13
++ 
++ " Sign used to indicate a breakpoint.
++ " Can be used multiple times.
++ sign define debugBreakpoint text=>> texthl=debugBreakpoint
++ 
+  if &background == 'light'
+!   hi default debugPC term=reverse ctermbg=lightblue guibg=lightblue
+  else
+!   hi default debugPC term=reverse ctermbg=darkblue guibg=darkblue
+  endif
+! hi default debugBreakpoint term=reverse ctermbg=red guibg=red
+  
+  func s:StartDebug(cmd)
+    let s:startwin = win_getid(winnr())
+***************
+*** 61,67 ****
+    let commpty = job_info(term_getjob(s:commbuf))['tty_out']
+  
+    " Open a terminal window to run the debugger.
+!   let cmd = [g:debugger, '-tty', pty, a:cmd]
+    echomsg 'executing "' . join(cmd) . '"'
+    let gdbbuf = term_start(cmd, {
+  	\ 'exit_cb': function('s:EndDebug'),
+--- 69,75 ----
+    let commpty = job_info(term_getjob(s:commbuf))['tty_out']
+  
+    " Open a terminal window to run the debugger.
+!   let cmd = [g:termdebugger, '-tty', pty, a:cmd]
+    echomsg 'executing "' . join(cmd) . '"'
+    let gdbbuf = term_start(cmd, {
+  	\ 'exit_cb': function('s:EndDebug'),
+***************
+*** 76,87 ****
+  
+    " Connect gdb to the communication pty, using the GDB/MI interface
+    call term_sendkeys(gdbbuf, 'new-ui mi ' . commpty . "\r")
+  endfunc
+  
+  func s:EndDebug(job, status)
+    exe 'bwipe! ' . s:ptybuf
+    exe 'bwipe! ' . s:commbuf
+!   call setwinvar(s:startwin, '&signcolumn', s:startsigncolumn)
+  endfunc
+  
+  " Handle a message received from gdb on the GDB/MI interface.
+--- 84,107 ----
+  
+    " Connect gdb to the communication pty, using the GDB/MI interface
+    call term_sendkeys(gdbbuf, 'new-ui mi ' . commpty . "\r")
++ 
++   " Install debugger commands.
++   call s:InstallCommands()
++ 
++   let s:breakpoints = {}
+  endfunc
+  
+  func s:EndDebug(job, status)
+    exe 'bwipe! ' . s:ptybuf
+    exe 'bwipe! ' . s:commbuf
+! 
+!   let curwinid = win_getid(winnr())
+! 
+!   call win_gotoid(s:startwin)
+!   let &signcolumn = s:startsigncolumn
+!   call s:DeleteCommands()
+! 
+!   call win_gotoid(curwinid)
+  endfunc
+  
+  " Handle a message received from gdb on the GDB/MI interface.
+***************
+*** 95,128 ****
+      endif
+      if msg != ''
+        if msg =~ '^\*\(stopped\|running\)'
+! 	let wid = win_getid(winnr())
+  
+! 	if win_gotoid(s:startwin)
+! 	  if msg =~ '^\*stopped'
+! 	    " TODO: proper parsing
+! 	    let fname = substitute(msg, '.*fullname="\([^"]*\)".*', '\1', '')
+! 	    let lnum = substitute(msg, '.*line="\([^"]*\)".*', '\1', '')
+! 	    if lnum =~ '^[0-9]*$'
+! 	      if expand('%:h') != fname
+! 		if &modified
+! 		  " TODO: find existing window
+! 		  exe 'split ' . fnameescape(fname)
+! 		  let s:startwin = win_getid(winnr())
+! 		else
+! 		  exe 'edit ' . fnameescape(fname)
+! 		endif
+! 	      endif
+! 	      exe lnum
+! 	      exe 'sign place ' . s:pc_id . ' line=' . lnum . ' name=debugPC file=' . fnameescape(fname)
+! 	      setlocal signcolumn=yes
+! 	    endif
+  	  else
+! 	    exe 'sign unplace ' . s:pc_id
+  	  endif
+- 
+- 	  call win_gotoid(wid)
+  	endif
+        endif
+      endif
+!   endfor
+  endfunc
+--- 115,238 ----
+      endif
+      if msg != ''
+        if msg =~ '^\*\(stopped\|running\)'
+! 	call s:HandleCursor(msg)
+!       elseif msg =~ '^\^done,bkpt='
+! 	call s:HandleNewBreakpoint(msg)
+!       elseif msg =~ '^=breakpoint-deleted,'
+! 	call s:HandleBreakpointDelete(msg)
+!       endif
+!     endif
+!   endfor
+! endfunc
+! 
+! " Install commands in the current window to control the debugger.
+! func s:InstallCommands()
+!   command Break call s:SetBreakpoint()
+!   command Delete call s:DeleteBreakpoint()
+!   command Step call s:SendCommand('-exec-step')
+!   command NNext call s:SendCommand('-exec-next')
+!   command Finish call s:SendCommand('-exec-finish')
+!   command Continue call s:SendCommand('-exec-continue')
+! endfunc
+! 
+! " Delete installed debugger commands in the current window.
+! func s:DeleteCommands()
+!   delcommand Break
+!   delcommand Delete
+!   delcommand Step
+!   delcommand NNext
+!   delcommand Finish
+!   delcommand Continue
+! endfunc
+! 
+! " :Break - Set a breakpoint at the cursor position.
+! func s:SetBreakpoint()
+!   call term_sendkeys(s:commbuf, '-break-insert --source '
+! 	\ . fnameescape(expand('%:p')) . ' --line ' . line('.') . "\r")
+! endfunc
+! 
+! " :Delete - Delete a breakpoint at the cursor position.
+! func s:DeleteBreakpoint()
+!   let fname = fnameescape(expand('%:p'))
+!   let lnum = line('.')
+!   for [key, val] in items(s:breakpoints)
+!     if val['fname'] == fname && val['lnum'] == lnum
+!       call term_sendkeys(s:commbuf, '-break-delete ' . key . "\r")
+!       " Assume this always wors, the reply is simply "^done".
+!       exe 'sign unplace ' . (s:break_id + key)
+!       unlet s:breakpoints[key]
+!       break
+!     endif
+!   endfor
+! endfunc
+! 
+! " :Next, :Continue, etc - send a command to gdb
+! func s:SendCommand(cmd)
+!   call term_sendkeys(s:commbuf, a:cmd . "\r")
+! endfunc
+  
+! " Handle stopping and running message from gdb.
+! " Will update the sign that shows the current position.
+! func s:HandleCursor(msg)
+!   let wid = win_getid(winnr())
+! 
+!   if win_gotoid(s:startwin)
+!     if a:msg =~ '^\*stopped'
+!       let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
+!       let lnum = substitute(a:msg, '.*line="\([^"]*\)".*', '\1', '')
+!       if lnum =~ '^[0-9]*$'
+! 	if expand('%:h') != fname
+! 	  if &modified
+! 	    " TODO: find existing window
+! 	    exe 'split ' . fnameescape(fname)
+! 	    let s:startwin = win_getid(winnr())
+  	  else
+! 	    exe 'edit ' . fnameescape(fname)
+  	  endif
+  	endif
++ 	exe lnum
++ 	exe 'sign place ' . s:pc_id . ' line=' . lnum . ' name=debugPC file=' . fnameescape(fname)
++ 	setlocal signcolumn=yes
+        endif
++     else
++       exe 'sign unplace ' . s:pc_id
+      endif
+! 
+!     call win_gotoid(wid)
+!   endif
+! endfunc
+! 
+! " Handle setting a breakpoint
+! " Will update the sign that shows the breakpoint
+! func s:HandleNewBreakpoint(msg)
+!   let nr = substitute(a:msg, '.*number="\([0-9]\)*\".*', '\1', '') + 0
+!   if nr == 0
+!     return
+!   endif
+! 
+!   if has_key(s:breakpoints, nr)
+!     let entry = s:breakpoints[nr]
+!   else
+!     let entry = {}
+!     let s:breakpoints[nr] = entry
+!   endif
+! 
+!   let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
+!   let lnum = substitute(a:msg, '.*line="\([^"]*\)".*', '\1', '')
+! 
+!   exe 'sign place ' . (s:break_id + nr) . ' line=' . lnum . ' name=debugBreakpoint file=' . fnameescape(fname)
+! 
+!   let entry['fname'] = fname
+!   let entry['lnum'] = lnum
+! endfunc
+! 
+! " Handle deleting a breakpoint
+! " Will remove the sign that shows the breakpoint
+! func s:HandleBreakpointDelete(msg)
+!   let nr = substitute(a:msg, '.*id="\([0-9]*\)\".*', '\1', '') + 0
+!   if nr == 0
+!     return
+!   endif
+!   exe 'sign unplace ' . (s:break_id + nr)
+!   unlet s:breakpoints[nr]
+  endfunc
+*** ../vim-8.0.1084/runtime/doc/terminal.txt	2017-09-02 16:28:32.998776571 +0200
+--- runtime/doc/terminal.txt	2017-09-09 22:14:20.516113480 +0200
+***************
+*** 1,4 ****
+! *terminal.txt*	For Vim version 8.0.  Last change: 2017 Aug 29
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+--- 1,4 ----
+! *terminal.txt*	For Vim version 8.0.  Last change: 2017 Sep 09
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+***************
+*** 30,40 ****
+  started connected to the terminal emulator. For example, to run a shell: >
+       :term bash
+  
+! Or to run a debugger: >
+!      :term gdb vim
+  
+  The job runs asynchronously from Vim, the window will be updated to show
+! output from the job, also  while editing in any other window.
+  
+  
+  Typing ~
+--- 30,40 ----
+  started connected to the terminal emulator. For example, to run a shell: >
+       :term bash
+  
+! Or to run build command: >
+!      :term make myprogram
+  
+  The job runs asynchronously from Vim, the window will be updated to show
+! output from the job, also while editing in another window.
+  
+  
+  Typing ~
+***************
+*** 109,115 ****
+  
+  			If [range] is given the specified lines are used as
+  			input for the job.  It will not be possible to type
+! 			keys in the terminal window.
+  
+  			Two comma separated numbers are used as "rows,cols".
+  			E.g. `:24,80gdb` opens a terminal with 24 rows and 80
+--- 109,116 ----
+  
+  			If [range] is given the specified lines are used as
+  			input for the job.  It will not be possible to type
+! 			keys in the terminal window.  For MS-Windows see the
+! 			++eof argument below.
+  
+  			Two comma separated numbers are used as "rows,cols".
+  			E.g. `:24,80gdb` opens a terminal with 24 rows and 80
+***************
+*** 133,146 ****
+  					height.
+  			++cols={width}  Use {width} for the terminal window
+  					width.
+! 			++eof={text}	when using [range], text to send after
+! 					the last line was written. The default
+! 					is to send CTRL-D.  A CR is appended.
+  					E.g. for a shell use "++eof=exit" and
+  					for Python "++eof=exit()".  Special
+  					codes can be used like with `:map`,
+  					e.g. "<C-Z>" for CTRL-Z.
+- 					{only on MS-Windows}
+  
+  			If you want to use more options use the |term_start()|
+  			function.
+--- 134,148 ----
+  					height.
+  			++cols={width}  Use {width} for the terminal window
+  					width.
+! 			++eof={text}	when using [range]: text to send after
+! 					the last line was written. Cannot
+! 					contain white space.  A CR is
+! 					appended.  For MS-Windows the default
+! 					is to send CTRL-D.
+  					E.g. for a shell use "++eof=exit" and
+  					for Python "++eof=exit()".  Special
+  					codes can be used like with `:map`,
+  					e.g. "<C-Z>" for CTRL-Z.
+  
+  			If you want to use more options use the |term_start()|
+  			function.
+***************
+*** 303,335 ****
+  3. Debugging					*terminal-debug*
+  
+  The Terminal debugging plugin can be used to debug a program with gdb and view
+! the source code in a Vim window.
+  
+  Load the plugin with this command: >
+  	packadd termdebug
+! 
+  To start debugging use `:TermDebug` folowed by the command name, for example: >
+  	:TermDebug vim
+  
+  This opens two windows:
+  - A terminal window in which "gdb vim" is executed.  Here you can directly
+!   interact with gdb.
+  - A terminal window for the executed program.  When "run" is used in gdb the
+    program I/O will happen in this window, so that it does not interfere with
+!   controlling gdb.
+! The current window is used to show the source code.  When gdb jumps to a
+! source file location this window will display the code, if possible.  Values
+! of variables can be inspected, breakpoints set and cleared, etc.
+  
+  When the debugger ends the two opened windows are closed.
+  
+  
+  Customizing ~
+  
+! g:debugger	The debugger command.  Default "gdb".
+  
+  
+! TODO
+  
+  
+   vim:tw=78:ts=8:ft=help:norl:
+--- 305,394 ----
+  3. Debugging					*terminal-debug*
+  
+  The Terminal debugging plugin can be used to debug a program with gdb and view
+! the source code in a Vim window.  Since this is completely contained inside
+! Vim this also works remotely over an ssh connection.
+! 
+! 
+! Starting ~
+  
+  Load the plugin with this command: >
+  	packadd termdebug
+! <							*:Termdebug*
+  To start debugging use `:TermDebug` folowed by the command name, for example: >
+  	:TermDebug vim
+  
+  This opens two windows:
+  - A terminal window in which "gdb vim" is executed.  Here you can directly
+!   interact with gdb.  The buffer name is "!gdb".
+  - A terminal window for the executed program.  When "run" is used in gdb the
+    program I/O will happen in this window, so that it does not interfere with
+!   controlling gdb.  The buffer name is "gdb program".
+! 
+! The current window is used to show the source code.  When gdb pauses the
+! source file location will be displayed, if possible.  A sign is used to
+! highlight the current position (using highlight group debugPC).	 
+! 
+! If the buffer in the current window is modified, another window will be opened
+! to display the current gdb position.
+! 
+! Focus the terminal of the executed program to interact with it.  This works
+! the same as any command running in a terminal window.
+  
+  When the debugger ends the two opened windows are closed.
+  
+  
++ Stepping through code ~
++ 
++ Put focus on the gdb window to type commands there.  Some common ones are:
++ - CTRL-C    interrupt the program
++ - next      execute the current line and stop at the next line
++ - step      execute the current line and stop at the next statement, entering
++ 	    functions
++ - finish    execute until leaving the current function
++ - where     show the stack
++ - frame N   go to the Nth stack frame
++ - continue  continue execution
++ 
++ In the window showing the source code some commands can passed to gdb:
++ - Break     set a breakpoint at the current line; a sign will be displayed
++ - Delete    delete a breakpoint at the current line
++ - Step	    execute the gdb "step" command
++ - NNext	    execute the gdb "next" command (:Next is a Vim command)
++ - Finish    execute the gdb "finish" command
++ - Continue  execute the gdb "continue" command
++ 
++ 
++ Communication ~
++ 
++ There is another, hidden, buffer, which is used for Vim to communicate with
++ gdb.  The buffer name is "gdb communication".  Do not delete this buffer, it
++ will break the debugger.
++ 
++ 
+  Customizing ~
+  
+! To change the name of the gdb command, set the "termdebugger" variable before
+! invoking `:Termdebug`: >
+! 	let termdebugger = "mygdb"
+! Only debuggers fully compatible with gdb will work.  Vim uses the GDB/MI
+! interface.
+! 
+! The color of the signs can be adjusted with these highlight groups:
+! - debugPC		the current position
+! - debugBreakpoint	a breakpoint
+! 
+! The defaults are, when 'background' is "light":
+!   hi debugPC term=reverse ctermbg=lightblue guibg=lightblue
+!   hi debugBreakpoint term=reverse ctermbg=red guibg=red
+! 
+! When 'background' is "dark":
+!   hi debugPC term=reverse ctermbg=darkblue guibg=darkblue
+!   hi debugBreakpoint term=reverse ctermbg=red guibg=red
+! 
+  
++ NOT WORKING YET: ~
+  
+! Values of variables can be inspected, etc.
+  
+  
+   vim:tw=78:ts=8:ft=help:norl:
+*** ../vim-8.0.1084/src/version.c	2017-09-09 18:45:20.418225738 +0200
+--- src/version.c	2017-09-09 22:16:01.311441928 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1085,
+  /**/
+
+-- 
+I AM THANKFUL...
+...for the piles of laundry and ironing because it means I
+have plenty of clothes to wear.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,204 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0864
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0864
+Problem:    Cannot specify the name of a terminal.
+Solution:   Add the "term_name" option. (Yasuhiro Matsumoto, closes #1936)
+Files:      src/channel.c, src/structs.h, src/terminal.c, runtime/doc/eval.txt
+
+
+*** ../vim-8.0.0863/src/channel.c	2017-08-04 21:37:48.732574980 +0200
+--- src/channel.c	2017-08-05 14:17:09.295291400 +0200
+***************
+*** 4391,4396 ****
+--- 4391,4408 ----
+  		    return FAIL;
+  		}
+  	    }
++ 	    else if (STRCMP(hi->hi_key, "term_name") == 0)
++ 	    {
++ 		if (!(supported & JO2_TERM_NAME))
++ 		    break;
++ 		opt->jo_set2 |= JO2_TERM_NAME;
++ 		opt->jo_term_name = get_tv_string_chk(item);
++ 		if (opt->jo_term_name == NULL)
++ 		{
++ 		    EMSG2(_(e_invarg2), "term_name");
++ 		    return FAIL;
++ 		}
++ 	    }
+  	    else if (STRCMP(hi->hi_key, "waittime") == 0)
+  	    {
+  		if (!(supported & JO_WAITTIME))
+*** ../vim-8.0.0863/src/structs.h	2017-08-03 13:51:02.384784816 +0200
+--- src/structs.h	2017-08-05 14:23:39.028437596 +0200
+***************
+*** 1656,1662 ****
+  #define JO_CALLBACK	    0x0010	/* channel callback */
+  #define JO_OUT_CALLBACK	    0x0020	/* stdout callback */
+  #define JO_ERR_CALLBACK	    0x0040	/* stderr callback */
+! #define JO_CLOSE_CALLBACK   0x0080	/* close callback */
+  #define JO_WAITTIME	    0x0100	/* only for ch_open() */
+  #define JO_TIMEOUT	    0x0200	/* all timeouts */
+  #define JO_OUT_TIMEOUT	    0x0400	/* stdout timeouts */
+--- 1656,1662 ----
+  #define JO_CALLBACK	    0x0010	/* channel callback */
+  #define JO_OUT_CALLBACK	    0x0020	/* stdout callback */
+  #define JO_ERR_CALLBACK	    0x0040	/* stderr callback */
+! #define JO_CLOSE_CALLBACK   0x0080	/* "close_cb" */
+  #define JO_WAITTIME	    0x0100	/* only for ch_open() */
+  #define JO_TIMEOUT	    0x0200	/* all timeouts */
+  #define JO_OUT_TIMEOUT	    0x0400	/* stdout timeouts */
+***************
+*** 1684,1690 ****
+  
+  #define JO2_OUT_MSG	    0x0001	/* "out_msg" */
+  #define JO2_ERR_MSG	    0x0002	/* "err_msg" (JO_OUT_ << 1) */
+! #define JO2_ALL		    0x0003
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+  #define JO_CB_ALL \
+--- 1684,1691 ----
+  
+  #define JO2_OUT_MSG	    0x0001	/* "out_msg" */
+  #define JO2_ERR_MSG	    0x0002	/* "err_msg" (JO_OUT_ << 1) */
+! #define JO2_TERM_NAME	    0x0004	/* "term_name" */
+! #define JO2_ALL		    0x0007
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+  #define JO_CB_ALL \
+***************
+*** 1741,1746 ****
+--- 1742,1748 ----
+      /* when non-zero run the job in a terminal window of this size */
+      int		jo_term_rows;
+      int		jo_term_cols;
++     char_u	*jo_term_name;
+  #endif
+  } jobopt_T;
+  
+*** ../vim-8.0.0863/src/terminal.c	2017-08-05 14:10:44.750107642 +0200
+--- src/terminal.c	2017-08-05 14:45:07.959010643 +0200
+***************
+*** 36,41 ****
+--- 36,42 ----
+   * that buffer, attributes come from the scrollback buffer tl_scrollback.
+   *
+   * TODO:
++  * - job_start('ls') sometimes does not work.
+   * - MS-Windows: no redraw for 'updatetime'  #1915
+   * - in bash mouse clicks are inserting characters.
+   * - mouse scroll: when over other window, scroll that window.
+***************
+*** 67,74 ****
+   * - support minimal size when 'termsize' is "rows*cols".
+   * - support minimal size when 'termsize' is empty?
+   * - implement "term" for job_start(): more job options when starting a
+!  *   terminal.  Might allow reading stdin from a file or buffer, sending stderr
+!  *   to a file or /dev/null, but something must be connected to the terminal.
+   * - support ":term NONE" to open a terminal with a pty but not running a job
+   *   in it.  The pty can be passed to gdb to run the executable in.
+   * - if the job in the terminal does not support the mouse, we can use the
+--- 68,81 ----
+   * - support minimal size when 'termsize' is "rows*cols".
+   * - support minimal size when 'termsize' is empty?
+   * - implement "term" for job_start(): more job options when starting a
+!  *   terminal.  Allow:
+!  *	"in_io", "in_top", "in_bot", "in_name", "in_buf"
+! 	"out_io", "out_name", "out_buf", "out_modifiable", "out_msg"
+! 	"err_io", "err_name", "err_buf", "err_modifiable", "err_msg"
+!  *   Check that something is connected to the terminal.
+!  *   Test: "cat" reading from a file or buffer
+!  *         "ls" writing stdout to a file or buffer
+!  *         shell writing stderr to a file or buffer
+   * - support ":term NONE" to open a terminal with a pty but not running a job
+   *   in it.  The pty can be passed to gdb to run the executable in.
+   * - if the job in the terminal does not support the mouse, we can use the
+***************
+*** 265,270 ****
+--- 272,280 ----
+      if (cmd == NULL || *cmd == NUL)
+  	cmd = p_sh;
+  
++     if (opt->jo_term_name != NULL)
++ 	curbuf->b_ffname = vim_strsave(opt->jo_term_name);
++     else
+      {
+  	int	i;
+  	size_t	len = STRLEN(cmd) + 10;
+***************
+*** 2140,2146 ****
+      if (argvars[1].v_type != VAR_UNKNOWN
+  	    && get_job_options(&argvars[1], &opt,
+  		JO_TIMEOUT_ALL + JO_STOPONEXIT
+! 		+ JO_EXIT_CB + JO_CLOSE_CALLBACK) == FAIL)
+  	return;
+  
+      term_start(cmd, &opt);
+--- 2150,2157 ----
+      if (argvars[1].v_type != VAR_UNKNOWN
+  	    && get_job_options(&argvars[1], &opt,
+  		JO_TIMEOUT_ALL + JO_STOPONEXIT
+! 		+ JO_EXIT_CB + JO_CLOSE_CALLBACK
+! 		+ JO2_TERM_NAME) == FAIL)
+  	return;
+  
+      term_start(cmd, &opt);
+*** ../vim-8.0.0863/runtime/doc/eval.txt	2017-08-03 13:51:02.376784876 +0200
+--- runtime/doc/eval.txt	2017-08-05 14:43:30.503721783 +0200
+***************
+*** 8000,8006 ****
+  		Returns the buffer number of the terminal window.
+  		When opening the window fails zero is returned.
+  
+! 		{options} are not implemented yet.
+  
+  term_wait({buf})						*term_wait()*
+  		Wait for pending updates of {buf} to be handled.
+--- 8008,8030 ----
+  		Returns the buffer number of the terminal window.
+  		When opening the window fails zero is returned.
+  
+! 		{options} are similar to what is used for |job_start()|, see
+! 		|job-options|.  However, not all options can be used.  These
+! 		are supported:
+! 		   all timeout options
+! 		   "stoponexit"
+! 		   "out_cb", "err_cb"
+! 		   "exit_cb", "close_cb"
+! 		   "in_io", "in_top", "in_bot", "in_name", "in_buf"
+! 		   "out_io", "out_name", "out_buf", "out_modifiable", "out_msg"
+! 		   "err_io", "err_name", "err_buf", "err_modifiable", "err_msg"
+! 		However, at least one of stdin, stdout or stderr must be
+! 		connected to the terminal.  When I/O is connected to the
+! 		terminal then the callback function for that part is not used.
+! 
+! 		There is one extra option:
+! 		   "term_name"   name to use for the buffer name, instead of
+! 				 the command name.
+  
+  term_wait({buf})						*term_wait()*
+  		Wait for pending updates of {buf} to be handled.
+*** ../vim-8.0.0863/src/version.c	2017-08-05 14:10:44.750107642 +0200
+--- src/version.c	2017-08-05 14:18:22.190757593 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     864,
+  /**/
+
+-- 
+There are 10 kinds of people: Those who understand binary and those who don't.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

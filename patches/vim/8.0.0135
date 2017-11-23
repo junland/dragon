@@ -1,0 +1,259 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0135
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0135
+Problem:    An address relative to the current line, ":.,+3y", does not work
+            properly on a closed fold. (Efraim Yawitz)
+Solution:   Correct for including the closed fold. (Christian Brabandt)
+Files:      src/ex_docmd.c, src/testdir/test_fold.vim,
+            src/testdir/Make_all.mak, src/Makefile
+
+
+*** ../vim-8.0.0134/src/ex_docmd.c	2016-12-11 21:34:18.156065286 +0100
+--- src/ex_docmd.c	2017-01-02 14:05:08.356404137 +0100
+***************
+*** 137,143 ****
+  #endif
+  
+  static int	check_more(int, int);
+! static linenr_T get_address(exarg_T *, char_u **, int addr_type, int skip, int to_other_file);
+  static void	get_flags(exarg_T *eap);
+  #if !defined(FEAT_PERL) \
+  	|| !defined(FEAT_PYTHON) || !defined(FEAT_PYTHON3) \
+--- 137,143 ----
+  #endif
+  
+  static int	check_more(int, int);
+! static linenr_T get_address(exarg_T *, char_u **, int addr_type, int skip, int to_other_file, int address_count);
+  static void	get_flags(exarg_T *eap);
+  #if !defined(FEAT_PERL) \
+  	|| !defined(FEAT_PYTHON) || !defined(FEAT_PYTHON3) \
+***************
+*** 1791,1796 ****
+--- 1791,1797 ----
+      cmdmod_T		save_cmdmod;
+      int			ni;			/* set when Not Implemented */
+      char_u		*cmd;
++     int			address_count = 1;
+  
+      vim_memset(&ea, 0, sizeof(ea));
+      ea.line1 = 1;
+***************
+*** 2015,2021 ****
+  			{
+  #ifdef FEAT_WINDOWS
+  			    long tabnr = get_address(&ea, &ea.cmd, ADDR_TABS,
+! 								ea.skip, FALSE);
+  			    if (tabnr == MAXLNUM)
+  				cmdmod.tab = tabpage_index(curtab) + 1;
+  			    else
+--- 2016,2022 ----
+  			{
+  #ifdef FEAT_WINDOWS
+  			    long tabnr = get_address(&ea, &ea.cmd, ADDR_TABS,
+! 							    ea.skip, FALSE, 1);
+  			    if (tabnr == MAXLNUM)
+  				cmdmod.tab = tabpage_index(curtab) + 1;
+  			    else
+***************
+*** 2175,2181 ****
+  	}
+  	ea.cmd = skipwhite(ea.cmd);
+  	lnum = get_address(&ea, &ea.cmd, ea.addr_type, ea.skip,
+! 							  ea.addr_count == 0);
+  	if (ea.cmd == NULL)		    /* error detected */
+  	    goto doend;
+  	if (lnum == MAXLNUM)
+--- 2176,2182 ----
+  	}
+  	ea.cmd = skipwhite(ea.cmd);
+  	lnum = get_address(&ea, &ea.cmd, ea.addr_type, ea.skip,
+! 					  ea.addr_count == 0, address_count++);
+  	if (ea.cmd == NULL)		    /* error detected */
+  	    goto doend;
+  	if (lnum == MAXLNUM)
+***************
+*** 4363,4369 ****
+      char_u	**ptr,
+      int		addr_type,  /* flag: one of ADDR_LINES, ... */
+      int		skip,	    /* only skip the address, don't use it */
+!     int		to_other_file)  /* flag: may jump to other file */
+  {
+      int		c;
+      int		i;
+--- 4364,4371 ----
+      char_u	**ptr,
+      int		addr_type,  /* flag: one of ADDR_LINES, ... */
+      int		skip,	    /* only skip the address, don't use it */
+!     int		to_other_file,  /* flag: may jump to other file */
+!     int		address_count)	    /* 1 for first address, >1 after comma */
+  {
+      int		c;
+      int		i;
+***************
+*** 4639,4648 ****
+  		    || addr_type == ADDR_BUFFERS)
+  		lnum = compute_buffer_local_count(
+  				    addr_type, lnum, (i == '-') ? -1 * n : n);
+- 	    else if (i == '-')
+- 		lnum -= n;
+  	    else
+! 		lnum += n;
+  	}
+      } while (*cmd == '/' || *cmd == '?');
+  
+--- 4641,4660 ----
+  		    || addr_type == ADDR_BUFFERS)
+  		lnum = compute_buffer_local_count(
+  				    addr_type, lnum, (i == '-') ? -1 * n : n);
+  	    else
+! 	    {
+! #ifdef FEAT_FOLDING
+! 		/* Relative line addressing, need to adjust for folded lines
+! 		 * now, but only do it after the first address. */
+! 		if (addr_type == ADDR_LINES && (i == '-' || i == '+')
+! 			&& address_count >= 2)
+! 		    (void)hasFolding(lnum, NULL, &lnum);
+! #endif
+! 		if (i == '-')
+! 		    lnum -= n;
+! 		else
+! 		    lnum += n;
+! 	    }
+  	}
+      } while (*cmd == '/' || *cmd == '?');
+  
+***************
+*** 9301,9307 ****
+  {
+      long	n;
+  
+!     n = get_address(eap, &eap->arg, eap->addr_type, FALSE, FALSE);
+      if (eap->arg == NULL)	    /* error detected */
+      {
+  	eap->nextcmd = NULL;
+--- 9313,9319 ----
+  {
+      long	n;
+  
+!     n = get_address(eap, &eap->arg, eap->addr_type, FALSE, FALSE, 1);
+      if (eap->arg == NULL)	    /* error detected */
+      {
+  	eap->nextcmd = NULL;
+*** ../vim-8.0.0134/src/testdir/test_fold.vim	2017-01-02 14:24:48.152222060 +0100
+--- src/testdir/test_fold.vim	2017-01-02 13:55:23.788475647 +0100
+***************
+*** 0 ****
+--- 1,65 ----
++ " Test for folding
++ 
++ function! Test_address_fold()
++   new
++   call setline(1, ['int FuncName() {/*{{{*/', 1, 2, 3, 4, 5, '}/*}}}*/',
++ 	      \ 'after fold 1', 'after fold 2', 'after fold 3'])
++   setl fen fdm=marker
++   " The next ccommands should all copy the same part of the buffer,
++   " regardless of the adressing type, since the part to be copied
++   " is folded away
++   :1y
++   call assert_equal(['int FuncName() {/*{{{*/', '1', '2', '3', '4', '5', '}/*}}}*/'], getreg(0,1,1))
++   :.y
++   call assert_equal(['int FuncName() {/*{{{*/', '1', '2', '3', '4', '5', '}/*}}}*/'], getreg(0,1,1))
++   :.+y
++   call assert_equal(['int FuncName() {/*{{{*/', '1', '2', '3', '4', '5', '}/*}}}*/'], getreg(0,1,1))
++   :.,.y
++   call assert_equal(['int FuncName() {/*{{{*/', '1', '2', '3', '4', '5', '}/*}}}*/'], getreg(0,1,1))
++   :sil .1,.y
++   call assert_equal(['int FuncName() {/*{{{*/', '1', '2', '3', '4', '5', '}/*}}}*/'], getreg(0,1,1))
++   " use silent to make E493 go away
++   :sil .+,.y
++   call assert_equal(['int FuncName() {/*{{{*/', '1', '2', '3', '4', '5', '}/*}}}*/'], getreg(0,1,1))
++   :,y
++   call assert_equal(['int FuncName() {/*{{{*/', '1', '2', '3', '4', '5', '}/*}}}*/'], getreg(0,1,1))
++   :,+y
++   call assert_equal(['int FuncName() {/*{{{*/', '1', '2', '3', '4', '5', '}/*}}}*/','after fold 1'], getreg(0,1,1))
++   " using .+3 as second address should copy the whole folded line + the next 3
++   " lines
++   :.,+3y
++   call assert_equal(['int FuncName() {/*{{{*/', '1', '2', '3', '4', '5', '}/*}}}*/',
++ 	      \ 'after fold 1', 'after fold 2', 'after fold 3'], getreg(0,1,1))
++   :sil .,-2y
++   call assert_equal(['int FuncName() {/*{{{*/', '1', '2', '3', '4', '5', '}/*}}}*/'], getreg(0,1,1))
++ 
++   " now test again with folding disabled
++   set nofoldenable
++   :1y
++   call assert_equal(['int FuncName() {/*{{{*/'], getreg(0,1,1))
++   :.y
++   call assert_equal(['int FuncName() {/*{{{*/'], getreg(0,1,1))
++   :.+y
++   call assert_equal(['1'], getreg(0,1,1))
++   :.,.y
++   call assert_equal(['int FuncName() {/*{{{*/'], getreg(0,1,1))
++   " use silent to make E493 go away
++   :sil .1,.y
++   call assert_equal(['int FuncName() {/*{{{*/', '1'], getreg(0,1,1))
++   " use silent to make E493 go away
++   :sil .+,.y
++   call assert_equal(['int FuncName() {/*{{{*/', '1'], getreg(0,1,1))
++   :,y
++   call assert_equal(['int FuncName() {/*{{{*/'], getreg(0,1,1))
++   :,+y
++   call assert_equal(['int FuncName() {/*{{{*/', '1'], getreg(0,1,1))
++   " using .+3 as second address should copy the whole folded line + the next 3
++   " lines
++   :.,+3y
++   call assert_equal(['int FuncName() {/*{{{*/', '1', '2', '3'], getreg(0,1,1))
++   :7
++   :sil .,-2y
++   call assert_equal(['4', '5', '}/*}}}*/'], getreg(0,1,1))
++ 
++   quit!
++ endfunction
+*** ../vim-8.0.0134/src/testdir/Make_all.mak	2016-12-09 19:28:33.576993205 +0100
+--- src/testdir/Make_all.mak	2017-01-02 13:57:07.503752484 +0100
+***************
+*** 151,156 ****
+--- 151,157 ----
+  	    test_display.res \
+  	    test_farsi.res \
+  	    test_fnameescape.res \
++ 	    test_fold.res \
+  	    test_gf.res \
+  	    test_gn.res \
+  	    test_gui.res \
+*** ../vim-8.0.0134/src/Makefile	2016-12-09 19:57:11.053525977 +0100
+--- src/Makefile	2017-01-02 13:56:31.336004626 +0100
+***************
+*** 2106,2111 ****
+--- 2106,2112 ----
+  	test_filter_map \
+  	test_fnameescape \
+  	test_fnamemodify \
++ 	test_fold \
+  	test_glob2regpat \
+  	test_gf \
+  	test_gn \
+*** ../vim-8.0.0134/src/version.c	2016-12-14 21:41:56.997414047 +0100
+--- src/version.c	2017-01-02 14:24:57.888154655 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     135,
+  /**/
+
+-- 
+        Very funny, Scotty.  Now beam down my clothes.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

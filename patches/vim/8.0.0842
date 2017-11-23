@@ -1,0 +1,94 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0842
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0842
+Problem:    Using slave pty after closing it.
+Solution:   Do the ioctl() before dup'ing it.
+Files:      src/os_unix.c
+
+
+*** ../vim-8.0.0841/src/os_unix.c	2017-08-01 22:24:21.553439094 +0200
+--- src/os_unix.c	2017-08-02 22:30:14.404405569 +0200
+***************
+*** 5316,5321 ****
+--- 5316,5332 ----
+  	if (use_null_for_in || use_null_for_out || use_null_for_err)
+  	    null_fd = open("/dev/null", O_RDWR | O_EXTRA, 0);
+  
++ 	if (pty_slave_fd >= 0)
++ 	{
++ 	    /* push stream discipline modules */
++ 	    SetupSlavePTY(pty_slave_fd);
++ #  ifdef TIOCSCTTY
++ 	    /* Try to become controlling tty (probably doesn't work,
++ 	     * unless run by root) */
++ 	    ioctl(pty_slave_fd, TIOCSCTTY, (char *)NULL);
++ #  endif
++ 	}
++ 
+  	/* set up stdin for the child */
+  	close(0);
+  	if (use_null_for_in && null_fd >= 0)
+***************
+*** 5362,5385 ****
+  	    close(fd_err[1]);
+  	if (pty_master_fd >= 0)
+  	{
+! 	    close(pty_master_fd); /* not used */
+! 	    close(pty_slave_fd); /* duped above */
+  	}
+  
+  	if (null_fd >= 0)
+  	    close(null_fd);
+  
+- 	if (pty_slave_fd >= 0)
+- 	{
+- 	    /* push stream discipline modules */
+- 	    SetupSlavePTY(pty_slave_fd);
+- #  ifdef TIOCSCTTY
+- 	    /* Try to become controlling tty (probably doesn't work,
+- 	     * unless run by root) */
+- 	    ioctl(pty_slave_fd, TIOCSCTTY, (char *)NULL);
+- #  endif
+- 	}
+- 
+  	/* See above for type of argv. */
+  	execvp(argv[0], argv);
+  
+--- 5373,5385 ----
+  	    close(fd_err[1]);
+  	if (pty_master_fd >= 0)
+  	{
+! 	    close(pty_master_fd); /* not used in the child */
+! 	    close(pty_slave_fd);  /* was duped above */
+  	}
+  
+  	if (null_fd >= 0)
+  	    close(null_fd);
+  
+  	/* See above for type of argv. */
+  	execvp(argv[0], argv);
+  
+*** ../vim-8.0.0841/src/version.c	2017-08-02 22:10:30.520919428 +0200
+--- src/version.c	2017-08-02 22:31:15.079969725 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     842,
+  /**/
+
+-- 
+Vim is like Emacs without all the typing.  (John "Johann" Spetz)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,620 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1215
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1215
+Problem:    Newer gcc warns for implicit fallthrough.
+Solution:   Consistently use a FALLTHROUGH comment. (Christian Brabandt)
+Files:      src/buffer.c, src/edit.c, src/eval.c, src/ex_docmd.c,
+            src/ex_getln.c, src/main.c, src/message.c, src/normal.c,
+            src/regexp.c, src/regexp_nfa.c, src/spell.c, src/window.c,
+            src/if_perl.xs
+
+
+*** ../vim-8.0.1214/src/buffer.c	2017-10-22 14:22:12.108800145 +0200
+--- src/buffer.c	2017-10-24 21:45:39.744408421 +0200
+***************
+*** 4325,4330 ****
+--- 4325,4331 ----
+  
+  	case STL_OFFSET_X:
+  	    base = 'X';
++ 	    /* FALLTHROUGH */
+  	case STL_OFFSET:
+  #ifdef FEAT_BYTEOFF
+  	    l = ml_find_line_or_offset(wp->w_buffer, wp->w_cursor.lnum, NULL);
+***************
+*** 4336,4341 ****
+--- 4337,4343 ----
+  
+  	case STL_BYTEVAL_X:
+  	    base = 'X';
++ 	    /* FALLTHROUGH */
+  	case STL_BYTEVAL:
+  	    num = byteval;
+  	    if (num == NL)
+*** ../vim-8.0.1214/src/edit.c	2017-09-26 20:04:49.570671607 +0200
+--- src/edit.c	2017-10-24 21:45:39.752408368 +0200
+***************
+*** 984,990 ****
+  	case ESC:	/* End input mode */
+  	    if (echeck_abbr(ESC + ABBR_OFF))
+  		break;
+! 	    /*FALLTHROUGH*/
+  
+  	case Ctrl_C:	/* End input mode */
+  #ifdef FEAT_CMDWIN
+--- 984,990 ----
+  	case ESC:	/* End input mode */
+  	    if (echeck_abbr(ESC + ABBR_OFF))
+  		break;
+! 	    /* FALLTHROUGH */
+  
+  	case Ctrl_C:	/* End input mode */
+  #ifdef FEAT_CMDWIN
+***************
+*** 5774,5786 ****
+--- 5774,5789 ----
+  		if (ctrl_x_mode == CTRL_X_DICTIONARY
+  					   || ctrl_x_mode == CTRL_X_THESAURUS)
+  		    break;
++ 		/* FALLTHROUGH */
+  	    case '~':
+  		if (!p_magic)	/* quote these only if magic is set */
+  		    break;
++ 		/* FALLTHROUGH */
+  	    case '\\':
+  		if (ctrl_x_mode == CTRL_X_DICTIONARY
+  					   || ctrl_x_mode == CTRL_X_THESAURUS)
+  		    break;
++ 		/* FALLTHROUGH */
+  	    case '^':		/* currently it's not needed. */
+  	    case '$':
+  		m++;
+*** ../vim-8.0.1214/src/eval.c	2017-10-14 23:24:20.742889804 +0200
+--- src/eval.c	2017-10-24 21:45:39.756408341 +0200
+***************
+*** 6995,7001 ****
+  	{
+  	    case VAR_FUNC:
+  		func_unref(varp->vval.v_string);
+! 		/*FALLTHROUGH*/
+  	    case VAR_STRING:
+  		vim_free(varp->vval.v_string);
+  		break;
+--- 6995,7001 ----
+  	{
+  	    case VAR_FUNC:
+  		func_unref(varp->vval.v_string);
+! 		/* FALLTHROUGH */
+  	    case VAR_STRING:
+  		vim_free(varp->vval.v_string);
+  		break;
+***************
+*** 7040,7046 ****
+  	{
+  	    case VAR_FUNC:
+  		func_unref(varp->vval.v_string);
+! 		/*FALLTHROUGH*/
+  	    case VAR_STRING:
+  		vim_free(varp->vval.v_string);
+  		varp->vval.v_string = NULL;
+--- 7040,7046 ----
+  	{
+  	    case VAR_FUNC:
+  		func_unref(varp->vval.v_string);
+! 		/* FALLTHROUGH */
+  	    case VAR_STRING:
+  		vim_free(varp->vval.v_string);
+  		varp->vval.v_string = NULL;
+*** ../vim-8.0.1214/src/ex_docmd.c	2017-10-19 17:12:01.308776775 +0200
+--- src/ex_docmd.c	2017-10-24 21:45:39.756408341 +0200
+***************
+*** 4115,4121 ****
+  	case CMD_bunload:
+  	    while ((xp->xp_pattern = vim_strchr(arg, ' ')) != NULL)
+  		arg = xp->xp_pattern + 1;
+! 	    /*FALLTHROUGH*/
+  	case CMD_buffer:
+  	case CMD_sbuffer:
+  	case CMD_checktime:
+--- 4115,4121 ----
+  	case CMD_bunload:
+  	    while ((xp->xp_pattern = vim_strchr(arg, ' ')) != NULL)
+  		arg = xp->xp_pattern + 1;
+! 	    /* FALLTHROUGH */
+  	case CMD_buffer:
+  	case CMD_sbuffer:
+  	case CMD_checktime:
+*** ../vim-8.0.1214/src/ex_getln.c	2017-10-22 14:44:13.927751648 +0200
+--- src/ex_getln.c	2017-10-24 21:45:39.756408341 +0200
+***************
+*** 1563,1571 ****
+  			break;
+  		    goto cmdline_not_changed;
+  		}
+- 		/* FALLTHROUGH */
+- 
+  #ifdef FEAT_CMDHIST
+  	case K_UP:
+  	case K_DOWN:
+  	case K_S_UP:
+--- 1563,1570 ----
+  			break;
+  		    goto cmdline_not_changed;
+  		}
+  #ifdef FEAT_CMDHIST
++ 		/* FALLTHROUGH */
+  	case K_UP:
+  	case K_DOWN:
+  	case K_S_UP:
+*** ../vim-8.0.1214/src/main.c	2017-10-22 21:11:08.199850501 +0200
+--- src/main.c	2017-10-24 21:45:39.756408341 +0200
+***************
+*** 2228,2234 ****
+  		    argv_idx = -1;
+  		    break;
+  		}
+! 		/*FALLTHROUGH*/
+  	    case 'S':		/* "-S {file}" execute Vim script */
+  	    case 'i':		/* "-i {viminfo}" use for viminfo */
+  #ifndef FEAT_DIFF
+--- 2228,2234 ----
+  		    argv_idx = -1;
+  		    break;
+  		}
+! 		/* FALLTHROUGH */
+  	    case 'S':		/* "-S {file}" execute Vim script */
+  	    case 'i':		/* "-i {viminfo}" use for viminfo */
+  #ifndef FEAT_DIFF
+***************
+*** 2386,2392 ****
+  			argv_idx = -1;
+  			break;
+  		    }
+! 		    /*FALLTHROUGH*/
+  		case 'W':	/* "-W {scriptout}" overwrite script file */
+  		    if (scriptout != NULL)
+  			goto scripterror;
+--- 2386,2392 ----
+  			argv_idx = -1;
+  			break;
+  		    }
+! 		    /* FALLTHROUGH */
+  		case 'W':	/* "-W {scriptout}" overwrite script file */
+  		    if (scriptout != NULL)
+  			goto scripterror;
+*** ../vim-8.0.1214/src/message.c	2017-09-06 23:40:05.513366294 +0200
+--- src/message.c	2017-10-24 21:45:39.756408341 +0200
+***************
+*** 670,676 ****
+  
+  	ex_exitval = 1;
+  
+! 	/* Reset msg_silent, an error causes messages to be switched back on. */
+  	msg_silent = 0;
+  	cmd_silent = FALSE;
+  
+--- 670,677 ----
+  
+  	ex_exitval = 1;
+  
+! 	/* Reset msg_silent, an error causes messages to be switched back on.
+! 	 */
+  	msg_silent = 0;
+  	cmd_silent = FALSE;
+  
+***************
+*** 2837,2843 ****
+  		skip_redraw = TRUE;		/* skip redraw once */
+  		need_wait_return = FALSE;	/* don't wait in main() */
+  	    }
+! 	    /*FALLTHROUGH*/
+  	case 'q':		/* quit */
+  	case Ctrl_C:
+  	case ESC:
+--- 2838,2844 ----
+  		skip_redraw = TRUE;		/* skip redraw once */
+  		need_wait_return = FALSE;	/* don't wait in main() */
+  	    }
+! 	    /* FALLTHROUGH */
+  	case 'q':		/* quit */
+  	case Ctrl_C:
+  	case ESC:
+*** ../vim-8.0.1214/src/normal.c	2017-10-15 22:13:31.937246447 +0200
+--- src/normal.c	2017-10-24 21:45:39.760408314 +0200
+***************
+*** 1945,1950 ****
+--- 1945,1951 ----
+  		AppendToRedobuff((char_u *)"!\r");  /* use any last used !cmd */
+  	    else
+  		bangredo = TRUE;    /* do_bang() will put cmd in redo buffer */
++ 	    /* FALLTHROUGH */
+  
+  	case OP_INDENT:
+  	case OP_COLON:
+***************
+*** 5150,5156 ****
+  		    break;
+  		}
+  		undo = TRUE;
+! 		/*FALLTHROUGH*/
+  
+      case 'g':	/* "zg": add good word to word list */
+      case 'w':	/* "zw": add wrong word to word list */
+--- 5151,5157 ----
+  		    break;
+  		}
+  		undo = TRUE;
+! 		/* FALLTHROUGH */
+  
+      case 'g':	/* "zg": add good word to word list */
+      case 'w':	/* "zw": add wrong word to word list */
+***************
+*** 8267,8273 ****
+  	/* "g'm" and "g`m": jump to mark without setting pcmark */
+      case '\'':
+  	cap->arg = TRUE;
+! 	/*FALLTHROUGH*/
+      case '`':
+  	nv_gomark(cap);
+  	break;
+--- 8268,8274 ----
+  	/* "g'm" and "g`m": jump to mark without setting pcmark */
+      case '\'':
+  	cap->arg = TRUE;
+! 	/* FALLTHROUGH */
+      case '`':
+  	nv_gomark(cap);
+  	break;
+***************
+*** 8328,8334 ****
+      case 'q':
+      case 'w':
+  	oap->cursor_start = curwin->w_cursor;
+! 	/*FALLTHROUGH*/
+      case '~':
+      case 'u':
+      case 'U':
+--- 8329,8335 ----
+      case 'q':
+      case 'w':
+  	oap->cursor_start = curwin->w_cursor;
+! 	/* FALLTHROUGH */
+      case '~':
+      case 'u':
+      case 'U':
+***************
+*** 9117,9123 ****
+  		 * the first column, then it inserts. */
+  		if (curwin->w_cursor.col == 0)
+  		    break;
+! 		/*FALLTHROUGH*/
+  
+  	    case 'a':	/* "a"ppend is like "i"nsert on the next character. */
+  #ifdef FEAT_VIRTUALEDIT
+--- 9118,9124 ----
+  		 * the first column, then it inserts. */
+  		if (curwin->w_cursor.col == 0)
+  		    break;
+! 		/* FALLTHROUGH */
+  
+  	    case 'a':	/* "a"ppend is like "i"nsert on the next character. */
+  #ifdef FEAT_VIRTUALEDIT
+*** ../vim-8.0.1214/src/regexp.c	2017-06-18 22:40:36.528444633 +0200
+--- src/regexp.c	2017-10-24 21:45:39.760408314 +0200
+***************
+*** 1997,2003 ****
+  	    goto collection;
+  
+  	/* "\_x" is character class plus newline */
+! 	/*FALLTHROUGH*/
+  
+  	/*
+  	 * Character classes.
+--- 1997,2003 ----
+  	    goto collection;
+  
+  	/* "\_x" is character class plus newline */
+! 	/* FALLTHROUGH */
+  
+  	/*
+  	 * Character classes.
+***************
+*** 5847,5853 ****
+        case IDENT:
+        case IDENT + ADD_NL:
+  	testval = TRUE;
+! 	/*FALLTHROUGH*/
+        case SIDENT:
+        case SIDENT + ADD_NL:
+  	while (count < maxcount)
+--- 5847,5853 ----
+        case IDENT:
+        case IDENT + ADD_NL:
+  	testval = TRUE;
+! 	/* FALLTHROUGH */
+        case SIDENT:
+        case SIDENT + ADD_NL:
+  	while (count < maxcount)
+***************
+*** 5877,5883 ****
+        case KWORD:
+        case KWORD + ADD_NL:
+  	testval = TRUE;
+! 	/*FALLTHROUGH*/
+        case SKWORD:
+        case SKWORD + ADD_NL:
+  	while (count < maxcount)
+--- 5877,5883 ----
+        case KWORD:
+        case KWORD + ADD_NL:
+  	testval = TRUE;
+! 	/* FALLTHROUGH */
+        case SKWORD:
+        case SKWORD + ADD_NL:
+  	while (count < maxcount)
+***************
+*** 5908,5914 ****
+        case FNAME:
+        case FNAME + ADD_NL:
+  	testval = TRUE;
+! 	/*FALLTHROUGH*/
+        case SFNAME:
+        case SFNAME + ADD_NL:
+  	while (count < maxcount)
+--- 5908,5914 ----
+        case FNAME:
+        case FNAME + ADD_NL:
+  	testval = TRUE;
+! 	/* FALLTHROUGH */
+        case SFNAME:
+        case SFNAME + ADD_NL:
+  	while (count < maxcount)
+***************
+*** 5938,5944 ****
+        case PRINT:
+        case PRINT + ADD_NL:
+  	testval = TRUE;
+! 	/*FALLTHROUGH*/
+        case SPRINT:
+        case SPRINT + ADD_NL:
+  	while (count < maxcount)
+--- 5938,5944 ----
+        case PRINT:
+        case PRINT + ADD_NL:
+  	testval = TRUE;
+! 	/* FALLTHROUGH */
+        case SPRINT:
+        case SPRINT + ADD_NL:
+  	while (count < maxcount)
+***************
+*** 6131,6137 ****
+        case ANYOF:
+        case ANYOF + ADD_NL:
+  	testval = TRUE;
+! 	/*FALLTHROUGH*/
+  
+        case ANYBUT:
+        case ANYBUT + ADD_NL:
+--- 6131,6137 ----
+        case ANYOF:
+        case ANYOF + ADD_NL:
+  	testval = TRUE;
+! 	/* FALLTHROUGH */
+  
+        case ANYBUT:
+        case ANYBUT + ADD_NL:
+*** ../vim-8.0.1214/src/regexp_nfa.c	2017-08-01 15:14:20.687859592 +0200
+--- src/regexp_nfa.c	2017-10-24 21:45:39.760408314 +0200
+***************
+*** 1320,1326 ****
+  		goto collection;
+  
+  	/* "\_x" is character class plus newline */
+! 	/*FALLTHROUGH*/
+  
+  	/*
+  	 * Character classes.
+--- 1320,1326 ----
+  		goto collection;
+  
+  	/* "\_x" is character class plus newline */
+! 	/* FALLTHROUGH */
+  
+  	/*
+  	 * Character classes.
+***************
+*** 4698,4703 ****
+--- 4698,4704 ----
+  		subs = addstate(l, state->out, subs, pim, off_arg);
+  		break;
+  	    }
++ 	    /* FALLTHROUGH */
+  	case NFA_MCLOSE1:
+  	case NFA_MCLOSE2:
+  	case NFA_MCLOSE3:
+*** ../vim-8.0.1214/src/spell.c	2017-09-16 20:54:47.118560293 +0200
+--- src/spell.c	2017-10-24 21:45:39.760408314 +0200
+***************
+*** 5019,5025 ****
+  	    }
+  	    PROF_STORE(sp->ts_state)
+  	    sp->ts_state = STATE_PLAIN;
+! 	    /*FALLTHROUGH*/
+  
+  	case STATE_PLAIN:
+  	    /*
+--- 5019,5025 ----
+  	    }
+  	    PROF_STORE(sp->ts_state)
+  	    sp->ts_state = STATE_PLAIN;
+! 	    /* FALLTHROUGH */
+  
+  	case STATE_PLAIN:
+  	    /*
+***************
+*** 5243,5249 ****
+  		}
+  		break;
+  	    }
+! 	    /*FALLTHROUGH*/
+  
+  	case STATE_INS_PREP:
+  	    if (sp->ts_flags & TSF_DIDDEL)
+--- 5243,5249 ----
+  		}
+  		break;
+  	    }
+! 	    /* FALLTHROUGH */
+  
+  	case STATE_INS_PREP:
+  	    if (sp->ts_flags & TSF_DIDDEL)
+***************
+*** 5277,5283 ****
+  	    }
+  	    break;
+  
+! 	    /*FALLTHROUGH*/
+  
+  	case STATE_INS:
+  	    /* Insert one byte.  Repeat this for each possible byte at this
+--- 5277,5283 ----
+  	    }
+  	    break;
+  
+! 	    /* FALLTHROUGH */
+  
+  	case STATE_INS:
+  	    /* Insert one byte.  Repeat this for each possible byte at this
+***************
+*** 5464,5470 ****
+  		*p = p[1];
+  		p[1] = c;
+  	    }
+! 	    /*FALLTHROUGH*/
+  
+  	case STATE_SWAP3:
+  	    /* Swap two bytes, skipping one: "123" -> "321".  We change
+--- 5464,5470 ----
+  		*p = p[1];
+  		p[1] = c;
+  	    }
+! 	    /* FALLTHROUGH */
+  
+  	case STATE_SWAP3:
+  	    /* Swap two bytes, skipping one: "123" -> "321".  We change
+***************
+*** 5703,5709 ****
+  		p[1] = p[2];
+  		p[2] = c;
+  	    }
+! 	    /*FALLTHROUGH*/
+  
+  	case STATE_REP_INI:
+  	    /* Check if matching with REP items from the .aff file would work.
+--- 5703,5709 ----
+  		p[1] = p[2];
+  		p[2] = c;
+  	    }
+! 	    /* FALLTHROUGH */
+  
+  	case STATE_REP_INI:
+  	    /* Check if matching with REP items from the .aff file would work.
+***************
+*** 5736,5742 ****
+  
+  	    PROF_STORE(sp->ts_state)
+  	    sp->ts_state = STATE_REP;
+! 	    /*FALLTHROUGH*/
+  
+  	case STATE_REP:
+  	    /* Try matching with REP items from the .aff file.  For each match
+--- 5736,5742 ----
+  
+  	    PROF_STORE(sp->ts_state)
+  	    sp->ts_state = STATE_REP;
+! 	    /* FALLTHROUGH */
+  
+  	case STATE_REP:
+  	    /* Try matching with REP items from the .aff file.  For each match
+*** ../vim-8.0.1214/src/window.c	2017-09-29 21:29:13.301914977 +0200
+--- src/window.c	2017-10-24 21:45:39.760408314 +0200
+***************
+*** 433,440 ****
+  		    g_do_tagpreview = Prenum;
+  		else
+  		    g_do_tagpreview = p_pvh;
+- 		/*FALLTHROUGH*/
+  #endif
+      case ']':
+      case Ctrl_RSB:
+  		CHECK_CMDWIN
+--- 433,440 ----
+  		    g_do_tagpreview = Prenum;
+  		else
+  		    g_do_tagpreview = p_pvh;
+  #endif
++ 		/* FALLTHROUGH */
+      case ']':
+      case Ctrl_RSB:
+  		CHECK_CMDWIN
+***************
+*** 557,564 ****
+  			    g_do_tagpreview = Prenum;
+  			else
+  			    g_do_tagpreview = p_pvh;
+- 			/*FALLTHROUGH*/
+  #endif
+  		    case ']':
+  		    case Ctrl_RSB:
+  			/* keep Visual mode, can select words to use as a tag */
+--- 557,564 ----
+  			    g_do_tagpreview = Prenum;
+  			else
+  			    g_do_tagpreview = p_pvh;
+  #endif
++ 			/* FALLTHROUGH */
+  		    case ']':
+  		    case Ctrl_RSB:
+  			/* keep Visual mode, can select words to use as a tag */
+*** ../vim-8.0.1214/src/if_perl.xs	2017-09-25 22:02:23.873637132 +0200
+--- src/if_perl.xs	2017-10-24 21:48:13.435370084 +0200
+***************
+*** 1101,1106 ****
+--- 1101,1107 ----
+  		rettv->vval.v_number = SvIV(sv);
+  		break;
+  	    }
++ 	    /* FALLTHROUGH */
+  	case SVt_PV:	/* string */
+  	{
+  	    size_t  len		= 0;
+*** ../vim-8.0.1214/src/version.c	2017-10-23 21:53:25.865975578 +0200
+--- src/version.c	2017-10-24 21:47:07.599814864 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1215,
+  /**/
+
+-- 
+BLACK KNIGHT:  Come on you pansy!
+    [hah] [parry thrust]
+    [ARTHUR chops the BLACK KNIGHT's right arm off]
+ARTHUR:        Victory is mine!  [kneeling]
+               We thank thee Lord, that in thy merc-
+    [Black Knight kicks Arthur in the head while he is praying]
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

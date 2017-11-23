@@ -1,0 +1,139 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1089
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1089
+Problem:    Cannot get range count in user command.
+Solution:   Add <range> argument.
+Files:      src/ex_docmd.c, runtime/doc/map.txt
+
+
+*** ../vim-8.0.1088/src/ex_docmd.c	2017-08-30 21:07:33.348092913 +0200
+--- src/ex_docmd.c	2017-09-10 16:42:18.666101774 +0200
+***************
+*** 6331,6337 ****
+      {
+  	++p;
+  	end = skiptowhite(p);
+! 	if (uc_scan_attr(p, end - p, &argt, &def, &flags, &compl, &compl_arg, &addr_type_arg)
+  		== FAIL)
+  	    return;
+  	p = skipwhite(end);
+--- 6331,6338 ----
+      {
+  	++p;
+  	end = skiptowhite(p);
+! 	if (uc_scan_attr(p, end - p, &argt, &def, &flags, &compl,
+! 						    &compl_arg, &addr_type_arg)
+  		== FAIL)
+  	    return;
+  	p = skipwhite(end);
+***************
+*** 6372,6378 ****
+      }
+      else
+  	uc_add_command(name, end - name, p, argt, def, flags, compl, compl_arg,
+! 								addr_type_arg, eap->forceit);
+  }
+  
+  /*
+--- 6373,6379 ----
+      }
+      else
+  	uc_add_command(name, end - name, p, argt, def, flags, compl, compl_arg,
+! 						  addr_type_arg, eap->forceit);
+  }
+  
+  /*
+***************
+*** 6592,6599 ****
+      char_u	*p = code + 1;
+      size_t	l = len - 2;
+      int		quote = 0;
+!     enum { ct_ARGS, ct_BANG, ct_COUNT, ct_LINE1, ct_LINE2, ct_MODS,
+! 	ct_REGISTER, ct_LT, ct_NONE } type = ct_NONE;
+  
+      if ((vim_strchr((char_u *)"qQfF", *p) != NULL) && p[1] == '-')
+      {
+--- 6593,6610 ----
+      char_u	*p = code + 1;
+      size_t	l = len - 2;
+      int		quote = 0;
+!     enum {
+! 	ct_ARGS,
+! 	ct_BANG,
+! 	ct_COUNT,
+! 	ct_LINE1,
+! 	ct_LINE2,
+! 	ct_RANGE,
+! 	ct_MODS,
+! 	ct_REGISTER,
+! 	ct_LT,
+! 	ct_NONE
+!     } type = ct_NONE;
+  
+      if ((vim_strchr((char_u *)"qQfF", *p) != NULL) && p[1] == '-')
+      {
+***************
+*** 6615,6620 ****
+--- 6626,6633 ----
+  	type = ct_LINE1;
+      else if (STRNICMP(p, "line2>", l) == 0)
+  	type = ct_LINE2;
++     else if (STRNICMP(p, "range>", l) == 0)
++ 	type = ct_RANGE;
+      else if (STRNICMP(p, "lt>", l) == 0)
+  	type = ct_LT;
+      else if (STRNICMP(p, "reg>", l) == 0 || STRNICMP(p, "register>", l) == 0)
+***************
+*** 6716,6726 ****
+--- 6729,6741 ----
+  
+      case ct_LINE1:
+      case ct_LINE2:
++     case ct_RANGE:
+      case ct_COUNT:
+      {
+  	char num_buf[20];
+  	long num = (type == ct_LINE1) ? eap->line1 :
+  		   (type == ct_LINE2) ? eap->line2 :
++ 		   (type == ct_RANGE) ? eap->addr_count :
+  		   (eap->addr_count > 0) ? eap->line2 : cmd->uc_def;
+  	size_t num_len;
+  
+*** ../vim-8.0.1088/runtime/doc/map.txt	2017-08-06 15:22:10.301211970 +0200
+--- runtime/doc/map.txt	2017-09-10 16:40:37.702688041 +0200
+***************
+*** 1414,1419 ****
+--- 1415,1422 ----
+  	<line1>	The starting line of the command range.
+  						*<line2>*
+  	<line2>	The final line of the command range.
++ 						*<range>*
++ 	<range> The number of items in the command range: 0, 1 or 2
+  						*<count>*
+  	<count>	Any count supplied (as described for the '-range'
+  		and '-count' attributes).
+*** ../vim-8.0.1088/src/version.c	2017-09-10 15:21:50.783686867 +0200
+--- src/version.c	2017-09-10 16:38:36.315427205 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1089,
+  /**/
+
+-- 
+From "know your smileys":
+ |-(	Contact lenses, but has lost them
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

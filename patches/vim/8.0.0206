@@ -1,0 +1,142 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0206
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0206
+Problem:    Test coverage for :retab insufficient.
+Solution:   Add test for :retab. (Dominique Pelle, closes #1391)
+Files:      src/Makefile, src/testdir/Make_all.mak, src/testdir/test_retab.vim
+
+
+*** ../vim-8.0.0205/src/Makefile	2017-01-17 19:20:10.324367712 +0100
+--- src/Makefile	2017-01-17 22:14:18.036361852 +0100
+***************
+*** 2154,2159 ****
+--- 2154,2160 ----
+  	test_regexp_latin \
+  	test_regexp_utf8 \
+  	test_reltime \
++ 	test_retab \
+  	test_ruby \
+  	test_search \
+  	test_searchpos \
+*** ../vim-8.0.0205/src/testdir/Make_all.mak	2017-01-15 15:22:14.162467173 +0100
+--- src/testdir/Make_all.mak	2017-01-17 22:12:37.317050177 +0100
+***************
+*** 177,182 ****
+--- 177,183 ----
+  	    test_perl.res \
+  	    test_profile.res \
+  	    test_quickfix.res \
++ 	    test_retab.res \
+  	    test_ruby.res \
+  	    test_search.res \
+  	    test_signs.res \
+*** ../vim-8.0.0205/src/testdir/test_retab.vim	2017-01-17 22:15:19.851939374 +0100
+--- src/testdir/test_retab.vim	2017-01-17 22:12:37.317050177 +0100
+***************
+*** 0 ****
+--- 1,77 ----
++ " Test :retab
++ func SetUp()
++   new
++   call setline(1, "\ta  \t    b        c    ")
++ endfunc
++ 
++ func TearDown()
++   bwipe!
++ endfunc
++ 
++ func Retab(bang, n)
++   let l:old_tabstop = &tabstop
++   let l:old_line = getline(1)
++   exe "retab" . a:bang . a:n
++   let l:line = getline(1)
++   call setline(1, l:old_line)
++   if a:n > 0
++     " :retab changes 'tabstop' to n with argument n > 0.
++     call assert_equal(a:n, &tabstop)
++     exe 'set tabstop=' . l:old_tabstop
++   else
++     " :retab does not change 'tabstop' with empty or n <= 0.
++     call assert_equal(l:old_tabstop, &tabstop)
++   endif
++   return l:line
++ endfunc
++ 
++ func Test_retab()
++   set tabstop=8 noexpandtab
++   call assert_equal("\ta\t    b        c    ",            Retab('',  ''))
++   call assert_equal("\ta\t    b        c    ",            Retab('',  0))
++   call assert_equal("\ta\t    b        c    ",            Retab('',  8))
++   call assert_equal("\ta\t    b\t     c\t  ",             Retab('!', ''))
++   call assert_equal("\ta\t    b\t     c\t  ",             Retab('!', 0))
++   call assert_equal("\ta\t    b\t     c\t  ",             Retab('!', 8))
++ 
++   call assert_equal("\t\ta\t\t\tb        c    ",          Retab('',  4))
++   call assert_equal("\t\ta\t\t\tb\t\t c\t  ",             Retab('!', 4))
++ 
++   call assert_equal("        a\t\tb        c    ",        Retab('',  10))
++   call assert_equal("        a\t\tb        c    ",        Retab('!', 10))
++ 
++   set tabstop=8 expandtab
++   call assert_equal("        a           b        c    ", Retab('',  ''))
++   call assert_equal("        a           b        c    ", Retab('',  0))
++   call assert_equal("        a           b        c    ", Retab('',  8))
++   call assert_equal("        a           b        c    ", Retab('!', ''))
++   call assert_equal("        a           b        c    ", Retab('!', 0))
++   call assert_equal("        a           b        c    ", Retab('!', 8))
++ 
++   call assert_equal("        a           b        c    ", Retab(' ', 4))
++   call assert_equal("        a           b        c    ", Retab('!', 4))
++ 
++   call assert_equal("        a           b        c    ", Retab(' ', 10))
++   call assert_equal("        a           b        c    ", Retab('!', 10))
++ 
++   set tabstop=4 noexpandtab
++   call assert_equal("\ta\t\tb        c    ",              Retab('',  ''))
++   call assert_equal("\ta\t\tb\t\t c\t  ",                 Retab('!', ''))
++   call assert_equal("\t a\t\t\tb        c    ",           Retab('',  3))
++   call assert_equal("\t a\t\t\tb\t\t\tc\t  ",             Retab('!', 3))
++   call assert_equal("    a\t  b        c    ",            Retab('',  5))
++   call assert_equal("    a\t  b\t\t c\t ",                Retab('!', 5))
++ 
++   set tabstop=4 expandtab
++   call assert_equal("    a       b        c    ",         Retab('',  ''))
++   call assert_equal("    a       b        c    ",         Retab('!', ''))
++   call assert_equal("    a       b        c    ",         Retab('',  3))
++   call assert_equal("    a       b        c    ",         Retab('!', 3))
++   call assert_equal("    a       b        c    ",         Retab('',  5))
++   call assert_equal("    a       b        c    ",         Retab('!', 5))
++ endfunc
++ 
++ func Test_retab_error()
++   call assert_fails('retab -1',  'E487:')
++   call assert_fails('retab! -1', 'E487:')
++ endfunc
+*** ../vim-8.0.0205/src/version.c	2017-01-17 22:09:41.310252893 +0100
+--- src/version.c	2017-01-17 22:13:47.000573959 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     206,
+  /**/
+
+-- 
+DINGO:   And after the spanking ... the oral sex.
+GALAHAD: Oh, dear! Well, I...
+GIRLS:   The oral sex ...  The oral sex.
+GALAHAD: Well, I suppose I could stay a BIT longer.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

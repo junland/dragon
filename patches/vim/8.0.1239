@@ -1,0 +1,436 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1239
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1239
+Problem:    Cannot use a lambda for the skip argument to searchpair().
+Solution:   Evaluate a partial, funcref and lambda. (LemonBoy, closes #1454,
+            closes #2265)
+Files:      runtime/doc/eval.txt, src/evalfunc.c, src/proto/evalfunc.pro,
+            src/eval.c, src/proto/eval.pro, src/search.c,
+            src/testdir/test_search.vim
+
+
+*** ../vim-8.0.1238/runtime/doc/eval.txt	2017-10-28 21:08:38.967457092 +0200
+--- runtime/doc/eval.txt	2017-10-30 20:33:56.554407802 +0100
+***************
+*** 6781,6786 ****
+--- 6793,6799 ----
+  		When {skip} is omitted or empty, every match is accepted.
+  		When evaluating {skip} causes an error the search is aborted
+  		and -1 returned.
++ 		{skip} can be a string, a lambda, a funcref or a partial.
+  
+  		For {stopline} and {timeout} see |search()|.
+  
+*** ../vim-8.0.1238/src/evalfunc.c	2017-10-28 21:08:38.979457009 +0200
+--- src/evalfunc.c	2017-10-30 21:21:15.250475760 +0100
+***************
+*** 9531,9543 ****
+  searchpair_cmn(typval_T *argvars, pos_T *match_pos)
+  {
+      char_u	*spat, *mpat, *epat;
+!     char_u	*skip;
+      int		save_p_ws = p_ws;
+      int		dir;
+      int		flags = 0;
+      char_u	nbuf1[NUMBUFLEN];
+      char_u	nbuf2[NUMBUFLEN];
+-     char_u	nbuf3[NUMBUFLEN];
+      int		retval = 0;		/* default: FAIL */
+      long	lnum_stop = 0;
+      long	time_limit = 0;
+--- 9531,9542 ----
+  searchpair_cmn(typval_T *argvars, pos_T *match_pos)
+  {
+      char_u	*spat, *mpat, *epat;
+!     typval_T	*skip;
+      int		save_p_ws = p_ws;
+      int		dir;
+      int		flags = 0;
+      char_u	nbuf1[NUMBUFLEN];
+      char_u	nbuf2[NUMBUFLEN];
+      int		retval = 0;		/* default: FAIL */
+      long	lnum_stop = 0;
+      long	time_limit = 0;
+***************
+*** 9571,9580 ****
+      /* Optional fifth argument: skip expression */
+      if (argvars[3].v_type == VAR_UNKNOWN
+  	    || argvars[4].v_type == VAR_UNKNOWN)
+! 	skip = (char_u *)"";
+      else
+      {
+! 	skip = get_tv_string_buf_chk(&argvars[4], nbuf3);
+  	if (argvars[5].v_type != VAR_UNKNOWN)
+  	{
+  	    lnum_stop = (long)get_tv_number_chk(&argvars[5], NULL);
+--- 9570,9585 ----
+      /* Optional fifth argument: skip expression */
+      if (argvars[3].v_type == VAR_UNKNOWN
+  	    || argvars[4].v_type == VAR_UNKNOWN)
+! 	skip = NULL;
+      else
+      {
+! 	skip = &argvars[4];
+! 	if (skip->v_type != VAR_FUNC && skip->v_type != VAR_PARTIAL
+! 	    && skip->v_type != VAR_STRING)
+! 	{
+! 	    /* Type error */
+! 	    goto theend;
+! 	}
+  	if (argvars[5].v_type != VAR_UNKNOWN)
+  	{
+  	    lnum_stop = (long)get_tv_number_chk(&argvars[5], NULL);
+***************
+*** 9590,9597 ****
+  #endif
+  	}
+      }
+-     if (skip == NULL)
+- 	goto theend;	    /* type error */
+  
+      retval = do_searchpair(spat, mpat, epat, dir, skip, flags,
+  					    match_pos, lnum_stop, time_limit);
+--- 9595,9600 ----
+***************
+*** 9645,9651 ****
+      char_u	*mpat,	    /* middle pattern */
+      char_u	*epat,	    /* end pattern */
+      int		dir,	    /* BACKWARD or FORWARD */
+!     char_u	*skip,	    /* skip expression */
+      int		flags,	    /* SP_SETPCMARK and other SP_ values */
+      pos_T	*match_pos,
+      linenr_T	lnum_stop,  /* stop at this line if not zero */
+--- 9648,9654 ----
+      char_u	*mpat,	    /* middle pattern */
+      char_u	*epat,	    /* end pattern */
+      int		dir,	    /* BACKWARD or FORWARD */
+!     typval_T	*skip,	    /* skip expression */
+      int		flags,	    /* SP_SETPCMARK and other SP_ values */
+      pos_T	*match_pos,
+      linenr_T	lnum_stop,  /* stop at this line if not zero */
+***************
+*** 9662,9667 ****
+--- 9665,9671 ----
+      int		n;
+      int		r;
+      int		nest = 1;
++     int		use_skip = FALSE;
+      int		err;
+      int		options = SEARCH_KEEP;
+      proftime_T	tm;
+***************
+*** 9690,9695 ****
+--- 9694,9707 ----
+      if (flags & SP_START)
+  	options |= SEARCH_START;
+  
++     if (skip != NULL)
++     {
++ 	/* Empty string means to not use the skip expression. */
++ 	if (skip->v_type == VAR_STRING || skip->v_type == VAR_FUNC)
++ 	    use_skip = skip->vval.v_string != NULL
++ 						&& *skip->vval.v_string != NUL;
++     }
++ 
+      save_cursor = curwin->w_cursor;
+      pos = curwin->w_cursor;
+      CLEAR_POS(&firstpos);
+***************
+*** 9721,9731 ****
+  	options &= ~SEARCH_START;
+  
+  	/* If the skip pattern matches, ignore this match. */
+! 	if (*skip != NUL)
+  	{
+  	    save_pos = curwin->w_cursor;
+  	    curwin->w_cursor = pos;
+! 	    r = eval_to_bool(skip, &err, NULL, FALSE);
+  	    curwin->w_cursor = save_pos;
+  	    if (err)
+  	    {
+--- 9733,9744 ----
+  	options &= ~SEARCH_START;
+  
+  	/* If the skip pattern matches, ignore this match. */
+! 	if (use_skip)
+  	{
+  	    save_pos = curwin->w_cursor;
+  	    curwin->w_cursor = pos;
+! 	    err = FALSE;
+! 	    r = eval_expr_to_bool(skip, &err);
+  	    curwin->w_cursor = save_pos;
+  	    if (err)
+  	    {
+*** ../vim-8.0.1238/src/proto/evalfunc.pro	2017-07-29 20:07:00.764940487 +0200
+--- src/proto/evalfunc.pro	2017-10-30 20:33:56.558407776 +0100
+***************
+*** 8,14 ****
+  void execute_redir_str(char_u *value, int value_len);
+  void mzscheme_call_vim(char_u *name, typval_T *args, typval_T *rettv);
+  float_T vim_round(float_T f);
+! long do_searchpair(char_u *spat, char_u *mpat, char_u *epat, int dir, char_u *skip, int flags, pos_T *match_pos, linenr_T lnum_stop, long time_limit);
+  char_u *get_callback(typval_T *arg, partial_T **pp);
+  void free_callback(char_u *callback, partial_T *partial);
+  /* vim: set ft=c : */
+--- 8,14 ----
+  void execute_redir_str(char_u *value, int value_len);
+  void mzscheme_call_vim(char_u *name, typval_T *args, typval_T *rettv);
+  float_T vim_round(float_T f);
+! long do_searchpair(char_u *spat, char_u *mpat, char_u *epat, int dir, typval_T *skip, int flags, pos_T *match_pos, linenr_T lnum_stop, long time_limit);
+  char_u *get_callback(typval_T *arg, partial_T **pp);
+  void free_callback(char_u *callback, partial_T *partial);
+  /* vim: set ft=c : */
+*** ../vim-8.0.1238/src/eval.c	2017-10-24 21:49:32.226837790 +0200
+--- src/eval.c	2017-10-30 21:03:57.657805513 +0100
+***************
+*** 696,701 ****
+--- 696,765 ----
+      return (int)retval;
+  }
+  
++     static int
++ eval_expr_typval(typval_T *expr, typval_T *argv, int argc, typval_T *rettv)
++ {
++     char_u	*s;
++     int		dummy;
++     char_u	buf[NUMBUFLEN];
++ 
++     if (expr->v_type == VAR_FUNC)
++     {
++ 	s = expr->vval.v_string;
++ 	if (s == NULL || *s == NUL)
++ 	    return FAIL;
++ 	if (call_func(s, (int)STRLEN(s), rettv, argc, argv, NULL,
++ 				     0L, 0L, &dummy, TRUE, NULL, NULL) == FAIL)
++ 	    return FAIL;
++     }
++     else if (expr->v_type == VAR_PARTIAL)
++     {
++ 	partial_T   *partial = expr->vval.v_partial;
++ 
++ 	s = partial_name(partial);
++ 	if (s == NULL || *s == NUL)
++ 	    return FAIL;
++ 	if (call_func(s, (int)STRLEN(s), rettv, argc, argv, NULL,
++ 				  0L, 0L, &dummy, TRUE, partial, NULL) == FAIL)
++ 	    return FAIL;
++     }
++     else
++     {
++ 	s = get_tv_string_buf_chk(expr, buf);
++ 	if (s == NULL)
++ 	    return FAIL;
++ 	s = skipwhite(s);
++ 	if (eval1(&s, rettv, TRUE) == FAIL)
++ 	    return FAIL;
++ 	if (*s != NUL)  /* check for trailing chars after expr */
++ 	{
++ 	    EMSG2(_(e_invexpr2), s);
++ 	    return FAIL;
++ 	}
++     }
++     return OK;
++ }
++ 
++ /*
++  * Like eval_to_bool() but using a typval_T instead of a string.
++  * Works for string, funcref and partial.
++  */
++     int
++ eval_expr_to_bool(typval_T *expr, int *error)
++ {
++     typval_T	rettv;
++     int		res;
++ 
++     if (eval_expr_typval(expr, NULL, 0, &rettv) == FAIL)
++     {
++ 	*error = TRUE;
++ 	return FALSE;
++     }
++     res = (get_tv_number_chk(&rettv, error) != 0);
++     clear_tv(&rettv);
++     return res;
++ }
++ 
+  /*
+   * Top level evaluation function, returning a string.  If "skip" is TRUE,
+   * only parsing to "nextcmd" is done, without reporting errors.  Return
+***************
+*** 9971,10014 ****
+  {
+      typval_T	rettv;
+      typval_T	argv[3];
+-     char_u	buf[NUMBUFLEN];
+-     char_u	*s;
+      int		retval = FAIL;
+-     int		dummy;
+  
+      copy_tv(tv, &vimvars[VV_VAL].vv_tv);
+      argv[0] = vimvars[VV_KEY].vv_tv;
+      argv[1] = vimvars[VV_VAL].vv_tv;
+!     if (expr->v_type == VAR_FUNC)
+!     {
+! 	s = expr->vval.v_string;
+! 	if (call_func(s, (int)STRLEN(s), &rettv, 2, argv, NULL,
+! 				     0L, 0L, &dummy, TRUE, NULL, NULL) == FAIL)
+! 	    goto theend;
+!     }
+!     else if (expr->v_type == VAR_PARTIAL)
+!     {
+! 	partial_T   *partial = expr->vval.v_partial;
+! 
+! 	s = partial_name(partial);
+! 	if (call_func(s, (int)STRLEN(s), &rettv, 2, argv, NULL,
+! 				  0L, 0L, &dummy, TRUE, partial, NULL) == FAIL)
+! 	    goto theend;
+!     }
+!     else
+!     {
+! 	s = get_tv_string_buf_chk(expr, buf);
+! 	if (s == NULL)
+! 	    goto theend;
+! 	s = skipwhite(s);
+! 	if (eval1(&s, &rettv, TRUE) == FAIL)
+! 	    goto theend;
+! 	if (*s != NUL)  /* check for trailing chars after expr */
+! 	{
+! 	    EMSG2(_(e_invexpr2), s);
+! 	    goto theend;
+! 	}
+!     }
+      if (map)
+      {
+  	/* map(): replace the list item value */
+--- 10035,10047 ----
+  {
+      typval_T	rettv;
+      typval_T	argv[3];
+      int		retval = FAIL;
+  
+      copy_tv(tv, &vimvars[VV_VAL].vv_tv);
+      argv[0] = vimvars[VV_KEY].vv_tv;
+      argv[1] = vimvars[VV_VAL].vv_tv;
+!     if (eval_expr_typval(expr, argv, 2, &rettv) == FAIL)
+! 	goto theend;
+      if (map)
+      {
+  	/* map(): replace the list item value */
+*** ../vim-8.0.1238/src/proto/eval.pro	2017-03-18 19:41:45.900072865 +0100
+--- src/proto/eval.pro	2017-10-30 21:01:51.414691297 +0100
+***************
+*** 10,15 ****
+--- 10,16 ----
+  void eval_diff(char_u *origfile, char_u *newfile, char_u *outfile);
+  void eval_patch(char_u *origfile, char_u *difffile, char_u *outfile);
+  int eval_to_bool(char_u *arg, int *error, char_u **nextcmd, int skip);
++ int eval_expr_to_bool(typval_T *expr, int *error);
+  char_u *eval_to_string_skip(char_u *arg, char_u **nextcmd, int skip);
+  int skip_expr(char_u **pp);
+  char_u *eval_to_string(char_u *arg, char_u **nextcmd, int convert);
+***************
+*** 47,53 ****
+  int set_ref_in_ht(hashtab_T *ht, int copyID, list_stack_T **list_stack);
+  int set_ref_in_list(list_T *l, int copyID, ht_stack_T **ht_stack);
+  int set_ref_in_item(typval_T *tv, int copyID, ht_stack_T **ht_stack, list_stack_T **list_stack);
+! char_u *echo_string_core(typval_T *tv, char_u **tofree, char_u *numbuf, int copyID, int echo_style, int restore_copyID, int dict_val);
+  char_u *echo_string(typval_T *tv, char_u **tofree, char_u *numbuf, int copyID);
+  char_u *tv2string(typval_T *tv, char_u **tofree, char_u *numbuf, int copyID);
+  char_u *string_quote(char_u *str, int function);
+--- 48,54 ----
+  int set_ref_in_ht(hashtab_T *ht, int copyID, list_stack_T **list_stack);
+  int set_ref_in_list(list_T *l, int copyID, ht_stack_T **ht_stack);
+  int set_ref_in_item(typval_T *tv, int copyID, ht_stack_T **ht_stack, list_stack_T **list_stack);
+! char_u *echo_string_core(typval_T *tv, char_u **tofree, char_u *numbuf, int copyID, int echo_style, int restore_copyID, int composite_val);
+  char_u *echo_string(typval_T *tv, char_u **tofree, char_u *numbuf, int copyID);
+  char_u *tv2string(typval_T *tv, char_u **tofree, char_u *numbuf, int copyID);
+  char_u *string_quote(char_u *str, int function);
+*** ../vim-8.0.1238/src/search.c	2017-10-29 16:39:36.262313855 +0100
+--- src/search.c	2017-10-30 20:33:56.558407776 +0100
+***************
+*** 4015,4021 ****
+      {
+  	if (do_searchpair((char_u *)"<[^ \t>/!]\\+\\%(\\_s\\_[^>]\\{-}[^/]>\\|$\\|\\_s\\=>\\)",
+  		    (char_u *)"",
+! 		    (char_u *)"</[^>]*>", BACKWARD, (char_u *)"", 0,
+  						  NULL, (linenr_T)0, 0L) <= 0)
+  	{
+  	    curwin->w_cursor = old_pos;
+--- 4015,4021 ----
+      {
+  	if (do_searchpair((char_u *)"<[^ \t>/!]\\+\\%(\\_s\\_[^>]\\{-}[^/]>\\|$\\|\\_s\\=>\\)",
+  		    (char_u *)"",
+! 		    (char_u *)"</[^>]*>", BACKWARD, NULL, 0,
+  						  NULL, (linenr_T)0, 0L) <= 0)
+  	{
+  	    curwin->w_cursor = old_pos;
+***************
+*** 4049,4055 ****
+      sprintf((char *)spat, "<%.*s\\>\\%%(\\s\\_[^>]\\{-}[^/]>\\|>\\)\\c", len, p);
+      sprintf((char *)epat, "</%.*s>\\c", len, p);
+  
+!     r = do_searchpair(spat, (char_u *)"", epat, FORWARD, (char_u *)"",
+  						    0, NULL, (linenr_T)0, 0L);
+  
+      vim_free(spat);
+--- 4049,4055 ----
+      sprintf((char *)spat, "<%.*s\\>\\%%(\\s\\_[^>]\\{-}[^/]>\\|>\\)\\c", len, p);
+      sprintf((char *)epat, "</%.*s>\\c", len, p);
+  
+!     r = do_searchpair(spat, (char_u *)"", epat, FORWARD, NULL,
+  						    0, NULL, (linenr_T)0, 0L);
+  
+      vim_free(spat);
+*** ../vim-8.0.1238/src/testdir/test_search.vim	2017-10-29 16:39:36.262313855 +0100
+--- src/testdir/test_search.vim	2017-10-30 21:46:14.587745540 +0100
+***************
+*** 296,301 ****
+--- 296,320 ----
+    q!
+  endfunc
+  
++ func Test_searchpair_skip()
++     func Zero()
++ 	return 0
++     endfunc
++     func Partial(x)
++ 	return a:x
++     endfunc
++     new
++     call setline(1, ['{', 'foo', 'foo', 'foo', '}'])
++     3 | call assert_equal(1, searchpair('{', '', '}', 'bWn', ''))
++     3 | call assert_equal(1, searchpair('{', '', '}', 'bWn', '0'))
++     3 | call assert_equal(1, searchpair('{', '', '}', 'bWn', {-> 0}))
++     3 | call assert_equal(1, searchpair('{', '', '}', 'bWn', function('Zero')))
++     3 | call assert_equal(1, searchpair('{', '', '}', 'bWn', function('Partial', [0])))
++     " invalid argument
++     3 | call assert_equal(0, searchpair('{', '', '}', 'bWn', 0))
++     bw!
++ endfunc
++ 
+  func Test_searchc()
+    " These commands used to cause memory overflow in searchc().
+    new
+*** ../vim-8.0.1238/src/version.c	2017-10-29 16:39:36.266313827 +0100
+--- src/version.c	2017-10-30 21:47:25.087242229 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1239,
+  /**/
+
+-- 
+I just planted an Algebra tree. It has square roots.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

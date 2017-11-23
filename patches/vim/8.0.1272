@@ -1,0 +1,59 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1272
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1272
+Problem:    Warnings for unused variables in tiny build.
+Solution:   Add #ifdef. (Dominique Pelle, closes #2288)
+Files:      src/term.c
+
+
+*** ../vim-8.0.1271/src/term.c	2017-11-04 15:16:52.211407386 +0100
+--- src/term.c	2017-11-05 21:22:01.357199061 +0100
+***************
+*** 4757,4766 ****
+  			if (i - j >= 21 && STRNCMP(tp + j + 3, "rgb:", 4) == 0
+  			    && tp[j + 11] == '/' && tp[j + 16] == '/')
+  			{
+  			    int rval = hexhex2nr(tp + j + 7);
+  			    int gval = hexhex2nr(tp + j + 12);
+  			    int bval = hexhex2nr(tp + j + 17);
+! 
+  			    if (is_bg)
+  			    {
+  				char *newval = (3 * '6' < tp[j+7] + tp[j+12]
+--- 4757,4767 ----
+  			if (i - j >= 21 && STRNCMP(tp + j + 3, "rgb:", 4) == 0
+  			    && tp[j + 11] == '/' && tp[j + 16] == '/')
+  			{
++ #ifdef FEAT_TERMINAL
+  			    int rval = hexhex2nr(tp + j + 7);
+  			    int gval = hexhex2nr(tp + j + 12);
+  			    int bval = hexhex2nr(tp + j + 17);
+! #endif
+  			    if (is_bg)
+  			    {
+  				char *newval = (3 * '6' < tp[j+7] + tp[j+12]
+*** ../vim-8.0.1271/src/version.c	2017-11-05 20:59:12.528905134 +0100
+--- src/version.c	2017-11-05 21:22:55.920802542 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1272,
+  /**/
+
+-- 
+Communication is one of the most compli..., eh, well, it's hard.
+You know what I mean.  Not?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

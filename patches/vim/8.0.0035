@@ -1,0 +1,577 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0035
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0035 (after 7.4.2013)
+Problem:    Order of matches for 'omnifunc' is messed up. (Danny Su)
+Solution:   Do not set compl_curr_match when called from complete_check().
+            (closes #1168)
+Files:      src/edit.c, src/evalfunc.c, src/proto/edit.pro, src/search.c,
+            src/spell.c, src/tag.c, src/testdir/test76.in, 
+            src/testdir/test76.ok, src/testdir/test_popup.vim, src/Makefile,
+            src/testdir/Make_all.mak
+
+
+*** ../vim-8.0.0034/src/edit.c	2016-09-05 20:53:05.000000000 +0200
+--- src/edit.c	2016-10-15 17:01:00.865374961 +0200
+***************
+*** 179,186 ****
+  #endif
+  static int  ins_compl_get_exp(pos_T *ini);
+  static void ins_compl_delete(void);
+! static void ins_compl_insert(void);
+! static int  ins_compl_next(int allow_get_expansion, int count, int insert_match);
+  static int  ins_compl_key2dir(int c);
+  static int  ins_compl_pum_key(int c);
+  static int  ins_compl_key2count(int c);
+--- 179,186 ----
+  #endif
+  static int  ins_compl_get_exp(pos_T *ini);
+  static void ins_compl_delete(void);
+! static void ins_compl_insert(int in_compl_func);
+! static int  ins_compl_next(int allow_get_expansion, int count, int insert_match, int in_compl_func);
+  static int  ins_compl_key2dir(int c);
+  static int  ins_compl_pum_key(int c);
+  static int  ins_compl_key2count(int c);
+***************
+*** 861,867 ****
+  				   && (c == CAR || c == K_KENTER || c == NL)))
+  		{
+  		    ins_compl_delete();
+! 		    ins_compl_insert();
+  		}
+  	    }
+  	}
+--- 861,867 ----
+  				   && (c == CAR || c == K_KENTER || c == NL)))
+  		{
+  		    ins_compl_delete();
+! 		    ins_compl_insert(FALSE);
+  		}
+  	    }
+  	}
+***************
+*** 3297,3303 ****
+  			break;
+  		}
+  		line_breakcheck();
+! 		ins_compl_check_keys(50);
+  	    }
+  	    fclose(fp);
+  	}
+--- 3297,3303 ----
+  			break;
+  		}
+  		line_breakcheck();
+! 		ins_compl_check_keys(50, FALSE);
+  	    }
+  	    fclose(fp);
+  	}
+***************
+*** 4036,4043 ****
+  }
+  
+  #ifdef FEAT_COMPL_FUNC
+- static void expand_by_function(int type, char_u *base);
+- 
+  /*
+   * Execute user defined complete function 'completefunc' or 'omnifunc', and
+   * get matches in "matches".
+--- 4036,4041 ----
+***************
+*** 4596,4602 ****
+  		break;
+  	    /* Fill the popup menu as soon as possible. */
+  	    if (type != -1)
+! 		ins_compl_check_keys(0);
+  
+  	    if ((ctrl_x_mode != 0 && !CTRL_X_MODE_LINE_OR_EVAL(ctrl_x_mode))
+  							 || compl_interrupted)
+--- 4594,4600 ----
+  		break;
+  	    /* Fill the popup menu as soon as possible. */
+  	    if (type != -1)
+! 		ins_compl_check_keys(0, FALSE);
+  
+  	    if ((ctrl_x_mode != 0 && !CTRL_X_MODE_LINE_OR_EVAL(ctrl_x_mode))
+  							 || compl_interrupted)
+***************
+*** 4653,4661 ****
+      set_vim_var_dict(VV_COMPLETED_ITEM, dict_alloc());
+  }
+  
+! /* Insert the new text being completed. */
+      static void
+! ins_compl_insert(void)
+  {
+      dict_T	*dict;
+  
+--- 4651,4662 ----
+      set_vim_var_dict(VV_COMPLETED_ITEM, dict_alloc());
+  }
+  
+! /*
+!  * Insert the new text being completed.
+!  * "in_compl_func" is TRUE when called from complete_check().
+!  */
+      static void
+! ins_compl_insert(int in_compl_func)
+  {
+      dict_T	*dict;
+  
+***************
+*** 4682,4688 ****
+  		    EMPTY_IF_NULL(compl_shown_match->cp_text[CPT_INFO]));
+      }
+      set_vim_var_dict(VV_COMPLETED_ITEM, dict);
+!     compl_curr_match = compl_shown_match;
+  }
+  
+  /*
+--- 4683,4690 ----
+  		    EMPTY_IF_NULL(compl_shown_match->cp_text[CPT_INFO]));
+      }
+      set_vim_var_dict(VV_COMPLETED_ITEM, dict);
+!     if (!in_compl_func)
+! 	compl_curr_match = compl_shown_match;
+  }
+  
+  /*
+***************
+*** 4706,4712 ****
+      int	    allow_get_expansion,
+      int	    count,		/* repeat completion this many times; should
+  				   be at least 1 */
+!     int	    insert_match)	/* Insert the newly selected match */
+  {
+      int	    num_matches = -1;
+      int	    i;
+--- 4708,4715 ----
+      int	    allow_get_expansion,
+      int	    count,		/* repeat completion this many times; should
+  				   be at least 1 */
+!     int	    insert_match,	/* Insert the newly selected match */
+!     int	    in_compl_func)	/* called from complete_check() */
+  {
+      int	    num_matches = -1;
+      int	    i;
+***************
+*** 4856,4862 ****
+      else if (insert_match)
+      {
+  	if (!compl_get_longest || compl_used_match)
+! 	    ins_compl_insert();
+  	else
+  	    ins_bytes(compl_leader + ins_compl_len());
+      }
+--- 4859,4865 ----
+      else if (insert_match)
+      {
+  	if (!compl_get_longest || compl_used_match)
+! 	    ins_compl_insert(in_compl_func);
+  	else
+  	    ins_bytes(compl_leader + ins_compl_len());
+      }
+***************
+*** 4921,4929 ****
+   * mode.  Also, when compl_pending is not zero, show a completion as soon as
+   * possible. -- webb
+   * "frequency" specifies out of how many calls we actually check.
+   */
+      void
+! ins_compl_check_keys(int frequency)
+  {
+      static int	count = 0;
+  
+--- 4924,4934 ----
+   * mode.  Also, when compl_pending is not zero, show a completion as soon as
+   * possible. -- webb
+   * "frequency" specifies out of how many calls we actually check.
++  * "in_compl_func" is TRUE when called from complete_check(), don't set
++  * compl_curr_match.
+   */
+      void
+! ins_compl_check_keys(int frequency, int in_compl_func)
+  {
+      static int	count = 0;
+  
+***************
+*** 4949,4955 ****
+  	    c = safe_vgetc();	/* Eat the character */
+  	    compl_shows_dir = ins_compl_key2dir(c);
+  	    (void)ins_compl_next(FALSE, ins_compl_key2count(c),
+! 						    c != K_UP && c != K_DOWN);
+  	}
+  	else
+  	{
+--- 4954,4960 ----
+  	    c = safe_vgetc();	/* Eat the character */
+  	    compl_shows_dir = ins_compl_key2dir(c);
+  	    (void)ins_compl_next(FALSE, ins_compl_key2count(c),
+! 				      c != K_UP && c != K_DOWN, in_compl_func);
+  	}
+  	else
+  	{
+***************
+*** 4972,4978 ****
+  	int todo = compl_pending > 0 ? compl_pending : -compl_pending;
+  
+  	compl_pending = 0;
+! 	(void)ins_compl_next(FALSE, todo, TRUE);
+      }
+  }
+  
+--- 4977,4983 ----
+  	int todo = compl_pending > 0 ? compl_pending : -compl_pending;
+  
+  	compl_pending = 0;
+! 	(void)ins_compl_next(FALSE, todo, TRUE, in_compl_func);
+      }
+  }
+  
+***************
+*** 5490,5496 ****
+       * Find next match (and following matches).
+       */
+      save_w_wrow = curwin->w_wrow;
+!     n = ins_compl_next(TRUE, ins_compl_key2count(c), ins_compl_use_match(c));
+  
+      /* may undisplay the popup menu */
+      ins_compl_upd_pum();
+--- 5495,5502 ----
+       * Find next match (and following matches).
+       */
+      save_w_wrow = curwin->w_wrow;
+!     n = ins_compl_next(TRUE, ins_compl_key2count(c),
+! 						ins_compl_use_match(c), FALSE);
+  
+      /* may undisplay the popup menu */
+      ins_compl_upd_pum();
+*** ../vim-8.0.0034/src/evalfunc.c	2016-10-12 14:19:55.738357808 +0200
+--- src/evalfunc.c	2016-10-15 16:22:08.458346817 +0200
+***************
+*** 2175,2181 ****
+      int		saved = RedrawingDisabled;
+  
+      RedrawingDisabled = 0;
+!     ins_compl_check_keys(0);
+      rettv->vval.v_number = compl_interrupted;
+      RedrawingDisabled = saved;
+  }
+--- 2175,2181 ----
+      int		saved = RedrawingDisabled;
+  
+      RedrawingDisabled = 0;
+!     ins_compl_check_keys(0, TRUE);
+      rettv->vval.v_number = compl_interrupted;
+      RedrawingDisabled = saved;
+  }
+*** ../vim-8.0.0034/src/proto/edit.pro	2016-09-12 13:04:00.000000000 +0200
+--- src/proto/edit.pro	2016-10-15 16:23:24.833787216 +0200
+***************
+*** 15,21 ****
+  char_u *find_word_end(char_u *ptr);
+  int ins_compl_active(void);
+  int ins_compl_add_tv(typval_T *tv, int dir);
+! void ins_compl_check_keys(int frequency);
+  int get_literal(void);
+  void insertchar(int c, int flags, int second_indent);
+  void auto_format(int trailblank, int prev_line);
+--- 15,21 ----
+  char_u *find_word_end(char_u *ptr);
+  int ins_compl_active(void);
+  int ins_compl_add_tv(typval_T *tv, int dir);
+! void ins_compl_check_keys(int frequency, int in_compl_func);
+  int get_literal(void);
+  void insertchar(int c, int flags, int second_indent);
+  void auto_format(int trailblank, int prev_line);
+*** ../vim-8.0.0034/src/search.c	2016-09-09 21:20:55.000000000 +0200
+--- src/search.c	2016-10-15 16:26:52.640264523 +0200
+***************
+*** 5429,5435 ****
+  	line_breakcheck();
+  #ifdef FEAT_INS_EXPAND
+  	if (action == ACTION_EXPAND)
+! 	    ins_compl_check_keys(30);
+  	if (got_int || compl_interrupted)
+  #else
+  	if (got_int)
+--- 5429,5435 ----
+  	line_breakcheck();
+  #ifdef FEAT_INS_EXPAND
+  	if (action == ACTION_EXPAND)
+! 	    ins_compl_check_keys(30, FALSE);
+  	if (got_int || compl_interrupted)
+  #else
+  	if (got_int)
+*** ../vim-8.0.0034/src/spell.c	2016-08-29 22:42:20.000000000 +0200
+--- src/spell.c	2016-10-15 16:27:13.788109555 +0200
+***************
+*** 8694,8700 ****
+  		    /* Done all bytes at this node, go up one level. */
+  		    --depth;
+  		    line_breakcheck();
+! 		    ins_compl_check_keys(50);
+  		}
+  		else
+  		{
+--- 8694,8700 ----
+  		    /* Done all bytes at this node, go up one level. */
+  		    --depth;
+  		    line_breakcheck();
+! 		    ins_compl_check_keys(50, FALSE);
+  		}
+  		else
+  		{
+*** ../vim-8.0.0034/src/tag.c	2016-09-06 21:20:44.000000000 +0200
+--- src/tag.c	2016-10-15 16:27:34.955954439 +0200
+***************
+*** 1587,1593 ****
+  		fast_breakcheck();
+  #ifdef FEAT_INS_EXPAND
+  	    if ((flags & TAG_INS_COMP))	/* Double brackets for gcc */
+! 		ins_compl_check_keys(30);
+  	    if (got_int || compl_interrupted)
+  #else
+  	    if (got_int)
+--- 1587,1593 ----
+  		fast_breakcheck();
+  #ifdef FEAT_INS_EXPAND
+  	    if ((flags & TAG_INS_COMP))	/* Double brackets for gcc */
+! 		ins_compl_check_keys(30, FALSE);
+  	    if (got_int || compl_interrupted)
+  #else
+  	    if (got_int)
+*** ../vim-8.0.0034/src/testdir/test76.in	2010-11-10 16:38:45.000000000 +0100
+--- src/testdir/test76.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,46 ****
+- Tests for completefunc/omnifunc. vim: set ft=vim :
+- 
+- STARTTEST
+- :"Test that nothing happens if the 'completefunc' opens
+- :"a new window (no completion, no crash)
+- :so small.vim
+- :function! DummyCompleteOne(findstart, base)
+- :  if a:findstart
+- :    return 0
+- :  else
+- :    wincmd n
+- :    return ['onedef', 'oneDEF']
+- :  endif
+- :endfunction
+- :setlocal completefunc=DummyCompleteOne
+- /^one
+- A:q!
+- :function! DummyCompleteTwo(findstart, base)
+- :  if a:findstart
+- :    wincmd n
+- :    return 0
+- :  else
+- :    return ['twodef', 'twoDEF']
+- :  endif
+- :endfunction
+- :setlocal completefunc=DummyCompleteTwo
+- /^two
+- A:q!
+- :"Test that 'completefunc' works when it's OK.
+- :function! DummyCompleteThree(findstart, base)
+- :  if a:findstart
+- :    return 0
+- :  else
+- :    return ['threedef', 'threeDEF']
+- :  endif
+- :endfunction
+- :setlocal completefunc=DummyCompleteThree
+- /^three
+- A:/^+++/,/^three/w! test.out
+- :qa!
+- ENDTEST
+- 
+- +++
+- one
+- two
+- three
+--- 0 ----
+*** ../vim-8.0.0034/src/testdir/test76.ok	2010-11-10 16:38:58.000000000 +0100
+--- src/testdir/test76.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,4 ****
+- +++
+- 
+- two
+- threeDEF
+--- 0 ----
+*** ../vim-8.0.0034/src/testdir/test_popup.vim	2016-09-22 21:27:08.360782126 +0200
+--- src/testdir/test_popup.vim	2016-10-15 17:00:08.237755020 +0200
+***************
+*** 289,292 ****
+--- 289,403 ----
+    bwipe!
+  endfunc
+  
++ func DummyCompleteOne(findstart, base)
++   if a:findstart
++     return 0
++   else
++     wincmd n
++     return ['onedef', 'oneDEF']
++   endif
++ endfunc
++ 
++ " Test that nothing happens if the 'completefunc' opens
++ " a new window (no completion, no crash)
++ func Test_completefunc_opens_new_window_one()
++   new
++   let winid = win_getid()
++   setlocal completefunc=DummyCompleteOne
++   call setline(1, 'one')
++   /^one
++   call assert_fails('call feedkeys("A\<C-X>\<C-U>\<C-N>\<Esc>", "x")', 'E839:')
++   call assert_notequal(winid, win_getid())
++   q!
++   call assert_equal(winid, win_getid())
++   call assert_equal('', getline(1))
++   q!
++ endfunc
++ 
++ " Test that nothing happens if the 'completefunc' opens
++ " a new window (no completion, no crash)
++ func DummyCompleteTwo(findstart, base)
++   if a:findstart
++     wincmd n
++     return 0
++   else
++     return ['twodef', 'twoDEF']
++   endif
++ endfunction
++ 
++ " Test that nothing happens if the 'completefunc' opens
++ " a new window (no completion, no crash)
++ func Test_completefunc_opens_new_window_two()
++   new
++   let winid = win_getid()
++   setlocal completefunc=DummyCompleteTwo
++   call setline(1, 'two')
++   /^two
++   call assert_fails('call feedkeys("A\<C-X>\<C-U>\<C-N>\<Esc>", "x")', 'E764:')
++   call assert_notequal(winid, win_getid())
++   q!
++   call assert_equal(winid, win_getid())
++   call assert_equal('two', getline(1))
++   q!
++ endfunc
++ 
++ func DummyCompleteThree(findstart, base)
++   if a:findstart
++     return 0
++   else
++     return ['threedef', 'threeDEF']
++   endif
++ endfunc
++ 
++ :"Test that 'completefunc' works when it's OK.
++ func Test_completefunc_works()
++   new
++   let winid = win_getid()
++   setlocal completefunc=DummyCompleteThree
++   call setline(1, 'three')
++   /^three
++   call feedkeys("A\<C-X>\<C-U>\<C-N>\<Esc>", "x")
++   call assert_equal(winid, win_getid())
++   call assert_equal('threeDEF', getline(1))
++   q!
++ endfunc
++ 
++ func DummyCompleteFour(findstart, base)
++   if a:findstart
++     return 0
++   else
++     call complete_add('four1')
++     call complete_add('four2')
++     call complete_check()
++     call complete_add('four3')
++     call complete_add('four4')
++     call complete_check()
++     call complete_add('four5')
++     call complete_add('four6')
++     return []
++   endif
++ endfunc
++ 
++ :"Test that 'completefunc' works when it's OK.
++ func Test_omnifunc_with_check()
++   new
++   setlocal omnifunc=DummyCompleteFour
++   call setline(1, 'four')
++   /^four
++   call feedkeys("A\<C-X>\<C-O>\<C-N>\<Esc>", "x")
++   call assert_equal('four2', getline(1))
++ 
++   call setline(1, 'four')
++   /^four
++   call feedkeys("A\<C-X>\<C-O>\<C-N>\<C-N>\<Esc>", "x")
++   call assert_equal('four3', getline(1))
++ 
++   call setline(1, 'four')
++   /^four
++   call feedkeys("A\<C-X>\<C-O>\<C-N>\<C-N>\<C-N>\<C-N>\<Esc>", "x")
++   call assert_equal('four5', getline(1))
++ 
++   q!
++ endfunc
++ 
+  " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.0034/src/Makefile	2016-10-12 17:45:13.642857417 +0200
+--- src/Makefile	2016-10-15 16:53:46.808507474 +0200
+***************
+*** 2047,2053 ****
+  	test40 test41 test42 test43 test44 test45 test48 test49 \
+  	test50 test51 test52 test53 test54 test55 test56 test57 test58 test59 \
+  	test60 test64 test65 test66 test67 test68 test69 \
+! 	test70 test72 test73 test74 test75 test76 test77 test78 test79 \
+  	test80 test82 test83 test84 test85 test86 test87 test88 test89 \
+  	test90 test91 test92 test93 test94 test95 test97 test98 test99 \
+  	test100 test101 test103 test104 test107 test108:
+--- 2047,2053 ----
+  	test40 test41 test42 test43 test44 test45 test48 test49 \
+  	test50 test51 test52 test53 test54 test55 test56 test57 test58 test59 \
+  	test60 test64 test65 test66 test67 test68 test69 \
+! 	test70 test72 test73 test74 test75 test77 test78 test79 \
+  	test80 test82 test83 test84 test85 test86 test87 test88 test89 \
+  	test90 test91 test92 test93 test94 test95 test97 test98 test99 \
+  	test100 test101 test103 test104 test107 test108:
+*** ../vim-8.0.0034/src/testdir/Make_all.mak	2016-09-29 20:54:42.403110749 +0200
+--- src/testdir/Make_all.mak	2016-10-15 16:53:57.008433920 +0200
+***************
+*** 55,61 ****
+  	test70.out \
+  	test73.out \
+  	test75.out \
+- 	test76.out \
+  	test77.out \
+  	test79.out \
+  	test80.out \
+--- 55,60 ----
+*** ../vim-8.0.0034/src/version.c	2016-10-15 15:39:34.693059595 +0200
+--- src/version.c	2016-10-15 17:05:26.303457035 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     35,
+  /**/
+
+-- 
+Every exit is an entrance into something else.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,225 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0068
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0068
+Problem:    Checking did_throw after executing autocommands is wrong. (Daniel
+            Hahler)
+Solution:   Call aborting() instead, and only when autocommands were executed.
+Files:      src/quickfix.c, src/if_cscope.c, src/testdir/test_quickfix.vim
+
+
+*** ../vim-8.0.0067/src/quickfix.c	2016-10-15 19:28:09.239181100 +0200
+--- src/quickfix.c	2016-11-05 20:29:05.956598800 +0100
+***************
+*** 3446,3457 ****
+  	case CMD_lgrepadd:  au_name = (char_u *)"lgrepadd"; break;
+  	default: break;
+      }
+!     if (au_name != NULL)
+      {
+- 	apply_autocmds(EVENT_QUICKFIXCMDPRE, au_name,
+- 					       curbuf->b_fname, TRUE, curbuf);
+  # ifdef FEAT_EVAL
+! 	if (did_throw || force_abort)
+  	    return;
+  # endif
+      }
+--- 3446,3456 ----
+  	case CMD_lgrepadd:  au_name = (char_u *)"lgrepadd"; break;
+  	default: break;
+      }
+!     if (au_name != NULL && apply_autocmds(EVENT_QUICKFIXCMDPRE, au_name,
+! 					       curbuf->b_fname, TRUE, curbuf))
+      {
+  # ifdef FEAT_EVAL
+! 	if (aborting())
+  	    return;
+  # endif
+      }
+***************
+*** 3970,3981 ****
+  	case CMD_lgrepadd:    au_name = (char_u *)"lgrepadd"; break;
+  	default: break;
+      }
+!     if (au_name != NULL)
+      {
+! 	apply_autocmds(EVENT_QUICKFIXCMDPRE, au_name,
+! 					       curbuf->b_fname, TRUE, curbuf);
+! 	if (did_throw || force_abort)
+  	    return;
+      }
+  #endif
+  
+--- 3969,3981 ----
+  	case CMD_lgrepadd:    au_name = (char_u *)"lgrepadd"; break;
+  	default: break;
+      }
+!     if (au_name != NULL && apply_autocmds(EVENT_QUICKFIXCMDPRE, au_name,
+! 					       curbuf->b_fname, TRUE, curbuf))
+      {
+! # ifdef FEAT_EVAL
+! 	if (aborting())
+  	    return;
++ # endif
+      }
+  #endif
+  
+***************
+*** 4875,4886 ****
+  	case CMD_laddbuffer:	au_name = (char_u *)"laddbuffer"; break;
+  	default: break;
+      }
+!     if (au_name != NULL)
+      {
+- 	apply_autocmds(EVENT_QUICKFIXCMDPRE, au_name,
+- 					       curbuf->b_fname, TRUE, curbuf);
+  # ifdef FEAT_EVAL
+! 	if (did_throw || force_abort)
+  	    return;
+  # endif
+      }
+--- 4875,4885 ----
+  	case CMD_laddbuffer:	au_name = (char_u *)"laddbuffer"; break;
+  	default: break;
+      }
+!     if (au_name != NULL && apply_autocmds(EVENT_QUICKFIXCMDPRE, au_name,
+! 					       curbuf->b_fname, TRUE, curbuf))
+      {
+  # ifdef FEAT_EVAL
+! 	if (aborting())
+  	    return;
+  # endif
+      }
+***************
+*** 4966,4977 ****
+  	case CMD_laddexpr:  au_name = (char_u *)"laddexpr"; break;
+  	default: break;
+      }
+!     if (au_name != NULL)
+      {
+- 	apply_autocmds(EVENT_QUICKFIXCMDPRE, au_name,
+- 					       curbuf->b_fname, TRUE, curbuf);
+  # ifdef FEAT_EVAL
+! 	if (did_throw || force_abort)
+  	    return;
+  # endif
+      }
+--- 4965,4975 ----
+  	case CMD_laddexpr:  au_name = (char_u *)"laddexpr"; break;
+  	default: break;
+      }
+!     if (au_name != NULL && apply_autocmds(EVENT_QUICKFIXCMDPRE, au_name,
+! 					       curbuf->b_fname, TRUE, curbuf))
+      {
+  # ifdef FEAT_EVAL
+! 	if (aborting())
+  	    return;
+  # endif
+      }
+***************
+*** 5042,5053 ****
+  	case CMD_lhelpgrep: au_name = (char_u *)"lhelpgrep"; break;
+  	default: break;
+      }
+!     if (au_name != NULL)
+      {
+! 	apply_autocmds(EVENT_QUICKFIXCMDPRE, au_name,
+! 					       curbuf->b_fname, TRUE, curbuf);
+! 	if (did_throw || force_abort)
+  	    return;
+      }
+  #endif
+  
+--- 5040,5052 ----
+  	case CMD_lhelpgrep: au_name = (char_u *)"lhelpgrep"; break;
+  	default: break;
+      }
+!     if (au_name != NULL && apply_autocmds(EVENT_QUICKFIXCMDPRE, au_name,
+! 					       curbuf->b_fname, TRUE, curbuf))
+      {
+! # ifdef FEAT_EVAL
+! 	if (aborting())
+  	    return;
++ # endif
+      }
+  #endif
+  
+*** ../vim-8.0.0067/src/if_cscope.c	2016-10-12 14:19:55.746357751 +0200
+--- src/if_cscope.c	2016-11-06 14:37:33.399497314 +0100
+***************
+*** 1178,1189 ****
+  	}
+  
+  # ifdef FEAT_AUTOCMD
+! 	if (*qfpos != '0')
+  	{
+- 	    apply_autocmds(EVENT_QUICKFIXCMDPRE, (char_u *)"cscope",
+- 					       curbuf->b_fname, TRUE, curbuf);
+  #  ifdef FEAT_EVAL
+! 	    if (did_throw || force_abort)
+  		return FALSE;
+  #  endif
+  	}
+--- 1178,1189 ----
+  	}
+  
+  # ifdef FEAT_AUTOCMD
+! 	if (*qfpos != '0'
+! 		&& apply_autocmds(EVENT_QUICKFIXCMDPRE, (char_u *)"cscope",
+! 					       curbuf->b_fname, TRUE, curbuf))
+  	{
+  #  ifdef FEAT_EVAL
+! 	    if (aborting())
+  		return FALSE;
+  #  endif
+  	}
+*** ../vim-8.0.0067/src/testdir/test_quickfix.vim	2016-10-15 19:28:09.243181069 +0200
+--- src/testdir/test_quickfix.vim	2016-11-06 14:40:38.522365572 +0100
+***************
+*** 1631,1633 ****
+--- 1631,1650 ----
+  	      \ 'postcaddbuffer']
+    call assert_equal(l, g:acmds)
+  endfunction
++ 
++ function! Test_Autocmd_Exception()
++   set efm=%m
++   lgetexpr '?'
++ 
++   try
++     call DoesNotExit()
++   catch
++     lgetexpr '1'
++   finally
++     lgetexpr '1'
++   endtry
++ 
++   call assert_equal('1', getloclist(0)[0].text)
++ 
++   set efm&vim
++ endfunction
+*** ../vim-8.0.0067/src/version.c	2016-11-06 14:17:13.182972857 +0100
+--- src/version.c	2016-11-06 14:44:51.388820574 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     68,
+  /**/
+
+-- 
+Engineers understand that their appearance only bothers other people and
+therefore it is not worth optimizing.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

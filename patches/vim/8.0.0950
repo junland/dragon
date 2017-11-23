@@ -1,0 +1,73 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0950
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0950
+Problem:    MS-Windows: wrong #ifdef, compiler warnings for signed/unsigned.
+Solution:   Change variable type. Change TERMINAL to FEAT_TERMINAL.
+Files:      src/os_win32.c, src/option.h
+
+
+*** ../vim-8.0.0949/src/os_win32.c	2017-08-14 23:25:00.494052007 +0200
+--- src/os_win32.c	2017-08-17 11:17:32.529962363 +0200
+***************
+*** 5072,5078 ****
+  	    --todo;
+  	    if (wkey != NULL && wval != NULL)
+  	    {
+! 		int	n;
+  		size_t	lkey = wcslen(wkey);
+  		size_t	lval = wcslen(wval);
+  
+--- 5072,5078 ----
+  	    --todo;
+  	    if (wkey != NULL && wval != NULL)
+  	    {
+! 		size_t	n;
+  		size_t	lkey = wcslen(wkey);
+  		size_t	lval = wcslen(wval);
+  
+*** ../vim-8.0.0949/src/option.h	2017-08-16 23:14:03.539122761 +0200
+--- src/option.h	2017-08-17 11:21:05.132688777 +0200
+***************
+*** 966,972 ****
+  EXTERN long	p_wmw;		/* 'winminwidth' */
+  EXTERN long	p_wiw;		/* 'winwidth' */
+  #endif
+! #if defined(WIN3264) && defined(TERMINAL)
+  EXTERN char_u	*p_winptydll;	/* 'winptydll' */
+  #endif
+  EXTERN int	p_ws;		/* 'wrapscan' */
+--- 966,972 ----
+  EXTERN long	p_wmw;		/* 'winminwidth' */
+  EXTERN long	p_wiw;		/* 'winwidth' */
+  #endif
+! #if defined(WIN3264) && defined(FEAT_TERMINAL)
+  EXTERN char_u	*p_winptydll;	/* 'winptydll' */
+  #endif
+  EXTERN int	p_ws;		/* 'wrapscan' */
+*** ../vim-8.0.0949/src/version.c	2017-08-16 23:14:03.543122736 +0200
+--- src/version.c	2017-08-17 11:22:03.820337072 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     950,
+  /**/
+
+-- 
+FIRST SOLDIER:  So they wouldn't be able to bring a coconut back anyway.
+SECOND SOLDIER: Wait a minute! Suppose two swallows carried it together?
+FIRST SOLDIER:  No, they'd have to have it on a line.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

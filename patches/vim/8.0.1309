@@ -1,0 +1,1477 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1309
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1309
+Problem:    Cannot use 'balloonexpr' in a terminal.
+Solution:   Add 'balloonevalterm' and add code to handle mouse movements in a
+            terminal. Initial implementation for Unix with GUI.
+Files:      src/option.c, src/option.h, src/os_unix.c, src/proto/os_unix.pro,
+            src/feature.h, src/misc2.c, src/keymap.h, src/edit.c,
+            src/ex_getln.c, src/message.c, src/misc1.c, src/normal.c,
+            src/terminal.c, src/getchar.c, src/ex_cmds2.c, src/gui_beval.c,
+            src/proto/gui_beval.pro, src/evalfunc.c, src/popupmnu.c,
+            src/proto/popupmnu.pro, src/version.c, src/globals.h, src/gui.c,
+            runtime/doc/options.txt, src/term.c,
+            runtime/pack/dist/opt/termdebug/plugin/termdebug.vim
+
+
+*** ../vim-8.0.1308/src/option.c	2017-11-11 18:16:44.093617922 +0100
+--- src/option.c	2017-11-18 17:06:39.075582598 +0100
+***************
+*** 642,647 ****
+--- 642,656 ----
+  			    {(char_u *)0L, (char_u *)0L}
+  #endif
+  			    SCRIPTID_INIT},
++     {"balloonevalterm", "bevalterm",P_BOOL|P_VI_DEF|P_NO_MKRC,
++ #ifdef FEAT_BEVALTERM
++ 			    (char_u *)&p_bevalterm, PV_NONE,
++ 			    {(char_u *)FALSE, (char_u *)0L}
++ #else
++ 			    (char_u *)NULL, PV_NONE,
++ 			    {(char_u *)0L, (char_u *)0L}
++ #endif
++ 			    SCRIPTID_INIT},
+      {"balloonexpr", "bexpr", P_STRING|P_ALLOCED|P_VI_DEF|P_VIM,
+  #if defined(FEAT_BEVAL) && defined(FEAT_EVAL)
+  			    (char_u *)&p_bexpr, PV_BEXPR,
+***************
+*** 8423,8434 ****
+  #ifdef FEAT_BEVAL
+      else if ((int *)varp == &p_beval)
+      {
+! 	if (p_beval && !old_value)
+! 	    gui_mch_enable_beval_area(balloonEval);
+! 	else if (!p_beval && old_value)
+! 	    gui_mch_disable_beval_area(balloonEval);
+      }
+  #endif
+  
+  #ifdef FEAT_AUTOCHDIR
+      else if ((int *)varp == &p_acd)
+--- 8432,8452 ----
+  #ifdef FEAT_BEVAL
+      else if ((int *)varp == &p_beval)
+      {
+! 	if (!balloonEvalForTerm)
+! 	{
+! 	    if (p_beval && !old_value)
+! 		gui_mch_enable_beval_area(balloonEval);
+! 	    else if (!p_beval && old_value)
+! 		gui_mch_disable_beval_area(balloonEval);
+! 	}
+      }
+  #endif
++ # ifdef FEAT_BEVALTERM
++     else if ((int *)varp == &p_bevalterm)
++     {
++ 	mch_bevalterm_changed();
++     }
++ # endif
+  
+  #ifdef FEAT_AUTOCHDIR
+      else if ((int *)varp == &p_acd)
+*** ../vim-8.0.1308/src/option.h	2017-11-09 18:33:22.408374709 +0100
+--- src/option.h	2017-11-17 21:05:25.842764748 +0100
+***************
+*** 382,387 ****
+--- 382,390 ----
+  EXTERN char_u	*p_bexpr;
+  # endif
+  #endif
++ # ifdef FEAT_BEVALTERM
++ EXTERN int	p_bevalterm;	/* 'balloonevalterm' */
++ # endif
+  #ifdef FEAT_BROWSE
+  EXTERN char_u	*p_bsdir;	/* 'browsedir' */
+  #endif
+*** ../vim-8.0.1308/src/os_unix.c	2017-11-16 17:03:41.948727893 +0100
+--- src/os_unix.c	2017-11-17 21:57:36.715786036 +0100
+***************
+*** 3564,3579 ****
+  #endif /* VMS  */
+  
+  #if defined(FEAT_MOUSE_TTY) || defined(PROTO)
+  /*
+   * Set mouse clicks on or off.
+   */
+      void
+  mch_setmouse(int on)
+  {
+!     static int	ison = FALSE;
+      int		xterm_mouse_vers;
+  
+!     if (on == ison)	/* return quickly if nothing to do */
+  	return;
+  
+      xterm_mouse_vers = use_xterm_mouse();
+--- 3564,3588 ----
+  #endif /* VMS  */
+  
+  #if defined(FEAT_MOUSE_TTY) || defined(PROTO)
++ static int	mouse_ison = FALSE;
++ 
+  /*
+   * Set mouse clicks on or off.
+   */
+      void
+  mch_setmouse(int on)
+  {
+! # ifdef FEAT_BEVALTERM
+!     static int	bevalterm_ison = FALSE;
+! # endif
+      int		xterm_mouse_vers;
+  
+!     if (on == mouse_ison
+! # ifdef FEAT_BEVALTERM
+! 	    && p_bevalterm == bevalterm_ison
+! # endif
+! 	    )
+! 	/* return quickly if nothing to do */
+  	return;
+  
+      xterm_mouse_vers = use_xterm_mouse();
+***************
+*** 3585,3602 ****
+  		   (on
+  		   ? IF_EB("\033[?1015h", ESC_STR "[?1015h")
+  		   : IF_EB("\033[?1015l", ESC_STR "[?1015l")));
+! 	ison = on;
+      }
+  # endif
+  
+  # ifdef FEAT_MOUSE_SGR
+      if (ttym_flags == TTYM_SGR)
+      {
+  	out_str_nf((char_u *)
+  		   (on
+  		   ? IF_EB("\033[?1006h", ESC_STR "[?1006h")
+  		   : IF_EB("\033[?1006l", ESC_STR "[?1006l")));
+! 	ison = on;
+      }
+  # endif
+  
+--- 3594,3623 ----
+  		   (on
+  		   ? IF_EB("\033[?1015h", ESC_STR "[?1015h")
+  		   : IF_EB("\033[?1015l", ESC_STR "[?1015l")));
+! 	mouse_ison = on;
+      }
+  # endif
+  
+  # ifdef FEAT_MOUSE_SGR
+      if (ttym_flags == TTYM_SGR)
+      {
++ 	/* SGR mode supports columns above 223 */
+  	out_str_nf((char_u *)
+  		   (on
+  		   ? IF_EB("\033[?1006h", ESC_STR "[?1006h")
+  		   : IF_EB("\033[?1006l", ESC_STR "[?1006l")));
+! 	mouse_ison = on;
+!     }
+! # endif
+! 
+! # ifdef FEAT_BEVALTERM
+!     if (bevalterm_ison != (p_bevalterm && on))
+!     {
+! 	bevalterm_ison = (p_bevalterm && on);
+! 	if (xterm_mouse_vers > 1 && !bevalterm_ison)
+! 	    /* disable mouse movement events, enabling is below */
+! 	    out_str_nf((char_u *)
+! 			(IF_EB("\033[?1003l", ESC_STR "[?1003l")));
+      }
+  # endif
+  
+***************
+*** 3605,3618 ****
+  	if (on)	/* enable mouse events, use mouse tracking if available */
+  	    out_str_nf((char_u *)
+  		       (xterm_mouse_vers > 1
+! 			? IF_EB("\033[?1002h", ESC_STR "[?1002h")
+  			: IF_EB("\033[?1000h", ESC_STR "[?1000h")));
+  	else	/* disable mouse events, could probably always send the same */
+  	    out_str_nf((char_u *)
+  		       (xterm_mouse_vers > 1
+  			? IF_EB("\033[?1002l", ESC_STR "[?1002l")
+  			: IF_EB("\033[?1000l", ESC_STR "[?1000l")));
+! 	ison = on;
+      }
+  
+  # ifdef FEAT_MOUSE_DEC
+--- 3626,3644 ----
+  	if (on)	/* enable mouse events, use mouse tracking if available */
+  	    out_str_nf((char_u *)
+  		       (xterm_mouse_vers > 1
+! 			? (
+! # ifdef FEAT_BEVALTERM
+! 			    bevalterm_ison
+! 			       ? IF_EB("\033[?1003h", ESC_STR "[?1003h") :
+! # endif
+! 			      IF_EB("\033[?1002h", ESC_STR "[?1002h"))
+  			: IF_EB("\033[?1000h", ESC_STR "[?1000h")));
+  	else	/* disable mouse events, could probably always send the same */
+  	    out_str_nf((char_u *)
+  		       (xterm_mouse_vers > 1
+  			? IF_EB("\033[?1002l", ESC_STR "[?1002l")
+  			: IF_EB("\033[?1000l", ESC_STR "[?1000l")));
+! 	mouse_ison = on;
+      }
+  
+  # ifdef FEAT_MOUSE_DEC
+***************
+*** 3622,3628 ****
+  	    out_str_nf((char_u *)"\033[1;2'z\033[1;3'{");
+  	else	/* disable mouse events */
+  	    out_str_nf((char_u *)"\033['z");
+! 	ison = on;
+      }
+  # endif
+  
+--- 3648,3654 ----
+  	    out_str_nf((char_u *)"\033[1;2'z\033[1;3'{");
+  	else	/* disable mouse events */
+  	    out_str_nf((char_u *)"\033['z");
+! 	mouse_ison = on;
+      }
+  # endif
+  
+***************
+*** 3632,3643 ****
+  	if (on)
+  	{
+  	    if (gpm_open())
+! 		ison = TRUE;
+  	}
+  	else
+  	{
+  	    gpm_close();
+! 	    ison = FALSE;
+  	}
+      }
+  # endif
+--- 3658,3669 ----
+  	if (on)
+  	{
+  	    if (gpm_open())
+! 		mouse_ison = TRUE;
+  	}
+  	else
+  	{
+  	    gpm_close();
+! 	    mouse_ison = FALSE;
+  	}
+      }
+  # endif
+***************
+*** 3648,3659 ****
+  	if (on)
+  	{
+  	    if (sysmouse_open() == OK)
+! 		ison = TRUE;
+  	}
+  	else
+  	{
+  	    sysmouse_close();
+! 	    ison = FALSE;
+  	}
+      }
+  # endif
+--- 3674,3685 ----
+  	if (on)
+  	{
+  	    if (sysmouse_open() == OK)
+! 		mouse_ison = TRUE;
+  	}
+  	else
+  	{
+  	    sysmouse_close();
+! 	    mouse_ison = FALSE;
+  	}
+      }
+  # endif
+***************
+*** 3686,3698 ****
+  	    out_str_nf((char_u *)IF_EB("\033[0~ZwLMRK+1Q\033\\",
+  					ESC_STR "[0~ZwLMRK+1Q" ESC_STR "\\"));
+  #  endif
+! 	    ison = TRUE;
+  	}
+  	else
+  	{
+  	    out_str_nf((char_u *)IF_EB("\033[0~ZwQ\033\\",
+  					      ESC_STR "[0~ZwQ" ESC_STR "\\"));
+! 	    ison = FALSE;
+  	}
+      }
+  # endif
+--- 3712,3724 ----
+  	    out_str_nf((char_u *)IF_EB("\033[0~ZwLMRK+1Q\033\\",
+  					ESC_STR "[0~ZwLMRK+1Q" ESC_STR "\\"));
+  #  endif
+! 	    mouse_ison = TRUE;
+  	}
+  	else
+  	{
+  	    out_str_nf((char_u *)IF_EB("\033[0~ZwQ\033\\",
+  					      ESC_STR "[0~ZwQ" ESC_STR "\\"));
+! 	    mouse_ison = FALSE;
+  	}
+      }
+  # endif
+***************
+*** 3704,3714 ****
+  	    out_str_nf("\033[>1h\033[>6h\033[>7h\033[>1h\033[>9l");
+  	else
+  	    out_str_nf("\033[>1l\033[>6l\033[>7l\033[>1l\033[>9h");
+! 	ison = on;
+      }
+  # endif
+  }
+  
+  /*
+   * Set the mouse termcode, depending on the 'term' and 'ttymouse' options.
+   */
+--- 3730,3751 ----
+  	    out_str_nf("\033[>1h\033[>6h\033[>7h\033[>1h\033[>9l");
+  	else
+  	    out_str_nf("\033[>1l\033[>6l\033[>7l\033[>1l\033[>9h");
+! 	mouse_ison = on;
+      }
+  # endif
+  }
+  
++ #if defined(FEAT_BEVALTERM) || defined(PROTO)
++ /*
++  * Called when 'balloonevalterm' changed.
++  */
++     void
++ mch_bevalterm_changed(void)
++ {
++     mch_setmouse(mouse_ison);
++ }
++ #endif
++ 
+  /*
+   * Set the mouse termcode, depending on the 'term' and 'ttymouse' options.
+   */
+*** ../vim-8.0.1308/src/proto/os_unix.pro	2017-11-16 17:03:41.948727893 +0100
+--- src/proto/os_unix.pro	2017-11-17 21:14:09.294791793 +0100
+***************
+*** 53,58 ****
+--- 53,59 ----
+  void get_stty(void);
+  int get_tty_info(int fd, ttyinfo_T *info);
+  void mch_setmouse(int on);
++ void mch_bevalterm_changed(void);
+  void check_mouse_termcode(void);
+  int mch_screenmode(char_u *arg);
+  int mch_get_shellsize(void);
+*** ../vim-8.0.1308/src/feature.h	2017-11-13 22:08:00.650177110 +0100
+--- src/feature.h	2017-11-17 22:31:34.921605663 +0100
+***************
+*** 1328,1333 ****
+--- 1328,1340 ----
+  # define FEAT_BEVAL_TIP		/* balloon eval used for toolbar tooltip */
+  #endif
+  
++ /*
++  * +balloon_eval_term	Allow balloon expression evaluation in the terminal.
++  */
++ #if defined(FEAT_BEVAL) && defined(UNIX) && defined(FEAT_TIMERS)
++ # define FEAT_BEVALTERM
++ #endif
++ 
+  /* both Motif and Athena are X11 and share some code */
+  #if defined(FEAT_GUI_MOTIF) || defined(FEAT_GUI_ATHENA)
+  # define FEAT_GUI_X11
+*** ../vim-8.0.1308/src/misc2.c	2017-11-09 13:21:53.328924049 +0100
+--- src/misc2.c	2017-11-17 22:24:54.379632706 +0100
+***************
+*** 2453,2458 ****
+--- 2453,2459 ----
+      {K_LEFTDRAG,	(char_u *)"LeftDrag"},
+      {K_LEFTRELEASE,	(char_u *)"LeftRelease"},
+      {K_LEFTRELEASE_NM,	(char_u *)"LeftReleaseNM"},
++     {K_MOUSEMOVE,	(char_u *)"MouseMove"},
+      {K_MIDDLEMOUSE,	(char_u *)"MiddleMouse"},
+      {K_MIDDLEDRAG,	(char_u *)"MiddleDrag"},
+      {K_MIDDLERELEASE,	(char_u *)"MiddleRelease"},
+***************
+*** 2515,2521 ****
+      {(int)KE_X2DRAG,		MOUSE_X2,	FALSE,	TRUE},
+      {(int)KE_X2RELEASE,		MOUSE_X2,	FALSE,	FALSE},
+      /* DRAG without CLICK */
+!     {(int)KE_IGNORE,		MOUSE_RELEASE,	FALSE,	TRUE},
+      /* RELEASE without CLICK */
+      {(int)KE_IGNORE,		MOUSE_RELEASE,	FALSE,	FALSE},
+      {0,				0,		0,	0},
+--- 2516,2522 ----
+      {(int)KE_X2DRAG,		MOUSE_X2,	FALSE,	TRUE},
+      {(int)KE_X2RELEASE,		MOUSE_X2,	FALSE,	FALSE},
+      /* DRAG without CLICK */
+!     {(int)KE_MOUSEMOVE,		MOUSE_RELEASE,	FALSE,	TRUE},
+      /* RELEASE without CLICK */
+      {(int)KE_IGNORE,		MOUSE_RELEASE,	FALSE,	FALSE},
+      {0,				0,		0,	0},
+*** ../vim-8.0.1308/src/keymap.h	2017-10-28 21:08:38.983456981 +0200
+--- src/keymap.h	2017-11-17 22:10:59.444064985 +0100
+***************
+*** 269,274 ****
+--- 269,275 ----
+      , KE_NOP = 97		/* doesn't do something */
+      , KE_FOCUSGAINED = 98	/* focus gained */
+      , KE_FOCUSLOST = 99		/* focus lost */
++     , KE_MOUSEMOVE = 100	/* mouse moved with no button down */
+  };
+  
+  /*
+***************
+*** 437,442 ****
+--- 438,444 ----
+  #define K_LEFTDRAG	TERMCAP2KEY(KS_EXTRA, KE_LEFTDRAG)
+  #define K_LEFTRELEASE	TERMCAP2KEY(KS_EXTRA, KE_LEFTRELEASE)
+  #define K_LEFTRELEASE_NM TERMCAP2KEY(KS_EXTRA, KE_LEFTRELEASE_NM)
++ #define K_MOUSEMOVE	TERMCAP2KEY(KS_EXTRA, KE_MOUSEMOVE)
+  #define K_MIDDLEMOUSE	TERMCAP2KEY(KS_EXTRA, KE_MIDDLEMOUSE)
+  #define K_MIDDLEDRAG	TERMCAP2KEY(KS_EXTRA, KE_MIDDLEDRAG)
+  #define K_MIDDLERELEASE	TERMCAP2KEY(KS_EXTRA, KE_MIDDLERELEASE)
+*** ../vim-8.0.1308/src/edit.c	2017-10-28 21:08:38.975457036 +0200
+--- src/edit.c	2017-11-18 17:42:13.367985521 +0100
+***************
+*** 1177,1182 ****
+--- 1177,1183 ----
+  	case K_LEFTDRAG:
+  	case K_LEFTRELEASE:
+  	case K_LEFTRELEASE_NM:
++ 	case K_MOUSEMOVE:
+  	case K_MIDDLEMOUSE:
+  	case K_MIDDLEDRAG:
+  	case K_MIDDLERELEASE:
+*** ../vim-8.0.1308/src/ex_getln.c	2017-11-16 22:20:35.024615088 +0100
+--- src/ex_getln.c	2017-11-17 22:13:21.201962257 +0100
+***************
+*** 1452,1457 ****
+--- 1452,1458 ----
+  	case K_X2MOUSE:
+  	case K_X2DRAG:
+  	case K_X2RELEASE:
++ 	case K_MOUSEMOVE:
+  		goto cmdline_not_changed;
+  
+  #endif	/* FEAT_MOUSE */
+*** ../vim-8.0.1308/src/message.c	2017-10-28 21:08:38.987456954 +0200
+--- src/message.c	2017-11-17 22:14:20.825076447 +0100
+***************
+*** 1179,1184 ****
+--- 1179,1185 ----
+  				|| c == K_RIGHTDRAG  || c == K_RIGHTRELEASE
+  				|| c == K_MOUSELEFT  || c == K_MOUSERIGHT
+  				|| c == K_MOUSEDOWN  || c == K_MOUSEUP
++ 				|| c == K_MOUSEMOVE
+  				|| (!mouse_has(MOUSE_RETURN)
+  				    && mouse_row < msg_row
+  				    && (c == K_LEFTMOUSE
+*** ../vim-8.0.1308/src/misc1.c	2017-10-28 21:08:38.987456954 +0200
+--- src/misc1.c	2017-11-17 22:14:39.340801214 +0100
+***************
+*** 3345,3350 ****
+--- 3345,3351 ----
+  	|| c == K_LEFTDRAG
+  	|| c == K_LEFTRELEASE
+  	|| c == K_LEFTRELEASE_NM
++ 	|| c == K_MOUSEMOVE
+  	|| c == K_MIDDLEMOUSE
+  	|| c == K_MIDDLEDRAG
+  	|| c == K_MIDDLERELEASE
+*** ../vim-8.0.1308/src/normal.c	2017-10-24 21:49:32.230837763 +0200
+--- src/normal.c	2017-11-18 17:19:27.628256894 +0100
+***************
+*** 358,363 ****
+--- 358,364 ----
+      {K_LEFTDRAG, nv_mouse,	0,			0},
+      {K_LEFTRELEASE, nv_mouse,	0,			0},
+      {K_LEFTRELEASE_NM, nv_mouse, 0,			0},
++     {K_MOUSEMOVE, nv_mouse,	0,			0},
+      {K_MIDDLEMOUSE, nv_mouse,	0,			0},
+      {K_MIDDLEDRAG, nv_mouse,	0,			0},
+      {K_MIDDLERELEASE, nv_mouse,	0,			0},
+***************
+*** 2396,2401 ****
+--- 2397,2416 ----
+  	break;
+      }
+  
++     if (c == K_MOUSEMOVE)
++     {
++ 	/* Mouse moved without a button pressed. */
++ #ifdef FEAT_BEVALTERM
++ 	ui_may_remove_balloon();
++ 	if (p_bevalterm && !VIsual_active)
++ 	{
++ 	    profile_setlimit(p_bdlay, &bevalexpr_due);
++ 	    bevalexpr_due_set = TRUE;
++ 	}
++ #endif
++ 	return FALSE;
++     }
++ 
+  #ifdef FEAT_MOUSESHAPE
+      /* May have stopped dragging the status or separator line.  The pointer is
+       * most likely still on the status or separator line. */
+***************
+*** 3843,3849 ****
+  	K_LEFTMOUSE_NM, K_LEFTRELEASE_NM,
+  # endif
+  	K_IGNORE, K_PS,
+! 	K_LEFTMOUSE, K_LEFTDRAG, K_LEFTRELEASE,
+  	K_MIDDLEMOUSE, K_MIDDLEDRAG, K_MIDDLERELEASE,
+  	K_RIGHTMOUSE, K_RIGHTDRAG, K_RIGHTRELEASE,
+  	K_MOUSEDOWN, K_MOUSEUP, K_MOUSELEFT, K_MOUSERIGHT,
+--- 3858,3864 ----
+  	K_LEFTMOUSE_NM, K_LEFTRELEASE_NM,
+  # endif
+  	K_IGNORE, K_PS,
+! 	K_LEFTMOUSE, K_LEFTDRAG, K_LEFTRELEASE, K_MOUSEMOVE,
+  	K_MIDDLEMOUSE, K_MIDDLEDRAG, K_MIDDLERELEASE,
+  	K_RIGHTMOUSE, K_RIGHTDRAG, K_RIGHTRELEASE,
+  	K_MOUSEDOWN, K_MOUSEUP, K_MOUSELEFT, K_MOUSERIGHT,
+***************
+*** 8358,8363 ****
+--- 8373,8379 ----
+      case K_LEFTMOUSE:
+      case K_LEFTDRAG:
+      case K_LEFTRELEASE:
++     case K_MOUSEMOVE:
+      case K_RIGHTMOUSE:
+      case K_RIGHTDRAG:
+      case K_RIGHTRELEASE:
+*** ../vim-8.0.1308/src/terminal.c	2017-11-16 13:07:59.886081407 +0100
+--- src/terminal.c	2017-11-17 22:21:54.714314889 +0100
+***************
+*** 52,57 ****
+--- 52,58 ----
+   * - Termdebug does not work when Vim build with mzscheme.  gdb hangs.
+   * - MS-Windows GUI: WinBar has  tearoff item
+   * - MS-Windows GUI: still need to type a key after shell exits?  #1924
++  * - After executing a shell command the status line isn't redraw.
+   * - What to store in a session file?  Shell at the prompt would be OK to
+   *   restore, but others may not.  Open the window and let the user start the
+   *   command?
+***************
+*** 717,723 ****
+  
+      vterm_mouse_move(vterm, mouse_row - W_WINROW(curwin),
+  					    mouse_col - curwin->w_wincol, mod);
+!     vterm_mouse_button(vterm, button, pressed, mod);
+      return TRUE;
+  }
+  
+--- 718,725 ----
+  
+      vterm_mouse_move(vterm, mouse_row - W_WINROW(curwin),
+  					    mouse_col - curwin->w_wincol, mod);
+!     if (button != 0)
+! 	vterm_mouse_button(vterm, button, pressed, mod);
+      return TRUE;
+  }
+  
+***************
+*** 818,823 ****
+--- 820,826 ----
+  	case K_LEFTDRAG:	other = term_send_mouse(vterm, 1, 1); break;
+  	case K_LEFTRELEASE:
+  	case K_LEFTRELEASE_NM:	other = term_send_mouse(vterm, 1, 0); break;
++ 	case K_MOUSEMOVE:	other = term_send_mouse(vterm, 0, 0); break;
+  	case K_MIDDLEMOUSE:	other = term_send_mouse(vterm, 2, 1); break;
+  	case K_MIDDLEDRAG:	other = term_send_mouse(vterm, 2, 1); break;
+  	case K_MIDDLERELEASE:	other = term_send_mouse(vterm, 2, 0); break;
+***************
+*** 1284,1289 ****
+--- 1287,1293 ----
+  	case K_LEFTMOUSE_NM:
+  	case K_LEFTRELEASE:
+  	case K_LEFTRELEASE_NM:
++ 	case K_MOUSEMOVE:
+  	case K_MIDDLEMOUSE:
+  	case K_MIDDLERELEASE:
+  	case K_RIGHTMOUSE:
+*** ../vim-8.0.1308/src/getchar.c	2017-10-28 21:08:38.979457009 +0200
+--- src/getchar.c	2017-11-18 18:13:09.495454349 +0100
+***************
+*** 1792,1797 ****
+--- 1792,1805 ----
+       */
+      may_garbage_collect = FALSE;
+  #endif
++ #ifdef FEAT_BEVALTERM
++     if (c != K_MOUSEMOVE && c != K_IGNORE)
++     {
++ 	/* Don't trigger 'balloonexpr' unless only the mouse was moved. */
++ 	bevalexpr_due_set = FALSE;
++ 	ui_remove_balloon();
++     }
++ #endif
+  
+      return c;
+  }
+*** ../vim-8.0.1308/src/ex_cmds2.c	2017-10-26 14:28:25.944144974 +0200
+--- src/ex_cmds2.c	2017-11-18 17:12:48.094186277 +0100
+***************
+*** 1093,1113 ****
+  static long	last_timer_id = 0;
+  
+      static long
+! timer_time_left(timer_T *timer, proftime_T *now)
+  {
+  #  ifdef WIN3264
+      LARGE_INTEGER fr;
+  
+!     if (now->QuadPart > timer->tr_due.QuadPart)
+  	return 0;
+      QueryPerformanceFrequency(&fr);
+!     return (long)(((double)(timer->tr_due.QuadPart - now->QuadPart)
+  		   / (double)fr.QuadPart) * 1000);
+  #  else
+!     if (now->tv_sec > timer->tr_due.tv_sec)
+  	return 0;
+!     return (timer->tr_due.tv_sec - now->tv_sec) * 1000
+! 	+ (timer->tr_due.tv_usec - now->tv_usec) / 1000;
+  #  endif
+  }
+  
+--- 1093,1113 ----
+  static long	last_timer_id = 0;
+  
+      static long
+! proftime_time_left(proftime_T *due, proftime_T *now)
+  {
+  #  ifdef WIN3264
+      LARGE_INTEGER fr;
+  
+!     if (now->QuadPart > due->QuadPart)
+  	return 0;
+      QueryPerformanceFrequency(&fr);
+!     return (long)(((double)(due->QuadPart - now->QuadPart)
+  		   / (double)fr.QuadPart) * 1000);
+  #  else
+!     if (now->tv_sec > due->tv_sec)
+  	return 0;
+!     return (due->tv_sec - now->tv_sec) * 1000
+! 	+ (due->tv_usec - now->tv_usec) / 1000;
+  #  endif
+  }
+  
+***************
+*** 1219,1225 ****
+  
+  	if (timer->tr_id == -1 || timer->tr_firing || timer->tr_paused)
+  	    continue;
+! 	this_due = timer_time_left(timer, &now);
+  	if (this_due <= 1)
+  	{
+  	    int save_timer_busy = timer_busy;
+--- 1219,1225 ----
+  
+  	if (timer->tr_id == -1 || timer->tr_firing || timer->tr_paused)
+  	    continue;
+! 	this_due = proftime_time_left(&timer->tr_due, &now);
+  	if (this_due <= 1)
+  	{
+  	    int save_timer_busy = timer_busy;
+***************
+*** 1271,1277 ****
+  		    && timer->tr_emsg_count < 3)
+  	    {
+  		profile_setlimit(timer->tr_interval, &timer->tr_due);
+! 		this_due = timer_time_left(timer, &now);
+  		if (this_due < 1)
+  		    this_due = 1;
+  		if (timer->tr_repeat > 0)
+--- 1271,1277 ----
+  		    && timer->tr_emsg_count < 3)
+  	    {
+  		profile_setlimit(timer->tr_interval, &timer->tr_due);
+! 		this_due = proftime_time_left(&timer->tr_due, &now);
+  		if (this_due < 1)
+  		    this_due = 1;
+  		if (timer->tr_repeat > 0)
+***************
+*** 1291,1296 ****
+--- 1291,1317 ----
+      if (did_one)
+  	redraw_after_callback(need_update_screen);
+  
++ #ifdef FEAT_BEVALTERM
++     if (bevalexpr_due_set)
++     {
++ 	this_due = proftime_time_left(&bevalexpr_due, &now);
++ 	if (this_due <= 1)
++ 	{
++ 	    bevalexpr_due_set = FALSE;
++ 
++ 	    if (balloonEval == NULL)
++ 	    {
++ 		balloonEval = (BalloonEval *)alloc(sizeof(BalloonEval));
++ 		balloonEvalForTerm = TRUE;
++ 	    }
++ 	    if (balloonEval != NULL)
++ 		general_beval_cb(balloonEval, 0);
++ 	}
++ 	else if (this_due > 0 && (next_due == -1 || next_due > this_due))
++ 	    next_due = this_due;
++     }
++ #endif
++ 
+      return current_id != last_timer_id ? 1 : next_due;
+  }
+  
+***************
+*** 1358,1364 ****
+      dict_add_nr_str(dict, "time", (long)timer->tr_interval, NULL);
+  
+      profile_start(&now);
+!     remaining = timer_time_left(timer, &now);
+      dict_add_nr_str(dict, "remaining", (long)remaining, NULL);
+  
+      dict_add_nr_str(dict, "repeat",
+--- 1379,1385 ----
+      dict_add_nr_str(dict, "time", (long)timer->tr_interval, NULL);
+  
+      profile_start(&now);
+!     remaining = proftime_time_left(&timer->tr_due, &now);
+      dict_add_nr_str(dict, "remaining", (long)remaining, NULL);
+  
+      dict_add_nr_str(dict, "repeat",
+*** ../vim-8.0.1308/src/gui_beval.c	2017-09-22 15:20:27.736148641 +0200
+--- src/gui_beval.c	2017-11-18 18:43:26.928614044 +0100
+***************
+*** 35,41 ****
+  
+      /* Don't do anything when 'ballooneval' is off, messages scrolled the
+       * windows up or we have no beval area. */
+!     if (!p_beval || balloonEval == NULL || msg_scrolled > 0)
+  	return;
+  
+      /* Don't do this recursively.  Happens when the expression evaluation
+--- 35,45 ----
+  
+      /* Don't do anything when 'ballooneval' is off, messages scrolled the
+       * windows up or we have no beval area. */
+!     if (!((gui.in_use && p_beval)
+! # ifdef FEAT_BEVALTERM
+! 		|| (!gui.in_use && p_bevalterm)
+! # endif
+! 		) || beval == NULL || msg_scrolled > 0)
+  	return;
+  
+      /* Don't do this recursively.  Happens when the expression evaluation
+***************
+*** 45,51 ****
+      recursive = TRUE;
+  
+  #ifdef FEAT_EVAL
+!     if (get_beval_info(balloonEval, TRUE, &wp, &lnum, &text, &col) == OK)
+      {
+  	bexpr = (*wp->w_buffer->b_p_bexpr == NUL) ? p_bexpr
+  						    : wp->w_buffer->b_p_bexpr;
+--- 49,55 ----
+      recursive = TRUE;
+  
+  #ifdef FEAT_EVAL
+!     if (get_beval_info(beval, TRUE, &wp, &lnum, &text, &col) == OK)
+      {
+  	bexpr = (*wp->w_buffer->b_p_bexpr == NUL) ? p_bexpr
+  						    : wp->w_buffer->b_p_bexpr;
+***************
+*** 96,102 ****
+  	    set_vim_var_string(VV_BEVAL_TEXT, NULL, -1);
+  	    if (result != NULL && result[0] != NUL)
+  	    {
+! 		gui_mch_post_balloon(beval, result);
+  		recursive = FALSE;
+  		return;
+  	    }
+--- 100,106 ----
+  	    set_vim_var_string(VV_BEVAL_TEXT, NULL, -1);
+  	    if (result != NULL && result[0] != NUL)
+  	    {
+! 		post_balloon(beval, result);
+  		recursive = FALSE;
+  		return;
+  	    }
+***************
+*** 335,342 ****
+      linenr_T	lnum;
+  
+      *textp = NULL;
+!     row = Y_2_ROW(beval->y);
+!     col = X_2_COL(beval->x);
+      wp = mouse_find_win(&row, &col);
+      if (wp != NULL && row < wp->w_height && col < wp->w_width)
+      {
+--- 339,356 ----
+      linenr_T	lnum;
+  
+      *textp = NULL;
+! # ifdef FEAT_BEVALTERM
+!     if (!gui.in_use)
+!     {
+! 	row = mouse_row;
+! 	col = mouse_col;
+!     }
+!     else
+! # endif
+!     {
+! 	row = Y_2_ROW(beval->y);
+! 	col = X_2_COL(beval->x);
+!     }
+      wp = mouse_find_win(&row, &col);
+      if (wp != NULL && row < wp->w_height && col < wp->w_width)
+      {
+***************
+*** 421,426 ****
+--- 435,454 ----
+      return FAIL;
+  }
+  
++ /*
++  * Show a balloon with "mesg".
++  */
++     void
++ post_balloon(BalloonEval *beval, char_u *mesg)
++ {
++ # ifdef FEAT_BEVALTERM
++     if (!gui.in_use)
++ 	ui_post_balloon(mesg);
++     else
++ # endif
++ 	gui_mch_post_balloon(beval, mesg);
++ }
++ 
+  # if !defined(FEAT_GUI_W32) || defined(PROTO)
+  
+  /*
+***************
+*** 451,460 ****
+  #endif
+  
+  #ifdef FEAT_GUI_GTK
+- /*
+-  * We can unconditionally use ANSI-style prototypes here since
+-  * GTK+ requires an ANSI C compiler anyway.
+-  */
+      static void
+  addEventHandler(GtkWidget *target, BalloonEval *beval)
+  {
+--- 479,484 ----
+*** ../vim-8.0.1308/src/proto/gui_beval.pro	2016-09-12 13:04:23.000000000 +0200
+--- src/proto/gui_beval.pro	2017-11-18 15:48:46.516644383 +0100
+***************
+*** 6,11 ****
+--- 6,12 ----
+  void gui_mch_disable_beval_area(BalloonEval *beval);
+  BalloonEval *gui_mch_currently_showing_beval(void);
+  int get_beval_info(BalloonEval *beval, int getword, win_T **winp, linenr_T *lnump, char_u **textp, int *colp);
++ void post_balloon(BalloonEval *beval, char_u *mesg);
+  void gui_mch_post_balloon(BalloonEval *beval, char_u *mesg);
+  void gui_mch_unpost_balloon(BalloonEval *beval);
+  /* vim: set ft=c : */
+*** ../vim-8.0.1308/src/evalfunc.c	2017-11-16 23:03:43.240816180 +0100
+--- src/evalfunc.c	2017-11-18 15:57:59.072589712 +0100
+***************
+*** 1410,1416 ****
+  f_balloon_show(typval_T *argvars, typval_T *rettv UNUSED)
+  {
+      if (balloonEval != NULL)
+! 	gui_mch_post_balloon(balloonEval, get_tv_string_chk(&argvars[0]));
+  }
+  #endif
+  
+--- 1410,1416 ----
+  f_balloon_show(typval_T *argvars, typval_T *rettv UNUSED)
+  {
+      if (balloonEval != NULL)
+! 	post_balloon(balloonEval, get_tv_string_chk(&argvars[0]));
+  }
+  #endif
+  
+***************
+*** 5589,5594 ****
+--- 5589,5597 ----
+  	"balloon_multiline",
+  # endif
+  #endif
++ #ifdef FEAT_BEVALTERM
++ 	"balloon_eval_term",
++ #endif
+  #if defined(SOME_BUILTIN_TCAPS) || defined(ALL_BUILTIN_TCAPS)
+  	"builtin_terms",
+  # ifdef ALL_BUILTIN_TCAPS
+*** ../vim-8.0.1308/src/popupmnu.c	2017-10-26 22:04:00.186638048 +0200
+--- src/popupmnu.c	2017-11-18 18:26:03.567881281 +0100
+***************
+*** 23,28 ****
+--- 23,29 ----
+  static int pum_width;			/* width of displayed pum items */
+  static int pum_base_width;		/* width of pum items base */
+  static int pum_kind_width;		/* width of pum items kind column */
++ static int pum_extra_width;		/* width of extra stuff */
+  static int pum_scrollbar;		/* TRUE when scrollbar present */
+  
+  static int pum_row;			/* top row of pum */
+***************
+*** 35,40 ****
+--- 36,71 ----
+  #define PUM_DEF_HEIGHT 10
+  #define PUM_DEF_WIDTH  15
+  
++     static void
++ pum_compute_size(void)
++ {
++     int	i;
++     int	w;
++ 
++     /* Compute the width of the widest match and the widest extra. */
++     pum_base_width = 0;
++     pum_kind_width = 0;
++     pum_extra_width = 0;
++     for (i = 0; i < pum_size; ++i)
++     {
++ 	w = vim_strsize(pum_array[i].pum_text);
++ 	if (pum_base_width < w)
++ 	    pum_base_width = w;
++ 	if (pum_array[i].pum_kind != NULL)
++ 	{
++ 	    w = vim_strsize(pum_array[i].pum_kind) + 1;
++ 	    if (pum_kind_width < w)
++ 		pum_kind_width = w;
++ 	}
++ 	if (pum_array[i].pum_extra != NULL)
++ 	{
++ 	    w = vim_strsize(pum_array[i].pum_extra) + 1;
++ 	    if (pum_extra_width < w)
++ 		pum_extra_width = w;
++ 	}
++     }
++ }
++ 
+  /*
+   * Show the popup menu with items "array[size]".
+   * "array" must remain valid until pum_undisplay() is called!
+***************
+*** 48,59 ****
+      int		selected)	/* index of initially selected item, none if
+  				   out of range */
+  {
+-     int		w;
+      int		def_width;
+      int		max_width;
+-     int		kind_width;
+-     int		extra_width;
+-     int		i;
+      int		row;
+      int		context_lines;
+      int		col;
+--- 79,86 ----
+***************
+*** 67,75 ****
+      do
+      {
+  	def_width = PUM_DEF_WIDTH;
+- 	max_width = 0;
+- 	kind_width = 0;
+- 	extra_width = 0;
+  	above_row = 0;
+  	below_row = cmdline_row;
+  
+--- 94,99 ----
+***************
+*** 107,113 ****
+  	/* Put the pum below "row" if possible.  If there are few lines decide
+  	 * on where there is more room. */
+  	if (row + 2 >= below_row - pum_height
+! 				&& row - above_row > (below_row - above_row) / 2)
+  	{
+  	    /* pum above "row" */
+  
+--- 131,137 ----
+  	/* Put the pum below "row" if possible.  If there are few lines decide
+  	 * on where there is more room. */
+  	if (row + 2 >= below_row - pum_height
+! 			      && row - above_row > (below_row - above_row) / 2)
+  	{
+  	    /* pum above "row" */
+  
+***************
+*** 167,193 ****
+  	}
+  #endif
+  
+! 	/* Compute the width of the widest match and the widest extra. */
+! 	for (i = 0; i < size; ++i)
+! 	{
+! 	    w = vim_strsize(array[i].pum_text);
+! 	    if (max_width < w)
+! 		max_width = w;
+! 	    if (array[i].pum_kind != NULL)
+! 	    {
+! 		w = vim_strsize(array[i].pum_kind) + 1;
+! 		if (kind_width < w)
+! 		    kind_width = w;
+! 	    }
+! 	    if (array[i].pum_extra != NULL)
+! 	    {
+! 		w = vim_strsize(array[i].pum_extra) + 1;
+! 		if (extra_width < w)
+! 		    extra_width = w;
+! 	    }
+! 	}
+! 	pum_base_width = max_width;
+! 	pum_kind_width = kind_width;
+  
+  	/* Calculate column */
+  #ifdef FEAT_RIGHTLEFT
+--- 191,200 ----
+  	}
+  #endif
+  
+! 	pum_array = array;
+! 	pum_size = size;
+! 	pum_compute_size();
+! 	max_width = pum_base_width;
+  
+  	/* Calculate column */
+  #ifdef FEAT_RIGHTLEFT
+***************
+*** 226,235 ****
+  #endif
+  		pum_width = Columns - pum_col - pum_scrollbar;
+  
+! 	    if (pum_width > max_width + kind_width + extra_width + 1
+! 						     && pum_width > PUM_DEF_WIDTH)
+  	    {
+! 		pum_width = max_width + kind_width + extra_width + 1;
+  		if (pum_width < PUM_DEF_WIDTH)
+  		    pum_width = PUM_DEF_WIDTH;
+  	    }
+--- 233,242 ----
+  #endif
+  		pum_width = Columns - pum_col - pum_scrollbar;
+  
+! 	    if (pum_width > max_width + pum_kind_width + pum_extra_width + 1
+! 						  && pum_width > PUM_DEF_WIDTH)
+  	    {
+! 		pum_width = max_width + pum_kind_width + pum_extra_width + 1;
+  		if (pum_width < PUM_DEF_WIDTH)
+  		    pum_width = PUM_DEF_WIDTH;
+  	    }
+***************
+*** 258,266 ****
+  	    pum_width = max_width - pum_scrollbar;
+  	}
+  
+- 	pum_array = array;
+- 	pum_size = size;
+- 
+  	/* Set selected item and redraw.  If the window size changed need to
+  	 * redo the positioning.  Limit this to two times, when there is not
+  	 * much room the window size will keep changing. */
+--- 265,270 ----
+***************
+*** 756,759 ****
+--- 760,856 ----
+      return pum_height;
+  }
+  
++ # if defined(FEAT_BEVALTERM) || defined(PROTO)
++ static pumitem_T *balloon_array = NULL;
++ static int balloon_arraysize;
++ static int balloon_mouse_row = 0;
++ static int balloon_mouse_col = 0;
++ 
++ #define BALLOON_MIN_WIDTH 40
++ #define BALLOON_MIN_HEIGHT 10
++ 
++     void
++ ui_remove_balloon(void)
++ {
++     if (balloon_array != NULL)
++     {
++ 	pum_undisplay();
++ 	while (balloon_arraysize > 0)
++ 	    vim_free(balloon_array[--balloon_arraysize].pum_text);
++ 	vim_free(balloon_array);
++ 	balloon_array = NULL;
++     }
++ }
++ 
++ /*
++  * Terminal version of a balloon, uses the popup menu code.
++  */
++     void
++ ui_post_balloon(char_u *mesg)
++ {
++     ui_remove_balloon();
++ 
++     /* TODO: split the text in multiple lines. */
++     balloon_arraysize = 3;
++     balloon_array = (pumitem_T *)alloc_clear(
++ 			      (unsigned)sizeof(pumitem_T) * balloon_arraysize);
++     if (balloon_array != NULL)
++     {
++ 	/* Add an empty line above and below, looks better. */
++ 	balloon_array[0].pum_text = vim_strsave((char_u *)"");
++ 	balloon_array[1].pum_text = vim_strsave(mesg);
++ 	balloon_array[2].pum_text = vim_strsave((char_u *)"");
++ 
++ 	pum_array = balloon_array;
++ 	pum_size = balloon_arraysize;
++ 	pum_compute_size();
++ 	pum_scrollbar = 0;
++ 	pum_height = balloon_arraysize;
++ 
++ 	if (Rows - mouse_row > BALLOON_MIN_HEIGHT)
++ 	{
++ 	    /* Enough space below the mouse row. */
++ 	    pum_row = mouse_row + 1;
++ 	    if (pum_height > Rows - pum_row)
++ 		pum_height = Rows - pum_row;
++ 	}
++ 	else
++ 	{
++ 	    /* Show above the mouse row, reduce height if it does not fit. */
++ 	    pum_row = mouse_row - 1 - pum_size;
++ 	    if (pum_row < 0)
++ 	    {
++ 		pum_height += pum_row;
++ 		pum_row = 0;
++ 	    }
++ 	}
++ 	if (Columns - mouse_col >= pum_base_width
++ 		|| Columns - mouse_col > BALLOON_MIN_WIDTH)
++ 	    /* Enough space to show at mouse column. */
++ 	    pum_col = mouse_col;
++ 	else
++ 	    /* Not enough space, right align with window. */
++ 	    pum_col = Columns - (pum_base_width > BALLOON_MIN_WIDTH
++ 					 ? BALLOON_MIN_WIDTH : pum_base_width);
++ 
++ 	pum_width = Columns - pum_col;
++ 	if (pum_width > pum_base_width + 1)
++ 	    pum_width = pum_base_width + 1;
++ 
++ 	pum_selected = -1;
++ 	pum_first = 0;
++ 	pum_redraw();
++     }
++ }
++ 
++ /*
++  * Called when the mouse moved, may remove any displayed balloon.
++  */
++     void
++ ui_may_remove_balloon(void)
++ {
++     if (mouse_row != balloon_mouse_row || mouse_col != balloon_mouse_col)
++ 	ui_remove_balloon();
++ }
++ # endif
+  #endif
+*** ../vim-8.0.1308/src/proto/popupmnu.pro	2016-09-12 13:04:16.000000000 +0200
+--- src/proto/popupmnu.pro	2017-11-18 18:15:05.801699540 +0100
+***************
+*** 5,8 ****
+--- 5,11 ----
+  void pum_clear(void);
+  int pum_visible(void);
+  int pum_get_height(void);
++ void ui_remove_balloon(void);
++ void ui_post_balloon(char_u *mesg);
++ void ui_may_remove_balloon(void);
+  /* vim: set ft=c : */
+*** ../vim-8.0.1308/src/version.c	2017-11-18 14:55:19.315803253 +0100
+--- src/version.c	2017-11-18 18:33:55.089046103 +0100
+***************
+*** 93,98 ****
+--- 93,103 ----
+  #else
+  	"-balloon_eval",
+  #endif
++ #ifdef FEAT_BEVALTERM
++ 	"+balloon_eval_term",
++ #else
++ 	"-balloon_eval_term",
++ #endif
+  #ifdef FEAT_BROWSE
+  	"+browse",
+  #else
+*** ../vim-8.0.1308/src/globals.h	2017-11-16 23:03:43.244816117 +0100
+--- src/globals.h	2017-11-18 17:03:17.826514499 +0100
+***************
+*** 1231,1236 ****
+--- 1231,1237 ----
+  
+  #if defined(FEAT_BEVAL) && !defined(NO_X11_INCLUDES)
+  EXTERN BalloonEval	*balloonEval INIT(= NULL);
++ EXTERN int		balloonEvalForTerm INIT(= FALSE);
+  # if defined(FEAT_NETBEANS_INTG) || defined(FEAT_SUN_WORKSHOP)
+  EXTERN int bevalServers INIT(= 0);
+  #  define BEVAL_NETBEANS		0x01
+***************
+*** 1648,1653 ****
+--- 1649,1659 ----
+  EXTERN int  timer_busy INIT(= 0);   /* when timer is inside vgetc() then > 0 */
+  #endif
+  
++ #ifdef FEAT_BEVALTERM
++ EXTERN int  bevalexpr_due_set INIT(= FALSE);
++ EXTERN proftime_T bevalexpr_due;
++ #endif
++ 
+  #ifdef FEAT_EVAL
+  EXTERN time_T time_for_testing INIT(= 0);
+  
+*** ../vim-8.0.1308/src/gui.c	2017-11-13 21:09:59.547760060 +0100
+--- src/gui.c	2017-11-18 17:04:47.369211283 +0100
+***************
+*** 740,746 ****
+  
+  #ifdef FEAT_BEVAL
+  	/* Always create the Balloon Evaluation area, but disable it when
+! 	 * 'ballooneval' is off */
+  # ifdef FEAT_GUI_GTK
+  	balloonEval = gui_mch_create_beval_area(gui.drawarea, NULL,
+  						     &general_beval_cb, NULL);
+--- 740,749 ----
+  
+  #ifdef FEAT_BEVAL
+  	/* Always create the Balloon Evaluation area, but disable it when
+! 	 * 'ballooneval' is off. */
+! 	if (balloonEval != NULL)
+! 	    vim_free(balloonEval);
+! 	balloonEvalForTerm = FALSE;
+  # ifdef FEAT_GUI_GTK
+  	balloonEval = gui_mch_create_beval_area(gui.drawarea, NULL,
+  						     &general_beval_cb, NULL);
+*** ../vim-8.0.1308/runtime/doc/options.txt	2017-11-11 18:16:44.089617980 +0100
+--- runtime/doc/options.txt	2017-11-18 18:48:16.040326522 +0100
+***************
+*** 1091,1097 ****
+  			{not in Vi}
+  			{only available when compiled with the |+balloon_eval|
+  			feature}
+! 	Switch on the |balloon-eval| functionality.
+  
+  						     *'balloonexpr'* *'bexpr'*
+  'balloonexpr' 'bexpr'	string	(default "")
+--- 1127,1142 ----
+  			{not in Vi}
+  			{only available when compiled with the |+balloon_eval|
+  			feature}
+! 	Switch on the |balloon-eval| functionality for the GUI.
+! 
+! 		       *'balloonevalterm'* *'bevalterm'* *'noballoonevalterm'*
+! 		       *'nobevalterm'*
+! 'balloonevalterm' 'bevalterm'	boolean	(default off)
+! 			global
+! 			{not in Vi}
+! 			{only available when compiled with the
+! 			|+balloon_eval_term| feature}
+! 	Switch on the |balloon-eval| functionality for the terminal.
+  
+  						     *'balloonexpr'* *'bexpr'*
+  'balloonexpr' 'bexpr'	string	(default "")
+***************
+*** 1120,1125 ****
+--- 1165,1173 ----
+      set bexpr=MyBalloonExpr()
+      set ballooneval
+  <
++ 	Also see |balloon_show()|, can be used if the content of the balloon
++ 	is to be fetched asynchronously.
++ 
+  	NOTE: The balloon is displayed only if the cursor is on a text
+  	character.  If the result of evaluating 'balloonexpr' is not empty,
+  	Vim does not try to send a message to an external debugger (Netbeans
+*** ../vim-8.0.1308/src/term.c	2017-11-16 22:07:09.217057471 +0100
+--- src/term.c	2017-11-18 16:04:15.319073671 +0100
+***************
+*** 5625,5630 ****
+--- 5625,5631 ----
+  		    modifiers |= MOD_MASK_ALT;
+  		key_name[1] = (wheel_code & 1)
+  					? (int)KE_MOUSEUP : (int)KE_MOUSEDOWN;
++ 		held_button = MOUSE_RELEASE;
+  	    }
+  	    else
+  		key_name[1] = get_pseudo_mouse_code(current_button,
+*** ../vim-8.0.1308/runtime/pack/dist/opt/termdebug/plugin/termdebug.vim	2017-11-12 18:00:36.412643584 +0100
+--- runtime/pack/dist/opt/termdebug/plugin/termdebug.vim	2017-11-18 18:13:41.850965883 +0100
+***************
+*** 69,74 ****
+--- 69,79 ----
+    endif
+    let pty = job_info(term_getjob(s:ptybuf))['tty_out']
+    let s:ptywin = win_getid(winnr())
++   if vertical
++     " Assuming the source code window will get a signcolumn, use two more
++     " columns for that, thus one less for the terminal window.
++     exe (&columns / 2 - 1) . "wincmd |"
++   endif
+  
+    " Create a hidden terminal window to communicate with gdb
+    let s:commbuf = term_start('NONE', {
+***************
+*** 121,126 ****
+--- 126,140 ----
+    call s:InstallCommands()
+    call win_gotoid(s:gdbwin)
+  
++   " Enable showing a balloon with eval info
++   if has("balloon_eval")
++     set ballooneval
++     set balloonexpr=TermDebugBalloonExpr()
++     if has("balloon_eval_term")
++       set balloonevalterm
++     endif
++   endif
++ 
+    let s:breakpoints = {}
+  
+    augroup TermDebug
+***************
+*** 144,149 ****
+--- 158,171 ----
+      let &columns = s:save_columns
+    endif
+  
++   if has("balloon_eval")
++     set noballooneval
++     set balloonexpr=
++     if has("balloon_eval_term")
++       set noballoonevalterm
++     endif
++   endif
++ 
+    au! TermDebug
+  endfunc
+  
+***************
+*** 279,284 ****
+--- 301,311 ----
+    call s:SendCommand('-exec-run')
+  endfunc
+  
++ func s:SendEval(expr)
++   call s:SendCommand('-data-evaluate-expression "' . a:expr . '"')
++   let s:evalexpr = a:expr
++ endfunc
++ 
+  " :Evaluate - evaluate what is under the cursor
+  func s:Evaluate(range, arg)
+    if a:arg != ''
+***************
+*** 294,318 ****
+    else
+      let expr = expand('<cexpr>')
+    endif
+!   call s:SendCommand('-data-evaluate-expression "' . expr . '"')
+!   let s:evalexpr = expr
+  endfunc
+  
+  " Handle the result of data-evaluate-expression
+  func s:HandleEvaluate(msg)
+    let value = substitute(a:msg, '.*value="\(.*\)"', '\1', '')
+    let value = substitute(value, '\\"', '"', 'g')
+!   echomsg '"' . s:evalexpr . '": ' . value
+  
+    if s:evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
+      " Looks like a pointer, also display what it points to.
+!     let s:evalexpr = '*' . s:evalexpr
+!     call term_sendkeys(s:commbuf, '-data-evaluate-expression "' . s:evalexpr . "\"\r")
+    endif
+  endfunc
+  
+  " Handle an error.
+  func s:HandleError(msg)
+    echoerr substitute(a:msg, '.*msg="\(.*\)"', '\1', '')
+  endfunc
+  
+--- 321,374 ----
+    else
+      let expr = expand('<cexpr>')
+    endif
+!   call s:SendEval(expr)
+  endfunc
+  
++ let s:evalFromBalloonExpr = 0
++ 
+  " Handle the result of data-evaluate-expression
+  func s:HandleEvaluate(msg)
+    let value = substitute(a:msg, '.*value="\(.*\)"', '\1', '')
+    let value = substitute(value, '\\"', '"', 'g')
+!   if s:evalFromBalloonExpr
+!     if s:evalFromBalloonExprResult == ''
+!       let s:evalFromBalloonExprResult = s:evalexpr . ': ' . value
+!     else
+!       let s:evalFromBalloonExprResult .= ' = ' . value
+!     endif
+!     call balloon_show(s:evalFromBalloonExprResult)
+!   else
+!     echomsg '"' . s:evalexpr . '": ' . value
+!   endif
+  
+    if s:evalexpr[0] != '*' && value =~ '^0x' && value != '0x0' && value !~ '"$'
+      " Looks like a pointer, also display what it points to.
+!     call s:SendEval('*' . s:evalexpr)
+!   else
+!     let s:evalFromBalloonExpr = 0
+!   endif
+! endfunc
+! 
+! " Show a balloon with information of the variable under the mouse pointer,
+! " if there is any.
+! func TermDebugBalloonExpr()
+!   if v:beval_winid != s:startwin
+!     return
+    endif
++   call s:SendEval(v:beval_text)
++   let s:evalFromBalloonExpr = 1
++   let s:evalFromBalloonExprResult = ''
++   return ''
+  endfunc
+  
+  " Handle an error.
+  func s:HandleError(msg)
++   if a:msg =~ 'No symbol .* in current context'
++ 	\ || a:msg =~ 'Cannot access memory at address '
++ 	\ || a:msg =~ 'Attempt to use a type name as an expression'
++     " Result of s:SendEval() failed, ignore.
++     return
++   endif
+    echoerr substitute(a:msg, '.*msg="\(.*\)"', '\1', '')
+  endfunc
+  
+*** ../vim-8.0.1308/src/version.c	2017-11-18 14:55:19.315803253 +0100
+--- src/version.c	2017-11-18 18:33:55.089046103 +0100
+***************
+*** 768,769 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1309,
+  /**/
+
+-- 
+A)bort, R)etry, D)o it right this time
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

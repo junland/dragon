@@ -1,0 +1,238 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0352
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0352
+Problem:    The condition for when a typval needs to be cleared is too
+            complicated.
+Solution:   Init the type to VAR_UNKNOWN and clear it always.
+Files:      src/eval.c
+
+
+*** ../vim-8.0.0351/src/eval.c	2017-02-21 20:47:09.962394772 +0100
+--- src/eval.c	2017-02-23 14:15:47.190004892 +0100
+***************
+*** 1898,1903 ****
+--- 1898,1905 ----
+       * Loop until no more [idx] or .key is following.
+       */
+      lp->ll_tv = &v->di_tv;
++     var1.v_type = VAR_UNKNOWN;
++     var2.v_type = VAR_UNKNOWN;
+      while (*p == '[' || (*p == '.' && lp->ll_tv->v_type == VAR_DICT))
+      {
+  	if (!(lp->ll_tv->v_type == VAR_LIST && lp->ll_tv->vval.v_list != NULL)
+***************
+*** 1955,1962 ****
+  		{
+  		    if (!quiet)
+  			EMSG(_(e_dictrange));
+! 		    if (!empty1)
+! 			clear_tv(&var1);
+  		    return NULL;
+  		}
+  		if (rettv != NULL && (rettv->v_type != VAR_LIST
+--- 1957,1963 ----
+  		{
+  		    if (!quiet)
+  			EMSG(_(e_dictrange));
+! 		    clear_tv(&var1);
+  		    return NULL;
+  		}
+  		if (rettv != NULL && (rettv->v_type != VAR_LIST
+***************
+*** 1964,1971 ****
+  		{
+  		    if (!quiet)
+  			EMSG(_("E709: [:] requires a List value"));
+! 		    if (!empty1)
+! 			clear_tv(&var1);
+  		    return NULL;
+  		}
+  		p = skipwhite(p + 1);
+--- 1965,1971 ----
+  		{
+  		    if (!quiet)
+  			EMSG(_("E709: [:] requires a List value"));
+! 		    clear_tv(&var1);
+  		    return NULL;
+  		}
+  		p = skipwhite(p + 1);
+***************
+*** 1976,1990 ****
+  		    lp->ll_empty2 = FALSE;
+  		    if (eval1(&p, &var2, TRUE) == FAIL)	/* recursive! */
+  		    {
+! 			if (!empty1)
+! 			    clear_tv(&var1);
+  			return NULL;
+  		    }
+  		    if (get_tv_string_chk(&var2) == NULL)
+  		    {
+  			/* not a number or string */
+! 			if (!empty1)
+! 			    clear_tv(&var1);
+  			clear_tv(&var2);
+  			return NULL;
+  		    }
+--- 1976,1988 ----
+  		    lp->ll_empty2 = FALSE;
+  		    if (eval1(&p, &var2, TRUE) == FAIL)	/* recursive! */
+  		    {
+! 			clear_tv(&var1);
+  			return NULL;
+  		    }
+  		    if (get_tv_string_chk(&var2) == NULL)
+  		    {
+  			/* not a number or string */
+! 			clear_tv(&var1);
+  			clear_tv(&var2);
+  			return NULL;
+  		    }
+***************
+*** 1998,2007 ****
+  	    {
+  		if (!quiet)
+  		    EMSG(_(e_missbrac));
+! 		if (!empty1)
+! 		    clear_tv(&var1);
+! 		if (lp->ll_range && !lp->ll_empty2)
+! 		    clear_tv(&var2);
+  		return NULL;
+  	    }
+  
+--- 1996,2003 ----
+  	    {
+  		if (!quiet)
+  		    EMSG(_(e_missbrac));
+! 		clear_tv(&var1);
+! 		clear_tv(&var2);
+  		return NULL;
+  	    }
+  
+***************
+*** 2064,2079 ****
+  		{
+  		    if (!quiet)
+  			EMSG2(_(e_dictkey), key);
+! 		    if (len == -1)
+! 			clear_tv(&var1);
+  		    return NULL;
+  		}
+  		if (len == -1)
+  		    lp->ll_newkey = vim_strsave(key);
+  		else
+  		    lp->ll_newkey = vim_strnsave(key, len);
+! 		if (len == -1)
+! 		    clear_tv(&var1);
+  		if (lp->ll_newkey == NULL)
+  		    p = NULL;
+  		break;
+--- 2060,2073 ----
+  		{
+  		    if (!quiet)
+  			EMSG2(_(e_dictkey), key);
+! 		    clear_tv(&var1);
+  		    return NULL;
+  		}
+  		if (len == -1)
+  		    lp->ll_newkey = vim_strsave(key);
+  		else
+  		    lp->ll_newkey = vim_strnsave(key, len);
+! 		clear_tv(&var1);
+  		if (lp->ll_newkey == NULL)
+  		    p = NULL;
+  		break;
+***************
+*** 2086,2093 ****
+  		return NULL;
+  	    }
+  
+! 	    if (len == -1)
+! 		clear_tv(&var1);
+  	    lp->ll_tv = &lp->ll_di->di_tv;
+  	}
+  	else
+--- 2080,2086 ----
+  		return NULL;
+  	    }
+  
+! 	    clear_tv(&var1);
+  	    lp->ll_tv = &lp->ll_di->di_tv;
+  	}
+  	else
+***************
+*** 2098,2108 ****
+  	    if (empty1)
+  		lp->ll_n1 = 0;
+  	    else
+! 	    {
+  		lp->ll_n1 = (long)get_tv_number(&var1);
+! 						    /* is number or string */
+! 		clear_tv(&var1);
+! 	    }
+  	    lp->ll_dict = NULL;
+  	    lp->ll_list = lp->ll_tv->vval.v_list;
+  	    lp->ll_li = list_find(lp->ll_list, lp->ll_n1);
+--- 2091,2100 ----
+  	    if (empty1)
+  		lp->ll_n1 = 0;
+  	    else
+! 		/* is number or string */
+  		lp->ll_n1 = (long)get_tv_number(&var1);
+! 	    clear_tv(&var1);
+! 
+  	    lp->ll_dict = NULL;
+  	    lp->ll_list = lp->ll_tv->vval.v_list;
+  	    lp->ll_li = list_find(lp->ll_list, lp->ll_n1);
+***************
+*** 2116,2123 ****
+  	    }
+  	    if (lp->ll_li == NULL)
+  	    {
+! 		if (lp->ll_range && !lp->ll_empty2)
+! 		    clear_tv(&var2);
+  		if (!quiet)
+  		    EMSGN(_(e_listidx), lp->ll_n1);
+  		return NULL;
+--- 2108,2114 ----
+  	    }
+  	    if (lp->ll_li == NULL)
+  	    {
+! 		clear_tv(&var2);
+  		if (!quiet)
+  		    EMSGN(_(e_listidx), lp->ll_n1);
+  		return NULL;
+***************
+*** 2161,2166 ****
+--- 2152,2158 ----
+  	}
+      }
+  
++     clear_tv(&var1);
+      return p;
+  }
+  
+*** ../vim-8.0.0351/src/version.c	2017-02-23 13:50:34.935755831 +0100
+--- src/version.c	2017-02-23 14:23:51.678888394 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     352,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+2. You kiss your girlfriend's home page.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

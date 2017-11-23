@@ -1,0 +1,86 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0701
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0701
+Problem:    System test failing when using X11 forwarding.
+Solution:   Set $XAUTHORITY before changing $HOME. (closes #1812)
+            Also use a better check for the exit value.
+Files:      src/testdir/setup.vim, src/testdir/test_system.vim
+
+
+*** ../vim-8.0.0700/src/testdir/setup.vim	2016-08-06 19:44:07.000000000 +0200
+--- src/testdir/setup.vim	2017-07-03 22:41:23.252488320 +0200
+***************
+*** 8,14 ****
+  
+  " Only when the +eval feature is present. 
+  if 1
+    " Make sure $HOME does not get read or written.
+    let $HOME = '/does/not/exist'
+  endif
+- 
+--- 8,18 ----
+  
+  " Only when the +eval feature is present. 
+  if 1
++   " Make sure the .Xauthority file can be found after changing $HOME.
++   if $XAUTHORITY == ''
++     let $XAUTHORITY = $HOME . '/.Xauthority'
++   endif
++ 
+    " Make sure $HOME does not get read or written.
+    let $HOME = '/does/not/exist'
+  endif
+*** ../vim-8.0.0700/src/testdir/test_system.vim	2017-01-16 22:53:54.018441223 +0100
+--- src/testdir/test_system.vim	2017-07-08 16:57:25.528454582 +0200
+***************
+*** 49,60 ****
+  
+  function! Test_system_exmode()
+    if has('unix') " echo $? only works on Unix
+!     let cmd = ' -es -u NONE -c "source Xscript" +q; echo $?'
+      " Need to put this in a script, "catch" isn't found after an unknown
+      " function.
+      call writefile(['try', 'call doesnotexist()', 'catch', 'endtry'], 'Xscript')
+      let a = system(v:progpath . cmd)
+!     call assert_equal('0', a[0])
+      call assert_equal(0, v:shell_error)
+    endif
+  
+--- 49,60 ----
+  
+  function! Test_system_exmode()
+    if has('unix') " echo $? only works on Unix
+!     let cmd = ' -es -u NONE -c "source Xscript" +q; echo "result=$?"'
+      " Need to put this in a script, "catch" isn't found after an unknown
+      " function.
+      call writefile(['try', 'call doesnotexist()', 'catch', 'endtry'], 'Xscript')
+      let a = system(v:progpath . cmd)
+!     call assert_match('result=0', a)
+      call assert_equal(0, v:shell_error)
+    endif
+  
+*** ../vim-8.0.0700/src/version.c	2017-07-08 14:44:45.765744977 +0200
+--- src/version.c	2017-07-08 17:02:09.966261062 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     701,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+127. You bring your laptop and cellular phone to church.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

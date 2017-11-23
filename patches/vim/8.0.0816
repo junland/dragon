@@ -1,0 +1,73 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0816
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0816
+Problem:    Crash when using invalid buffer number.
+Solution:   Check for NULL buffer. (Yasuhiro Matsumoto, closes #1899)
+Files:      src/terminal.c, src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0815/src/terminal.c	2017-07-30 17:45:33.538882318 +0200
+--- src/terminal.c	2017-07-30 17:59:26.804921500 +0200
+***************
+*** 1686,1692 ****
+      ++emsg_off;
+      buf = get_buf_tv(&argvars[0], FALSE);
+      --emsg_off;
+!     if (buf->b_term == NULL)
+  	return NULL;
+      return buf;
+  }
+--- 1686,1692 ----
+      ++emsg_off;
+      buf = get_buf_tv(&argvars[0], FALSE);
+      --emsg_off;
+!     if (buf == NULL || buf->b_term == NULL)
+  	return NULL;
+      return buf;
+  }
+*** ../vim-8.0.0815/src/testdir/test_terminal.vim	2017-07-29 20:07:00.764940487 +0200
+--- src/testdir/test_terminal.vim	2017-07-30 18:00:54.704292632 +0200
+***************
+*** 54,59 ****
+--- 54,62 ----
+    call assert_equal(1, len(termlist))
+    call assert_equal(buf, termlist[0])
+  
++   " Nothing happens with invalid buffer number
++   call term_wait(1234)
++ 
+    call term_wait(buf)
+    call Check_123(buf)
+  
+***************
+*** 64,67 ****
+--- 67,71 ----
+    call Check_123(buf)
+  
+    exe buf . 'bwipe'
++   call delete('Xtext')
+  endfunc
+*** ../vim-8.0.0815/src/version.c	2017-07-30 17:45:33.542882289 +0200
+--- src/version.c	2017-07-30 18:01:48.619906891 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     816,
+  /**/
+
+-- 
+Just think of all the things we haven't thought of yet.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

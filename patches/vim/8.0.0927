@@ -1,0 +1,58 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0927
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0927
+Problem:    If a terminal job sends a blank title "running" is not shown.
+Solution:   When the title is blank make it empty.
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0926/src/terminal.c	2017-08-13 16:01:26.556634737 +0200
+--- src/terminal.c	2017-08-13 16:05:42.847030688 +0200
+***************
+*** 1503,1509 ****
+      {
+  	case VTERM_PROP_TITLE:
+  	    vim_free(term->tl_title);
+! 	    term->tl_title = vim_strsave((char_u *)value->string);
+  	    vim_free(term->tl_status_text);
+  	    term->tl_status_text = NULL;
+  	    if (term == curbuf->b_term)
+--- 1503,1514 ----
+      {
+  	case VTERM_PROP_TITLE:
+  	    vim_free(term->tl_title);
+! 	    /* a blank title isn't useful, make it empty, so that "running" is
+! 	     * displayed */
+! 	    if (*skipwhite((char_u *)value->string) == NUL)
+! 		term->tl_title = NULL;
+! 	    else
+! 		term->tl_title = vim_strsave((char_u *)value->string);
+  	    vim_free(term->tl_status_text);
+  	    term->tl_status_text = NULL;
+  	    if (term == curbuf->b_term)
+*** ../vim-8.0.0926/src/version.c	2017-08-13 16:01:26.560634712 +0200
+--- src/version.c	2017-08-13 16:07:22.726406546 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     927,
+  /**/
+
+-- 
+   Another bucket of what can only be described as human ordure hits ARTHUR.
+ARTHUR: ... Right!  (to the KNIGHTS) That settles it!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,135 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0247
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0247
+Problem:    Under some circumstances, one needs to type Ctrl-N or Ctrl-P twice
+            to have a menu entry selected. (Lifepillar)
+Solution:   call ins_compl_free(). (Christian Brabandt, closes #1411)
+Files:      src/edit.c, src/testdir/test_popup.vim
+
+
+*** ../vim-8.0.0246/src/edit.c	2017-01-25 21:36:11.626471765 +0100
+--- src/edit.c	2017-01-27 21:31:42.255069908 +0100
+***************
+*** 2821,2826 ****
+--- 2821,2827 ----
+      if (ctrl_x_mode != 0)
+  	ins_compl_prep(' ');
+      ins_compl_clear();
++     ins_compl_free();
+  
+      compl_direction = FORWARD;
+      if (startcol > curwin->w_cursor.col)
+*** ../vim-8.0.0246/src/testdir/test_popup.vim	2016-12-09 19:36:52.357659077 +0100
+--- src/testdir/test_popup.vim	2017-01-27 21:31:14.839255051 +0100
+***************
+*** 7,16 ****
+    if g:setting != ''
+      exe ":set" g:setting
+    endif
+!   let mth=copy(g:months)
+    let entered = strcharpart(getline('.'),0,col('.'))
+    if !empty(entered)
+!     let mth=filter(mth, 'v:val=~"^".entered')
+    endif
+    call complete(1, mth) 
+    return ''
+--- 7,16 ----
+    if g:setting != ''
+      exe ":set" g:setting
+    endif
+!   let mth = copy(g:months)
+    let entered = strcharpart(getline('.'),0,col('.'))
+    if !empty(entered)
+!     let mth = filter(mth, 'v:val=~"^".entered')
+    endif
+    call complete(1, mth) 
+    return ''
+***************
+*** 468,474 ****
+  " auto-wrap text.
+  func Test_completion_ctrl_e_without_autowrap()
+    new
+!   let tw_save=&tw
+    set tw=78
+    let li = [
+          \ '"                                                        zzz',
+--- 468,474 ----
+  " auto-wrap text.
+  func Test_completion_ctrl_e_without_autowrap()
+    new
+!   let tw_save = &tw
+    set tw=78
+    let li = [
+          \ '"                                                        zzz',
+***************
+*** 478,485 ****
+    call feedkeys("A\<C-X>\<C-N>\<C-E>\<Esc>", "tx")
+    call assert_equal(li, getline(1, '$'))
+  
+!   let &tw=tw_save
+    q!
+  endfunc
+  
+  " vim: shiftwidth=2 sts=2 expandtab
+--- 478,514 ----
+    call feedkeys("A\<C-X>\<C-N>\<C-E>\<Esc>", "tx")
+    call assert_equal(li, getline(1, '$'))
+  
+!   let &tw = tw_save
+    q!
+  endfunc
+  
++ function! DummyCompleteSix()
++   call complete(1, ['Hello', 'World'])
++   return ''
++ endfunction
++ 
++ " complete() correctly clears the list of autocomplete candidates
++ " See #1411
++ func Test_completion_clear_candidate_list()
++   new
++   %d
++   " select first entry from the completion popup
++   call feedkeys("a    xxx\<C-N>\<C-R>=DummyCompleteSix()\<CR>", "tx")
++   call assert_equal('Hello', getline(1))
++   %d
++   " select second entry from the completion popup
++   call feedkeys("a    xxx\<C-N>\<C-R>=DummyCompleteSix()\<CR>\<C-N>", "tx")
++   call assert_equal('World', getline(1))
++   %d
++   " select original text
++   call feedkeys("a    xxx\<C-N>\<C-R>=DummyCompleteSix()\<CR>\<C-N>\<C-N>", "tx")
++   call assert_equal('    xxx', getline(1))
++   %d
++   " back at first entry from completion list
++   call feedkeys("a    xxx\<C-N>\<C-R>=DummyCompleteSix()\<CR>\<C-N>\<C-N>\<C-N>", "tx")
++   call assert_equal('Hello', getline(1))
++ 
++   bw!
++ endfunc
++ 
+  " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.0246/src/version.c	2017-01-27 21:22:14.094909115 +0100
+--- src/version.c	2017-01-27 21:34:36.785891735 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     247,
+  /**/
+
+-- 
+    f y cn rd ths thn y cn hv grt jb n cmptr prgrmmng
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

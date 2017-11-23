@@ -1,0 +1,290 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0985
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0985
+Problem:    Libvterm has its own idea of character width.
+Solution:   Use the Vim functions for character width and composing to avoid a
+            mismatch. (idea by Yasuhiro Matsumoto)
+Files:      src/Makefile, src/libvterm/src/unicode.c, src/mbyte.c,
+            src/proto/mbyte.pro, src/Make_cyg_ming.mak, src/Make_mvc.mak
+
+
+*** ../vim-8.0.0984/src/Makefile	2017-08-19 15:05:16.048003367 +0200
+--- src/Makefile	2017-08-22 22:03:49.543922147 +0200
+***************
+*** 3296,3302 ****
+  Makefile:
+  	@echo The name of the makefile MUST be "Makefile" (with capital M)!!!!
+  
+! CCCTERM = $(CCC) -Ilibvterm/include -DINLINE="" -DVSNPRINTF=vim_vsnprintf
+  objects/term_encoding.o: libvterm/src/encoding.c $(TERM_DEPS)
+  	$(CCCTERM) -o $@ libvterm/src/encoding.c
+  
+--- 3299,3309 ----
+  Makefile:
+  	@echo The name of the makefile MUST be "Makefile" (with capital M)!!!!
+  
+! CCCTERM = $(CCC) -Ilibvterm/include -DINLINE="" \
+! 	  -DVSNPRINTF=vim_vsnprintf \
+! 	  -DIS_COMBINING_FUNCTION=utf_iscomposing_uint \
+! 	  -DWCWIDTH_FUNCTION=utf_uint2cells
+! 
+  objects/term_encoding.o: libvterm/src/encoding.c $(TERM_DEPS)
+  	$(CCCTERM) -o $@ libvterm/src/encoding.c
+  
+*** ../vim-8.0.0984/src/libvterm/src/unicode.c	2017-07-07 11:53:29.523876467 +0200
+--- src/libvterm/src/unicode.c	2017-08-22 22:09:30.697863272 +0200
+***************
+*** 68,73 ****
+--- 68,74 ----
+   * Latest version: http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
+   */
+  
++ #if !defined(IS_COMBINING_FUNCTION) || !defined(WCWIDTH_FUNCTION)
+  struct interval {
+    int first;
+    int last;
+***************
+*** 126,132 ****
+    { 0xE0100, 0xE01EF }
+  };
+  
+- 
+  /* auxiliary function for binary search in interval table */
+  static int bisearch(uint32_t ucs, const struct interval *table, int max) {
+    int min = 0;
+--- 127,132 ----
+***************
+*** 146,151 ****
+--- 146,152 ----
+  
+    return 0;
+  }
++ #endif
+  
+  
+  /* The following two functions define the column width of an ISO 10646
+***************
+*** 180,185 ****
+--- 181,191 ----
+   * in ISO 10646.
+   */
+  
++ #ifdef WCWIDTH_FUNCTION
++ /* use a provided wcwidth() function */
++ int WCWIDTH_FUNCTION(uint32_t ucs);
++ #else
++ # define WCWIDTH_FUNCTION mk_wcwidth
+  
+  static int mk_wcwidth(uint32_t ucs)
+  {
+***************
+*** 196,202 ****
+  
+    /* if we arrive here, ucs is not a combining or C0/C1 control character */
+  
+!   return 1 + 
+      (ucs >= 0x1100 &&
+       (ucs <= 0x115f ||                    /* Hangul Jamo init. consonants */
+        ucs == 0x2329 || ucs == 0x232a ||
+--- 202,208 ----
+  
+    /* if we arrive here, ucs is not a combining or C0/C1 control character */
+  
+!   return 1 +
+      (ucs >= 0x1100 &&
+       (ucs <= 0x115f ||                    /* Hangul Jamo init. consonants */
+        ucs == 0x2329 || ucs == 0x232a ||
+***************
+*** 211,216 ****
+--- 217,223 ----
+        (ucs >= 0x20000 && ucs <= 0x2fffd) ||
+        (ucs >= 0x30000 && ucs <= 0x3fffd)));
+  }
++ #endif
+  
+  #if 0 /* unused */
+  static int mk_wcswidth(const uint32_t *pwcs, size_t n)
+***************
+*** 317,331 ****
+  }
+  #endif
+  
+  /* ################################
+   * ### The rest added by Paul Evans */
+  
+  INTERNAL int vterm_unicode_width(uint32_t codepoint)
+  {
+!   return mk_wcwidth(codepoint);
+  }
+  
+  INTERNAL int vterm_unicode_is_combining(uint32_t codepoint)
+  {
+!   return bisearch(codepoint, combining, sizeof(combining) / sizeof(struct interval) - 1);
+  }
+--- 324,351 ----
+  }
+  #endif
+  
++ #ifdef IS_COMBINING_FUNCTION
++ /* Use a provided is_combining() function. */
++ int IS_COMBINING_FUNCTION(uint32_t codepoint);
++ #else
++ # define IS_COMBINING_FUNCTION vterm_is_combining
++ 	static int
++ vterm_is_combining(uint32_t codepoint)
++ {
++   return bisearch(codepoint, combining, sizeof(combining) / sizeof(struct interval) - 1);
++ }
++ #endif
++ 
++ 
+  /* ################################
+   * ### The rest added by Paul Evans */
+  
+  INTERNAL int vterm_unicode_width(uint32_t codepoint)
+  {
+!   return WCWIDTH_FUNCTION(codepoint);
+  }
+  
+  INTERNAL int vterm_unicode_is_combining(uint32_t codepoint)
+  {
+!   return IS_COMBINING_FUNCTION(codepoint);
+  }
+*** ../vim-8.0.0984/src/mbyte.c	2017-06-22 15:27:32.123097590 +0200
+--- src/mbyte.c	2017-08-22 22:05:52.271182138 +0200
+***************
+*** 1395,1400 ****
+--- 1395,1411 ----
+      {0x100000, 0x10fffd}
+  };
+  
++ #if defined(FEAT_TERMINAL) || defined(PROTO)
++ /*
++  * utf_char2cells() with different argument type for libvterm.
++  */
++     int
++ utf_uint2cells(uint32_t c)
++ {
++     return utf_char2cells((int)c);
++ }
++ #endif
++ 
+  /*
+   * For UTF-8 character "c" return 2 for a double-width character, 1 for others.
+   * Returns 4 or 6 for an unprintable character.
+***************
+*** 2296,2301 ****
+--- 2307,2323 ----
+      return 6;
+  }
+  
++ #if defined(FEAT_TERMINAL) || defined(PROTO)
++ /*
++  * utf_iscomposing() with different argument type for libvterm.
++  */
++     int
++ utf_iscomposing_uint(uint32_t c)
++ {
++     return utf_iscomposing((int)c);
++ }
++ #endif
++ 
+  /*
+   * Return TRUE if "c" is a composing UTF-8 character.  This means it will be
+   * drawn on top of the preceding character.
+*** ../vim-8.0.0984/src/proto/mbyte.pro	2017-01-28 16:39:15.876735290 +0100
+--- src/proto/mbyte.pro	2017-08-22 22:05:42.019243983 +0200
+***************
+*** 10,15 ****
+--- 10,16 ----
+  int latin_char2bytes(int c, char_u *buf);
+  int latin_ptr2len(char_u *p);
+  int latin_ptr2len_len(char_u *p, int size);
++ int utf_uint2cells(uint32_t c);
+  int utf_char2cells(int c);
+  int latin_ptr2cells(char_u *p);
+  int utf_ptr2cells(char_u *p);
+***************
+*** 37,42 ****
+--- 38,44 ----
+  int utfc_ptr2len_len(char_u *p, int size);
+  int utf_char2len(int c);
+  int utf_char2bytes(int c, char_u *buf);
++ int utf_iscomposing_uint(uint32_t c);
+  int utf_iscomposing(int c);
+  int utf_printable(int c);
+  int utf_class(int c);
+*** ../vim-8.0.0984/src/Make_cyg_ming.mak	2017-07-25 21:49:31.538751003 +0200
+--- src/Make_cyg_ming.mak	2017-08-22 22:07:53.774448781 +0200
+***************
+*** 971,977 ****
+  	$(CC) -c $(CFLAGS) terminal.c -o $(OUTDIR)/terminal.o
+  
+  
+! CCCTERM = $(CC) -c $(CFLAGS) -Ilibvterm/include -DINLINE="" -DVSNPRINTF=vim_vsnprintf
+  $(OUTDIR)/term_encoding.o: libvterm/src/encoding.c $(TERM_DEPS)
+  	$(CCCTERM) libvterm/src/encoding.c -o $@
+  
+--- 971,981 ----
+  	$(CC) -c $(CFLAGS) terminal.c -o $(OUTDIR)/terminal.o
+  
+  
+! CCCTERM = $(CC) -c $(CFLAGS) -Ilibvterm/include -DINLINE="" \
+! 	  -DVSNPRINTF=vim_vsnprintf \
+! 	  -DIS_COMBINING_FUNCTION=utf_iscomposing_uint \
+! 	  -DWCWIDTH_FUNCTION=utf_uint2cells
+! 
+  $(OUTDIR)/term_encoding.o: libvterm/src/encoding.c $(TERM_DEPS)
+  	$(CCCTERM) libvterm/src/encoding.c -o $@
+  
+*** ../vim-8.0.0984/src/Make_mvc.mak	2017-08-06 17:38:02.214007926 +0200
+--- src/Make_mvc.mak	2017-08-22 22:09:06.882007183 +0200
+***************
+*** 1474,1480 ****
+  $(OUTDIR)/glbl_ime.obj:	$(OUTDIR) glbl_ime.cpp  dimm.h $(INCL)
+  
+  
+! CCCTERM = $(CC) $(CFLAGS) -Ilibvterm/include -DINLINE="" -DVSNPRINTF=vim_vsnprintf -D_CRT_SECURE_NO_WARNINGS
+  $(OUTDIR)/term_encoding.obj: $(OUTDIR) libvterm/src/encoding.c $(TERM_DEPS)
+  	$(CCCTERM) -Fo$@ libvterm/src/encoding.c
+  
+--- 1474,1485 ----
+  $(OUTDIR)/glbl_ime.obj:	$(OUTDIR) glbl_ime.cpp  dimm.h $(INCL)
+  
+  
+! CCCTERM = $(CC) $(CFLAGS) -Ilibvterm/include -DINLINE="" \
+! 	-DVSNPRINTF=vim_vsnprintf \
+! 	-DIS_COMBINING_FUNCTION=utf_iscomposing_uint \
+! 	-DWCWIDTH_FUNCTION=utf_uint2cells \
+! 	-D_CRT_SECURE_NO_WARNINGS
+! 
+  $(OUTDIR)/term_encoding.obj: $(OUTDIR) libvterm/src/encoding.c $(TERM_DEPS)
+  	$(CCCTERM) -Fo$@ libvterm/src/encoding.c
+  
+*** ../vim-8.0.0984/src/version.c	2017-08-22 20:33:48.097449744 +0200
+--- src/version.c	2017-08-22 22:10:21.525556048 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     985,
+  /**/
+
+-- 
+The process for understanding customers primarily involves sitting around with
+other marketing people and talking about what you would to if you were dumb
+enough to be a customer.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

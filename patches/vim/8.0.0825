@@ -1,0 +1,274 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0825
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0825
+Problem:    Not easy to see that a window is a terminal window.
+Solution:   Add StatusLineTerm highlighting.
+Files:      src/option.c, src/vim.h, src/screen.c, src/syntax.c
+
+
+*** ../vim-8.0.0824/src/option.c	2017-07-30 16:51:35.630143954 +0200
+--- src/option.c	2017-07-31 21:53:42.043552547 +0200
+***************
+*** 479,486 ****
+  #if defined(FEAT_DIFF) || defined(FEAT_FOLDING) || defined(FEAT_SPELL) \
+  	|| defined(FEAT_WINDOWS) || defined(FEAT_CLIPBOARD) \
+  	|| defined(FEAT_INS_EXPAND) || defined(FEAT_SYN_HL) \
+! 	|| defined(FEAT_CONCEAL) || defined(FEAT_QUICKFIX)
+! # define HIGHLIGHT_INIT "8:SpecialKey,~:EndOfBuffer,@:NonText,d:Directory,e:ErrorMsg,i:IncSearch,l:Search,m:MoreMsg,M:ModeMsg,n:LineNr,N:CursorLineNr,r:Question,s:StatusLine,S:StatusLineNC,c:VertSplit,t:Title,v:Visual,V:VisualNOS,w:WarningMsg,W:WildMenu,f:Folded,F:FoldColumn,A:DiffAdd,C:DiffChange,D:DiffDelete,T:DiffText,>:SignColumn,-:Conceal,B:SpellBad,P:SpellCap,R:SpellRare,L:SpellLocal,+:Pmenu,=:PmenuSel,x:PmenuSbar,X:PmenuThumb,*:TabLine,#:TabLineSel,_:TabLineFill,!:CursorColumn,.:CursorLine,o:ColorColumn,q:QuickFixLine"
+  #else
+  # define HIGHLIGHT_INIT "8:SpecialKey,@:NonText,d:Directory,e:ErrorMsg,i:IncSearch,l:Search,m:MoreMsg,M:ModeMsg,n:LineNr,N:CursorLineNr,r:Question,s:StatusLine,S:StatusLineNC,t:Title,v:Visual,w:WarningMsg,W:WildMenu,>:SignColumn,*:TabLine,#:TabLineSel,_:TabLineFill"
+  #endif
+--- 479,487 ----
+  #if defined(FEAT_DIFF) || defined(FEAT_FOLDING) || defined(FEAT_SPELL) \
+  	|| defined(FEAT_WINDOWS) || defined(FEAT_CLIPBOARD) \
+  	|| defined(FEAT_INS_EXPAND) || defined(FEAT_SYN_HL) \
+! 	|| defined(FEAT_CONCEAL) || defined(FEAT_QUICKFIX) \
+! 	|| defined(FEAT_TERMINAL)
+! # define HIGHLIGHT_INIT "8:SpecialKey,~:EndOfBuffer,@:NonText,d:Directory,e:ErrorMsg,i:IncSearch,l:Search,m:MoreMsg,M:ModeMsg,n:LineNr,N:CursorLineNr,r:Question,s:StatusLine,S:StatusLineNC,c:VertSplit,t:Title,v:Visual,V:VisualNOS,w:WarningMsg,W:WildMenu,f:Folded,F:FoldColumn,A:DiffAdd,C:DiffChange,D:DiffDelete,T:DiffText,>:SignColumn,-:Conceal,B:SpellBad,P:SpellCap,R:SpellRare,L:SpellLocal,+:Pmenu,=:PmenuSel,x:PmenuSbar,X:PmenuThumb,*:TabLine,#:TabLineSel,_:TabLineFill,!:CursorColumn,.:CursorLine,o:ColorColumn,q:QuickFixLine,$:StatusLineTerm"
+  #else
+  # define HIGHLIGHT_INIT "8:SpecialKey,@:NonText,d:Directory,e:ErrorMsg,i:IncSearch,l:Search,m:MoreMsg,M:ModeMsg,n:LineNr,N:CursorLineNr,r:Question,s:StatusLine,S:StatusLineNC,t:Title,v:Visual,w:WarningMsg,W:WildMenu,>:SignColumn,*:TabLine,#:TabLineSel,_:TabLineFill"
+  #endif
+*** ../vim-8.0.0824/src/vim.h	2017-06-13 17:20:35.687782351 +0200
+--- src/vim.h	2017-07-31 21:57:18.170010740 +0200
+***************
+*** 1430,1439 ****
+      , HLF_TP	    /* tabpage line */
+      , HLF_TPS	    /* tabpage line selected */
+      , HLF_TPF	    /* tabpage line filler */
+!     , HLF_CUC	    /* 'cursurcolumn' */
+!     , HLF_CUL	    /* 'cursurline' */
+      , HLF_MC	    /* 'colorcolumn' */
+      , HLF_QFL	    /* quickfix window line currently selected */
+      , HLF_COUNT	    /* MUST be the last one */
+  } hlf_T;
+  
+--- 1430,1440 ----
+      , HLF_TP	    /* tabpage line */
+      , HLF_TPS	    /* tabpage line selected */
+      , HLF_TPF	    /* tabpage line filler */
+!     , HLF_CUC	    /* 'cursorcolumn' */
+!     , HLF_CUL	    /* 'cursorline' */
+      , HLF_MC	    /* 'colorcolumn' */
+      , HLF_QFL	    /* quickfix window line currently selected */
++     , HLF_ST	    /* status lines of terminal windows */
+      , HLF_COUNT	    /* MUST be the last one */
+  } hlf_T;
+  
+***************
+*** 1443,1449 ****
+  		  'n', 'N', 'r', 's', 'S', 'c', 't', 'v', 'V', 'w', 'W', \
+  		  'f', 'F', 'A', 'C', 'D', 'T', '-', '>', \
+  		  'B', 'P', 'R', 'L', \
+! 		  '+', '=', 'x', 'X', '*', '#', '_', '!', '.', 'o', 'q'}
+  
+  /*
+   * Boolean constants
+--- 1444,1450 ----
+  		  'n', 'N', 'r', 's', 'S', 'c', 't', 'v', 'V', 'w', 'W', \
+  		  'f', 'F', 'A', 'C', 'D', 'T', '-', '>', \
+  		  'B', 'P', 'R', 'L', \
+! 		  '+', '=', 'x', 'X', '*', '#', '_', '!', '.', 'o', 'q', '$'}
+  
+  /*
+   * Boolean constants
+*** ../vim-8.0.0824/src/screen.c	2017-07-30 16:51:35.630143954 +0200
+--- src/screen.c	2017-07-31 22:13:16.587182308 +0200
+***************
+*** 165,171 ****
+  static void draw_tabline(void);
+  #endif
+  #if defined(FEAT_WINDOWS) || defined(FEAT_WILDMENU) || defined(FEAT_STL_OPT)
+! static int fillchar_status(int *attr, int is_curwin);
+  #endif
+  #ifdef FEAT_WINDOWS
+  static int fillchar_vsep(int *attr);
+--- 165,171 ----
+  static void draw_tabline(void);
+  #endif
+  #if defined(FEAT_WINDOWS) || defined(FEAT_WILDMENU) || defined(FEAT_STL_OPT)
+! static int fillchar_status(int *attr, win_T *wp);
+  #endif
+  #ifdef FEAT_WINDOWS
+  static int fillchar_vsep(int *attr);
+***************
+*** 6686,6692 ****
+  	    --first_match;
+  	}
+  
+!     fillchar = fillchar_status(&attr, TRUE);
+  
+      if (first_match == 0)
+      {
+--- 6686,6692 ----
+  	    --first_match;
+  	}
+  
+!     fillchar = fillchar_status(&attr, curwin);
+  
+      if (first_match == 0)
+      {
+***************
+*** 6865,6871 ****
+  #endif
+      else
+      {
+! 	fillchar = fillchar_status(&attr, wp == curwin);
+  
+  	get_trans_bufname(wp->w_buffer);
+  	p = NameBuff;
+--- 6865,6871 ----
+  #endif
+      else
+      {
+! 	fillchar = fillchar_status(&attr, wp);
+  
+  	get_trans_bufname(wp->w_buffer);
+  	p = NameBuff;
+***************
+*** 6962,6968 ****
+      if (wp->w_vsep_width != 0 && wp->w_status_height != 0 && redrawing())
+      {
+  	if (stl_connected(wp))
+! 	    fillchar = fillchar_status(&attr, wp == curwin);
+  	else
+  	    fillchar = fillchar_vsep(&attr);
+  	screen_putchar(fillchar, W_WINROW(wp) + wp->w_height, W_ENDCOL(wp),
+--- 6962,6968 ----
+      if (wp->w_vsep_width != 0 && wp->w_status_height != 0 && redrawing())
+      {
+  	if (stl_connected(wp))
+! 	    fillchar = fillchar_status(&attr, wp);
+  	else
+  	    fillchar = fillchar_vsep(&attr);
+  	screen_putchar(fillchar, W_WINROW(wp) + wp->w_height, W_ENDCOL(wp),
+***************
+*** 7136,7142 ****
+      else
+      {
+  	row = W_WINROW(wp) + wp->w_height;
+! 	fillchar = fillchar_status(&attr, wp == curwin);
+  	maxwidth = W_WIDTH(wp);
+  
+  	if (draw_ruler)
+--- 7136,7142 ----
+      else
+      {
+  	row = W_WINROW(wp) + wp->w_height;
+! 	fillchar = fillchar_status(&attr, wp);
+  	maxwidth = W_WIDTH(wp);
+  
+  	if (draw_ruler)
+***************
+*** 10705,10714 ****
+   * Get the character to use in a status line.  Get its attributes in "*attr".
+   */
+      static int
+! fillchar_status(int *attr, int is_curwin)
+  {
+      int fill;
+!     if (is_curwin)
+      {
+  	*attr = HL_ATTR(HLF_S);
+  	fill = fill_stl;
+--- 10705,10726 ----
+   * Get the character to use in a status line.  Get its attributes in "*attr".
+   */
+      static int
+! fillchar_status(int *attr, win_T *wp)
+  {
+      int fill;
+! 
+! #ifdef FEAT_TERMINAL
+!     if (bt_terminal(wp->w_buffer))
+!     {
+! 	*attr = HL_ATTR(HLF_ST);
+! 	if (wp == curwin)
+! 	    fill = fill_stl;
+! 	else
+! 	    fill = fill_stlnc;
+!     }
+!     else
+! #endif
+!     if (wp == curwin)
+      {
+  	*attr = HL_ATTR(HLF_S);
+  	fill = fill_stl;
+***************
+*** 10722,10731 ****
+       * window differs, or the fillchars differ, or this is not the
+       * current window */
+      if (*attr != 0 && ((HL_ATTR(HLF_S) != HL_ATTR(HLF_SNC)
+! 			|| !is_curwin || ONE_WINDOW)
+  		    || (fill_stl != fill_stlnc)))
+  	return fill;
+!     if (is_curwin)
+  	return '^';
+      return '=';
+  }
+--- 10734,10743 ----
+       * window differs, or the fillchars differ, or this is not the
+       * current window */
+      if (*attr != 0 && ((HL_ATTR(HLF_S) != HL_ATTR(HLF_SNC)
+! 			|| wp != curwin || ONE_WINDOW)
+  		    || (fill_stl != fill_stlnc)))
+  	return fill;
+!     if (wp == curwin)
+  	return '^';
+      return '=';
+  }
+***************
+*** 10913,10919 ****
+  	if (wp->w_status_height)
+  	{
+  	    row = W_WINROW(wp) + wp->w_height;
+! 	    fillchar = fillchar_status(&attr, wp == curwin);
+  	    off = W_WINCOL(wp);
+  	    width = W_WIDTH(wp);
+  	}
+--- 10925,10931 ----
+  	if (wp->w_status_height)
+  	{
+  	    row = W_WINROW(wp) + wp->w_height;
+! 	    fillchar = fillchar_status(&attr, wp);
+  	    off = W_WINCOL(wp);
+  	    width = W_WIDTH(wp);
+  	}
+*** ../vim-8.0.0824/src/syntax.c	2017-07-28 15:11:34.267537205 +0200
+--- src/syntax.c	2017-07-31 22:09:14.740904143 +0200
+***************
+*** 6887,6892 ****
+--- 6887,6896 ----
+  	     "StatusLine term=reverse,bold cterm=reverse,bold gui=reverse,bold"),
+  	CENT("StatusLineNC term=reverse cterm=reverse",
+  	     "StatusLineNC term=reverse cterm=reverse gui=reverse"),
++ #ifdef FEAT_TERMINAL
++ 	CENT("StatusLineTerm term=reverse cterm=reverse ctermFg=DarkGreen",
++ 	     "StatusLineTerm term=reverse cterm=reverse ctermFg=DarkGreen gui=reverse guifg=DarkGreen"),
++ #endif
+  	"default link EndOfBuffer NonText",
+  #ifdef FEAT_WINDOWS
+  	CENT("VertSplit term=reverse cterm=reverse",
+*** ../vim-8.0.0824/src/version.c	2017-07-31 21:18:54.830417800 +0200
+--- src/version.c	2017-07-31 22:28:17.404722090 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     825,
+  /**/
+
+-- 
+Why doesn't Tarzan have a beard?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

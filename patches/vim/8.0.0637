@@ -1,0 +1,66 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0637
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0637
+Problem:    Crash when using some version of GTK 3.
+Solution:   Add #ifdefs around incrementing the menu index. (Kazunobu
+            Kuriyama)
+Files:      src/gui_gtk.c
+
+
+*** ../vim-8.0.0636/src/gui_gtk.c	2017-03-12 20:09:59.460468432 +0100
+--- src/gui_gtk.c	2017-06-13 14:23:08.680983621 +0200
+***************
+*** 652,660 ****
+--- 652,662 ----
+      parent_widget = (parent != NULL) ? parent->submenu_id : gui.menubar;
+      menu_item_new(menu, parent_widget);
+  
++ # if !GTK_CHECK_VERSION(3,4,0)
+      /* since the tearoff should always appear first, increment idx */
+      if (parent != NULL && !menu_is_popup(parent->name))
+  	++idx;
++ # endif
+  
+      gtk_menu_shell_insert(GTK_MENU_SHELL(parent_widget), menu->id, idx);
+  
+***************
+*** 773,782 ****
+--- 775,786 ----
+  	if (parent == NULL || parent->submenu_id == NULL)
+  	    return;
+  
++ # if !GTK_CHECK_VERSION(3,4,0)
+  	/* Make place for the possible tearoff handle item.  Not in the popup
+  	 * menu, it doesn't have a tearoff item. */
+  	if (!menu_is_popup(parent->name))
+  	    ++idx;
++ # endif
+  
+  	if (menu_is_separator(menu->name))
+  	{
+*** ../vim-8.0.0636/src/version.c	2017-06-11 23:09:11.624295294 +0200
+--- src/version.c	2017-06-13 14:25:19.952193366 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     637,
+  /**/
+
+-- 
+If you put 7 of the most talented OSS developers in a room for a week
+and asked them to fix a bug in a spreadsheet program, in 1 week
+you'd have 2 new mail readers and a text-based web browser.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

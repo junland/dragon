@@ -1,0 +1,80 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0675
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0675
+Problem:    'colorcolumn' has a higher priority than 'hlsearch', it should be
+            the other way around. (Nazri Ramliy)
+Solution:   Change the priorities. (LemonBoy, closes #1794)
+Files:      src/screen.c, src/testdir/test_listlbr_utf8.vim
+
+
+*** ../vim-8.0.0674/src/screen.c	2017-06-18 22:40:36.520444687 +0200
+--- src/screen.c	2017-06-25 17:53:46.848218035 +0200
+***************
+*** 5502,5508 ****
+  	 * Also highlight the 'colorcolumn' if it is different than
+  	 * 'cursorcolumn' */
+  	vcol_save_attr = -1;
+! 	if (draw_state == WL_LINE && !lnum_in_visual_area)
+  	{
+  	    if (wp->w_p_cuc && VCOL_HLC == (long)wp->w_virtcol
+  						 && lnum != wp->w_cursor.lnum)
+--- 5502,5509 ----
+  	 * Also highlight the 'colorcolumn' if it is different than
+  	 * 'cursorcolumn' */
+  	vcol_save_attr = -1;
+! 	if (draw_state == WL_LINE && !lnum_in_visual_area
+! 		&& search_attr == 0 && area_attr == 0)
+  	{
+  	    if (wp->w_p_cuc && VCOL_HLC == (long)wp->w_virtcol
+  						 && lnum != wp->w_cursor.lnum)
+*** ../vim-8.0.0674/src/testdir/test_listlbr_utf8.vim	2017-03-01 18:04:01.579277621 +0100
+--- src/testdir/test_listlbr_utf8.vim	2017-06-25 17:52:58.028606031 +0200
+***************
+*** 194,199 ****
+--- 194,214 ----
+    call s:close_windows()
+  endfunc
+  
++ func Test_colorcolumn_priority()
++   call s:test_windows('setl cc=4 cuc hls')
++   call setline(1, ["xxyy", ""])
++   norm! gg
++   exe "normal! /xxyy\<CR>"
++   norm! G
++   redraw!
++   let line_attr = s:screen_attr(1, [1, &cc])
++   " Search wins over CursorColumn
++   call assert_equal(line_attr[1], line_attr[0])
++   " Search wins over Colorcolumn
++   call assert_equal(line_attr[2], line_attr[3])
++   call s:close_windows('setl hls&vim')
++ endfunc
++ 
+  func Test_illegal_byte_and_breakat()
+    call s:test_windows("setl sbr= brk+=<")
+    vert resize 18
+*** ../vim-8.0.0674/src/version.c	2017-06-25 13:40:09.179635950 +0200
+--- src/version.c	2017-06-25 17:59:38.461424377 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     675,
+  /**/
+
+-- 
+From "know your smileys":
+ y:-)	Bad toupee
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

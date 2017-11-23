@@ -1,0 +1,87 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0664
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0664 (after 8.0.0661)
+Problem:    Mouse does not work in tmux. (lilydjwg)
+Solution:   Add flag for SGR release being present.
+Files:      src/term.c
+
+
+*** ../vim-8.0.0663/src/term.c	2017-06-22 22:37:53.592267703 +0200
+--- src/term.c	2017-06-23 22:27:39.093321209 +0200
+***************
+*** 1801,1809 ****
+       * The termcode for the mouse is added as a side effect in option.c.
+       */
+      {
+! 	char_u	*p;
+  
+- 	p = (char_u *)"";
+  #  ifdef FEAT_MOUSE_XTERM
+  	if (use_xterm_like_mouse(term))
+  	{
+--- 1801,1808 ----
+       * The termcode for the mouse is added as a side effect in option.c.
+       */
+      {
+! 	char_u	*p = (char_u *)"";
+  
+  #  ifdef FEAT_MOUSE_XTERM
+  	if (use_xterm_like_mouse(term))
+  	{
+***************
+*** 1944,1949 ****
+--- 1943,1949 ----
+  #  define HMT_PTERM	16
+  #  define HMT_URXVT	32
+  #  define HMT_SGR	64
++ #  define HMT_SGR_REL	128
+  static int has_mouse_termcode = 0;
+  # endif
+  
+***************
+*** 1987,1992 ****
+--- 1987,1994 ----
+  #   ifdef FEAT_MOUSE_SGR
+      if (n == KS_SGR_MOUSE)
+  	has_mouse_termcode |= HMT_SGR;
++     else if (n == KS_SGR_MOUSE_RELEASE)
++ 	has_mouse_termcode |= HMT_SGR_REL;
+      else
+  #   endif
+  	has_mouse_termcode |= HMT_NORMAL;
+***************
+*** 2034,2039 ****
+--- 2036,2043 ----
+  #   ifdef FEAT_MOUSE_SGR
+      if (n == KS_SGR_MOUSE)
+  	has_mouse_termcode &= ~HMT_SGR;
++     else if (n == KS_SGR_MOUSE_RELEASE)
++ 	has_mouse_termcode &= ~HMT_SGR_REL;
+      else
+  #   endif
+  	has_mouse_termcode &= ~HMT_NORMAL;
+*** ../vim-8.0.0663/src/version.c	2017-06-23 20:52:21.579128739 +0200
+--- src/version.c	2017-06-23 22:26:14.990002389 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     664,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+74. Your most erotic dreams are about cybersex
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,135 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1083
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1083
+Problem:    Leaking memory in input part of channel.
+Solution:   Clear the input part of channel.  Free the entry. Move failing
+            command test to a separate file to avoid bogus leak reports
+            clouding tests that should not leak.
+Files:      src/channel.c, src/testdir/test_terminal.vim, src/Makefile,
+            src/testdir/test_terminal_fail.vim, src/testdir/Make_all.mak
+
+
+*** ../vim-8.0.1082/src/channel.c	2017-09-09 16:42:49.803605912 +0200
+--- src/channel.c	2017-09-09 17:49:25.932595961 +0200
+***************
+*** 2939,2944 ****
+--- 2939,2945 ----
+  	wq->wq_prev = NULL;
+      else
+  	wq->wq_next->wq_prev = NULL;
++     vim_free(entry);
+  }
+  
+  /*
+***************
+*** 2990,2996 ****
+      channel_clear_one(channel, PART_SOCK);
+      channel_clear_one(channel, PART_OUT);
+      channel_clear_one(channel, PART_ERR);
+!     /* there is no callback or queue for PART_IN */
+      free_callback(channel->ch_callback, channel->ch_partial);
+      channel->ch_callback = NULL;
+      channel->ch_partial = NULL;
+--- 2991,2997 ----
+      channel_clear_one(channel, PART_SOCK);
+      channel_clear_one(channel, PART_OUT);
+      channel_clear_one(channel, PART_ERR);
+!     channel_clear_one(channel, PART_IN);
+      free_callback(channel->ch_callback, channel->ch_partial);
+      channel->ch_callback = NULL;
+      channel->ch_partial = NULL;
+*** ../vim-8.0.1082/src/testdir/test_terminal.vim	2017-09-09 18:10:56.707952547 +0200
+--- src/testdir/test_terminal.vim	2017-09-09 18:14:42.798452272 +0200
+***************
+*** 608,621 ****
+    endif
+  
+    if has('unix')
+-     let buf = term_start('xyzabc', {'err_io': 'file', 'err_name': 'Xfile'})
+-     call term_wait(buf)
+-     call WaitFor('len(readfile("Xfile")) > 0')
+-     call assert_match('executing job failed', readfile('Xfile')[0])
+-     call WaitFor('!&modified')
+-     call delete('Xfile')
+-     bwipe
+- 
+      call writefile(['one line'], 'Xfile')
+      let buf = term_start('cat', {'in_io': 'file', 'in_name': 'Xfile'})
+      call term_wait(buf)
+--- 608,613 ----
+*** ../vim-8.0.1082/src/Makefile	2017-09-02 19:45:00.049425409 +0200
+--- src/Makefile	2017-09-09 17:59:17.028607522 +0200
+***************
+*** 2265,2270 ****
+--- 2266,2272 ----
+  	test_taglist \
+  	test_tcl \
+  	test_terminal \
++ 	test_terminal_fail \
+  	test_textobjects \
+  	test_timers \
+  	test_true_false \
+*** ../vim-8.0.1082/src/testdir/test_terminal_fail.vim	2017-09-09 18:14:45.242436048 +0200
+--- src/testdir/test_terminal_fail.vim	2017-09-09 17:57:51.133186955 +0200
+***************
+*** 0 ****
+--- 1,21 ----
++ " This test is in a separate file, because it usually causes reports for memory
++ " leaks under valgrind.  That is because when fork/exec fails memory is not
++ " freed.  Since the process exists right away it's not a real leak.
++ 
++ if !has('terminal')
++   finish
++ endif
++ 
++ source shared.vim
++ 
++ func Test_terminal_redir_fails()
++   if has('unix')
++     let buf = term_start('xyzabc', {'err_io': 'file', 'err_name': 'Xfile'})
++     call term_wait(buf)
++     call WaitFor('len(readfile("Xfile")) > 0')
++     call assert_match('executing job failed', readfile('Xfile')[0])
++     call WaitFor('!&modified')
++     call delete('Xfile')
++     bwipe
++   endif
++ endfunc
+*** ../vim-8.0.1082/src/testdir/Make_all.mak	2017-08-30 20:21:54.254963240 +0200
+--- src/testdir/Make_all.mak	2017-09-09 17:59:40.036452320 +0200
+***************
+*** 194,199 ****
+--- 194,200 ----
+  	    test_system.res \
+  	    test_tcl.res \
+  	    test_terminal.res \
++ 	    test_terminal_fail.res \
+  	    test_textobjects.res \
+  	    test_undo.res \
+  	    test_usercommands.res \
+*** ../vim-8.0.1082/src/version.c	2017-09-09 18:10:56.707952547 +0200
+--- src/version.c	2017-09-09 18:12:35.703295786 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1083,
+  /**/
+
+-- 
+I AM THANKFUL...
+...for the mess to clean after a party because it means I have
+been surrounded by friends.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,92 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0511
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0511
+Problem:    Menuage for skipping client-server tests is unclear.
+Solution:   Be more specific about what's missing (Hirohito Higashi, Kazunobu
+            Kuriyama)
+Files:      src/testdir/test_quotestar.vim, src/testdir/test_clientserver.vim
+
+
+*** ../vim-8.0.0510/src/testdir/test_quotestar.vim	2017-03-25 15:20:01.788623057 +0100
+--- src/testdir/test_quotestar.vim	2017-03-25 18:20:29.106765718 +0100
+***************
+*** 118,125 ****
+  
+    if has('macunix')
+      let skipped = Do_test_quotestar_for_macunix()
+!   elseif !empty("$DISPLAY")
+!     let skipped = Do_test_quotestar_for_x11()
+    else
+      let skipped = "Test is not implemented yet for this platform."
+    endif
+--- 118,129 ----
+  
+    if has('macunix')
+      let skipped = Do_test_quotestar_for_macunix()
+!   elseif has('x11')
+!     if empty($DISPLAY)
+!       let skipped = "Test can only run when $DISPLAY is set."
+!     else
+!       let skipped = Do_test_quotestar_for_x11()
+!     endif
+    else
+      let skipped = "Test is not implemented yet for this platform."
+    endif
+*** ../vim-8.0.0510/src/testdir/test_clientserver.vim	2017-03-25 15:20:01.788623057 +0100
+--- src/testdir/test_clientserver.vim	2017-03-25 20:13:32.761848466 +0100
+***************
+*** 11,23 ****
+    if cmd == ''
+      return
+    endif
+!   if has('unix')
+      try
+        call remote_send('xxx', '')
+      catch
+        if v:exception =~ 'E240:'
+! 	" No connection to the X server, give up.
+! 	return
+        endif
+        " ignore other errors
+      endtry
+--- 11,25 ----
+    if cmd == ''
+      return
+    endif
+!   if has('x11')
+!     if empty($DISPLAY)
+!       throw 'Skipped: $DISPLAY is not set'
+!     endif
+      try
+        call remote_send('xxx', '')
+      catch
+        if v:exception =~ 'E240:'
+! 	throw 'Skipped: no connection to the X server'
+        endif
+        " ignore other errors
+      endtry
+*** ../vim-8.0.0510/src/version.c	2017-03-25 18:10:26.871248913 +0100
+--- src/version.c	2017-03-25 20:11:57.782519710 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     511,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+214. Your MCI "Circle of Friends" are all Hayes-compatible.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

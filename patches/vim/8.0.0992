@@ -1,0 +1,63 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0992
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0992
+Problem:    Terminal title is wrong when 'encoding' is DBCS.
+Solution:   Convert the title from DBCS to utf-8. (Yasuhiro Matsumoto, closes
+            #2009)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0991/src/terminal.c	2017-08-23 23:36:18.847525696 +0200
+--- src/terminal.c	2017-08-23 23:46:15.195616351 +0200
+***************
+*** 1837,1842 ****
+--- 1837,1860 ----
+  	     * displayed */
+  	    if (*skipwhite((char_u *)value->string) == NUL)
+  		term->tl_title = NULL;
++ #ifdef WIN3264
++ 	    else if (!enc_utf8 && enc_codepage > 0)
++ 	    {
++ 		WCHAR   *ret = NULL;
++ 		int	length = 0;
++ 
++ 		MultiByteToWideChar_alloc(CP_UTF8, 0,
++ 			(char*)value->string, STRLEN(value->string),
++ 								&ret, &length);
++ 		if (ret != NULL)
++ 		{
++ 		    WideCharToMultiByte_alloc(enc_codepage, 0,
++ 					ret, length, (char**)&term->tl_title,
++ 					&length, 0, 0);
++ 		    vim_free(ret);
++ 		}
++ 	    }
++ #endif
+  	    else
+  		term->tl_title = vim_strsave((char_u *)value->string);
+  	    vim_free(term->tl_status_text);
+*** ../vim-8.0.0991/src/version.c	2017-08-23 23:36:18.847525696 +0200
+--- src/version.c	2017-08-23 23:50:30.165955917 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     992,
+  /**/
+
+-- 
+The goal of science is to build better mousetraps.
+The goal of nature is to build better mice.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

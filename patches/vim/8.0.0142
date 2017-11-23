@@ -1,0 +1,49 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0142
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0142
+Problem:    Normal colors are wrong with 'termguicolors'.
+Solution:   Initialize to INVALCOLOR instead of zero. (Ben Jackson, closes
+            #1344)
+Files:      src/syntax.c
+
+
+*** ../vim-8.0.0141/src/syntax.c	2016-08-29 22:42:20.000000000 +0200
+--- src/syntax.c	2017-01-02 21:35:15.010798519 +0100
+***************
+*** 8765,8770 ****
+--- 8765,8774 ----
+  	else
+  	{
+  	    vim_memset(&new_en, 0, sizeof(new_en));
++ #ifdef FEAT_TERMGUICOLORS
++ 	    new_en.ae_u.cterm.bg_rgb = INVALCOLOR;
++ 	    new_en.ae_u.cterm.fg_rgb = INVALCOLOR;
++ #endif
+  	    if (char_attr <= HL_ALL)
+  		new_en.ae_attr = char_attr;
+  	}
+*** ../vim-8.0.0141/src/version.c	2017-01-02 18:32:36.655965763 +0100
+--- src/version.c	2017-01-02 21:36:54.254100290 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     142,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+180. You maintain more than six e-mail addresses.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

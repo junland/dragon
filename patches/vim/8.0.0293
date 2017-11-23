@@ -1,0 +1,113 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0293
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0293
+Problem:    Some tests have a one or three second wait.
+Solution:   Reset the 'showmode' option.  Use a test time of one to disable
+            sleep after an error or warning message.
+Files:      src/misc1.c, src/testdir/runtest.vim, src/testdir/test_normal.vim
+
+
+*** ../vim-8.0.0292/src/misc1.c	2017-02-01 13:14:11.022177046 +0100
+--- src/misc1.c	2017-02-01 22:25:36.886478288 +0100
+***************
+*** 3264,3270 ****
+  #endif
+  	msg_clr_eos();
+  	(void)msg_end();
+! 	if (msg_silent == 0 && !silent_mode)
+  	{
+  	    out_flush();
+  	    ui_delay(1000L, TRUE); /* give the user time to think about it */
+--- 3264,3274 ----
+  #endif
+  	msg_clr_eos();
+  	(void)msg_end();
+! 	if (msg_silent == 0 && !silent_mode
+! #ifdef FEAT_EVAL
+! 		&& time_for_testing != 1
+! #endif
+! 		)
+  	{
+  	    out_flush();
+  	    ui_delay(1000L, TRUE); /* give the user time to think about it */
+*** ../vim-8.0.0292/src/testdir/runtest.vim	2017-02-01 20:48:09.037147485 +0100
+--- src/testdir/runtest.vim	2017-02-01 22:12:36.159622270 +0100
+***************
+*** 57,65 ****
+    set encoding=latin1
+  endif
+  
+- " Avoid stopping at the "hit enter" prompt
+- set nomore
+- 
+  " Output all messages in English.
+  lang mess C
+  
+--- 57,62 ----
+***************
+*** 88,93 ****
+--- 85,98 ----
+  
+  function RunTheTest(test)
+    echo 'Executing ' . a:test
++ 
++   " Avoid stopping at the "hit enter" prompt
++   set nomore
++ 
++   " Avoid a three second wait when a message is about to be overwritten by the
++   " mode message.
++   set noshowmode
++ 
+    if exists("*SetUp")
+      try
+        call SetUp()
+*** ../vim-8.0.0292/src/testdir/test_normal.vim	2017-01-14 14:28:26.964592279 +0100
+--- src/testdir/test_normal.vim	2017-02-01 22:24:52.238772490 +0100
+***************
+*** 2193,2198 ****
+--- 2193,2200 ----
+    if !has("autocmd")
+      return
+    endif
++   " Don't sleep after the warning message.
++   call test_settime(1)
+    call writefile(['foo'], 'Xreadonly.log')
+    new Xreadonly.log
+    setl ro
+***************
+*** 2202,2207 ****
+--- 2204,2210 ----
+    call assert_equal('Xreadonly.log', bufname(''))
+  
+    " cleanup
++   call test_settime(0)
+    bw!
+    call delete("Xreadonly.log")
+  endfunc
+*** ../vim-8.0.0292/src/version.c	2017-02-01 22:05:22.598481671 +0100
+--- src/version.c	2017-02-01 22:13:47.923149491 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     293,
+  /**/
+
+-- 
+ARTHUR:  No, hang on!  Just answer the five questions ...
+GALAHAD: Three questions ...
+ARTHUR:  Three questions ...  And we shall watch ... and pray.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

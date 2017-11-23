@@ -1,0 +1,87 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1162
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1162
+Problem:    Shared script for tests cannot be included twice.
+Solution:   Include it where needed, it will "finish" if loaded again.
+Files:      src/testdir/test_alot.vim, src/testdir/test_bufline.vim,
+            src/testdir/test_timers.vim
+
+
+*** ../vim-8.0.1161/src/testdir/test_alot.vim	2017-09-04 20:34:15.122492847 +0200
+--- src/testdir/test_alot.vim	2017-09-30 14:21:28.775988792 +0200
+***************
+*** 1,8 ****
+  " A series of tests that can run in one Vim invocation.
+  " This makes testing go faster, since Vim doesn't need to restart.
+  
+- source shared.vim
+- 
+  set belloff=all
+  source test_assign.vim
+  source test_bufline.vim
+--- 1,6 ----
+*** ../vim-8.0.1161/src/testdir/test_bufline.vim	2017-09-04 22:55:57.923034277 +0200
+--- src/testdir/test_bufline.vim	2017-09-30 14:21:44.551892223 +0200
+***************
+*** 1,8 ****
+  " Tests for setbufline() and getbufline()
+  
+! if !exists('*GetVimCommand')
+!   source shared.vim
+! endif
+  
+  func Test_setbufline_getbufline()
+    new
+--- 1,6 ----
+  " Tests for setbufline() and getbufline()
+  
+! source shared.vim
+  
+  func Test_setbufline_getbufline()
+    new
+*** ../vim-8.0.1161/src/testdir/test_timers.vim	2017-09-14 22:55:33.337391424 +0200
+--- src/testdir/test_timers.vim	2017-09-30 14:22:12.235722781 +0200
+***************
+*** 4,12 ****
+    finish
+  endif
+  
+! if !exists('*WaitFor')
+!   source shared.vim
+! endif
+  
+  func MyHandler(timer)
+    let g:val += 1
+--- 4,10 ----
+    finish
+  endif
+  
+! source shared.vim
+  
+  func MyHandler(timer)
+    let g:val += 1
+*** ../vim-8.0.1161/src/version.c	2017-09-29 22:42:29.582007968 +0200
+--- src/version.c	2017-09-30 14:26:09.758266413 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1162,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+227. You sleep next to your monitor.  Or on top of it.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

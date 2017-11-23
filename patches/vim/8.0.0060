@@ -1,0 +1,109 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0060
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0060
+Problem:    When using an Ex command for 'keywordprg' it is escaped as with a
+            shell command. (Romain Lafourcade)
+Solution:   Escape for an Ex command. (closes #1175)
+Files:      src/normal.c, src/testdir/test_normal.vim
+
+
+*** ../vim-8.0.0059/src/normal.c	2016-10-08 19:21:26.079230055 +0200
+--- src/normal.c	2016-11-04 21:10:40.832732253 +0100
+***************
+*** 5713,5721 ****
+       */
+      if (cmdchar == 'K' && !kp_help)
+      {
+- 	/* Escape the argument properly for a shell command */
+  	ptr = vim_strnsave(ptr, n);
+! 	p = vim_strsave_shellescape(ptr, TRUE, TRUE);
+  	vim_free(ptr);
+  	if (p == NULL)
+  	{
+--- 5713,5725 ----
+       */
+      if (cmdchar == 'K' && !kp_help)
+      {
+  	ptr = vim_strnsave(ptr, n);
+! 	if (kp_ex)
+! 	    /* Escape the argument properly for an Ex command */
+! 	    p = vim_strsave_fnameescape(ptr, FALSE);
+! 	else
+! 	    /* Escape the argument properly for a shell command */
+! 	    p = vim_strsave_shellescape(ptr, TRUE, TRUE);
+  	vim_free(ptr);
+  	if (p == NULL)
+  	{
+*** ../vim-8.0.0059/src/testdir/test_normal.vim	2016-09-09 16:54:46.000000000 +0200
+--- src/testdir/test_normal.vim	2016-11-04 21:13:39.267361314 +0100
+***************
+*** 1222,1228 ****
+  func! Test_normal23_K()
+    " Test for K command
+    new
+!   call append(0, ['version8.txt', 'man'])
+    let k = &keywordprg
+    set keywordprg=:help
+    1
+--- 1222,1228 ----
+  func! Test_normal23_K()
+    " Test for K command
+    new
+!   call append(0, ['version8.txt', 'man', 'aa%bb', 'cc|dd'])
+    let k = &keywordprg
+    set keywordprg=:help
+    1
+***************
+*** 1237,1242 ****
+--- 1237,1260 ----
+    call assert_match('\*version8\.0\*', getline('.'))
+    helpclose
+  
++   set keywordprg=:new
++   set iskeyword+=%
++   set iskeyword+=\|
++   2
++   norm! K
++   call assert_equal('man', fnamemodify(bufname('%'), ':t'))
++   bwipe!
++   3
++   norm! K
++   call assert_equal('aa%bb', fnamemodify(bufname('%'), ':t'))
++   bwipe!
++   4
++   norm! K
++   call assert_equal('cc|dd', fnamemodify(bufname('%'), ':t'))
++   bwipe!
++   set iskeyword-=%
++   set iskeyword-=\|
++ 
+    " Only expect "man" to work on Unix
+    if !has("unix")
+      let &keywordprg = k
+*** ../vim-8.0.0059/src/version.c	2016-11-04 20:35:27.352945991 +0100
+--- src/version.c	2016-11-04 21:16:20.930121967 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     60,
+  /**/
+
+-- 
+If your company is not involved in something called "ISO 9000" you probably
+have no idea what it is.  If your company _is_ involved in ISO 9000 then you
+definitely have no idea what it is.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,67 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0920
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0920
+Problem:    The cursor shape is wrong after switch back from an alternate
+            screen in a terminal window. (arius Gedminas)
+Solution:   Change bitfield to unsigned.  Set flag that cursor shape was set.
+Files:      src/terminal.c, src/libvterm/src/vterm_internal.h
+
+
+*** ../vim-8.0.0919/src/terminal.c	2017-08-12 19:51:37.807214238 +0200
+--- src/terminal.c	2017-08-12 21:11:29.958975341 +0200
+***************
+*** 1170,1175 ****
+--- 1170,1176 ----
+  {
+      if (in_terminal_loop == term)
+      {
++ 	did_change_cursor = TRUE;
+  	if (term->tl_cursor_color != NULL)
+  	    term_cursor_color(term->tl_cursor_color);
+  	else
+*** ../vim-8.0.0919/src/libvterm/src/vterm_internal.h	2017-07-07 11:53:29.523876467 +0200
+--- src/libvterm/src/vterm_internal.h	2017-08-12 21:09:38.171627477 +0200
+***************
+*** 144,151 ****
+      struct VTermPen pen;
+  
+      struct {
+!       int cursor_visible:1;
+!       int cursor_blink:1;
+        unsigned int cursor_shape:2;
+      } mode;
+    } saved;
+--- 144,151 ----
+      struct VTermPen pen;
+  
+      struct {
+!       unsigned int cursor_visible:1;
+!       unsigned int cursor_blink:1;
+        unsigned int cursor_shape:2;
+      } mode;
+    } saved;
+*** ../vim-8.0.0919/src/version.c	2017-08-12 20:11:49.756048579 +0200
+--- src/version.c	2017-08-12 21:15:01.665738610 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     920,
+  /**/
+
+-- 
+It is illegal to take more than three sips of beer at a time while standing.
+		[real standing law in Texas, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

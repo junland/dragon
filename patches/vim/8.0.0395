@@ -1,0 +1,111 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0395
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0395 (after 8.0.0392)
+Problem:    Testing the + register fails with Motif.
+Solution:   Also ignore the "failed to create input context" error in the
+            second gvim.  Don't use msg() when it would result in a dialog.
+Files:      src/message.c, src/testdir/test_gui.vim, src/testdir/setup_gui.vim
+
+
+*** ../vim-8.0.0394/src/message.c	2017-03-01 15:07:01.337622045 +0100
+--- src/message.c	2017-03-01 18:22:39.194544583 +0100
+***************
+*** 605,611 ****
+  #ifdef FEAT_EVAL
+      /* When testing some errors are turned into a normal message. */
+      if (ignore_error(s))
+! 	return msg(s);
+  #endif
+  
+      called_emsg = TRUE;
+--- 605,612 ----
+  #ifdef FEAT_EVAL
+      /* When testing some errors are turned into a normal message. */
+      if (ignore_error(s))
+! 	/* don't call msg() if it results in a dialog */
+! 	return msg_use_printf() ? FALSE : msg(s);
+  #endif
+  
+      called_emsg = TRUE;
+*** ../vim-8.0.0394/src/testdir/test_gui.vim	2017-03-01 15:07:01.341622020 +0100
+--- src/testdir/test_gui.vim	2017-03-01 18:16:45.625230856 +0100
+***************
+*** 17,25 ****
+  " Test for resetting "secure" flag after GUI has started.
+  " Must be run first.
+  func Test_1_set_secure()
+-   " Ignore the "failed to create input context" error.
+-   call test_ignore_error('E285')
+- 
+    set exrc secure
+    gui -f
+    call assert_equal(1, has('gui_running'))
+--- 17,22 ----
+***************
+*** 87,99 ****
+      let test_response = 'Yes, I can.'
+      let vim_exe = exepath(v:progpath)
+      let testee = 'VIMRUNTIME=' . $VIMRUNTIME . '; export VIMRUNTIME;'
+!           \ . vim_exe . ' -f -g -u NONE -U NONE --noplugin -c ''%s'''
+!     let cmd = 'call feedkeys("'
+            \ . '\"+p'
+            \ . ':s/' . test_call . '/' . test_response . '/\<CR>'
+            \ . '\"+yis'
+            \ . ':q!\<CR>", "tx")'
+!     let run_vimtest = printf(testee, cmd)
+  
+      " Set the quoteplus register to test_call, and another gvim will launched.
+      " Then, it first tries to paste the content of its own quotedplus register
+--- 84,99 ----
+      let test_response = 'Yes, I can.'
+      let vim_exe = exepath(v:progpath)
+      let testee = 'VIMRUNTIME=' . $VIMRUNTIME . '; export VIMRUNTIME;'
+!           \ . vim_exe
+! 	  \ . ' -f -g -u NONE -U NONE --noplugin --cmd ''%s'' -c ''%s'''
+!     " Ignore the "failed to create input context" error.
+!     let cmd1 = 'call test_ignore_error("E285")'
+!     let cmd2 = 'call feedkeys("'
+            \ . '\"+p'
+            \ . ':s/' . test_call . '/' . test_response . '/\<CR>'
+            \ . '\"+yis'
+            \ . ':q!\<CR>", "tx")'
+!     let run_vimtest = printf(testee, cmd1, cmd2)
+  
+      " Set the quoteplus register to test_call, and another gvim will launched.
+      " Then, it first tries to paste the content of its own quotedplus register
+*** ../vim-8.0.0394/src/testdir/setup_gui.vim	2017-02-23 19:32:18.068709554 +0100
+--- src/testdir/setup_gui.vim	2017-03-01 18:27:18.132432664 +0100
+***************
+*** 27,29 ****
+--- 27,32 ----
+  func GUITearDownCommon()
+    call delete('Xhome', 'rf')
+  endfunc
++ 
++ " Ignore the "failed to create input context" error.
++ call test_ignore_error('E285')
+*** ../vim-8.0.0394/src/version.c	2017-03-01 18:04:01.579277621 +0100
+--- src/version.c	2017-03-01 18:21:35.071030952 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     395,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+35. Your husband tells you he's had the beard for 2 months.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,147 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0453
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0453
+Problem:    Adding fold marker creates new comment.
+Solution:   Use an existing comment if possible. (LemonBoy, closes #1549)
+Files:      src/ops.c, src/proto/ops.pro, src/fold.c,
+            src/testdir/test_fold.vim
+
+
+*** ../vim-8.0.0452/src/ops.c	2017-03-12 20:09:59.480468291 +0100
+--- src/ops.c	2017-03-12 20:19:41.504340010 +0100
+***************
+*** 113,121 ****
+  static void	may_set_selection(void);
+  #endif
+  static void	dis_msg(char_u *p, int skip_esc);
+- #if defined(FEAT_COMMENTS) || defined(PROTO)
+- static char_u	*skip_comment(char_u *line, int process, int include_space, int *is_comment);
+- #endif
+  static void	block_prep(oparg_T *oap, struct block_def *, linenr_T, int);
+  static int	do_addsub(int op_type, pos_T *pos, int length, linenr_T Prenum1);
+  #if defined(FEAT_CLIPBOARD) || defined(FEAT_EVAL)
+--- 113,118 ----
+***************
+*** 4301,4307 ****
+   * is_comment - will indicate whether the current line ends with an unclosed
+   *		comment.
+   */
+!     static char_u *
+  skip_comment(
+      char_u   *line,
+      int      process,
+--- 4298,4304 ----
+   * is_comment - will indicate whether the current line ends with an unclosed
+   *		comment.
+   */
+!     char_u *
+  skip_comment(
+      char_u   *line,
+      int      process,
+*** ../vim-8.0.0452/src/proto/ops.pro	2017-02-04 21:34:27.293529871 +0100
+--- src/proto/ops.pro	2017-03-12 20:19:28.520432171 +0100
+***************
+*** 38,43 ****
+--- 38,44 ----
+  int preprocs_left(void);
+  int get_register_name(int num);
+  void ex_display(exarg_T *eap);
++ char_u *skip_comment(char_u *line, int process, int include_space, int *is_comment);
+  int do_join(long count, int insert_space, int save_undo, int use_formatoptions, int setmark);
+  void op_format(oparg_T *oap, int keep_cursor);
+  void op_formatexpr(oparg_T *oap);
+*** ../vim-8.0.0452/src/fold.c	2017-03-12 20:09:59.460468432 +0100
+--- src/fold.c	2017-03-12 20:20:32.459978294 +0100
+***************
+*** 1760,1765 ****
+--- 1760,1766 ----
+      int		line_len;
+      char_u	*newline;
+      char_u	*p = (char_u *)strstr((char *)curbuf->b_p_cms, "%s");
++     int		line_is_comment = FALSE;
+  
+      /* Allocate a new line: old-line + 'cms'-start + marker + 'cms'-end */
+      line = ml_get(lnum);
+***************
+*** 1767,1777 ****
+  
+      if (u_save(lnum - 1, lnum + 1) == OK)
+      {
+  	newline = alloc((unsigned)(line_len + markerlen + STRLEN(cms) + 1));
+  	if (newline == NULL)
+  	    return;
+  	STRCPY(newline, line);
+! 	if (p == NULL)
+  	    vim_strncpy(newline + line_len, marker, markerlen);
+  	else
+  	{
+--- 1768,1783 ----
+  
+      if (u_save(lnum - 1, lnum + 1) == OK)
+      {
++ #if defined(FEAT_COMMENTS)
++ 	/* Check if the line ends with an unclosed comment */
++ 	(void)skip_comment(line, FALSE, FALSE, &line_is_comment);
++ #endif
+  	newline = alloc((unsigned)(line_len + markerlen + STRLEN(cms) + 1));
+  	if (newline == NULL)
+  	    return;
+  	STRCPY(newline, line);
+! 	/* Append the marker to the end of the line */
+! 	if (p == NULL || line_is_comment)
+  	    vim_strncpy(newline + line_len, marker, markerlen);
+  	else
+  	{
+*** ../vim-8.0.0452/src/testdir/test_fold.vim	2017-03-04 18:42:35.719691735 +0100
+--- src/testdir/test_fold.vim	2017-03-12 20:20:44.139895375 +0100
+***************
+*** 168,173 ****
+--- 168,189 ----
+    bwipe!
+  endfunc
+  
++ func Test_folds_marker_in_comment()
++   new
++   call setline(1, ['" foo', 'bar', 'baz'])
++   setl fen fdm=marker
++   setl com=sO:\"\ -,mO:\"\ \ ,eO:\"\",:\" cms=\"%s
++   norm! zf2j
++   setl nofen
++   :1y
++   call assert_equal(['" foo{{{'], getreg(0,1,1))
++   :+2y
++   call assert_equal(['baz"}}}'], getreg(0,1,1))
++ 
++   set foldmethod&
++   bwipe!
++ endfunc
++ 
+  func s:TestFoldExpr(lnum)
+    let thisline = getline(a:lnum)
+    if thisline == 'a'
+*** ../vim-8.0.0452/src/version.c	2017-03-12 20:09:59.492468205 +0100
+--- src/version.c	2017-03-12 20:21:56.931378565 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     453,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+103. When you find yourself in the "Computer" section of Barnes & Noble
+     enjoying yourself.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

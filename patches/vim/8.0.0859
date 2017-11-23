@@ -1,0 +1,56 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0859
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0859
+Problem:    NULL pointer access when term_free_vterm called twice.
+Solution:   Return when tl_vterm is NULL. (Yasuhiro Matsumoto, closes #1934)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0858/src/terminal.c	2017-08-03 22:44:51.034797750 +0200
+--- src/terminal.c	2017-08-04 20:27:58.405600925 +0200
+***************
+*** 691,698 ****
+      VTermPos	    pos;
+      VTermScreenCell cell;
+      VTermScreenCell *p;
+!     VTermScreen	    *screen = vterm_obtain_screen(term->tl_vterm);
+  
+      for (pos.row = 0; pos.row < term->tl_rows; ++pos.row)
+      {
+  	len = 0;
+--- 691,701 ----
+      VTermPos	    pos;
+      VTermScreenCell cell;
+      VTermScreenCell *p;
+!     VTermScreen	    *screen;
+  
++     if (term->tl_vterm == NULL)
++ 	return;
++     screen = vterm_obtain_screen(term->tl_vterm);
+      for (pos.row = 0; pos.row < term->tl_rows; ++pos.row)
+      {
+  	len = 0;
+*** ../vim-8.0.0858/src/version.c	2017-08-03 22:44:51.046797665 +0200
+--- src/version.c	2017-08-04 20:29:11.608802042 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     859,
+  /**/
+
+-- 
+The early bird gets the worm. The second mouse gets the cheese.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

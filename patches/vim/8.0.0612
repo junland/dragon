@@ -1,0 +1,216 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0612
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0612
+Problem:    Package directories are added to 'runtimepath' only after loading
+            non-package plugins.
+Solution:   Split off the code to add package directories to 'runtimepath'.
+            (Ingo Karkat, closes #1680)
+Files:      src/ex_cmds2.c, src/globals.h, src/main.c, src/proto/ex_cmds2.pro,
+            src/testdir/test_startup.vim
+
+
+*** ../vim-8.0.0611/src/ex_cmds2.c	2017-03-16 17:23:26.819815897 +0100
+--- src/ex_cmds2.c	2017-06-04 17:29:56.536891069 +0200
+***************
+*** 3633,3659 ****
+      vim_free(ffname);
+  }
+  
+! static int did_source_packages = FALSE;
+  
+  /*
+   * ":packloadall"
+   * Find plugins in the package directories and source them.
+-  * "eap" is NULL when invoked during startup.
+   */
+      void
+  ex_packloadall(exarg_T *eap)
+  {
+!     if (!did_source_packages || (eap != NULL && eap->forceit))
+      {
+- 	did_source_packages = TRUE;
+- 
+  	/* First do a round to add all directories to 'runtimepath', then load
+  	 * the plugins. This allows for plugins to use an autoload directory
+  	 * of another plugin. */
+! 	do_in_path(p_pp, (char_u *)"pack/*/start/*", DIP_ALL + DIP_DIR,
+! 					       add_pack_plugin, &APP_ADD_DIR);
+! 	do_in_path(p_pp, (char_u *)"pack/*/start/*", DIP_ALL + DIP_DIR,
+! 						  add_pack_plugin, &APP_LOAD);
+      }
+  }
+  
+--- 3633,3673 ----
+      vim_free(ffname);
+  }
+  
+! /*
+!  * Add all packages in the "start" directory to 'runtimepath'.
+!  */
+!     void
+! add_pack_start_dirs(void)
+! {
+!     do_in_path(p_pp, (char_u *)"pack/*/start/*", DIP_ALL + DIP_DIR,
+! 					       add_pack_plugin, &APP_ADD_DIR);
+! }
+! 
+! /*
+!  * Load plugins from all packages in the "start" directory.
+!  */
+!     void
+! load_start_packages(void)
+! {
+!     did_source_packages = TRUE;
+!     do_in_path(p_pp, (char_u *)"pack/*/start/*", DIP_ALL + DIP_DIR,
+! 						  add_pack_plugin, &APP_LOAD);
+! }
+  
+  /*
+   * ":packloadall"
+   * Find plugins in the package directories and source them.
+   */
+      void
+  ex_packloadall(exarg_T *eap)
+  {
+!     if (!did_source_packages || eap->forceit)
+      {
+  	/* First do a round to add all directories to 'runtimepath', then load
+  	 * the plugins. This allows for plugins to use an autoload directory
+  	 * of another plugin. */
+! 	add_pack_start_dirs();
+! 	load_start_packages();
+      }
+  }
+  
+*** ../vim-8.0.0611/src/globals.h	2017-06-04 14:57:57.308461406 +0200
+--- src/globals.h	2017-06-04 17:24:53.239024334 +0200
+***************
+*** 326,331 ****
+--- 326,333 ----
+  EXTERN scid_T	current_SID INIT(= 0);
+  #endif
+  
++ EXTERN int	did_source_packages INIT(= FALSE);
++ 
+  /* Magic number used for hashitem "hi_key" value indicating a deleted item.
+   * Only the address is used. */
+  EXTERN char_u	hash_removed;
+*** ../vim-8.0.0611/src/main.c	2017-06-04 15:45:44.980507951 +0200
+--- src/main.c	2017-06-04 17:28:37.249439604 +0200
+***************
+*** 449,454 ****
+--- 449,460 ----
+       */
+      if (p_lpl)
+      {
++ 	/* First add all package directories to 'runtimepath', so that their
++ 	 * autoload directories can be found.  Only if not done already with a
++ 	 * :packloadall command. */
++ 	if (!did_source_packages)
++ 	    add_pack_start_dirs();
++ 
+  # ifdef VMS	/* Somehow VMS doesn't handle the "**". */
+  	source_runtime((char_u *)"plugin/*.vim", DIP_ALL | DIP_NOAFTER);
+  # else
+***************
+*** 456,462 ****
+  # endif
+  	TIME_MSG("loading plugins");
+  
+! 	ex_packloadall(NULL);
+  	TIME_MSG("loading packages");
+  
+  # ifdef VMS	/* Somehow VMS doesn't handle the "**". */
+--- 462,471 ----
+  # endif
+  	TIME_MSG("loading plugins");
+  
+! 	/* Only source "start" packages if not done already with a :packloadall
+! 	 * command. */
+! 	if (!did_source_packages)
+! 	    load_start_packages();
+  	TIME_MSG("loading packages");
+  
+  # ifdef VMS	/* Somehow VMS doesn't handle the "**". */
+*** ../vim-8.0.0611/src/proto/ex_cmds2.pro	2017-01-28 15:58:45.352197224 +0100
+--- src/proto/ex_cmds2.pro	2017-06-04 17:28:01.697685496 +0200
+***************
+*** 72,77 ****
+--- 72,79 ----
+  int source_runtime(char_u *name, int flags);
+  int do_in_path(char_u *path, char_u *name, int flags, void (*callback)(char_u *fname, void *ck), void *cookie);
+  int do_in_runtimepath(char_u *name, int flags, void (*callback)(char_u *fname, void *ck), void *cookie);
++ void add_pack_start_dirs(void);
++ void load_start_packages(void);
+  void ex_packloadall(exarg_T *eap);
+  void ex_packadd(exarg_T *eap);
+  void ex_options(exarg_T *eap);
+*** ../vim-8.0.0611/src/testdir/test_startup.vim	2017-04-02 17:21:09.890069493 +0200
+--- src/testdir/test_startup.vim	2017-06-04 17:19:57.277130680 +0200
+***************
+*** 61,66 ****
+--- 61,98 ----
+    call delete('Xafter', 'rf')
+  endfunc
+  
++ func Test_pack_in_rtp_when_plugins_run()
++   if !has('packages')
++     return
++   endif
++   let before = [
++ 	\ 'set nocp viminfo+=nviminfo',
++ 	\ 'set guioptions+=M',
++ 	\ 'let $HOME = "/does/not/exist"',
++ 	\ 'set loadplugins',
++ 	\ 'set rtp=Xhere',
++ 	\ 'set packpath=Xhere',
++ 	\ 'set nomore',
++ 	\ ]
++   let after = [
++ 	\ 'quit',
++ 	\ ]
++   call mkdir('Xhere/plugin', 'p')
++   call writefile(['redir! > Xtestout', 'silent set runtimepath?', 'silent! call foo#Trigger()', 'redir END'], 'Xhere/plugin/here.vim')
++   call mkdir('Xhere/pack/foo/start/foobar/autoload', 'p')
++   call writefile(['function! foo#Trigger()', 'echo "autoloaded foo"', 'endfunction'], 'Xhere/pack/foo/start/foobar/autoload/foo.vim')
++ 
++   if RunVim(before, after, '')
++ 
++     let lines = filter(readfile('Xtestout'), '!empty(v:val)')
++     call assert_match('Xhere[/\\]pack[/\\]foo[/\\]start[/\\]foobar', get(lines, 0))
++     call assert_match('autoloaded foo', get(lines, 1))
++   endif
++ 
++   call delete('Xtestout')
++   call delete('Xhere', 'rf')
++ endfunc
++ 
+  func Test_help_arg()
+    if !has('unix') && has('gui')
+      " this doesn't work with gvim on MS-Windows
+*** ../vim-8.0.0611/src/version.c	2017-06-04 15:45:44.984507924 +0200
+--- src/version.c	2017-06-04 17:39:30.520914324 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     612,
+  /**/
+
+-- 
+The average life of an organization chart is six months.  You can safely
+ignore any order from your boss that would take six months to complete.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

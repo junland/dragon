@@ -1,0 +1,111 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1289
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1289
+Problem:    Mkview always includes the local directory.
+Solution:   Add the "curdir" value in 'viewoptions'. (Eric Roberts, closes
+            #2316)
+Files:      runtime/doc/options.txt, runtime/doc/starting.txt, src/ex_docmd.c,
+            src/option.c
+
+
+*** ../vim-8.0.1288/runtime/doc/options.txt	2017-11-09 18:33:22.404374768 +0100
+--- runtime/doc/options.txt	2017-11-11 17:38:44.054728241 +0100
+***************
+*** 8245,8251 ****
+  	security reasons.
+  
+  						*'viewoptions'* *'vop'*
+! 'viewoptions' 'vop'	string	(default: "folds,options,cursor")
+  			global
+  			{not in Vi}
+  			{not available when compiled without the |+mksession|
+--- 8387,8393 ----
+  	security reasons.
+  
+  						*'viewoptions'* *'vop'*
+! 'viewoptions' 'vop'	string	(default: "folds,options,cursor,curdir")
+  			global
+  			{not in Vi}
+  			{not available when compiled without the |+mksession|
+***************
+*** 8263,8268 ****
+--- 8405,8411 ----
+  			slashes
+  	   unix		with Unix end-of-line format (single <NL>), even when
+  			on Windows or DOS
++ 	   curdir	the window-local directory, if set with `:lcd`
+  
+  	"slash" and "unix" are useful on Windows when sharing view files
+  	with Unix.  The Unix version of Vim cannot source dos format scripts,
+*** ../vim-8.0.1288/src/ex_docmd.c	2017-10-28 17:53:00.387998480 +0200
+--- src/ex_docmd.c	2017-11-11 17:41:53.243968510 +0100
+***************
+*** 11695,11703 ****
+      }
+  
+      /*
+!      * Local directory.
+       */
+!     if (wp->w_localdir != NULL)
+      {
+  	if (fputs("lcd ", fd) < 0
+  		|| ses_put_fname(fd, wp->w_localdir, flagp) == FAIL
+--- 11695,11705 ----
+      }
+  
+      /*
+!      * Local directory, if the current flag is not view options or the "curdir"
+!      * option is included.
+       */
+!     if (wp->w_localdir != NULL
+! 			    && (flagp != &vop_flags || (*flagp & SSOP_CURDIR)))
+      {
+  	if (fputs("lcd ", fd) < 0
+  		|| ses_put_fname(fd, wp->w_localdir, flagp) == FAIL
+*** ../vim-8.0.1288/src/option.c	2017-10-29 15:26:39.212867448 +0100
+--- src/option.c	2017-11-11 17:42:18.951592461 +0100
+***************
+*** 2926,2932 ****
+      {"viewoptions", "vop",  P_STRING|P_VI_DEF|P_ONECOMMA|P_NODUP,
+  #ifdef FEAT_SESSION
+  			    (char_u *)&p_vop, PV_NONE,
+! 			    {(char_u *)"folds,options,cursor", (char_u *)0L}
+  #else
+  			    (char_u *)NULL, PV_NONE,
+  			    {(char_u *)0L, (char_u *)0L}
+--- 2926,2933 ----
+      {"viewoptions", "vop",  P_STRING|P_VI_DEF|P_ONECOMMA|P_NODUP,
+  #ifdef FEAT_SESSION
+  			    (char_u *)&p_vop, PV_NONE,
+! 			    {(char_u *)"folds,options,cursor,curdir",
+! 								  (char_u *)0L}
+  #else
+  			    (char_u *)NULL, PV_NONE,
+  			    {(char_u *)0L, (char_u *)0L}
+*** ../vim-8.0.1288/src/version.c	2017-11-11 17:09:03.280621200 +0100
+--- src/version.c	2017-11-11 17:37:49.255524591 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1289,
+  /**/
+
+-- 
+ARTHUR:       Now stand aside worthy adversary.
+BLACK KNIGHT: (Glancing at his shoulder) 'Tis but a scratch.
+ARTHUR:       A scratch?  Your arm's off.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

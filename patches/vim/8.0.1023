@@ -1,0 +1,457 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1023
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1023
+Problem:    It is not easy to identify a quickfix list.
+Solution:   Add the "id" field. (Yegappan Lakshmanan)
+Files:      runtime/doc/eval.txt, runtime/doc/quickfix.txt, src/quickfix.c,
+            src/testdir/test_quickfix.vim
+
+
+*** ../vim-8.0.1022/runtime/doc/eval.txt	2017-08-30 14:53:02.811426536 +0200
+--- runtime/doc/eval.txt	2017-08-30 20:28:54.316078485 +0200
+***************
+*** 4632,4637 ****
+--- 4632,4640 ----
+  		returns only the items listed in {what} as a dictionary. The
+  		following string items are supported in {what}:
+  			context	get the context stored with |setqflist()|
++ 			id	get information for the quickfix list with
++ 				|quickfix-ID|; zero means the id for the
++ 				current list or the list specifed by 'nr'
+  			items	quickfix list entries
+  			nr	get information for this quickfix list; zero
+  				means the current quickfix list and '$' means
+***************
+*** 4646,4651 ****
+--- 4649,4656 ----
+  			all	all of the above quickfix properties
+  		Non-string items in {what} are ignored.
+  		If "nr" is not present then the current quickfix list is used.
++ 		If both "nr" and a non-zero "id" are specified, then the list
++ 		specified by "id" is used.
+  		To get the number of lists in the quickfix stack, set 'nr' to
+  		'$' in {what}. The 'nr' value in the returned dictionary
+  		contains the quickfix stack size.
+***************
+*** 4657,4662 ****
+--- 4662,4668 ----
+  
+  		The returned dictionary contains the following entries:
+  			context	context information stored with |setqflist()|
++ 			id	quickfix list ID |quickfix-ID|
+  			items	quickfix list entries
+  			nr	quickfix list number
+  			title	quickfix list title text
+***************
+*** 7067,7072 ****
+--- 7075,7081 ----
+  				text and add the resulting entries to the
+  				quickfix list {nr}.  The value can be a string
+  				with one line or a list with multiple lines.
++ 		    id		quickfix list identifier |quickfix-ID|
+  		    items	list of quickfix entries. Same as the {list}
+  				argument.
+  		    nr		list number in the quickfix stack; zero
+***************
+*** 7077,7082 ****
+--- 7086,7094 ----
+  		If the "nr" item is not present, then the current quickfix list
+  		is modified. When creating a new quickfix list, "nr" can be
+  		set to a value one greater than the quickfix stack size.
++ 		When modifying a quickfix list, to guarantee that the correct
++ 		list is modified, 'id' should be used instead of 'nr' to
++ 		specify the list.
+  
+  		Examples: >
+  			:call setqflist([], 'r', {'title': 'My search'})
+*** ../vim-8.0.1022/runtime/doc/quickfix.txt	2017-07-19 17:05:55.179185982 +0200
+--- runtime/doc/quickfix.txt	2017-08-30 20:28:54.316078485 +0200
+***************
+*** 44,54 ****
+  The 'errorformat' option should be set to match the error messages from your
+  compiler (see |errorformat| below).
+  
+  						*location-list* *E776*
+! A location list is similar to a quickfix list and contains a list of positions
+! in files.  A location list is associated with a window and each window can
+! have a separate location list.  A location list can be associated with only
+! one window.  The location list is independent of the quickfix list.
+  
+  When a window with a location list is split, the new window gets a copy of the
+  location list.  When there are no longer any references to a location list,
+--- 44,62 ----
+  The 'errorformat' option should be set to match the error messages from your
+  compiler (see |errorformat| below).
+  
++ 							*quickfix-ID*
++ Each quickfix list has a unique identifier called the quickfix ID and this
++ number will not change within a Vim session. The getqflist() function can be
++ used to get the identifier assigned to a list.
++ 
+  						*location-list* *E776*
+! A location list is a window-local quickfix list. You get one after commands
+! like `:lvimgrep`, `:lgrep`, `:lhelpgrep`, `:lmake`, etc., which create a
+! location list instead of a quickfix list as the corresponding `:vimgrep`,
+! `:grep`, `:helpgrep`, `:make` do.
+! A location list is associated with a window and each window can have a
+! separate location list.  A location list can be associated with only one
+! window.  The location list is independent of the quickfix list.
+  
+  When a window with a location list is split, the new window gets a copy of the
+  location list.  When there are no longer any references to a location list,
+***************
+*** 905,911 ****
+  
+  
+  The Vim plugins in the "compiler" directory will set options to use the
+! selected compiler.  For ":compiler" local options are set, for ":compiler!"
+  global options.
+  							*current_compiler*
+  To support older Vim versions, the plugins always use "current_compiler" and
+--- 913,919 ----
+  
+  
+  The Vim plugins in the "compiler" directory will set options to use the
+! selected compiler.  For `:compiler` local options are set, for `:compiler!`
+  global options.
+  							*current_compiler*
+  To support older Vim versions, the plugins always use "current_compiler" and
+***************
+*** 1426,1432 ****
+     Making all in dir2		  ./dir1/dir2
+  
+     This can be solved by printing absolute directories in the "enter directory"
+!    message or by printing "leave directory" messages..
+  
+  To avoid this problem, ensure to print absolute directory names and "leave
+  directory" messages.
+--- 1434,1440 ----
+     Making all in dir2		  ./dir1/dir2
+  
+     This can be solved by printing absolute directories in the "enter directory"
+!    message or by printing "leave directory" messages.
+  
+  To avoid this problem, ensure to print absolute directory names and "leave
+  directory" messages.
+*** ../vim-8.0.1022/src/quickfix.c	2017-08-27 15:23:37.516977242 +0200
+--- src/quickfix.c	2017-08-30 20:32:08.170750931 +0200
+***************
+*** 58,63 ****
+--- 58,64 ----
+   */
+  typedef struct qf_list_S
+  {
++     int_u	qf_id;		/* Unique identifier for this list */
+      qfline_T	*qf_start;	/* pointer to the first error */
+      qfline_T	*qf_last;	/* pointer to the last error */
+      qfline_T	*qf_ptr;	/* pointer to the current error */
+***************
+*** 96,101 ****
+--- 97,103 ----
+  };
+  
+  static qf_info_T ql_info;	/* global quickfix list */
++ static int_u last_qf_id = 0;	/* Last used quickfix list id */
+  
+  #define FMT_PATTERNS 10		/* maximum number of % recognized */
+  
+***************
+*** 1399,1404 ****
+--- 1401,1407 ----
+  	qi->qf_curlist = qi->qf_listcount++;
+      vim_memset(&qi->qf_lists[qi->qf_curlist], 0, (size_t)(sizeof(qf_list_T)));
+      qf_store_title(qi, qi->qf_curlist, qf_title);
++     qi->qf_lists[qi->qf_curlist].qf_id = ++last_qf_id;
+  }
+  
+  /*
+***************
+*** 1672,1677 ****
+--- 1675,1683 ----
+  
+  	to_qfl->qf_index = from_qfl->qf_index;	/* current index in the list */
+  
++ 	/* Assign a new ID for the location list */
++ 	to_qfl->qf_id = ++last_qf_id;
++ 
+  	/* When no valid entries are present in the list, qf_ptr points to
+  	 * the first item in the list */
+  	if (to_qfl->qf_nonevalid)
+***************
+*** 2808,2813 ****
+--- 2814,2820 ----
+      qfl->qf_title = NULL;
+      free_tv(qfl->qf_ctx);
+      qfl->qf_ctx = NULL;
++     qfl->qf_id = 0;
+  }
+  
+  /*
+***************
+*** 4628,4633 ****
+--- 4635,4641 ----
+      QF_GETLIST_NR	= 0x4,
+      QF_GETLIST_WINID	= 0x8,
+      QF_GETLIST_CONTEXT	= 0x10,
++     QF_GETLIST_ID	= 0x20,
+      QF_GETLIST_ALL	= 0xFF
+  };
+  
+***************
+*** 4688,4704 ****
+  	return qf_get_list_from_text(di, retdict);
+  
+      if (wp != NULL)
+-     {
+  	qi = GET_LOC_LIST(wp);
+! 	if (qi == NULL)
+! 	{
+! 	    /* If querying for the size of the location list, return 0 */
+! 	    if (((di = dict_find(what, (char_u *)"nr", -1)) != NULL)
+! 		    && (di->di_tv.v_type == VAR_STRING)
+! 		    && (STRCMP(di->di_tv.vval.v_string, "$") == 0))
+! 		return dict_add_nr_str(retdict, "nr", 0, NULL);
+! 	    return FAIL;
+! 	}
+      }
+  
+      qf_idx = qi->qf_curlist;		/* default is the current list */
+--- 4696,4712 ----
+  	return qf_get_list_from_text(di, retdict);
+  
+      if (wp != NULL)
+  	qi = GET_LOC_LIST(wp);
+! 
+!     /* List is not present or is empty */
+!     if (qi == NULL || qi->qf_listcount == 0)
+!     {
+! 	/* If querying for the size of the list, return 0 */
+! 	if (((di = dict_find(what, (char_u *)"nr", -1)) != NULL)
+! 		&& (di->di_tv.v_type == VAR_STRING)
+! 		&& (STRCMP(di->di_tv.vval.v_string, "$") == 0))
+! 	    return dict_add_nr_str(retdict, "nr", 0, NULL);
+! 	return FAIL;
+      }
+  
+      qf_idx = qi->qf_curlist;		/* default is the current list */
+***************
+*** 4714,4754 ****
+  		if (qf_idx < 0 || qf_idx >= qi->qf_listcount)
+  		    return FAIL;
+  	    }
+- 	    else if (qi->qf_listcount == 0)	    /* stack is empty */
+- 		return FAIL;
+- 	    flags |= QF_GETLIST_NR;
+  	}
+  	else if ((di->di_tv.v_type == VAR_STRING)
+  		&& (STRCMP(di->di_tv.vval.v_string, "$") == 0))
+- 	{
+  	    /* Get the last quickfix list number */
+! 	    if (qi->qf_listcount > 0)
+! 		qf_idx = qi->qf_listcount - 1;
+! 	    else
+! 		qf_idx = -1;	/* Quickfix stack is empty */
+! 	    flags |= QF_GETLIST_NR;
+! 	}
+  	else
+  	    return FAIL;
+      }
+  
+!     if (qf_idx != -1)
+      {
+! 	if (dict_find(what, (char_u *)"all", -1) != NULL)
+! 	    flags |= QF_GETLIST_ALL;
+  
+! 	if (dict_find(what, (char_u *)"title", -1) != NULL)
+! 	    flags |= QF_GETLIST_TITLE;
+  
+! 	if (dict_find(what, (char_u *)"winid", -1) != NULL)
+! 	    flags |= QF_GETLIST_WINID;
+  
+! 	if (dict_find(what, (char_u *)"context", -1) != NULL)
+! 	    flags |= QF_GETLIST_CONTEXT;
+  
+! 	if (dict_find(what, (char_u *)"items", -1) != NULL)
+! 	    flags |= QF_GETLIST_ITEMS;
+!     }
+  
+      if (flags & QF_GETLIST_TITLE)
+      {
+--- 4722,4773 ----
+  		if (qf_idx < 0 || qf_idx >= qi->qf_listcount)
+  		    return FAIL;
+  	    }
+  	}
+  	else if ((di->di_tv.v_type == VAR_STRING)
+  		&& (STRCMP(di->di_tv.vval.v_string, "$") == 0))
+  	    /* Get the last quickfix list number */
+! 	    qf_idx = qi->qf_listcount - 1;
+  	else
+  	    return FAIL;
++ 	flags |= QF_GETLIST_NR;
+      }
+  
+!     if ((di = dict_find(what, (char_u *)"id", -1)) != NULL)
+      {
+! 	/* Look for a list with the specified id */
+! 	if (di->di_tv.v_type == VAR_NUMBER)
+! 	{
+! 	    /* For zero, use the current list or the list specifed by 'nr' */
+! 	    if (di->di_tv.vval.v_number != 0)
+! 	    {
+! 		for (qf_idx = 0; qf_idx < qi->qf_listcount; qf_idx++)
+! 		{
+! 		    if (qi->qf_lists[qf_idx].qf_id == di->di_tv.vval.v_number)
+! 			break;
+! 		}
+! 		if (qf_idx == qi->qf_listcount)
+! 		    return FAIL;	    /* List not found */
+! 	    }
+! 	    flags |= QF_GETLIST_ID;
+! 	}
+! 	else
+! 	    return FAIL;
+!     }
+  
+!     if (dict_find(what, (char_u *)"all", -1) != NULL)
+! 	flags |= QF_GETLIST_ALL;
+  
+!     if (dict_find(what, (char_u *)"title", -1) != NULL)
+! 	flags |= QF_GETLIST_TITLE;
+  
+!     if (dict_find(what, (char_u *)"winid", -1) != NULL)
+! 	flags |= QF_GETLIST_WINID;
+  
+!     if (dict_find(what, (char_u *)"context", -1) != NULL)
+! 	flags |= QF_GETLIST_CONTEXT;
+! 
+!     if (dict_find(what, (char_u *)"items", -1) != NULL)
+! 	flags |= QF_GETLIST_ITEMS;
+  
+      if (flags & QF_GETLIST_TITLE)
+      {
+***************
+*** 4798,4803 ****
+--- 4817,4826 ----
+  	    status = dict_add_nr_str(retdict, "context", 0L, (char_u *)"");
+      }
+  
++     if ((status == OK) && (flags & QF_GETLIST_ID))
++ 	status = dict_add_nr_str(retdict, "id", qi->qf_lists[qf_idx].qf_id,
++ 									 NULL);
++ 
+      return status;
+  }
+  
+***************
+*** 4981,4986 ****
+--- 5004,5024 ----
+  	}
+  	else
+  	    return FAIL;
++     }
++ 
++     if (!newlist && (di = dict_find(what, (char_u *)"id", -1)) != NULL)
++     {
++ 	/* Use the quickfix/location list with the specified id */
++ 	if (di->di_tv.v_type == VAR_NUMBER)
++ 	{
++ 	    for (qf_idx = 0; qf_idx < qi->qf_listcount; qf_idx++)
++ 		if (qi->qf_lists[qf_idx].qf_id == di->di_tv.vval.v_number)
++ 		    break;
++ 	    if (qf_idx == qi->qf_listcount)
++ 		return FAIL;	    /* List not found */
++ 	}
++ 	else
++ 	    return FAIL;
+      }
+  
+      if (newlist)
+*** ../vim-8.0.1022/src/testdir/test_quickfix.vim	2017-08-27 15:23:37.516977242 +0200
+--- src/testdir/test_quickfix.vim	2017-08-30 20:28:54.320078458 +0200
+***************
+*** 1897,1904 ****
+      call g:Xsetlist([], 'r', {'nr':2,'title':'Fruits','context':['Fruits']})
+      let l1=g:Xgetlist({'nr':1,'all':1})
+      let l2=g:Xgetlist({'nr':2,'all':1})
+!     let l1.nr=2
+!     let l2.nr=1
+      call g:Xsetlist([], 'r', l1)
+      call g:Xsetlist([], 'r', l2)
+      let newl1=g:Xgetlist({'nr':1,'all':1})
+--- 1897,1905 ----
+      call g:Xsetlist([], 'r', {'nr':2,'title':'Fruits','context':['Fruits']})
+      let l1=g:Xgetlist({'nr':1,'all':1})
+      let l2=g:Xgetlist({'nr':2,'all':1})
+!     let save_id = l1.id
+!     let l1.id=l2.id
+!     let l2.id=save_id
+      call g:Xsetlist([], 'r', l1)
+      call g:Xsetlist([], 'r', l2)
+      let newl1=g:Xgetlist({'nr':1,'all':1})
+***************
+*** 2545,2547 ****
+--- 2546,2583 ----
+    call XgetListFromText('c')
+    call XgetListFromText('l')
+  endfunc
++ 
++ " Tests for the quickfix list id
++ func Xqfid_tests(cchar)
++   call s:setup_commands(a:cchar)
++ 
++   call g:Xsetlist([], 'f')
++   call assert_equal({}, g:Xgetlist({'id':0}))
++   Xexpr ''
++   let start_id = g:Xgetlist({'id' : 0}).id
++   Xexpr '' | Xexpr ''
++   Xolder
++   call assert_equal(start_id, g:Xgetlist({'id':0, 'nr':1}).id)
++   call assert_equal(start_id + 1, g:Xgetlist({'id':0, 'nr':0}).id)
++   call assert_equal(start_id + 2, g:Xgetlist({'id':0, 'nr':'$'}).id)
++   call assert_equal({}, g:Xgetlist({'id':0, 'nr':99}))
++   call assert_equal(2, g:Xgetlist({'id':start_id + 1, 'nr':0}).nr)
++   call assert_equal({}, g:Xgetlist({'id':99, 'nr':0}))
++   call assert_equal({}, g:Xgetlist({'id':"abc", 'nr':0}))
++ 
++   call g:Xsetlist([], 'a', {'id':start_id, 'context':[1,2]})
++   call assert_equal([1,2], g:Xgetlist({'nr':1, 'context':1}).context)
++   call g:Xsetlist([], 'a', {'id':start_id+1, 'text':'F1:10:L10'})
++   call assert_equal('L10', g:Xgetlist({'nr':2, 'items':1}).items[0].text)
++   call assert_equal(-1, g:Xsetlist([], 'a', {'id':999, 'title':'Vim'}))
++   call assert_equal(-1, g:Xsetlist([], 'a', {'id':'abc', 'title':'Vim'}))
++ 
++   let qfid = g:Xgetlist({'id':0, 'nr':0})
++   call g:Xsetlist([], 'f')
++   call assert_equal({}, g:Xgetlist({'id':qfid, 'nr':0}))
++ endfunc
++ 
++ func Test_qf_id()
++   call Xqfid_tests('c')
++   call Xqfid_tests('l')
++ endfunc
+*** ../vim-8.0.1022/src/version.c	2017-08-30 20:21:54.254963240 +0200
+--- src/version.c	2017-08-30 20:29:33.399810962 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1023,
+  /**/
+
+-- 
+The users that I support would double-click on a landmine to find out
+what happens.				-- A system administrator
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

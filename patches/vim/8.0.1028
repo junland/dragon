@@ -1,0 +1,65 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1028
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1028
+Problem:    MS-Windows: viminfo uses $VIM/_viminfo if $HOME not set. (Yongwei
+            Wu)
+Solution:   Use vim_getenv() but check it's returning the default "C:/".
+Files:      src/ex_cmds.c
+
+
+*** ../vim-8.0.1027/src/ex_cmds.c	2017-08-17 16:55:08.633414785 +0200
+--- src/ex_cmds.c	2017-08-31 20:34:21.107832914 +0200
+***************
+*** 2098,2108 ****
+  	else if ((file = find_viminfo_parameter('n')) == NULL || *file == NUL)
+  	{
+  #ifdef VIMINFO_FILE2
+- 	    /* don't use $HOME when not defined (turned into "c:/"!). */
+  # ifdef VMS
+  	    if (mch_getenv((char_u *)"SYS$LOGIN") == NULL)
+  # else
+  	    if (mch_getenv((char_u *)"HOME") == NULL)
+  # endif
+  	    {
+  		/* don't use $VIM when not available. */
+--- 2098,2113 ----
+  	else if ((file = find_viminfo_parameter('n')) == NULL || *file == NUL)
+  	{
+  #ifdef VIMINFO_FILE2
+  # ifdef VMS
+  	    if (mch_getenv((char_u *)"SYS$LOGIN") == NULL)
+  # else
++ #  ifdef MSWIN
++ 	    /* Use $VIM only if $HOME is the default "C:/". */
++ 	    if (STRCMP(vim_getenv((char_u *)"HOME", NULL), "C:/") == 0
++ 		    && mch_getenv((char_u *)"HOME") == NULL)
++ #  else
+  	    if (mch_getenv((char_u *)"HOME") == NULL)
++ #  endif
+  # endif
+  	    {
+  		/* don't use $VIM when not available. */
+*** ../vim-8.0.1027/src/version.c	2017-08-31 20:17:55.406492134 +0200
+--- src/version.c	2017-08-31 20:35:43.603274817 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1028,
+  /**/
+
+-- 
+Nothing is fool-proof to a sufficiently talented fool.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,74 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1111
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1111
+Problem:    Syntax error in configure when using Perl.
+Solution:   Add missing quote
+Files:      src/configure.ac, src/auto/configure
+
+
+*** ../vim-8.0.1110/src/configure.ac	2017-09-14 23:06:19.221486638 +0200
+--- src/configure.ac	2017-09-15 12:38:30.286389661 +0200
+***************
+*** 1009,1015 ****
+        perlcppflags=`$vi_cv_path_perl -Mlib=$srcdir -MExtUtils::Embed \
+  		-e 'ccflags;perl_inc;print"\n"' | sed -e 's/-fno[[^ ]]*//' \
+  		-e 's/-fdebug-prefix-map[[^ ]]*//g' \
+! 		-e 's/\(-Wp,\)\?-D_FORTIFY_SOURCE=.//g`
+        dnl Remove "-lc", it breaks on FreeBSD when using "-pthread".
+        perllibs=`cd $srcdir; $vi_cv_path_perl -MExtUtils::Embed -e 'ldopts' | \
+  		sed -e '/Warning/d' -e '/Note (probably harmless)/d' \
+--- 1009,1015 ----
+        perlcppflags=`$vi_cv_path_perl -Mlib=$srcdir -MExtUtils::Embed \
+  		-e 'ccflags;perl_inc;print"\n"' | sed -e 's/-fno[[^ ]]*//' \
+  		-e 's/-fdebug-prefix-map[[^ ]]*//g' \
+! 		-e 's/\(-Wp,\)\?-D_FORTIFY_SOURCE=.//g'`
+        dnl Remove "-lc", it breaks on FreeBSD when using "-pthread".
+        perllibs=`cd $srcdir; $vi_cv_path_perl -MExtUtils::Embed -e 'ldopts' | \
+  		sed -e '/Warning/d' -e '/Note (probably harmless)/d' \
+*** ../vim-8.0.1110/src/auto/configure	2017-09-14 23:06:19.225486615 +0200
+--- src/auto/configure	2017-09-15 12:38:43.126314893 +0200
+***************
+*** 5720,5726 ****
+                          perlcppflags=`$vi_cv_path_perl -Mlib=$srcdir -MExtUtils::Embed \
+  		-e 'ccflags;perl_inc;print"\n"' | sed -e 's/-fno[^ ]*//' \
+  		-e 's/-fdebug-prefix-map[^ ]*//g' \
+! 		-e 's/\(-Wp,\)\?-D_FORTIFY_SOURCE=.//g`
+              perllibs=`cd $srcdir; $vi_cv_path_perl -MExtUtils::Embed -e 'ldopts' | \
+  		sed -e '/Warning/d' -e '/Note (probably harmless)/d' \
+  			-e 's/-bE:perl.exp//' -e 's/-lc //'`
+--- 5720,5726 ----
+                          perlcppflags=`$vi_cv_path_perl -Mlib=$srcdir -MExtUtils::Embed \
+  		-e 'ccflags;perl_inc;print"\n"' | sed -e 's/-fno[^ ]*//' \
+  		-e 's/-fdebug-prefix-map[^ ]*//g' \
+! 		-e 's/\(-Wp,\)\?-D_FORTIFY_SOURCE=.//g'`
+              perllibs=`cd $srcdir; $vi_cv_path_perl -MExtUtils::Embed -e 'ldopts' | \
+  		sed -e '/Warning/d' -e '/Note (probably harmless)/d' \
+  			-e 's/-bE:perl.exp//' -e 's/-lc //'`
+*** ../vim-8.0.1110/src/version.c	2017-09-14 23:06:19.225486615 +0200
+--- src/version.c	2017-09-15 12:39:34.038018407 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1111,
+  /**/
+
+-- 
+"Microsoft is like Coke.  It's a secret formula, all the money is from
+distribution, and their goal is to get Coke everywhere.  Open source is like
+selling water.  There are water companies like Perrier and Poland Spring, but
+you're competing with something that's free."   -- Carl Howe
+
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

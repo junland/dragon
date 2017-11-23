@@ -1,0 +1,113 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0423
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0423
+Problem:    The effect of adding "#" to 'cinoptions' is not always removed.
+            (David Briscoe)
+Solution:   Reset b_ind_hash_comment. (Christian Brabandt, closes #1475)
+Files:      src/misc1.c, src/Makefile, src/testdir/Make_all.mak,
+            src/testdir/test_cindent.vim, src/testdir/test3.in
+
+
+*** ../vim-8.0.0422/src/misc1.c	2017-03-05 18:02:59.999101021 +0100
+--- src/misc1.c	2017-03-05 19:27:22.488545085 +0100
+***************
+*** 6974,6979 ****
+--- 6974,6982 ----
+       * while(). */
+      buf->b_ind_if_for_while = 0;
+  
++     /* indentation for # comments */
++     buf->b_ind_hash_comment = 0;
++ 
+      for (p = buf->b_p_cino; *p; )
+      {
+  	l = p++;
+*** ../vim-8.0.0422/src/Makefile	2017-03-05 17:43:10.616245604 +0100
+--- src/Makefile	2017-03-05 19:26:32.516922193 +0100
+***************
+*** 2104,2109 ****
+--- 2104,2110 ----
+  	test_channel \
+  	test_charsearch \
+  	test_changedtick \
++ 	test_cindent \
+  	test_cmdline \
+  	test_command_count \
+  	test_crypt \
+*** ../vim-8.0.0422/src/testdir/Make_all.mak	2017-03-05 17:43:10.624245543 +0100
+--- src/testdir/Make_all.mak	2017-03-05 19:26:53.360764901 +0100
+***************
+*** 143,148 ****
+--- 143,149 ----
+  	    test_cdo.res \
+  	    test_channel.res \
+  	    test_charsearch.res \
++ 	    test_cindent.res \
+  	    test_cmdline.res \
+  	    test_command_count.res \
+  	    test_crypt.res \
+*** ../vim-8.0.0422/src/testdir/test_cindent.vim	2017-03-05 19:43:06.225417095 +0100
+--- src/testdir/test_cindent.vim	2017-03-05 19:26:14.357059228 +0100
+***************
+*** 0 ****
+--- 1,16 ----
++ " Test for cinoptions and cindent
++ "
++ " TODO: rewrite test3.in into this new style test
++ 
++ func Test_cino_hash()
++   " Test that curbuf->b_ind_hash_comment is correctly reset
++   new
++   setlocal cindent cinoptions=#1
++   setlocal cinoptions=
++   call setline(1, ["#include <iostream>"])
++   call cursor(1, 1)
++   norm! o#include
++   "call feedkeys("o#include\<esc>", 't')
++   call assert_equal(["#include <iostream>", "#include"], getline(1,2))
++   bwipe!
++ endfunc
+*** ../vim-8.0.0422/src/testdir/test3.in	2017-01-07 15:39:36.397759526 +0100
+--- src/testdir/test3.in	2017-03-05 19:41:45.302028954 +0100
+***************
+*** 1,6 ****
+  /* vim: set cin ts=4 sw=4 : */
+  
+! Test for 'cindent'
+  
+  STARTTEST
+  :so small.vim
+--- 1,7 ----
+  /* vim: set cin ts=4 sw=4 : */
+  
+! Test for 'cindent'.
+! For new tests, consider putting them in test_cindent.vim.
+  
+  STARTTEST
+  :so small.vim
+*** ../vim-8.0.0422/src/version.c	2017-03-05 19:00:29.888725017 +0100
+--- src/version.c	2017-03-05 19:42:33.585663888 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     423,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+62. If your doorbell rings, you think that new mail has arrived.  And then
+    you're disappointed that it's only someone at the door.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

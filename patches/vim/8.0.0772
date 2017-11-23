@@ -1,0 +1,243 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0772
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0772
+Problem:    Other stdbool.h dependencies in libvterm.
+Solution:   Remove the dependency and use TRUE/FALSE/int. (Ken Takata)
+Files:      src/libvterm/include/vterm.h, src/libvterm/src/mouse.c,
+            src/libvterm/src/pen.c, src/libvterm/t/harness.c,
+            src/libvterm/bin/unterm.c
+
+
+*** ../vim-8.0.0771/src/libvterm/include/vterm.h	2017-07-23 22:07:23.041277153 +0200
+--- src/libvterm/include/vterm.h	2017-07-25 21:27:11.612324748 +0200
+***************
+*** 10,19 ****
+  
+  #include <stdint.h>
+  #include <stdlib.h>
+- #include <stdbool.h>
+  
+  #include "vterm_keycodes.h"
+  
+  typedef struct VTerm VTerm;
+  typedef struct VTermState VTermState;
+  typedef struct VTermScreen VTermScreen;
+--- 10,21 ----
+  
+  #include <stdint.h>
+  #include <stdlib.h>
+  
+  #include "vterm_keycodes.h"
+  
++ #define TRUE 1
++ #define FALSE 0
++ 
+  typedef struct VTerm VTerm;
+  typedef struct VTermState VTermState;
+  typedef struct VTermScreen VTermScreen;
+***************
+*** 183,189 ****
+  void vterm_keyboard_end_paste(VTerm *vt);
+  
+  void vterm_mouse_move(VTerm *vt, int row, int col, VTermModifier mod);
+! void vterm_mouse_button(VTerm *vt, int button, bool pressed, VTermModifier mod);
+  
+  /* ------------
+   * Parser layer
+--- 185,191 ----
+  void vterm_keyboard_end_paste(VTerm *vt);
+  
+  void vterm_mouse_move(VTerm *vt, int row, int col, VTermModifier mod);
+! void vterm_mouse_button(VTerm *vt, int button, int pressed, VTermModifier mod);
+  
+  /* ------------
+   * Parser layer
+***************
+*** 235,240 ****
+--- 237,244 ----
+    int (*erase)(VTermRect rect, int selective, void *user);
+    int (*initpen)(void *user);
+    int (*setpenattr)(VTermAttr attr, VTermValue *val, void *user);
++   /* Callback for setting various properties.  Must return 1 if the property
++    * was accepted, 0 otherwise. */
+    int (*settermprop)(VTermProp prop, VTermValue *val, void *user);
+    int (*bell)(void *user);
+    int (*resize)(int rows, int cols, VTermPos *delta, void *user);
+*** ../vim-8.0.0771/src/libvterm/src/mouse.c	2017-07-07 11:53:29.519876497 +0200
+--- src/libvterm/src/mouse.c	2017-07-25 21:25:49.192909330 +0200
+***************
+*** 70,76 ****
+    }
+  }
+  
+! void vterm_mouse_button(VTerm *vt, int button, bool pressed, VTermModifier mod)
+  {
+    VTermState *state = vt->state;
+  
+--- 70,76 ----
+    }
+  }
+  
+! void vterm_mouse_button(VTerm *vt, int button, int pressed, VTermModifier mod)
+  {
+    VTermState *state = vt->state;
+  
+*** ../vim-8.0.0771/src/libvterm/src/pen.c	2017-07-07 11:53:29.519876497 +0200
+--- src/libvterm/src/pen.c	2017-07-25 21:27:24.464233607 +0200
+***************
+*** 33,49 ****
+    0x85, 0x90, 0x9B, 0xA6, 0xB1, 0xBC, 0xC7, 0xD2, 0xDD, 0xE8, 0xF3, 0xFF,
+  };
+  
+! static bool lookup_colour_ansi(const VTermState *state, long index, VTermColor *col)
+  {
+    if(index >= 0 && index < 16) {
+      *col = state->colors[index];
+!     return true;
+    }
+  
+!   return false;
+  }
+  
+! static bool lookup_colour_palette(const VTermState *state, long index, VTermColor *col)
+  {
+    if(index >= 0 && index < 16) {
+      /* Normal 8 colours or high intensity - parse as palette 0 */
+--- 33,49 ----
+    0x85, 0x90, 0x9B, 0xA6, 0xB1, 0xBC, 0xC7, 0xD2, 0xDD, 0xE8, 0xF3, 0xFF,
+  };
+  
+! static int lookup_colour_ansi(const VTermState *state, long index, VTermColor *col)
+  {
+    if(index >= 0 && index < 16) {
+      *col = state->colors[index];
+!     return TRUE;
+    }
+  
+!   return FALSE;
+  }
+  
+! static int lookup_colour_palette(const VTermState *state, long index, VTermColor *col)
+  {
+    if(index >= 0 && index < 16) {
+      /* Normal 8 colours or high intensity - parse as palette 0 */
+***************
+*** 57,63 ****
+      col->green = ramp6[index/6   % 6];
+      col->red   = ramp6[index/6/6 % 6];
+  
+!     return true;
+    }
+    else if(index >= 232 && index < 256) {
+      /* 24 greyscales */
+--- 57,63 ----
+      col->green = ramp6[index/6   % 6];
+      col->red   = ramp6[index/6/6 % 6];
+  
+!     return TRUE;
+    }
+    else if(index >= 232 && index < 256) {
+      /* 24 greyscales */
+***************
+*** 67,76 ****
+      col->green = ramp24[index];
+      col->red   = ramp24[index];
+  
+!     return true;
+    }
+  
+!   return false;
+  }
+  
+  static int lookup_colour(const VTermState *state, int palette, const long args[], int argcount, VTermColor *col, int *index)
+--- 67,76 ----
+      col->green = ramp24[index];
+      col->red   = ramp24[index];
+  
+!     return TRUE;
+    }
+  
+!   return FALSE;
+  }
+  
+  static int lookup_colour(const VTermState *state, int palette, const long args[], int argcount, VTermColor *col, int *index)
+*** ../vim-8.0.0771/src/libvterm/t/harness.c	2017-07-07 11:53:29.527876436 +0200
+--- src/libvterm/t/harness.c	2017-07-25 21:29:06.107512937 +0200
+***************
+*** 351,357 ****
+        rect.start_row, rect.end_row, rect.start_col, rect.end_col);
+  
+    if(want_screen_damage_cells) {
+!     bool equals = false;
+      int row;
+      int col;
+  
+--- 351,357 ----
+        rect.start_row, rect.end_row, rect.start_col, rect.end_col);
+  
+    if(want_screen_damage_cells) {
+!     int equals = FALSE;
+      int row;
+      int col;
+  
+***************
+*** 373,379 ****
+          break;
+  
+        if(!equals)
+!         printf(" ="), equals = true;
+  
+        printf(" %d<", row);
+        for(col = rect.start_col; col < eol; col++) {
+--- 373,379 ----
+          break;
+  
+        if(!equals)
+!         printf(" ="), equals = TRUE;
+  
+        printf(" %d<", row);
+        for(col = rect.start_col; col < eol; col++) {
+*** ../vim-8.0.0771/src/libvterm/bin/unterm.c	2017-07-07 11:53:29.515876528 +0200
+--- src/libvterm/bin/unterm.c	2017-07-25 21:28:53.731600671 +0200
+***************
+*** 265,271 ****
+    }
+  
+    vt = vterm_new(rows, cols);
+!   vterm_set_utf8(vt, true);
+  
+    vts = vterm_obtain_screen(vt);
+    vterm_screen_set_callbacks(vts, &cb_screen, NULL);
+--- 265,271 ----
+    }
+  
+    vt = vterm_new(rows, cols);
+!   vterm_set_utf8(vt, TRUE);
+  
+    vts = vterm_obtain_screen(vt);
+    vterm_screen_set_callbacks(vts, &cb_screen, NULL);
+*** ../vim-8.0.0771/src/version.c	2017-07-24 23:36:34.890967822 +0200
+--- src/version.c	2017-07-25 21:29:42.339256108 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     772,
+  /**/
+
+-- 
+"Marriage is the process of finding out what kind of man your wife
+would have preferred"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

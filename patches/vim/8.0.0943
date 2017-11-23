@@ -1,0 +1,80 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0943
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0943
+Problem:    Test_terminal_scrape_multibyte fails if the codepage is not utf-8.
+Solution:   Start "cmd" with the utf-8 codepage. (micbou, closes #1975)
+Files:      src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0942/src/testdir/test_terminal.vim	2017-08-14 22:01:12.364830968 +0200
+--- src/testdir/test_terminal.vim	2017-08-14 23:04:11.093664022 +0200
+***************
+*** 185,198 ****
+    endif
+    call writefile(["léttまrs"], 'Xtext')
+    if has('win32')
+!     let cmd = 'cmd /c "type Xtext"'
+    else
+!     let cmd = "cat Xtext"
+    endif
+-   let g:buf = term_start(cmd)
+  
+!   call WaitFor('term_scrape(g:buf, 1)[0].chars == "l"')
+!   let l = term_scrape(g:buf, 1)
+    call assert_true(len(l) >= 7)
+    call assert_equal('l', l[0].chars)
+    call assert_equal('é', l[1].chars)
+--- 185,203 ----
+    endif
+    call writefile(["léttまrs"], 'Xtext')
+    if has('win32')
+!     " Run cmd with UTF-8 codepage to make the type command print the expected
+!     " multibyte characters.
+!     let g:buf = term_start("cmd /K chcp 65001")
+!     call term_sendkeys(g:buf, "type Xtext\<CR>")
+!     call term_sendkeys(g:buf, "exit\<CR>")
+!     let g:line = 4
+    else
+!     let g:buf = term_start("cat Xtext")
+!     let g:line = 1
+    endif
+  
+!   call WaitFor('term_scrape(g:buf, g:line)[0].chars == "l"')
+!   let l = term_scrape(g:buf, g:line)
+    call assert_true(len(l) >= 7)
+    call assert_equal('l', l[0].chars)
+    call assert_equal('é', l[1].chars)
+***************
+*** 210,215 ****
+--- 215,221 ----
+  
+    exe g:buf . 'bwipe'
+    unlet g:buf
++   unlet g:line
+    call delete('Xtext')
+  endfunc
+  
+*** ../vim-8.0.0942/src/version.c	2017-08-14 22:56:22.616514061 +0200
+--- src/version.c	2017-08-14 23:06:01.760990220 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     943,
+  /**/
+
+-- 
+A fool must search for a greater fool to find admiration.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

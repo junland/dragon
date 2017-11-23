@@ -1,0 +1,183 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0899
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0899
+Problem:    Function name mch_stop_job() is confusing.
+Solution:   Rename to mch_signal_job().
+Files:      src/channel.c, src/os_unix.c, src/proto/os_unix.pro,
+            src/os_win32.c, src/proto/os_win32.pro, src/terminal.c
+
+
+*** ../vim-8.0.0898/src/channel.c	2017-08-11 15:45:23.421118761 +0200
+--- src/channel.c	2017-08-11 16:29:43.078150779 +0200
+***************
+*** 4844,4850 ****
+  
+      for (job = first_job; job != NULL; job = job->jv_next)
+  	if (job->jv_status == JOB_STARTED && job->jv_stoponexit != NULL)
+! 	    mch_stop_job(job, job->jv_stoponexit);
+  }
+  
+  /*
+--- 4844,4850 ----
+  
+      for (job = first_job; job != NULL; job = job->jv_next)
+  	if (job->jv_status == JOB_STARTED && job->jv_stoponexit != NULL)
+! 	    mch_signal_job(job, job->jv_stoponexit);
+  }
+  
+  /*
+***************
+*** 5191,5197 ****
+  	return 0;
+      }
+      ch_log(job->jv_channel, "Stopping job with '%s'", (char *)arg);
+!     if (mch_stop_job(job, arg) == FAIL)
+  	return 0;
+  
+      /* Assume that only "kill" will kill the job. */
+--- 5191,5197 ----
+  	return 0;
+      }
+      ch_log(job->jv_channel, "Stopping job with '%s'", (char *)arg);
+!     if (mch_signal_job(job, arg) == FAIL)
+  	return 0;
+  
+      /* Assume that only "kill" will kill the job. */
+*** ../vim-8.0.0898/src/os_unix.c	2017-08-03 20:44:43.190297526 +0200
+--- src/os_unix.c	2017-08-11 16:30:03.590003041 +0200
+***************
+*** 5557,5563 ****
+   * Return FAIL if "how" is not a valid name.
+   */
+      int
+! mch_stop_job(job_T *job, char_u *how)
+  {
+      int	    sig = -1;
+      pid_t   job_pid;
+--- 5557,5563 ----
+   * Return FAIL if "how" is not a valid name.
+   */
+      int
+! mch_signal_job(job_T *job, char_u *how)
+  {
+      int	    sig = -1;
+      pid_t   job_pid;
+*** ../vim-8.0.0898/src/proto/os_unix.pro	2017-08-03 20:44:43.190297526 +0200
+--- src/proto/os_unix.pro	2017-08-11 16:30:54.005639968 +0200
+***************
+*** 63,69 ****
+  void mch_job_start(char **argv, job_T *job, jobopt_T *options);
+  char *mch_job_status(job_T *job);
+  job_T *mch_detect_ended_job(job_T *job_list);
+! int mch_stop_job(job_T *job, char_u *how);
+  void mch_clear_job(job_T *job);
+  void mch_breakcheck(int force);
+  int mch_expandpath(garray_T *gap, char_u *path, int flags);
+--- 63,69 ----
+  void mch_job_start(char **argv, job_T *job, jobopt_T *options);
+  char *mch_job_status(job_T *job);
+  job_T *mch_detect_ended_job(job_T *job_list);
+! int mch_signal_job(job_T *job, char_u *how);
+  void mch_clear_job(job_T *job);
+  void mch_breakcheck(int force);
+  int mch_expandpath(garray_T *gap, char_u *path, int flags);
+*** ../vim-8.0.0898/src/os_win32.c	2017-08-07 21:17:53.115100890 +0200
+--- src/os_win32.c	2017-08-11 16:30:07.373975788 +0200
+***************
+*** 5248,5254 ****
+   * Return FAIL if it didn't work.
+   */
+      int
+! mch_stop_job(job_T *job, char_u *how)
+  {
+      int ret;
+  
+--- 5248,5254 ----
+   * Return FAIL if it didn't work.
+   */
+      int
+! mch_signal_job(job_T *job, char_u *how)
+  {
+      int ret;
+  
+*** ../vim-8.0.0898/src/proto/os_win32.pro	2017-08-03 20:44:43.190297526 +0200
+--- src/proto/os_win32.pro	2017-08-11 16:30:25.101848113 +0200
+***************
+*** 45,51 ****
+  void mch_job_start(char *cmd, job_T *job, jobopt_T *options);
+  char *mch_job_status(job_T *job);
+  job_T *mch_detect_ended_job(job_T *job_list);
+! int mch_stop_job(job_T *job, char_u *how);
+  void mch_clear_job(job_T *job);
+  void mch_set_normal_colors(void);
+  void mch_write(char_u *s, int len);
+--- 45,51 ----
+  void mch_job_start(char *cmd, job_T *job, jobopt_T *options);
+  char *mch_job_status(job_T *job);
+  job_T *mch_detect_ended_job(job_T *job_list);
+! int mch_signal_job(job_T *job, char_u *how);
+  void mch_clear_job(job_T *job);
+  void mch_set_normal_colors(void);
+  void mch_write(char_u *s, int len);
+*** ../vim-8.0.0898/src/terminal.c	2017-08-11 16:24:46.312283924 +0200
+--- src/terminal.c	2017-08-11 16:30:37.157761291 +0200
+***************
+*** 1143,1149 ****
+  	    /* We don't know if the job can handle CTRL-C itself or not, this
+  	     * may kill the shell instead of killing the command running in the
+  	     * shell. */
+! 	    mch_stop_job(curbuf->b_term->tl_job, (char_u *)"quit");
+  #endif
+  
+  	if (c == (termkey == 0 ? Ctrl_W : termkey) || c == Ctrl_BSL)
+--- 1143,1149 ----
+  	    /* We don't know if the job can handle CTRL-C itself or not, this
+  	     * may kill the shell instead of killing the command running in the
+  	     * shell. */
+! 	    mch_signal_job(curbuf->b_term->tl_job, (char_u *)"quit");
+  #endif
+  
+  	if (c == (termkey == 0 ? Ctrl_W : termkey) || c == Ctrl_BSL)
+***************
+*** 2735,2741 ****
+  		break;
+  	}
+  	if (part < PART_COUNT && mch_report_winsize(fd, rows, cols) == OK)
+! 	    mch_stop_job(term->tl_job, (char_u *)"winch");
+      }
+  }
+  
+--- 2735,2741 ----
+  		break;
+  	}
+  	if (part < PART_COUNT && mch_report_winsize(fd, rows, cols) == OK)
+! 	    mch_signal_job(term->tl_job, (char_u *)"winch");
+      }
+  }
+  
+*** ../vim-8.0.0898/src/version.c	2017-08-11 16:24:46.320283867 +0200
+--- src/version.c	2017-08-11 16:31:06.441550420 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     899,
+  /**/
+
+-- 
+If an elephant is left tied to a parking meter, the parking fee has to be paid
+just as it would for a vehicle.
+		[real standing law in Florida, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

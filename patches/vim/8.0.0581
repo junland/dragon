@@ -1,0 +1,249 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0581
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0581
+Problem:    Moving folded text is sometimes not correct.
+Solution:   Bail out when "move_end" is zero. (Matthew Malcomson)
+Files:      src/fold.c, src/testdir/test_fold.vim
+
+
+*** ../vim-8.0.0580/src/fold.c	2017-03-23 21:53:31.045117492 +0100
+--- src/fold.c	2017-04-22 22:35:05.594898754 +0200
+***************
+*** 3133,3142 ****
+      dest_index = fold_index(fp, gap);
+  
+      /*
+!      * All folds are now correct, but they are not necessarily in the correct
+!      * order. We have to swap folds in the range [move_end, dest_index) with
+!      * those in the range [move_start, move_end).
+       */
+      foldReverseOrder(gap, (linenr_T)move_start, (linenr_T)dest_index - 1);
+      foldReverseOrder(gap, (linenr_T)move_start,
+  			   (linenr_T)(move_start + dest_index - move_end - 1));
+--- 3133,3146 ----
+      dest_index = fold_index(fp, gap);
+  
+      /*
+!      * All folds are now correct, but not necessarily in the correct order.  We
+!      * must swap folds in the range [move_end, dest_index) with those in the
+!      * range [move_start, move_end).
+       */
++     if (move_end == 0)
++ 	/* There are no folds after those moved, hence no folds have been moved
++ 	 * out of order. */
++ 	return;
+      foldReverseOrder(gap, (linenr_T)move_start, (linenr_T)dest_index - 1);
+      foldReverseOrder(gap, (linenr_T)move_start,
+  			   (linenr_T)(move_start + dest_index - move_end - 1));
+*** ../vim-8.0.0580/src/testdir/test_fold.vim	2017-03-21 11:48:33.630472643 +0100
+--- src/testdir/test_fold.vim	2017-04-22 22:34:45.135028119 +0200
+***************
+*** 1,10 ****
+  " Test for folding
+  
+! func! PrepIndent(arg)
+    return [a:arg] + repeat(["\t".a:arg], 5)
+  endfu
+  
+! func! Test_address_fold()
+    new
+    call setline(1, ['int FuncName() {/*{{{*/', 1, 2, 3, 4, 5, '}/*}}}*/',
+  	      \ 'after fold 1', 'after fold 2', 'after fold 3'])
+--- 1,10 ----
+  " Test for folding
+  
+! func PrepIndent(arg)
+    return [a:arg] + repeat(["\t".a:arg], 5)
+  endfu
+  
+! func Test_address_fold()
+    new
+    call setline(1, ['int FuncName() {/*{{{*/', 1, 2, 3, 4, 5, '}/*}}}*/',
+  	      \ 'after fold 1', 'after fold 2', 'after fold 3'])
+***************
+*** 68,84 ****
+    quit!
+  endfunc
+  
+! func! Test_indent_fold()
+!     new
+!     call setline(1, ['', 'a', '    b', '    c'])
+!     setl fen fdm=indent
+!     2
+!     norm! >>
+!     let a=map(range(1,4), 'foldclosed(v:val)')
+!     call assert_equal([-1,-1,-1,-1], a)
+! endfunc
+! 
+! func! Test_indent_fold()
+      new
+      call setline(1, ['', 'a', '    b', '    c'])
+      setl fen fdm=indent
+--- 68,74 ----
+    quit!
+  endfunc
+  
+! func Test_indent_fold()
+      new
+      call setline(1, ['', 'a', '    b', '    c'])
+      setl fen fdm=indent
+***************
+*** 89,95 ****
+      bw!
+  endfunc
+  
+! func! Test_indent_fold2()
+      new
+      call setline(1, ['', '{{{', '}}}', '{{{', '}}}'])
+      setl fen fdm=marker
+--- 79,85 ----
+      bw!
+  endfunc
+  
+! func Test_indent_fold2()
+      new
+      call setline(1, ['', '{{{', '}}}', '{{{', '}}}'])
+      setl fen fdm=marker
+***************
+*** 122,128 ****
+    endfor
+  endfunc
+  
+! func! Test_indent_fold_with_read()
+    new
+    set foldmethod=indent
+    call setline(1, repeat(["\<Tab>a"], 4))
+--- 112,118 ----
+    endfor
+  endfunc
+  
+! func Test_indent_fold_with_read()
+    new
+    set foldmethod=indent
+    call setline(1, repeat(["\<Tab>a"], 4))
+***************
+*** 224,230 ****
+    set foldmethod& foldexpr&
+  endfunc
+  
+! func! Test_move_folds_around_manual()
+    new
+    let input = PrepIndent("a") + PrepIndent("b") + PrepIndent("c")
+    call setline(1, PrepIndent("a") + PrepIndent("b") + PrepIndent("c"))
+--- 214,224 ----
+    set foldmethod& foldexpr&
+  endfunc
+  
+! func Check_foldlevels(expected)
+!   call assert_equal(a:expected, map(range(1, line('$')), 'foldlevel(v:val)'))
+! endfunc
+! 
+! func Test_move_folds_around_manual()
+    new
+    let input = PrepIndent("a") + PrepIndent("b") + PrepIndent("c")
+    call setline(1, PrepIndent("a") + PrepIndent("b") + PrepIndent("c"))
+***************
+*** 293,303 ****
+    6m$
+    " The first fold has been truncated to the 5'th line.
+    " Second fold has been moved up because the moved line is now below it.
+!   call assert_equal([0, 1, 1, 1, 1, 0, 0, 0, 1, 0], map(range(1, line('$')), 'foldlevel(v:val)'))
+    bw!
+  endfunc
+  
+! func! Test_move_folds_around_indent()
+    new
+    let input = PrepIndent("a") + PrepIndent("b") + PrepIndent("c")
+    call setline(1, PrepIndent("a") + PrepIndent("b") + PrepIndent("c"))
+--- 287,336 ----
+    6m$
+    " The first fold has been truncated to the 5'th line.
+    " Second fold has been moved up because the moved line is now below it.
+!   call Check_foldlevels([0, 1, 1, 1, 1, 0, 0, 0, 1, 0])
+! 
+!   %delete
+!   set fdm=indent foldlevel=0
+!   call setline(1, [
+! 	\ "a",
+! 	\ "\ta",
+! 	\ "\t\ta",
+! 	\ "\t\ta",
+! 	\ "\t\ta",
+! 	\ "a",
+! 	\ "a"])
+!   set fdm=manual
+!   %foldopen!
+!   4,5m6
+!   call Check_foldlevels([0, 1, 2, 0, 0, 0, 0])
+! 
+!   %delete
+!   set fdm=indent
+!   call setline(1, [
+! 	\ "\ta",
+! 	\ "\t\ta",
+! 	\ "\t\ta",
+! 	\ "\t\ta",
+! 	\ "\ta",
+! 	\ "\t\ta",
+! 	\ "\t\ta",
+! 	\ "\t\ta",
+! 	\ "\ta",
+! 	\ "\t\ta",
+! 	\ "\t\ta",
+! 	\ "\t\ta",
+! 	\ "\t\ta",
+! 	\ "\ta",
+! 	\ "a"])
+!   set fdm=manual
+!   %foldopen!
+!   13m7
+!   call Check_foldlevels([1, 2, 2, 2, 1, 2, 2, 1, 1, 1, 2, 2, 2, 1, 0])
+!   
+    bw!
+  endfunc
+  
+! func Test_move_folds_around_indent()
+    new
+    let input = PrepIndent("a") + PrepIndent("b") + PrepIndent("c")
+    call setline(1, PrepIndent("a") + PrepIndent("b") + PrepIndent("c"))
+***************
+*** 357,363 ****
+    6m$
+    " The first fold has been truncated to the 5'th line.
+    " Second fold has been moved up because the moved line is now below it.
+!   call assert_equal([0, 1, 1, 1, 1, 0, 0, 0, 1, 1], map(range(1, line('$')), 'foldlevel(v:val)'))
+    bw!
+  endfunc
+  
+--- 390,396 ----
+    6m$
+    " The first fold has been truncated to the 5'th line.
+    " Second fold has been moved up because the moved line is now below it.
+!   call Check_foldlevels([0, 1, 1, 1, 1, 0, 0, 0, 1, 1])
+    bw!
+  endfunc
+  
+*** ../vim-8.0.0580/src/version.c	2017-04-22 21:20:42.355092203 +0200
+--- src/version.c	2017-04-22 22:31:10.636384702 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     581,
+  /**/
+
+-- 
+We learn from our mistakes.  Politicians don't make mistakes.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

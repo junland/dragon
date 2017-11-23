@@ -1,0 +1,442 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0846
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0846
+Problem:    Cannot get the name of the pty of a job.
+Solution:   Add the "tty" entry to the job info. (Ozaki Kiichi, closes #1920)
+            Add the term_gettty() function.
+Files:      runtime/doc/eval.txt, src/channel.c, src/os_unix.c, src/structs.h,
+            src/terminal.c, src/proto/terminal.pro, src/evalfunc.c,
+            src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0845/runtime/doc/eval.txt	2017-08-01 18:34:54.905292081 +0200
+--- runtime/doc/eval.txt	2017-08-03 13:43:13.832271558 +0200
+***************
+*** 2376,2381 ****
+--- 2376,2382 ----
+  term_getsize({buf})		List	get the size of a terminal
+  term_getstatus({buf})		String	get the status of a terminal
+  term_gettitle({buf})		String	get the title of a terminal
++ term_gettty({buf})		String	get the tty name of a terminal
+  term_list()			List	get the list of terminal buffers
+  term_scrape({buf}, {row})	List	get row of a terminal screen
+  term_sendkeys({buf}, {keys})	none	send keystrokes to a terminal
+***************
+*** 5191,5196 ****
+--- 5193,5200 ----
+  		Returns a Dictionary with information about {job}:
+  		   "status"	what |job_status()| returns
+  		   "channel"	what |job_getchannel()| returns
++ 		   "process"	process ID
++ 		   "tty"	controlling terminal name, empty when none
+  		   "exitval"	only valid when "status" is "dead"
+  		   "exit_cb"	function to be called on exit
+  		   "stoponexit"	|job-stoponexit|
+***************
+*** 7922,7927 ****
+--- 7933,7939 ----
+  term_getjob({buf})					*term_getjob()*
+  		Get the Job associated with terminal window {buf}.
+  		{buf} is used as with |term_getsize()|.
++ 		Returns |v:null| when there is no job.
+  
+  term_getline({buf}, {row})				*term_getline()*
+  		Get a line of text from the terminal window of {buf}.
+***************
+*** 7935,7943 ****
+  		numbers: [rows, cols].  This is the size of the terminal, not
+  		the window containing the terminal.
+  
+! 		{buf} must be the buffer number of a terminal window. If the
+! 		buffer does not exist or is not a terminal window, an empty
+! 		list is returned.
+  
+  term_getstatus({buf})					*term_getstatus()*
+  		Get the status of terminal {buf}. This returns a comma
+--- 7947,7955 ----
+  		numbers: [rows, cols].  This is the size of the terminal, not
+  		the window containing the terminal.
+  
+! 		{buf} must be the buffer number of a terminal window.  Use an
+! 		empty string for the current buffer.  If the buffer does not
+! 		exist or is not a terminal window, an empty list is returned.
+  
+  term_getstatus({buf})					*term_getstatus()*
+  		Get the status of terminal {buf}. This returns a comma
+***************
+*** 7959,7964 ****
+--- 7971,7981 ----
+  		buffer does not exist or is not a terminal window, an empty
+  		string is returned.
+  
++ term_gettty({buf})					*term_gettty()*
++ 		Get the name of the controlling terminal associated with
++ 		terminal window {buf}.
++ 		{buf} is used as with |term_getsize()|.
++ 
+  term_list()						*term_list()*
+  		Return a list with the buffer numbers of all buffers for
+  		terminal windows.
+***************
+*** 7974,7980 ****
+  		    "chars"	character(s) at the cell
+  		    "fg"	foreground color as #rrggbb
+  		    "bg"	background color as #rrggbb
+! 		    "attr"	attributes of the cell, use term_getattr()
+  		    		to get the individual flags
+  		    "width"	cell width: 1 or 2
+  
+--- 7991,7997 ----
+  		    "chars"	character(s) at the cell
+  		    "fg"	foreground color as #rrggbb
+  		    "bg"	background color as #rrggbb
+! 		    "attr"	attributes of the cell, use |term_getattr()|
+  		    		to get the individual flags
+  		    "width"	cell width: 1 or 2
+  
+*** ../vim-8.0.0845/src/channel.c	2017-07-28 21:51:53.007136551 +0200
+--- src/channel.c	2017-08-03 13:23:42.080993397 +0200
+***************
+*** 1016,1026 ****
+  	{
+  	    /* When using a pty the same FD is set on multiple parts, only
+  	     * close it when the last reference is closed. */
+! 	    if ((part == PART_IN || channel->ch_part[PART_IN].ch_fd != *fd)
+! 		    && (part == PART_OUT
+! 				    || channel->ch_part[PART_OUT].ch_fd != *fd)
+! 		    && (part == PART_ERR
+! 				   || channel->ch_part[PART_ERR].ch_fd != *fd))
+  		fd_close(*fd);
+  	}
+  	*fd = INVALID_FD;
+--- 1016,1024 ----
+  	{
+  	    /* When using a pty the same FD is set on multiple parts, only
+  	     * close it when the last reference is closed. */
+! 	    if ((part == PART_IN || channel->CH_IN_FD != *fd)
+! 		    && (part == PART_OUT || channel->CH_OUT_FD != *fd)
+! 		    && (part == PART_ERR || channel->CH_ERR_FD != *fd))
+  		fd_close(*fd);
+  	}
+  	*fd = INVALID_FD;
+***************
+*** 4592,4597 ****
+--- 4590,4596 ----
+      }
+      mch_clear_job(job);
+  
++     vim_free(job->jv_tty_name);
+      vim_free(job->jv_stoponexit);
+      free_callback(job->jv_exit_cb, job->jv_exit_partial);
+  }
+***************
+*** 5164,5169 ****
+--- 5163,5170 ----
+      nr = job->jv_proc_info.dwProcessId;
+  #endif
+      dict_add_nr_str(dict, "process", nr, NULL);
++     dict_add_nr_str(dict, "tty", 0L,
++ 		   job->jv_tty_name != NULL ? job->jv_tty_name : (char_u *)"");
+  
+      dict_add_nr_str(dict, "exitval", job->jv_exitval, NULL);
+      dict_add_nr_str(dict, "exit_cb", 0L, job->jv_exit_cb);
+*** ../vim-8.0.0845/src/os_unix.c	2017-08-02 22:33:24.331041116 +0200
+--- src/os_unix.c	2017-08-03 13:23:48.552945139 +0200
+***************
+*** 4170,4176 ****
+   * When successful both file descriptors are stored.
+   */
+      static void
+! open_pty(int *pty_master_fd, int *pty_slave_fd)
+  {
+      char	*tty_name;
+  
+--- 4170,4176 ----
+   * When successful both file descriptors are stored.
+   */
+      static void
+! open_pty(int *pty_master_fd, int *pty_slave_fd, char_u **namep)
+  {
+      char	*tty_name;
+  
+***************
+*** 4190,4195 ****
+--- 4190,4197 ----
+  	    close(*pty_master_fd);
+  	    *pty_master_fd = -1;
+  	}
++ 	else if (namep != NULL)
++ 	    *namep = vim_strsave((char_u *)tty_name);
+      }
+  }
+  #endif
+***************
+*** 4384,4390 ****
+  	 * If the slave can't be opened, close the master pty.
+  	 */
+  	if (p_guipty && !(options & (SHELL_READ|SHELL_WRITE)))
+! 	    open_pty(&pty_master_fd, &pty_slave_fd);
+  	/*
+  	 * If not opening a pty or it didn't work, try using pipes.
+  	 */
+--- 4386,4392 ----
+  	 * If the slave can't be opened, close the master pty.
+  	 */
+  	if (p_guipty && !(options & (SHELL_READ|SHELL_WRITE)))
+! 	    open_pty(&pty_master_fd, &pty_slave_fd, NULL);
+  	/*
+  	 * If not opening a pty or it didn't work, try using pipes.
+  	 */
+***************
+*** 5189,5197 ****
+  mch_job_start(char **argv, job_T *job, jobopt_T *options)
+  {
+      pid_t	pid;
+!     int		fd_in[2];	/* for stdin */
+!     int		fd_out[2];	/* for stdout */
+!     int		fd_err[2];	/* for stderr */
+      int		pty_master_fd = -1;
+      int		pty_slave_fd = -1;
+      channel_T	*channel = NULL;
+--- 5191,5199 ----
+  mch_job_start(char **argv, job_T *job, jobopt_T *options)
+  {
+      pid_t	pid;
+!     int		fd_in[2] = {-1, -1};	/* for stdin */
+!     int		fd_out[2] = {-1, -1};	/* for stdout */
+!     int		fd_err[2] = {-1, -1};	/* for stderr */
+      int		pty_master_fd = -1;
+      int		pty_slave_fd = -1;
+      channel_T	*channel = NULL;
+***************
+*** 5209,5223 ****
+  
+      /* default is to fail */
+      job->jv_status = JOB_FAILED;
+-     fd_in[0] = -1;
+-     fd_in[1] = -1;
+-     fd_out[0] = -1;
+-     fd_out[1] = -1;
+-     fd_err[0] = -1;
+-     fd_err[1] = -1;
+  
+      if (options->jo_pty)
+! 	open_pty(&pty_master_fd, &pty_slave_fd);
+  
+      /* TODO: without the channel feature connect the child to /dev/null? */
+      /* Open pipes for stdin, stdout, stderr. */
+--- 5211,5219 ----
+  
+      /* default is to fail */
+      job->jv_status = JOB_FAILED;
+  
+      if (options->jo_pty)
+! 	open_pty(&pty_master_fd, &pty_slave_fd, &job->jv_tty_name);
+  
+      /* TODO: without the channel feature connect the child to /dev/null? */
+      /* Open pipes for stdin, stdout, stderr. */
+*** ../vim-8.0.0845/src/structs.h	2017-07-23 19:50:39.032922776 +0200
+--- src/structs.h	2017-08-03 13:23:57.120881256 +0200
+***************
+*** 1478,1483 ****
+--- 1478,1484 ----
+      PROCESS_INFORMATION	jv_proc_info;
+      HANDLE		jv_job_object;
+  #endif
++     char_u	*jv_tty_name;	/* controlling tty, allocated */
+      jobstatus_T	jv_status;
+      char_u	*jv_stoponexit; /* allocated */
+      int		jv_exitval;
+***************
+*** 1537,1554 ****
+      JIO_OUT
+  } job_io_T;
+  
+  /* Ordering matters, it is used in for loops: IN is last, only SOCK/OUT/ERR
+   * are polled. */
+  typedef enum {
+      PART_SOCK = 0,
+! #define CH_SOCK_FD	ch_part[PART_SOCK].ch_fd
+  #ifdef FEAT_JOB_CHANNEL
+      PART_OUT,
+! # define CH_OUT_FD	ch_part[PART_OUT].ch_fd
+      PART_ERR,
+! # define CH_ERR_FD	ch_part[PART_ERR].ch_fd
+      PART_IN,
+! # define CH_IN_FD	ch_part[PART_IN].ch_fd
+  #endif
+      PART_COUNT
+  } ch_part_T;
+--- 1538,1557 ----
+      JIO_OUT
+  } job_io_T;
+  
++ #define CH_PART_FD(part)	ch_part[part].ch_fd
++ 
+  /* Ordering matters, it is used in for loops: IN is last, only SOCK/OUT/ERR
+   * are polled. */
+  typedef enum {
+      PART_SOCK = 0,
+! #define CH_SOCK_FD	CH_PART_FD(PART_SOCK)
+  #ifdef FEAT_JOB_CHANNEL
+      PART_OUT,
+! # define CH_OUT_FD	CH_PART_FD(PART_OUT)
+      PART_ERR,
+! # define CH_ERR_FD	CH_PART_FD(PART_ERR)
+      PART_IN,
+! # define CH_IN_FD	CH_PART_FD(PART_IN)
+  #endif
+      PART_COUNT
+  } ch_part_T;
+*** ../vim-8.0.0845/src/terminal.c	2017-08-03 11:55:17.319360298 +0200
+--- src/terminal.c	2017-08-03 13:40:11.257632424 +0200
+***************
+*** 57,68 ****
+--- 57,72 ----
+   * - add 't' to mode()
+   * - set 'filetype' to "terminal"?
+   * - use win_del_lines() to make scroll-up efficient.
++  * - Make StatusLineTerm adjust UserN highlighting like StatusLineNC does, see
++  *   use of hightlight_stlnc[].
+   * - implement term_setsize()
+   * - add test for giving error for invalid 'termsize' value.
+   * - support minimal size when 'termsize' is "rows*cols".
+   * - support minimal size when 'termsize' is empty?
+   * - implement "term" for job_start(): more job options when starting a
+   *   terminal.
++  * - support ":term NONE" to open a terminal with a pty but not running a job
++  *   in it.  The pty can be passed to gdb to run the executable in.
+   * - if the job in the terminal does not support the mouse, we can use the
+   *   mouse in the Terminal window for copy/paste.
+   * - when 'encoding' is not utf-8, or the job is using another encoding, setup
+***************
+*** 97,102 ****
+--- 101,110 ----
+      job_T	*tl_job;
+      buf_T	*tl_buffer;
+  
++     /* used when tl_job is NULL and only a pty was created */
++     int		tl_tty_fd;
++     char_u	*tl_tty_name;
++ 
+      int		tl_terminal_mode;
+      int		tl_channel_closed;
+  
+***************
+*** 1925,1930 ****
+--- 1933,1958 ----
+  }
+  
+  /*
++  * "term_gettty(buf)" function
++  */
++     void
++ f_term_gettty(typval_T *argvars, typval_T *rettv)
++ {
++     buf_T	*buf = term_get_buf(argvars);
++     char_u	*p;
++ 
++     rettv->v_type = VAR_STRING;
++     if (buf == NULL)
++ 	return;
++     if (buf->b_term->tl_job != NULL)
++ 	p = buf->b_term->tl_job->jv_tty_name;
++     else
++ 	p = buf->b_term->tl_tty_name;
++     if (p != NULL)
++ 	rettv->vval.v_string = vim_strsave(p);
++ }
++ 
++ /*
+   * "term_list()" function
+   */
+      void
+***************
+*** 2216,2221 ****
+--- 2244,2250 ----
+      if (term->tl_winpty == NULL)
+  	goto failed;
+  
++     /* TODO: if the command is "NONE" only create a pty. */
+      spawn_config = winpty_spawn_config_new(
+  	    WINPTY_SPAWN_FLAG_AUTO_SHUTDOWN |
+  		WINPTY_SPAWN_FLAG_EXIT_AFTER_SHUTDOWN,
+***************
+*** 2359,2364 ****
+--- 2388,2394 ----
+  
+      create_vterm(term, rows, cols);
+  
++     /* TODO: if the command is "NONE" only create a pty. */
+      argvars[0].v_type = VAR_STRING;
+      argvars[0].vval.v_string = cmd;
+      setup_job_options(&opt, rows, cols);
+*** ../vim-8.0.0845/src/proto/terminal.pro	2017-08-01 21:44:27.082445161 +0200
+--- src/proto/terminal.pro	2017-08-03 13:11:36.434335931 +0200
+***************
+*** 23,28 ****
+--- 23,29 ----
+  void f_term_getsize(typval_T *argvars, typval_T *rettv);
+  void f_term_getstatus(typval_T *argvars, typval_T *rettv);
+  void f_term_gettitle(typval_T *argvars, typval_T *rettv);
++ void f_term_gettty(typval_T *argvars, typval_T *rettv);
+  void f_term_list(typval_T *argvars, typval_T *rettv);
+  void f_term_scrape(typval_T *argvars, typval_T *rettv);
+  void f_term_sendkeys(typval_T *argvars, typval_T *rettv);
+*** ../vim-8.0.0845/src/evalfunc.c	2017-07-30 19:38:16.958463407 +0200
+--- src/evalfunc.c	2017-08-03 13:12:02.034147785 +0200
+***************
+*** 838,843 ****
+--- 838,844 ----
+      {"term_getsize",	1, 1, f_term_getsize},
+      {"term_getstatus",	1, 1, f_term_getstatus},
+      {"term_gettitle",	1, 1, f_term_gettitle},
++     {"term_gettty",	1, 1, f_term_gettty},
+      {"term_list",	0, 0, f_term_list},
+      {"term_scrape",	1, 2, f_term_scrape},
+      {"term_sendkeys",	2, 2, f_term_sendkeys},
+*** ../vim-8.0.0845/src/testdir/test_terminal.vim	2017-08-02 22:10:30.520919428 +0200
+--- src/testdir/test_terminal.vim	2017-08-03 13:44:41.863615858 +0200
+***************
+*** 30,35 ****
+--- 30,41 ----
+  
+  func Test_terminal_basic()
+    let buf = Run_shell_in_terminal()
++   if has("unix")
++     call assert_match("^/dev/", job_info(g:job).tty)
++     call assert_match("^/dev/", term_gettty(''))
++   else
++     call assert_equal("", job_info(g:job).tty)
++   endif
+    call Stop_shell_in_terminal(buf)
+    call term_wait(buf)
+  
+*** ../vim-8.0.0845/src/version.c	2017-08-03 11:55:17.319360298 +0200
+--- src/version.c	2017-08-03 12:59:18.723768557 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     846,
+  /**/
+
+-- 
+ARTHUR:  I am your king!
+WOMAN:   Well, I didn't vote for you.
+ARTHUR:  You don't vote for kings.
+WOMAN:   Well, 'ow did you become king then?
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1095
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1095
+Problem:    Terminal multibyte escrape test is flaky.
+Solution:   Add another condition to wait for.
+Files:      src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.1094/src/testdir/test_terminal.vim	2017-09-10 14:25:41.733419051 +0200
+--- src/testdir/test_terminal.vim	2017-09-11 20:43:23.031916249 +0200
+***************
+*** 197,203 ****
+      let g:line = 1
+    endif
+  
+!   call WaitFor('term_scrape(g:buf, g:line)[0].chars == "l"')
+    let l = term_scrape(g:buf, g:line)
+    call assert_true(len(l) >= 7)
+    call assert_equal('l', l[0].chars)
+--- 197,203 ----
+      let g:line = 1
+    endif
+  
+!   call WaitFor('len(term_scrape(g:buf, g:line)) >= 7 && term_scrape(g:buf, g:line)[0].chars == "l"')
+    let l = term_scrape(g:buf, g:line)
+    call assert_true(len(l) >= 7)
+    call assert_equal('l', l[0].chars)
+*** ../vim-8.0.1094/src/version.c	2017-09-11 20:34:09.679146663 +0200
+--- src/version.c	2017-09-11 20:44:47.863420926 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1095,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+101. U can read htis w/o ny porblm and cant figur eout Y its evn listd.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

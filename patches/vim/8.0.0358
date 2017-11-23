@@ -1,0 +1,73 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0358
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0358
+Problem:    Invalid memory access in C-indent code.
+Solution:   Don't go over end of empty line. (Dominique Pelle, closes #1492)
+Files:      src/edit.c, src/testdir/test_options.vim
+
+
+*** ../vim-8.0.0357/src/edit.c	2017-02-21 23:00:32.775008062 +0100
+--- src/edit.c	2017-02-23 18:06:22.153767039 +0100
+***************
+*** 8181,8187 ****
+  	{
+  	    if (try_match && *look == keytyped)
+  		return TRUE;
+! 	    ++look;
+  	}
+  
+  	/*
+--- 8181,8188 ----
+  	{
+  	    if (try_match && *look == keytyped)
+  		return TRUE;
+! 	    if (*look != NUL)
+! 		++look;
+  	}
+  
+  	/*
+*** ../vim-8.0.0357/src/testdir/test_options.vim	2017-02-23 17:59:17.148505954 +0100
+--- src/testdir/test_options.vim	2017-02-23 18:06:22.153767039 +0100
+***************
+*** 135,140 ****
+--- 135,147 ----
+    call assert_fails("set " . a:name . "=/not.*there", "E474:")
+  endfunc
+  
++ func Test_cinkeys()
++   " This used to cause invalid memory access
++   set cindent cinkeys=0
++   norm a
++   set cindent& cinkeys&
++ endfunc
++ 
+  func Test_dictionary()
+    call Check_dir_option('dictionary')
+  endfunc
+*** ../vim-8.0.0357/src/version.c	2017-02-23 17:59:17.148505954 +0100
+--- src/version.c	2017-02-23 18:07:11.705447921 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     358,
+  /**/
+
+-- 
+The Feynman problem solving Algorithm:
+	1) Write down the problem
+	2) Think real hard
+	3) Write down the answer
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

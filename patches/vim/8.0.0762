@@ -1,0 +1,107 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0762
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0762
+Problem:    ml_get error with :psearch in buffer without a name. (Dominique
+            Pelle)
+Solution:   Use the buffer number instead of the file name.  Check the cursor
+            position.
+Files:      src/search.c, src/testdir/test_preview.vim, src/Makefile,
+            src/testdir/Make_all.mak
+
+
+*** ../vim-8.0.0761/src/search.c	2017-06-17 18:44:16.998000950 +0200
+--- src/search.c	2017-07-23 22:01:22.039774846 +0200
+***************
+*** 5425,5431 ****
+  			if (g_do_tagpreview != 0)
+  			{
+  			    if (!GETFILE_SUCCESS(getfile(
+! 					    0, curwin_save->w_buffer->b_fname,
+  						     NULL, TRUE, lnum, FALSE)))
+  				break;	/* failed to jump to file */
+  			}
+--- 5425,5431 ----
+  			if (g_do_tagpreview != 0)
+  			{
+  			    if (!GETFILE_SUCCESS(getfile(
+! 					   curwin_save->w_buffer->b_fnum, NULL,
+  						     NULL, TRUE, lnum, FALSE)))
+  				break;	/* failed to jump to file */
+  			}
+***************
+*** 5433,5438 ****
+--- 5433,5439 ----
+  #endif
+  			    setpcmark();
+  			curwin->w_cursor.lnum = lnum;
++ 			check_cursor();
+  		    }
+  		    else
+  		    {
+*** ../vim-8.0.0761/src/testdir/test_preview.vim	2017-07-23 22:01:03.311907963 +0200
+--- src/testdir/test_preview.vim	2017-07-23 21:54:21.622756062 +0200
+***************
+*** 0 ****
+--- 1,13 ----
++ " Tests for the preview window
++ 
++ func Test_Psearch()
++   " this used to cause ml_get errors
++   help
++   let wincount = winnr('$')
++   0f
++   ps.
++   call assert_equal(wincount + 1, winnr('$'))
++   pclose
++   call assert_equal(wincount, winnr('$'))
++   bwipe
++ endfunc
+*** ../vim-8.0.0761/src/Makefile	2017-07-22 20:53:11.356701739 +0200
+--- src/Makefile	2017-07-23 21:53:25.115155588 +0200
+***************
+*** 2216,2221 ****
+--- 2216,2222 ----
+  	test_perl \
+  	test_plus_arg_edit \
+  	test_popup \
++ 	test_preview \
+  	test_profile \
+  	test_put \
+  	test_python2 \
+*** ../vim-8.0.0761/src/testdir/Make_all.mak	2017-07-19 18:18:27.824135688 +0200
+--- src/testdir/Make_all.mak	2017-07-23 21:53:47.458997644 +0200
+***************
+*** 175,180 ****
+--- 175,181 ----
+  	    test_packadd.res \
+  	    test_paste.res \
+  	    test_perl.res \
++ 	    test_preview.res \
+  	    test_profile.res \
+  	    test_python2.res \
+  	    test_python3.res \
+*** ../vim-8.0.0761/src/version.c	2017-07-23 19:50:39.036922744 +0200
+--- src/version.c	2017-07-23 22:00:33.928116763 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     762,
+  /**/
+
+-- 
+If evolution theories are correct, humans will soon grow a third
+hand for operating the mouse.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

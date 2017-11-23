@@ -1,0 +1,64 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0626
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0626
+Problem:    In the GUI the cursor may flicker.
+Solution:   Check the cmd_silent flag before updating the cursor shape.
+            (Hirohito Higashi, closes #1637)
+Files:      src/getchar.c
+
+
+*** ../vim-8.0.0625/src/getchar.c	2017-04-08 18:41:07.339941299 +0200
+--- src/getchar.c	2017-06-05 19:28:16.696484466 +0200
+***************
+*** 2913,2920 ****
+      }
+  #ifdef FEAT_GUI
+      /* may unshow different cursor shape */
+!     if (gui.in_use && shape_changed)
+! 	gui_update_cursor(TRUE, FALSE);
+  #endif
+  
+      --vgetc_busy;
+--- 2913,2928 ----
+      }
+  #ifdef FEAT_GUI
+      /* may unshow different cursor shape */
+!     if (gui.in_use)
+!     {
+! 	if (cmd_silent)
+! 	    gui_dont_update_cursor(TRUE);
+! 	else
+! 	    gui_can_update_cursor();
+! 
+! 	if (shape_changed)
+! 	    gui_update_cursor(TRUE, FALSE);
+!     }
+  #endif
+  
+      --vgetc_busy;
+*** ../vim-8.0.0625/src/version.c	2017-06-05 18:46:20.497845949 +0200
+--- src/version.c	2017-06-05 19:06:06.449739127 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     626,
+  /**/
+
+-- 
+"How is your new girlfriend?"
+"90-60-90 man!"
+"What, pale purple?"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

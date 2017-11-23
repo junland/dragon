@@ -1,0 +1,93 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0374
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0374
+Problem:    Invalid memory access when using :sc in Ex mode. (Dominique Pelle)
+Solution:   Avoid the column being negative.  Also fix a hang in Ex mode.
+Files:      src/ex_getln.c, src/ex_cmds.c, src/testdir/test_substitute.vim
+
+
+*** ../vim-8.0.0373/src/ex_getln.c	2017-02-23 19:00:28.512904202 +0100
+--- src/ex_getln.c	2017-02-26 13:38:24.580726710 +0100
+***************
+*** 2369,2377 ****
+  	if (ga_grow(&line_ga, 40) == FAIL)
+  	    break;
+  
+! 	/* Get one character at a time. */
+  	prev_char = c1;
+! 	c1 = vgetc();
+  
+  	/*
+  	 * Handle line editing.
+--- 2369,2384 ----
+  	if (ga_grow(&line_ga, 40) == FAIL)
+  	    break;
+  
+! 	/*
+! 	 * Get one character at a time.
+! 	 */
+  	prev_char = c1;
+! 
+! 	/* Check for a ":normal" command and no more characters left. */
+! 	if (ex_normal_busy > 0 && typebuf.tb_len == 0)
+! 	    c1 = '\n';
+! 	else
+! 	    c1 = vgetc();
+  
+  	/*
+  	 * Handle line editing.
+*** ../vim-8.0.0373/src/ex_cmds.c	2017-02-09 11:54:46.742748026 +0100
+--- src/ex_cmds.c	2017-02-26 13:39:34.196309654 +0100
+***************
+*** 5288,5293 ****
+--- 5288,5295 ----
+  
+  			    getvcol(curwin, &curwin->w_cursor, &sc, NULL, NULL);
+  			    curwin->w_cursor.col = regmatch.endpos[0].col - 1;
++ 			    if (curwin->w_cursor.col < 0)
++ 				curwin->w_cursor.col = 0;
+  			    getvcol(curwin, &curwin->w_cursor, NULL, NULL, &ec);
+  			    if (subflags.do_number || curwin->w_p_nu)
+  			    {
+*** ../vim-8.0.0373/src/testdir/test_substitute.vim	2017-02-17 18:28:20.397563687 +0100
+--- src/testdir/test_substitute.vim	2017-02-26 13:23:47.517973575 +0100
+***************
+*** 106,108 ****
+--- 106,116 ----
+      endfor
+    endfor
+  endfunction
++ 
++ func Test_substitute_repeat()
++   " This caused an invalid memory access.
++   split Xfile
++   s/^/x
++   call feedkeys("Qsc\<CR>y", 'tx')
++   bwipe!
++ endfunc
+*** ../vim-8.0.0373/src/version.c	2017-02-25 22:37:10.019880144 +0100
+--- src/version.c	2017-02-26 13:37:51.412925384 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     374,
+  /**/
+
+-- 
+For a moment, nothing happened.
+Then, after a second or so, nothing continued to happen.
+		-- Douglas Adams, "The Hitchhiker's Guide to the Galaxy"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

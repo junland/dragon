@@ -1,0 +1,189 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1037
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1037
+Problem:    "icase" of 'diffopt' is not used for highlighting differences.
+Solution:   Also use "icase". (Rick Howe)
+Files:      src/diff.c, src/testdir/test_diffmode.vim
+
+
+*** ../vim-8.0.1036/src/diff.c	2017-07-19 18:18:27.824135688 +0200
+--- src/diff.c	2017-09-02 17:55:30.484444773 +0200
+***************
+*** 1950,1955 ****
+--- 1950,1989 ----
+  }
+  
+  /*
++  * Compare the characters at "p1" and "p2".  If they are equal (possibly
++  * ignoring case) return TRUE and set "len" to the number of bytes.
++  */
++     static int
++ diff_equal_char(char_u *p1, char_u *p2, int *len)
++ {
++ #ifdef FEAT_MBYTE
++     int l  = (*mb_ptr2len)(p1);
++ 
++     if (l != (*mb_ptr2len)(p2))
++ 	return FALSE;
++     if (l > 1)
++     {
++ 	if (STRNCMP(p1, p2, l) != 0
++ 		&& (!enc_utf8
++ 		    || !(diff_flags & DIFF_ICASE)
++ 		    || utf_fold(utf_ptr2char(p1))
++ 						!= utf_fold(utf_ptr2char(p2))))
++ 	    return FALSE;
++ 	*len = l;
++     }
++     else
++ #endif
++     {
++ 	if ((*p1 != *p2)
++ 		&& (!(diff_flags & DIFF_ICASE)
++ 		    || TOLOWER_LOC(*p1) != TOLOWER_LOC(*p2)))
++ 	    return FALSE;
++ 	*len = 1;
++     }
++     return TRUE;
++ }
++ 
++ /*
+   * Find the difference within a changed line.
+   * Returns TRUE if the line was added, no other buffer has it.
+   */
+***************
+*** 1969,1974 ****
+--- 2003,2012 ----
+      int		idx;
+      int		off;
+      int		added = TRUE;
++ #ifdef FEAT_MBYTE
++     char_u	*p1, *p2;
++     int		l;
++ #endif
+  
+      /* Make a copy of the line, the next ml_get() will invalidate it. */
+      line_org = vim_strsave(ml_get_buf(wp->w_buffer, lnum, FALSE));
+***************
+*** 2017,2026 ****
+  		}
+  		else
+  		{
+! 		    if (line_org[si_org] != line_new[si_new])
+  			break;
+! 		    ++si_org;
+! 		    ++si_new;
+  		}
+  	    }
+  #ifdef FEAT_MBYTE
+--- 2055,2065 ----
+  		}
+  		else
+  		{
+! 		    if (!diff_equal_char(line_org + si_org, line_new + si_new,
+! 									   &l))
+  			break;
+! 		    si_org += l;
+! 		    si_new += l;
+  		}
+  	    }
+  #ifdef FEAT_MBYTE
+***************
+*** 2056,2065 ****
+  		    }
+  		    else
+  		    {
+! 			if (line_org[ei_org] != line_new[ei_new])
+  			    break;
+! 			--ei_org;
+! 			--ei_new;
+  		    }
+  		}
+  		if (*endp < ei_org)
+--- 2095,2110 ----
+  		    }
+  		    else
+  		    {
+! 			p1 = line_org + ei_org;
+! 			p2 = line_new + ei_new;
+! #ifdef FEAT_MBYTE
+! 			p1 -= (*mb_head_off)(line_org, p1);
+! 			p2 -= (*mb_head_off)(line_new, p2);
+! #endif
+! 			if (!diff_equal_char(p1, p2, &l))
+  			    break;
+! 			ei_org -= l;
+! 			ei_new -= l;
+  		    }
+  		}
+  		if (*endp < ei_org)
+*** ../vim-8.0.1036/src/testdir/test_diffmode.vim	2017-05-16 13:14:58.434591726 +0200
+--- src/testdir/test_diffmode.vim	2017-09-02 17:36:15.339963857 +0200
+***************
+*** 280,292 ****
+    set diffopt=icase,foldcolumn:0
+  
+    e one
+!   call setline(1, ['One', 'Two', 'Three', 'Four'])
+    redraw
+    let normattr = screenattr(1, 1)
+    diffthis
+  
+    botright vert new two
+!   call setline(1, ['one', 'TWO', 'Three ', 'Four'])
+    diffthis
+  
+    redraw
+--- 280,292 ----
+    set diffopt=icase,foldcolumn:0
+  
+    e one
+!   call setline(1, ['One', 'Two', 'Three', 'Four', 'Fi#ve'])
+    redraw
+    let normattr = screenattr(1, 1)
+    diffthis
+  
+    botright vert new two
+!   call setline(1, ['one', 'TWO', 'Three ', 'Four', 'fI=VE'])
+    diffthis
+  
+    redraw
+***************
+*** 295,300 ****
+--- 295,304 ----
+    call assert_notequal(normattr, screenattr(3, 1))
+    call assert_equal(normattr, screenattr(4, 1))
+  
++   let dtextattr = screenattr(5, 3)
++   call assert_notequal(dtextattr, screenattr(5, 1))
++   call assert_notequal(dtextattr, screenattr(5, 5))
++ 
+    diffoff!
+    %bwipe!
+    set diffopt&
+*** ../vim-8.0.1036/src/version.c	2017-09-02 17:18:31.230946566 +0200
+--- src/version.c	2017-09-02 17:58:49.391163894 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1037,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+51. You put a pillow case over your laptop so your lover doesn't see it while
+    you are pretending to catch your breath.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

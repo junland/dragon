@@ -1,0 +1,141 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1266
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1266 (after 8.0.1263)
+Problem:    Test_swap_directory was accidentally commented out.
+Solution:   Uncomment the test.
+Files:      src/testdir/test_swap.vim
+
+
+*** ../vim-8.0.1265/src/testdir/test_swap.vim	2017-11-04 22:21:17.288798871 +0100
+--- src/testdir/test_swap.vim	2017-11-04 22:28:44.742278866 +0100
+***************
+*** 1,51 ****
+  " Tests for the swap feature
+  
+! "" Tests for 'directory' option.
+! "func Test_swap_directory()
+! "  if !has("unix")
+! "    return
+! "  endif
+! "  let content = ['start of testfile',
+! "	      \ 'line 2 Abcdefghij',
+! "	      \ 'line 3 Abcdefghij',
+! "	      \ 'end of testfile']
+! "  call writefile(content, 'Xtest1')
+! "
+! "  "  '.', swap file in the same directory as file
+! "  set dir=.,~
+! "
+! "  " Verify that the swap file doesn't exist in the current directory
+! "  call assert_equal([], glob(".Xtest1*.swp", 1, 1, 1))
+! "  edit Xtest1
+! "  let swfname = split(execute("swapname"))[0]
+! "  call assert_equal([swfname], glob(swfname, 1, 1, 1))
+! "
+! "  " './dir', swap file in a directory relative to the file
+! "  set dir=./Xtest2,.,~
+! "
+! "  call mkdir("Xtest2")
+! "  edit Xtest1
+! "  call assert_equal([], glob(swfname, 1, 1, 1))
+! "  let swfname = "Xtest2/Xtest1.swp"
+! "  call assert_equal(swfname, split(execute("swapname"))[0])
+! "  call assert_equal([swfname], glob("Xtest2/*", 1, 1, 1))
+! "
+! "  " 'dir', swap file in directory relative to the current dir
+! "  set dir=Xtest.je,~
+! "
+! "  call mkdir("Xtest.je")
+! "  call writefile(content, 'Xtest2/Xtest3')
+! "  edit Xtest2/Xtest3
+! "  call assert_equal(["Xtest2/Xtest3"], glob("Xtest2/*", 1, 1, 1))
+! "  let swfname = "Xtest.je/Xtest3.swp"
+! "  call assert_equal(swfname, split(execute("swapname"))[0])
+! "  call assert_equal([swfname], glob("Xtest.je/*", 1, 1, 1))
+! "
+! "  set dir&
+! "  call delete("Xtest1")
+! "  call delete("Xtest2", "rf")
+! "  call delete("Xtest.je", "rf")
+! "endfunc
+  
+  func Test_swap_group()
+    if !has("unix")
+--- 1,51 ----
+  " Tests for the swap feature
+  
+! " Tests for 'directory' option.
+! func Test_swap_directory()
+!   if !has("unix")
+!     return
+!   endif
+!   let content = ['start of testfile',
+! 	      \ 'line 2 Abcdefghij',
+! 	      \ 'line 3 Abcdefghij',
+! 	      \ 'end of testfile']
+!   call writefile(content, 'Xtest1')
+! 
+!   "  '.', swap file in the same directory as file
+!   set dir=.,~
+! 
+!   " Verify that the swap file doesn't exist in the current directory
+!   call assert_equal([], glob(".Xtest1*.swp", 1, 1, 1))
+!   edit Xtest1
+!   let swfname = split(execute("swapname"))[0]
+!   call assert_equal([swfname], glob(swfname, 1, 1, 1))
+! 
+!   " './dir', swap file in a directory relative to the file
+!   set dir=./Xtest2,.,~
+! 
+!   call mkdir("Xtest2")
+!   edit Xtest1
+!   call assert_equal([], glob(swfname, 1, 1, 1))
+!   let swfname = "Xtest2/Xtest1.swp"
+!   call assert_equal(swfname, split(execute("swapname"))[0])
+!   call assert_equal([swfname], glob("Xtest2/*", 1, 1, 1))
+! 
+!   " 'dir', swap file in directory relative to the current dir
+!   set dir=Xtest.je,~
+! 
+!   call mkdir("Xtest.je")
+!   call writefile(content, 'Xtest2/Xtest3')
+!   edit Xtest2/Xtest3
+!   call assert_equal(["Xtest2/Xtest3"], glob("Xtest2/*", 1, 1, 1))
+!   let swfname = "Xtest.je/Xtest3.swp"
+!   call assert_equal(swfname, split(execute("swapname"))[0])
+!   call assert_equal([swfname], glob("Xtest.je/*", 1, 1, 1))
+! 
+!   set dir&
+!   call delete("Xtest1")
+!   call delete("Xtest2", "rf")
+!   call delete("Xtest.je", "rf")
+! endfunc
+  
+  func Test_swap_group()
+    if !has("unix")
+*** ../vim-8.0.1265/src/version.c	2017-11-04 22:21:17.288798871 +0100
+--- src/version.c	2017-11-04 22:30:02.621835085 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1266,
+  /**/
+
+-- 
+ARTHUR: If you do not open these doors, we will take this castle by force ...
+   [A bucket of slops land on ARTHUR.  He tries to retain his dignity.]
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,103 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0740
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0740
+Problem:    Cannot resize a terminal window by the command running in it.
+Solution:   Add support for the window size escape sequence.  Make BS work.
+Files:      src/terminal.c, src/libvterm/src/state.c
+
+
+*** ../vim-8.0.0739/src/terminal.c	2017-07-20 23:04:42.967282191 +0200
+--- src/terminal.c	2017-07-21 21:05:44.680468274 +0200
+***************
+*** 572,578 ****
+      {
+  	case CAR:		key = VTERM_KEY_ENTER; break;
+  	case ESC:		key = VTERM_KEY_ESCAPE; break;
+! 	case K_BS:		key = VTERM_KEY_BACKSPACE; break;
+  	case K_DEL:		key = VTERM_KEY_DEL; break;
+  	case K_DOWN:		key = VTERM_KEY_DOWN; break;
+  	case K_END:		key = VTERM_KEY_END; break;
+--- 572,579 ----
+      {
+  	case CAR:		key = VTERM_KEY_ENTER; break;
+  	case ESC:		key = VTERM_KEY_ESCAPE; break;
+! 				/* VTERM_KEY_BACKSPACE becomes 0x7f DEL */
+! 	case K_BS:		c = BS; break;
+  	case K_DEL:		key = VTERM_KEY_DEL; break;
+  	case K_DOWN:		key = VTERM_KEY_DOWN; break;
+  	case K_END:		key = VTERM_KEY_END; break;
+*** ../vim-8.0.0739/src/libvterm/src/state.c	2017-07-07 11:53:29.519876497 +0200
+--- src/libvterm/src/state.c	2017-07-21 20:53:39.117709279 +0200
+***************
+*** 9,14 ****
+--- 9,16 ----
+  # define DEBUG_GLYPH_COMBINE
+  #endif
+  
++ static int on_resize(int rows, int cols, void *user);
++ 
+  /* Some convenient wrappers to make callback functions easier */
+  
+  static void putglyph(VTermState *state, const uint32_t chars[], int width, VTermPos pos)
+***************
+*** 1396,1401 ****
+--- 1398,1411 ----
+  
+      break;
+  
++   case 0x74:
++     switch(CSI_ARG(args[0])) {
++       case 8: /* CSI 8 ; rows ; cols t  set size */
++ 	if (argcount == 3)
++ 	  on_resize(CSI_ARG(args[1]), CSI_ARG(args[2]), state);
++     }
++     break;
++ 
+    case INTERMED('\'', 0x7D): /* DECIC */
+      count = CSI_ARG_COUNT(args[0]);
+  
+***************
+*** 1534,1540 ****
+        switch(state->mode.cursor_shape) {
+          case VTERM_PROP_CURSORSHAPE_BLOCK:     reply = 2; break;
+          case VTERM_PROP_CURSORSHAPE_UNDERLINE: reply = 4; break;
+!         case VTERM_PROP_CURSORSHAPE_BAR_LEFT:  reply = 6; break;
+        }
+        if(state->mode.cursor_blink)
+          reply--;
+--- 1544,1550 ----
+        switch(state->mode.cursor_shape) {
+          case VTERM_PROP_CURSORSHAPE_BLOCK:     reply = 2; break;
+          case VTERM_PROP_CURSORSHAPE_UNDERLINE: reply = 4; break;
+! 	default: /* VTERM_PROP_CURSORSHAPE_BAR_LEFT */  reply = 6; break;
+        }
+        if(state->mode.cursor_blink)
+          reply--;
+*** ../vim-8.0.0739/src/version.c	2017-07-20 23:04:42.971282163 +0200
+--- src/version.c	2017-07-21 20:50:36.835026706 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     740,
+  /**/
+
+-- 
+Some of the well known MS-Windows errors:
+	ESLEEP		Operator fell asleep
+	ENOERR		No error yet
+	EDOLLAR		OS too expensive
+	EWINDOWS	MS-Windows loaded, system in danger
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

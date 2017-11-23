@@ -1,0 +1,170 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0869
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0869
+Problem:    Job output is sometimes not displayed in a terminal.
+Solution:   Flush output before closing the channel.
+Files:      src/channel.c, src/terminal.c
+
+
+*** ../vim-8.0.0868/src/channel.c	2017-08-05 15:02:00.811606320 +0200
+--- src/channel.c	2017-08-05 17:34:46.062836026 +0200
+***************
+*** 2817,2841 ****
+      ch_close_part(channel, PART_OUT);
+      ch_close_part(channel, PART_ERR);
+  
+!     if (invoke_close_cb && channel->ch_close_cb != NULL)
+      {
+! 	  typval_T	argv[1];
+! 	  typval_T	rettv;
+! 	  int		dummy;
+! 	  ch_part_T	part;
+! 
+! 	  /* Invoke callbacks before the close callback, since it's weird to
+! 	   * first invoke the close callback.  Increment the refcount to avoid
+! 	   * the channel being freed halfway. */
+! 	  ++channel->ch_refcount;
+! 	  ch_log(channel, "Invoking callbacks before closing");
+! 	  for (part = PART_SOCK; part < PART_IN; ++part)
+! 	      while (may_invoke_callback(channel, part))
+! 		  ;
+! 
+! 	  /* Invoke the close callback, if still set. */
+! 	  if (channel->ch_close_cb != NULL)
+! 	  {
+  	      ch_log(channel, "Invoking close callback %s",
+  						(char *)channel->ch_close_cb);
+  	      argv[0].v_type = VAR_CHANNEL;
+--- 2817,2856 ----
+      ch_close_part(channel, PART_OUT);
+      ch_close_part(channel, PART_ERR);
+  
+!     if (invoke_close_cb)
+      {
+! 	ch_part_T	part;
+! 
+! 	/* Invoke callbacks and flush buffers before the close callback. */
+! 	if (channel->ch_close_cb != NULL)
+! 	    ch_log(channel,
+! 		     "Invoking callbacks and flushing buffers before closing");
+! 	for (part = PART_SOCK; part < PART_IN; ++part)
+! 	{
+! 	    if (channel->ch_close_cb != NULL
+! 			    || channel->ch_part[part].ch_bufref.br_buf != NULL)
+! 	    {
+! 		/* Increment the refcount to avoid the channel being freed
+! 		 * halfway. */
+! 		++channel->ch_refcount;
+! 		if (channel->ch_close_cb == NULL)
+! 		    ch_log(channel, "flushing %s buffers before closing",
+! 							     part_names[part]);
+! 		while (may_invoke_callback(channel, part))
+! 		    ;
+! 		--channel->ch_refcount;
+! 	    }
+! 	}
+! 
+! 	if (channel->ch_close_cb != NULL)
+! 	{
+! 	      typval_T	argv[1];
+! 	      typval_T	rettv;
+! 	      int		dummy;
+! 
+! 	      /* Increment the refcount to avoid the channel being freed
+! 	       * halfway. */
+! 	      ++channel->ch_refcount;
+  	      ch_log(channel, "Invoking close callback %s",
+  						(char *)channel->ch_close_cb);
+  	      argv[0].v_type = VAR_CHANNEL;
+***************
+*** 2845,2869 ****
+  			   channel->ch_close_partial, NULL);
+  	      clear_tv(&rettv);
+  	      channel_need_redraw = TRUE;
+- 	  }
+  
+! 	  /* the callback is only called once */
+! 	  free_callback(channel->ch_close_cb, channel->ch_close_partial);
+! 	  channel->ch_close_cb = NULL;
+! 	  channel->ch_close_partial = NULL;
+! 
+! 	  --channel->ch_refcount;
+! 
+! 	  if (channel_need_redraw)
+! 	  {
+! 	      channel_need_redraw = FALSE;
+! 	      redraw_after_callback();
+! 	  }
+! 
+! 	  if (!channel->ch_drop_never)
+! 	      /* any remaining messages are useless now */
+! 	      for (part = PART_SOCK; part < PART_IN; ++part)
+! 		  drop_messages(channel, part);
+      }
+  
+      channel->ch_nb_close_cb = NULL;
+--- 2860,2884 ----
+  			   channel->ch_close_partial, NULL);
+  	      clear_tv(&rettv);
+  	      channel_need_redraw = TRUE;
+  
+! 	      /* the callback is only called once */
+! 	      free_callback(channel->ch_close_cb, channel->ch_close_partial);
+! 	      channel->ch_close_cb = NULL;
+! 	      channel->ch_close_partial = NULL;
+! 
+! 	      --channel->ch_refcount;
+! 
+! 	      if (channel_need_redraw)
+! 	      {
+! 		  channel_need_redraw = FALSE;
+! 		  redraw_after_callback();
+! 	      }
+! 
+! 	      if (!channel->ch_drop_never)
+! 		  /* any remaining messages are useless now */
+! 		  for (part = PART_SOCK; part < PART_IN; ++part)
+! 		      drop_messages(channel, part);
+! 	}
+      }
+  
+      channel->ch_nb_close_cb = NULL;
+*** ../vim-8.0.0868/src/terminal.c	2017-08-05 17:13:43.928522117 +0200
+--- src/terminal.c	2017-08-05 17:39:32.372646592 +0200
+***************
+*** 36,42 ****
+   * that buffer, attributes come from the scrollback buffer tl_scrollback.
+   *
+   * TODO:
+-  * - job_start('ls') sometimes does not work.
+   * - MS-Windows: no redraw for 'updatetime'  #1915
+   * - in bash mouse clicks are inserting characters.
+   * - mouse scroll: when over other window, scroll that window.
+--- 36,41 ----
+*** ../vim-8.0.0868/src/version.c	2017-08-05 17:13:43.932522086 +0200
+--- src/version.c	2017-08-05 17:34:24.115003940 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     869,
+  /**/
+
+-- 
+ARTHUR: Listen, old crone!  Unless you tell us where we can buy a shrubbery,
+        my friend and I will ... we will say "Ni!"
+CRONE:  Do your worst!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

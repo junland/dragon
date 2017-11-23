@@ -1,0 +1,58 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0506
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0506 (after 8.0.0504)
+Problem:    Can't build with ANSI C.
+Solution:   Move declarations to start of block.
+Files:      src/ex_docmd.c
+
+
+*** ../vim-8.0.0505/src/ex_docmd.c	2017-03-25 14:50:37.925991956 +0100
+--- src/ex_docmd.c	2017-03-25 15:06:01.182996203 +0100
+***************
+*** 3250,3255 ****
+--- 3250,3258 ----
+  
+  	if (ASCII_ISLOWER(eap->cmd[0]))
+  	{
++ 	    int c1 = eap->cmd[0];
++ 	    int c2 = eap->cmd[1];
++ 
+  	    if (command_count != (int)CMD_SIZE)
+  	    {
+  		iemsg((char_u *)_("E943: Command table needs to be updated, run 'make cmdidxs'"));
+***************
+*** 3258,3265 ****
+  
+  	    /* Use a precomputed index for fast look-up in cmdnames[]
+  	     * taking into account the first 2 letters of eap->cmd. */
+- 	    int c1 = eap->cmd[0];
+- 	    int c2 = eap->cmd[1];
+  	    eap->cmdidx = cmdidxs1[CharOrdLow(c1)];
+  	    if (ASCII_ISLOWER(c2))
+  		eap->cmdidx += cmdidxs2[CharOrdLow(c1)][CharOrdLow(c2)];
+--- 3261,3266 ----
+*** ../vim-8.0.0505/src/version.c	2017-03-25 15:03:41.376056956 +0100
+--- src/version.c	2017-03-25 15:06:48.658636046 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     506,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+204. You're being audited because you mailed your tax return to the IRC.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

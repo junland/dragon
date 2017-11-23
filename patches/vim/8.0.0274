@@ -1,0 +1,86 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0274
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0274
+Problem:    When update_single_line() is called recursively, or another screen
+            update happens while it is busy, errors may occur.
+Solution:   Check and update updating_screen. (Christian Brabandt)
+Files:      src/screen.c
+
+
+*** ../vim-8.0.0273/src/screen.c	2017-01-24 20:14:42.751459823 +0100
+--- src/screen.c	2017-01-31 21:52:36.357539834 +0100
+***************
+*** 824,831 ****
+      int		j;
+  
+      /* Don't do anything if the screen structures are (not yet) valid. */
+!     if (!screen_valid(TRUE))
+  	return;
+  
+      if (lnum >= wp->w_topline && lnum < wp->w_botline
+  				 && foldedCount(wp, lnum, &win_foldinfo) == 0)
+--- 824,832 ----
+      int		j;
+  
+      /* Don't do anything if the screen structures are (not yet) valid. */
+!     if (!screen_valid(TRUE) || updating_screen)
+  	return;
++     updating_screen = TRUE;
+  
+      if (lnum >= wp->w_topline && lnum < wp->w_botline
+  				 && foldedCount(wp, lnum, &win_foldinfo) == 0)
+***************
+*** 865,877 ****
+  # endif
+      }
+      need_cursor_line_redraw = FALSE;
+  }
+  #endif
+  
+  #if defined(FEAT_SIGNS) || defined(FEAT_GUI)
+- static void update_prepare(void);
+- static void update_finish(void);
+- 
+  /*
+   * Prepare for updating one or more windows.
+   * Caller must check for "updating_screen" already set to avoid recursiveness.
+--- 866,876 ----
+  # endif
+      }
+      need_cursor_line_redraw = FALSE;
++     updating_screen = FALSE;
+  }
+  #endif
+  
+  #if defined(FEAT_SIGNS) || defined(FEAT_GUI)
+  /*
+   * Prepare for updating one or more windows.
+   * Caller must check for "updating_screen" already set to avoid recursiveness.
+*** ../vim-8.0.0273/src/version.c	2017-01-30 22:56:43.151052887 +0100
+--- src/version.c	2017-01-31 21:51:37.545926448 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     274,
+  /**/
+
+-- 
+TIM: But follow only if you are men of valour.  For the entrance to this cave
+     is guarded by a monster, a creature so foul and cruel that no man yet has
+     fought with it and lived.  Bones of full fifty men lie strewn about its
+     lair ...
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

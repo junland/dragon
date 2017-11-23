@@ -1,0 +1,481 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0485
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0485
+Problem:    Not all windows commands are tested.
+Solution:   Add more tests for windows commands. (Dominique Pelle,
+            closes #1575) Run test_autocmd separately, it interferes with
+            other tests.  Fix tests that depended on side effects.
+Files:      src/testdir/test_window_cmd.vim, src/testdir/test_alot.vim,
+            src/testdir/test_autocmd.vim, src/testdir/test_fnamemodify.vim,
+            src/testdir/test_functions.vim, src/testdir/test_delete.vim,
+            src/testdir/Make_all.mak
+
+
+*** ../vim-8.0.0484/src/testdir/test_window_cmd.vim	2017-03-18 23:11:00.287000094 +0100
+--- src/testdir/test_window_cmd.vim	2017-03-19 15:52:52.509005390 +0100
+***************
+*** 67,72 ****
+--- 67,371 ----
+    augroup! test_window_cmd_wincmd_gf
+  endfunc
+  
++ func Test_window_quit()
++   e Xa
++   split Xb
++   call assert_equal(2, winnr('$'))
++   call assert_equal('Xb', bufname(winbufnr(1)))
++   call assert_equal('Xa', bufname(winbufnr(2)))
++ 
++   wincmd q
++   call assert_equal(1, winnr('$'))
++   call assert_equal('Xa', bufname(winbufnr(1)))
++ 
++   bw Xa Xb
++ endfunc
++ 
++ func Test_window_horizontal_split()
++   call assert_equal(1, winnr('$'))
++   3wincmd s
++   call assert_equal(2, winnr('$'))
++   call assert_equal(3, winheight(0))
++   call assert_equal(winwidth(1), winwidth(2))
++ 
++   call assert_fails('botright topleft wincmd s', 'E442:')
++   bw
++ endfunc
++ 
++ func Test_window_vertical_split()
++   call assert_equal(1, winnr('$'))
++   3wincmd v
++   call assert_equal(2, winnr('$'))
++   call assert_equal(3, winwidth(0))
++   call assert_equal(winheight(1), winheight(2))
++ 
++   call assert_fails('botright topleft wincmd v', 'E442:')
++   bw
++ endfunc
++ 
++ func Test_window_split_edit_alternate()
++   e Xa
++   e Xb
++ 
++   wincmd ^
++   call assert_equal('Xa', bufname(winbufnr(1)))
++   call assert_equal('Xb', bufname(winbufnr(2)))
++ 
++   bw Xa Xb
++ endfunc
++ 
++ func Test_window_preview()
++   " Open a preview window
++   pedit Xa
++   call assert_equal(2, winnr('$'))
++   call assert_equal(0, &previewwindow)
++ 
++   " Go to the preview window
++   wincmd P
++   call assert_equal(1, &previewwindow)
++ 
++   " Close preview window
++   wincmd z
++   call assert_equal(1, winnr('$'))
++   call assert_equal(0, &previewwindow)
++ 
++   call assert_fails('wincmd P', 'E441:')
++ endfunc
++ 
++ func Test_window_exchange()
++   e Xa
++ 
++   " Nothing happens with window exchange when there is 1 window
++   wincmd x
++   call assert_equal(1, winnr('$'))
++ 
++   split Xb
++   split Xc
++ 
++   call assert_equal('Xc', bufname(winbufnr(1)))
++   call assert_equal('Xb', bufname(winbufnr(2)))
++   call assert_equal('Xa', bufname(winbufnr(3)))
++ 
++   " Exchange current window 1 with window 3
++   3wincmd x
++   call assert_equal('Xa', bufname(winbufnr(1)))
++   call assert_equal('Xb', bufname(winbufnr(2)))
++   call assert_equal('Xc', bufname(winbufnr(3)))
++ 
++   " Exchange window with next when at the top window
++   wincmd x
++   call assert_equal('Xb', bufname(winbufnr(1)))
++   call assert_equal('Xa', bufname(winbufnr(2)))
++   call assert_equal('Xc', bufname(winbufnr(3)))
++ 
++   " Exchange window with next when at the middle window
++   wincmd j
++   wincmd x
++   call assert_equal('Xb', bufname(winbufnr(1)))
++   call assert_equal('Xc', bufname(winbufnr(2)))
++   call assert_equal('Xa', bufname(winbufnr(3)))
++ 
++   " Exchange window with next when at the bottom window.
++   " When there is no next window, it exchanges with the previous window.
++   wincmd j
++   wincmd x
++   call assert_equal('Xb', bufname(winbufnr(1)))
++   call assert_equal('Xa', bufname(winbufnr(2)))
++   call assert_equal('Xc', bufname(winbufnr(3)))
++ 
++   bw Xa Xb Xc
++ endfunc
++ 
++ func Test_window_rotate()
++   e Xa
++   split Xb
++   split Xc
++   call assert_equal('Xc', bufname(winbufnr(1)))
++   call assert_equal('Xb', bufname(winbufnr(2)))
++   call assert_equal('Xa', bufname(winbufnr(3)))
++ 
++   " Rotate downwards
++   wincmd r
++   call assert_equal('Xa', bufname(winbufnr(1)))
++   call assert_equal('Xc', bufname(winbufnr(2)))
++   call assert_equal('Xb', bufname(winbufnr(3)))
++ 
++   2wincmd r
++   call assert_equal('Xc', bufname(winbufnr(1)))
++   call assert_equal('Xb', bufname(winbufnr(2)))
++   call assert_equal('Xa', bufname(winbufnr(3)))
++ 
++   " Rotate upwards
++   wincmd R
++   call assert_equal('Xb', bufname(winbufnr(1)))
++   call assert_equal('Xa', bufname(winbufnr(2)))
++   call assert_equal('Xc', bufname(winbufnr(3)))
++ 
++   2wincmd R
++   call assert_equal('Xc', bufname(winbufnr(1)))
++   call assert_equal('Xb', bufname(winbufnr(2)))
++   call assert_equal('Xa', bufname(winbufnr(3)))
++ 
++   bot vsplit
++   call assert_fails('wincmd R', 'E443:')
++ 
++   bw Xa Xb Xc
++ endfunc
++ 
++ func Test_window_height()
++   e Xa
++   split Xb
++ 
++   let [wh1, wh2] = [winheight(1), winheight(2)]
++   " Active window (1) should have the same height or 1 more
++   " than the other window.
++   call assert_inrange(wh2, wh2 + 1, wh1)
++ 
++   wincmd -
++   call assert_equal(wh1 - 1, winheight(1))
++   call assert_equal(wh2 + 1, winheight(2))
++ 
++   wincmd +
++   call assert_equal(wh1, winheight(1))
++   call assert_equal(wh2, winheight(2))
++ 
++   2wincmd _
++   call assert_equal(2, winheight(1))
++   call assert_equal(wh1 + wh2 - 2, winheight(2))
++ 
++   wincmd =
++   call assert_equal(wh1, winheight(1))
++   call assert_equal(wh2, winheight(2))
++ 
++   2wincmd _
++   set winfixheight
++   split Xc
++   let [wh1, wh2, wh3] = [winheight(1), winheight(2), winheight(3)]
++   call assert_equal(2, winheight(2))
++   call assert_inrange(wh3, wh3 + 1, wh1)
++   3wincmd +
++   call assert_equal(2,       winheight(2))
++   call assert_equal(wh1 + 3, winheight(1))
++   call assert_equal(wh3 - 3, winheight(3))
++   wincmd =
++   call assert_equal(2,   winheight(2))
++   call assert_equal(wh1, winheight(1))
++   call assert_equal(wh3, winheight(3))
++ 
++   wincmd j
++   set winfixheight&
++ 
++   wincmd =
++   let [wh1, wh2, wh3] = [winheight(1), winheight(2), winheight(3)]
++   " Current window (2) should have the same height or 1 more
++   " than the other windows.
++   call assert_inrange(wh1, wh1 + 1, wh2)
++   call assert_inrange(wh3, wh3 + 1, wh2)
++ 
++   bw Xa Xb Xc
++ endfunc
++ 
++ func Test_window_width()
++   e Xa
++   vsplit Xb
++ 
++   let [ww1, ww2] = [winwidth(1), winwidth(2)]
++   " Active window (1) should have the same width or 1 more
++   " than the other window.
++   call assert_inrange(ww2, ww2 + 1, ww1)
++ 
++   wincmd <
++   call assert_equal(ww1 - 1, winwidth(1))
++   call assert_equal(ww2 + 1, winwidth(2))
++ 
++   wincmd >
++   call assert_equal(ww1, winwidth(1))
++   call assert_equal(ww2, winwidth(2))
++ 
++   2wincmd |
++   call assert_equal(2, winwidth(1))
++   call assert_equal(ww1 + ww2 - 2, winwidth(2))
++ 
++   wincmd =
++   call assert_equal(ww1, winwidth(1))
++   call assert_equal(ww2, winwidth(2))
++ 
++   2wincmd |
++   set winfixwidth
++   vsplit Xc
++   let [ww1, ww2, ww3] = [winwidth(1), winwidth(2), winwidth(3)]
++   " FIXME: commented out: I would expect the width of 2nd window to 
++   " remain 2 but it's actually 1?!
++   "call assert_equal(2, winwidth(2))
++   call assert_inrange(ww3, ww3 + 1, ww1)
++   3wincmd >
++   " FIXME: commented out: I would expect the width of 2nd window to 
++   " remain 2 but it's actually 1?!
++   "call assert_equal(2,       winwidth(2))
++   call assert_equal(ww1 + 3, winwidth(1))
++   call assert_equal(ww3 - 3, winwidth(3))
++   wincmd =
++   " FIXME: commented out: I would expect the width of 2nd window to 
++   " remain 2 but it's actually 1?!
++   "call assert_equal(2,   winwidth(2))
++   call assert_equal(ww1, winwidth(1))
++   call assert_equal(ww3, winwidth(3))
++ 
++   wincmd l
++   set winfixwidth&
++ 
++   wincmd =
++   let [ww1, ww2, ww3] = [winwidth(1), winwidth(2), winwidth(3)]
++   " Current window (2) should have the same width or 1 more
++   " than the other windows.
++   call assert_inrange(ww1, ww1 + 1, ww2)
++   call assert_inrange(ww3, ww3 + 1, ww2)
++ 
++   bw Xa Xb Xc
++ endfunc
++ 
++ func Test_window_jump_tag()
++   help
++   /iccf
++   call assert_match('^|iccf|',  getline('.'))
++   call assert_equal(2, winnr('$'))
++   2wincmd }
++   call assert_equal(3, winnr('$'))
++   call assert_match('^|iccf|',  getline('.'))
++   wincmd k
++   call assert_match('\*iccf\*',  getline('.'))
++   call assert_equal(2, winheight(0))
++ 
++   wincmd z
++   set previewheight=4
++   help
++   /bugs
++   wincmd }
++   wincmd k
++   call assert_match('\*bugs\*',  getline('.'))
++   call assert_equal(4, winheight(0))
++   set previewheight&
++ 
++   %bw!
++ endfunc
++ 
++ func Test_window_newtab()
++   e Xa
++ 
++   call assert_equal(1, tabpagenr('$'))
++   call assert_equal("\nAlready only one window", execute('wincmd T'))
++ 
++   split Xb
++   split Xc
++ 
++   wincmd T
++   call assert_equal(2, tabpagenr('$'))
++   call assert_equal(['Xb', 'Xa'], map(tabpagebuflist(1), 'bufname(v:val)'))
++   call assert_equal(['Xc'      ], map(tabpagebuflist(2), 'bufname(v:val)'))
++ 
++   %bw!
++ endfunc
++ 
+  func Test_next_split_all()
+    " This was causing an illegal memory access.
+    n x
+*** ../vim-8.0.0484/src/testdir/test_alot.vim	2017-03-08 22:55:14.914181221 +0100
+--- src/testdir/test_alot.vim	2017-03-19 15:54:58.392088259 +0100
+***************
+*** 3,9 ****
+  
+  set belloff=all
+  source test_assign.vim
+- source test_autocmd.vim
+  source test_changedtick.vim
+  source test_cursor_func.vim
+  source test_delete.vim
+--- 3,8 ----
+*** ../vim-8.0.0484/src/testdir/test_autocmd.vim	2017-01-13 22:03:30.797494622 +0100
+--- src/testdir/test_autocmd.vim	2017-03-19 15:44:28.980677610 +0100
+***************
+*** 1,5 ****
+--- 1,7 ----
+  " Tests for autocommands
+  
++ set belloff=all
++ 
+  function! s:cleanup_buffers() abort
+    for bnr in range(1, bufnr('$'))
+      if bufloaded(bnr) && bufnr('%') != bnr
+***************
+*** 318,323 ****
+--- 320,327 ----
+    call assert_equal('Xanother', expand('%'))
+  
+    au!
++   enew
++   bwipe! Xtestje1
+    call delete('Xtestje1')
+    call delete('Xtestje2')
+    call delete('Xtestje3')
+*** ../vim-8.0.0484/src/testdir/test_fnamemodify.vim	2017-03-09 14:00:23.630289947 +0100
+--- src/testdir/test_fnamemodify.vim	2017-03-19 15:48:35.446879371 +0100
+***************
+*** 33,40 ****
+    call assert_equal('''abc"%"def''', fnamemodify('abc"%"def', ':S'))
+    call assert_equal('''abc''\'''' ''\''''def''', fnamemodify('abc'' ''def', ':S'))
+    call assert_equal('''abc''\''''%''\''''def''', fnamemodify('abc''%''def', ':S'))
+-   call assert_equal(expand('%:r:S'), shellescape(expand('%:r')))
+    sp test_alot.vim
+    call assert_equal('test_alot,''test_alot'',test_alot.vim', join([expand('%:r'), expand('%:r:S'), expand('%')], ','))
+    quit
+  
+--- 33,40 ----
+    call assert_equal('''abc"%"def''', fnamemodify('abc"%"def', ':S'))
+    call assert_equal('''abc''\'''' ''\''''def''', fnamemodify('abc'' ''def', ':S'))
+    call assert_equal('''abc''\''''%''\''''def''', fnamemodify('abc''%''def', ':S'))
+    sp test_alot.vim
++   call assert_equal(expand('%:r:S'), shellescape(expand('%:r')))
+    call assert_equal('test_alot,''test_alot'',test_alot.vim', join([expand('%:r'), expand('%:r:S'), expand('%')], ','))
+    quit
+  
+*** ../vim-8.0.0484/src/testdir/test_functions.vim	2017-03-18 22:35:26.031431348 +0100
+--- src/testdir/test_functions.vim	2017-03-19 15:51:14.593719010 +0100
+***************
+*** 460,467 ****
+    let bd = getbufvar(bnr, '',def_num)
+    call assert_equal(1, len(bd))
+  
+!   call assert_equal('', getbufvar(9, ''))
+!   call assert_equal(def_num, getbufvar(9, '', def_num))
+    unlet def_num
+  
+    call assert_equal(0, getbufvar(bnr, '&autoindent'))
+--- 460,467 ----
+    let bd = getbufvar(bnr, '',def_num)
+    call assert_equal(1, len(bd))
+  
+!   call assert_equal('', getbufvar(9999, ''))
+!   call assert_equal(def_num, getbufvar(9999, '', def_num))
+    unlet def_num
+  
+    call assert_equal(0, getbufvar(bnr, '&autoindent'))
+*** ../vim-8.0.0484/src/testdir/test_delete.vim	2016-01-17 18:11:30.000000000 +0100
+--- src/testdir/test_delete.vim	2017-03-19 15:57:08.187142023 +0100
+***************
+*** 8,13 ****
+--- 8,14 ----
+    call assert_equal(0, delete('Xfile'))
+    call assert_fails('call readfile("Xfile")', 'E484:')
+    call assert_equal(-1, delete('Xfile'))
++   bwipe Xfile
+  endfunc
+  
+  func Test_dir_delete()
+***************
+*** 35,40 ****
+--- 36,43 ----
+    call assert_equal(0, delete('Xdir1', 'rf'))
+    call assert_false(isdirectory('Xdir1'))
+    call assert_equal(-1, delete('Xdir1', 'd'))
++   bwipe Xdir1/Xfile
++   bwipe Xdir1/subdir/Xfile
+  endfunc
+  
+  func Test_symlink_delete()
+***************
+*** 49,54 ****
+--- 52,58 ----
+    call assert_equal(0, delete('Xlink'))
+    call assert_equal(-1, delete('Xlink'))
+    call assert_equal(0, delete('Xfile'))
++   bwipe Xfile
+  endfunc
+  
+  func Test_symlink_dir_delete()
+***************
+*** 96,99 ****
+--- 100,107 ----
+    call assert_equal(['a', 'b'], readfile('Xdir4/Xfile'))
+    call assert_equal(0, delete('Xdir4/Xfile'))
+    call assert_equal(0, delete('Xdir4', 'd'))
++ 
++   bwipe Xdir3/Xfile
++   bwipe Xdir3/subdir/Xfile
++   bwipe Xdir4/Xfile
+  endfunc
+*** ../vim-8.0.0484/src/testdir/Make_all.mak	2017-03-18 16:18:25.099693814 +0100
+--- src/testdir/Make_all.mak	2017-03-19 15:39:23.478908756 +0100
+***************
+*** 137,142 ****
+--- 137,143 ----
+  	    test_arglist.res \
+  	    test_assert.res \
+  	    test_autochdir.res \
++ 	    test_autocmd.res \
+  	    test_backspace_opt.res \
+  	    test_breakindent.res \
+  	    test_bufwintabinfo.res \
+*** ../vim-8.0.0484/src/version.c	2017-03-19 14:19:46.493645414 +0100
+--- src/version.c	2017-03-19 14:50:57.368092700 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     485,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+164. You got out to buy software, instead of going out for a beer.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,347 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0243
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0243
+Problem:    When making a character lower case with tolower() changes the byte
+            cound, it is not made lower case.
+Solution:   Add strlow_save(). (Dominique Pelle, closes #1406)
+Files:      src/evalfunc.c, src/misc2.c, src/proto/misc2.pro,
+            src/testdir/test_functions.vim
+
+
+*** ../vim-8.0.0242/src/evalfunc.c	2017-01-22 18:34:53.680030808 +0100
+--- src/evalfunc.c	2017-01-26 22:45:47.252202745 +0100
+***************
+*** 12503,12541 ****
+      static void
+  f_tolower(typval_T *argvars, typval_T *rettv)
+  {
+-     char_u	*p;
+- 
+-     p = vim_strsave(get_tv_string(&argvars[0]));
+      rettv->v_type = VAR_STRING;
+!     rettv->vval.v_string = p;
+! 
+!     if (p != NULL)
+! 	while (*p != NUL)
+! 	{
+! #ifdef FEAT_MBYTE
+! 	    int		l;
+! 
+! 	    if (enc_utf8)
+! 	    {
+! 		int c, lc;
+! 
+! 		c = utf_ptr2char(p);
+! 		lc = utf_tolower(c);
+! 		l = utf_ptr2len(p);
+! 		/* TODO: reallocate string when byte count changes. */
+! 		if (utf_char2len(lc) == l)
+! 		    utf_char2bytes(lc, p);
+! 		p += l;
+! 	    }
+! 	    else if (has_mbyte && (l = (*mb_ptr2len)(p)) > 1)
+! 		p += l;		/* skip multi-byte character */
+! 	    else
+! #endif
+! 	    {
+! 		*p = TOLOWER_LOC(*p); /* note that tolower() can be a macro */
+! 		++p;
+! 	    }
+! 	}
+  }
+  
+  /*
+--- 12503,12510 ----
+      static void
+  f_tolower(typval_T *argvars, typval_T *rettv)
+  {
+      rettv->v_type = VAR_STRING;
+!     rettv->vval.v_string = strlow_save(get_tv_string(&argvars[0]));
+  }
+  
+  /*
+*** ../vim-8.0.0242/src/misc2.c	2017-01-26 21:36:29.606733209 +0100
+--- src/misc2.c	2017-01-26 22:45:47.252202745 +0100
+***************
+*** 1602,1608 ****
+  		{
+  		    s = alloc((unsigned)STRLEN(res) + 1 + newl - l);
+  		    if (s == NULL)
+! 			break;
+  		    mch_memmove(s, res, p - res);
+  		    STRCPY(s + (p - res) + newl, p + l);
+  		    p = s + (p - res);
+--- 1602,1611 ----
+  		{
+  		    s = alloc((unsigned)STRLEN(res) + 1 + newl - l);
+  		    if (s == NULL)
+! 		    {
+! 			vim_free(res);
+! 			return NULL;
+! 		    }
+  		    mch_memmove(s, res, p - res);
+  		    STRCPY(s + (p - res) + newl, p + l);
+  		    p = s + (p - res);
+***************
+*** 1622,1627 ****
+--- 1625,1693 ----
+  		p++;
+  	    }
+  	}
++ 
++     return res;
++ }
++ 
++ /*
++  * Make string "s" all lower-case and return it in allocated memory.
++  * Handles multi-byte characters as well as possible.
++  * Returns NULL when out of memory.
++  */
++     char_u *
++ strlow_save(char_u *orig)
++ {
++     char_u	*p;
++     char_u	*res;
++ 
++     res = p = vim_strsave(orig);
++ 
++     if (res != NULL)
++ 	while (*p != NUL)
++ 	{
++ # ifdef FEAT_MBYTE
++ 	    int		l;
++ 
++ 	    if (enc_utf8)
++ 	    {
++ 		int	c, lc;
++ 		int	newl;
++ 		char_u	*s;
++ 
++ 		c = utf_ptr2char(p);
++ 		lc = utf_tolower(c);
++ 
++ 		/* Reallocate string when byte count changes.  This is rare,
++ 		 * thus it's OK to do another malloc()/free(). */
++ 		l = utf_ptr2len(p);
++ 		newl = utf_char2len(lc);
++ 		if (newl != l)
++ 		{
++ 		    s = alloc((unsigned)STRLEN(res) + 1 + newl - l);
++ 		    if (s == NULL)
++ 		    {
++ 			vim_free(res);
++ 			return NULL;
++ 		    }
++ 		    mch_memmove(s, res, p - res);
++ 		    STRCPY(s + (p - res) + newl, p + l);
++ 		    p = s + (p - res);
++ 		    vim_free(res);
++ 		    res = s;
++ 		}
++ 
++ 		utf_char2bytes(lc, p);
++ 		p += newl;
++ 	    }
++ 	    else if (has_mbyte && (l = (*mb_ptr2len)(p)) > 1)
++ 		p += l;		/* skip multi-byte character */
++ 	    else
++ # endif
++ 	    {
++ 		*p = TOLOWER_LOC(*p); /* note that tolower() can be a macro */
++ 		p++;
++ 	    }
++ 	}
+  
+      return res;
+  }
+*** ../vim-8.0.0242/src/proto/misc2.pro	2016-11-10 20:01:41.201582868 +0100
+--- src/proto/misc2.pro	2017-01-26 22:45:47.252202745 +0100
+***************
+*** 40,45 ****
+--- 40,46 ----
+  char_u *vim_strnsave_up(char_u *string, int len);
+  void vim_strup(char_u *p);
+  char_u *strup_save(char_u *orig);
++ char_u *strlow_save(char_u *orig);
+  void del_trailing_spaces(char_u *ptr);
+  void vim_strncpy(char_u *to, char_u *from, size_t len);
+  void vim_strcat(char_u *to, char_u *from, size_t tosize);
+*** ../vim-8.0.0242/src/testdir/test_functions.vim	2017-01-10 16:12:11.732767042 +0100
+--- src/testdir/test_functions.vim	2017-01-26 22:45:47.252202745 +0100
+***************
+*** 16,18 ****
+--- 16,163 ----
+    call assert_equal(123456789, str2nr('123456789'))
+    call assert_equal(-123456789, str2nr('-123456789'))
+  endfunc
++ 
++ func Test_tolower()
++   call assert_equal("", tolower(""))
++ 
++   " Test with all printable ASCII characters.
++   call assert_equal(' !"#$%&''()*+,-./0123456789:;<=>?@abcdefghijklmnopqrstuvwxyz[\]^_`abcdefghijklmnopqrstuvwxyz{|}~',
++           \ tolower(' !"#$%&''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'))
++ 
++   if !has('multi_byte')
++     return
++   endif
++ 
++   " Test with a few uppercase diacritics.
++   call assert_equal("aàáâãäåāăąǎǟǡả", tolower("AÀÁÂÃÄÅĀĂĄǍǞǠẢ"))
++   call assert_equal("bḃḇ", tolower("BḂḆ"))
++   call assert_equal("cçćĉċč", tolower("CÇĆĈĊČ"))
++   call assert_equal("dďđḋḏḑ", tolower("DĎĐḊḎḐ"))
++   call assert_equal("eèéêëēĕėęěẻẽ", tolower("EÈÉÊËĒĔĖĘĚẺẼ"))
++   call assert_equal("fḟ ", tolower("FḞ "))
++   call assert_equal("gĝğġģǥǧǵḡ", tolower("GĜĞĠĢǤǦǴḠ"))
++   call assert_equal("hĥħḣḧḩ", tolower("HĤĦḢḦḨ"))
++   call assert_equal("iìíîïĩīĭįiǐỉ", tolower("IÌÍÎÏĨĪĬĮİǏỈ"))
++   call assert_equal("jĵ", tolower("JĴ"))
++   call assert_equal("kķǩḱḵ", tolower("KĶǨḰḴ"))
++   call assert_equal("lĺļľŀłḻ", tolower("LĹĻĽĿŁḺ"))
++   call assert_equal("mḿṁ", tolower("MḾṀ"))
++   call assert_equal("nñńņňṅṉ", tolower("NÑŃŅŇṄṈ"))
++   call assert_equal("oòóôõöøōŏőơǒǫǭỏ", tolower("OÒÓÔÕÖØŌŎŐƠǑǪǬỎ"))
++   call assert_equal("pṕṗ", tolower("PṔṖ"))
++   call assert_equal("q", tolower("Q"))
++   call assert_equal("rŕŗřṙṟ", tolower("RŔŖŘṘṞ"))
++   call assert_equal("sśŝşšṡ", tolower("SŚŜŞŠṠ"))
++   call assert_equal("tţťŧṫṯ", tolower("TŢŤŦṪṮ"))
++   call assert_equal("uùúûüũūŭůűųưǔủ", tolower("UÙÚÛÜŨŪŬŮŰŲƯǓỦ"))
++   call assert_equal("vṽ", tolower("VṼ"))
++   call assert_equal("wŵẁẃẅẇ", tolower("WŴẀẂẄẆ"))
++   call assert_equal("xẋẍ", tolower("XẊẌ"))
++   call assert_equal("yýŷÿẏỳỷỹ", tolower("YÝŶŸẎỲỶỸ"))
++   call assert_equal("zźżžƶẑẕ", tolower("ZŹŻŽƵẐẔ"))
++ 
++   " Test with a few lowercase diacritics, which should remain unchanged.
++   call assert_equal("aàáâãäåāăąǎǟǡả", tolower("aàáâãäåāăąǎǟǡả"))
++   call assert_equal("bḃḇ", tolower("bḃḇ"))
++   call assert_equal("cçćĉċč", tolower("cçćĉċč"))
++   call assert_equal("dďđḋḏḑ", tolower("dďđḋḏḑ"))
++   call assert_equal("eèéêëēĕėęěẻẽ", tolower("eèéêëēĕėęěẻẽ"))
++   call assert_equal("fḟ", tolower("fḟ"))
++   call assert_equal("gĝğġģǥǧǵḡ", tolower("gĝğġģǥǧǵḡ"))
++   call assert_equal("hĥħḣḧḩẖ", tolower("hĥħḣḧḩẖ"))
++   call assert_equal("iìíîïĩīĭįǐỉ", tolower("iìíîïĩīĭįǐỉ"))
++   call assert_equal("jĵǰ", tolower("jĵǰ"))
++   call assert_equal("kķǩḱḵ", tolower("kķǩḱḵ"))
++   call assert_equal("lĺļľŀłḻ", tolower("lĺļľŀłḻ"))
++   call assert_equal("mḿṁ ", tolower("mḿṁ "))
++   call assert_equal("nñńņňŉṅṉ", tolower("nñńņňŉṅṉ"))
++   call assert_equal("oòóôõöøōŏőơǒǫǭỏ", tolower("oòóôõöøōŏőơǒǫǭỏ"))
++   call assert_equal("pṕṗ", tolower("pṕṗ"))
++   call assert_equal("q", tolower("q"))
++   call assert_equal("rŕŗřṙṟ", tolower("rŕŗřṙṟ"))
++   call assert_equal("sśŝşšṡ", tolower("sśŝşšṡ"))
++   call assert_equal("tţťŧṫṯẗ", tolower("tţťŧṫṯẗ"))
++   call assert_equal("uùúûüũūŭůűųưǔủ", tolower("uùúûüũūŭůűųưǔủ"))
++   call assert_equal("vṽ", tolower("vṽ"))
++   call assert_equal("wŵẁẃẅẇẘ", tolower("wŵẁẃẅẇẘ"))
++   call assert_equal("ẋẍ", tolower("ẋẍ"))
++   call assert_equal("yýÿŷẏẙỳỷỹ", tolower("yýÿŷẏẙỳỷỹ"))
++   call assert_equal("zźżžƶẑẕ", tolower("zźżžƶẑẕ"))
++ 
++   " According to https://twitter.com/jifa/status/625776454479970304
++   " Ⱥ (U+023A) and Ⱦ (U+023E) are the *only* code points to increase
++   " in length (2 to 3 bytes) when lowercased. So let's test them.
++   call assert_equal("ⱥ ⱦ", tolower("Ⱥ Ⱦ"))
++ endfunc
++ 
++ func Test_toupper()
++   call assert_equal("", toupper(""))
++ 
++   " Test with all printable ASCII characters.
++   call assert_equal(' !"#$%&''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`ABCDEFGHIJKLMNOPQRSTUVWXYZ{|}~',
++           \ toupper(' !"#$%&''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'))
++ 
++   if !has('multi_byte')
++     return
++   endif
++ 
++   " Test with a few lowercase diacritics.
++   call assert_equal("AÀÁÂÃÄÅĀĂĄǍǞǠẢ", toupper("aàáâãäåāăąǎǟǡả"))
++   call assert_equal("BḂḆ", toupper("bḃḇ"))
++   call assert_equal("CÇĆĈĊČ", toupper("cçćĉċč"))
++   call assert_equal("DĎĐḊḎḐ", toupper("dďđḋḏḑ"))
++   call assert_equal("EÈÉÊËĒĔĖĘĚẺẼ", toupper("eèéêëēĕėęěẻẽ"))
++   call assert_equal("FḞ", toupper("fḟ"))
++   call assert_equal("GĜĞĠĢǤǦǴḠ", toupper("gĝğġģǥǧǵḡ"))
++   call assert_equal("HĤĦḢḦḨẖ", toupper("hĥħḣḧḩẖ"))
++   call assert_equal("IÌÍÎÏĨĪĬĮǏỈ", toupper("iìíîïĩīĭįǐỉ"))
++   call assert_equal("JĴǰ", toupper("jĵǰ"))
++   call assert_equal("KĶǨḰḴ", toupper("kķǩḱḵ"))
++   call assert_equal("LĹĻĽĿŁḺ", toupper("lĺļľŀłḻ"))
++   call assert_equal("MḾṀ ", toupper("mḿṁ "))
++   call assert_equal("NÑŃŅŇŉṄṈ", toupper("nñńņňŉṅṉ"))
++   call assert_equal("OÒÓÔÕÖØŌŎŐƠǑǪǬỎ", toupper("oòóôõöøōŏőơǒǫǭỏ"))
++   call assert_equal("PṔṖ", toupper("pṕṗ"))
++   call assert_equal("Q", toupper("q"))
++   call assert_equal("RŔŖŘṘṞ", toupper("rŕŗřṙṟ"))
++   call assert_equal("SŚŜŞŠṠ", toupper("sśŝşšṡ"))
++   call assert_equal("TŢŤŦṪṮẗ", toupper("tţťŧṫṯẗ"))
++   call assert_equal("UÙÚÛÜŨŪŬŮŰŲƯǓỦ", toupper("uùúûüũūŭůűųưǔủ"))
++   call assert_equal("VṼ", toupper("vṽ"))
++   call assert_equal("WŴẀẂẄẆẘ", toupper("wŵẁẃẅẇẘ"))
++   call assert_equal("ẊẌ", toupper("ẋẍ"))
++   call assert_equal("YÝŸŶẎẙỲỶỸ", toupper("yýÿŷẏẙỳỷỹ"))
++   call assert_equal("ZŹŻŽƵẐẔ", toupper("zźżžƶẑẕ"))
++ 
++   " Test that uppercase diacritics, which should remain unchanged.
++   call assert_equal("AÀÁÂÃÄÅĀĂĄǍǞǠẢ", toupper("AÀÁÂÃÄÅĀĂĄǍǞǠẢ"))
++   call assert_equal("BḂḆ", toupper("BḂḆ"))
++   call assert_equal("CÇĆĈĊČ", toupper("CÇĆĈĊČ"))
++   call assert_equal("DĎĐḊḎḐ", toupper("DĎĐḊḎḐ"))
++   call assert_equal("EÈÉÊËĒĔĖĘĚẺẼ", toupper("EÈÉÊËĒĔĖĘĚẺẼ"))
++   call assert_equal("FḞ ", toupper("FḞ "))
++   call assert_equal("GĜĞĠĢǤǦǴḠ", toupper("GĜĞĠĢǤǦǴḠ"))
++   call assert_equal("HĤĦḢḦḨ", toupper("HĤĦḢḦḨ"))
++   call assert_equal("IÌÍÎÏĨĪĬĮİǏỈ", toupper("IÌÍÎÏĨĪĬĮİǏỈ"))
++   call assert_equal("JĴ", toupper("JĴ"))
++   call assert_equal("KĶǨḰḴ", toupper("KĶǨḰḴ"))
++   call assert_equal("LĹĻĽĿŁḺ", toupper("LĹĻĽĿŁḺ"))
++   call assert_equal("MḾṀ", toupper("MḾṀ"))
++   call assert_equal("NÑŃŅŇṄṈ", toupper("NÑŃŅŇṄṈ"))
++   call assert_equal("OÒÓÔÕÖØŌŎŐƠǑǪǬỎ", toupper("OÒÓÔÕÖØŌŎŐƠǑǪǬỎ"))
++   call assert_equal("PṔṖ", toupper("PṔṖ"))
++   call assert_equal("Q", toupper("Q"))
++   call assert_equal("RŔŖŘṘṞ", toupper("RŔŖŘṘṞ"))
++   call assert_equal("SŚŜŞŠṠ", toupper("SŚŜŞŠṠ"))
++   call assert_equal("TŢŤŦṪṮ", toupper("TŢŤŦṪṮ"))
++   call assert_equal("UÙÚÛÜŨŪŬŮŰŲƯǓỦ", toupper("UÙÚÛÜŨŪŬŮŰŲƯǓỦ"))
++   call assert_equal("VṼ", toupper("VṼ"))
++   call assert_equal("WŴẀẂẄẆ", toupper("WŴẀẂẄẆ"))
++   call assert_equal("XẊẌ", toupper("XẊẌ"))
++   call assert_equal("YÝŶŸẎỲỶỸ", toupper("YÝŶŸẎỲỶỸ"))
++   call assert_equal("ZŹŻŽƵẐẔ", toupper("ZŹŻŽƵẐẔ"))
++ 
++   call assert_equal("ⱥ ⱦ", tolower("Ⱥ Ⱦ"))
++ endfunc
++ 
++ 
+*** ../vim-8.0.0242/src/version.c	2017-01-26 22:07:28.518844549 +0100
+--- src/version.c	2017-01-26 22:47:42.835465390 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     243,
+  /**/
+
+-- 
+Courtroom Quote #19:
+Q:  Doctor, how many autopsies have you performed on dead people?
+A:  All my autopsies have been performed on dead people.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

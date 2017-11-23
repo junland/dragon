@@ -1,0 +1,183 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0498
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0498
+Problem:    Two autocmd tests are skipped on MS-Windows.
+Solution:   Make the test pass on MS-Windows. Write the messages in a file
+            instead of getting the output of system().
+Files:      src/testdir/test_autocmd.vim
+
+
+*** ../vim-8.0.0497/src/testdir/test_autocmd.vim	2017-03-19 18:34:42.585604297 +0100
+--- src/testdir/test_autocmd.vim	2017-03-21 15:47:48.670132892 +0100
+***************
+*** 340,346 ****
+    call mkdir('Xdir')
+    split Xdir
+    call assert_equal('+++', g:val)
+!   bwipe!
+  
+    call delete('Xdir', 'd')
+    au! BufEnter
+--- 340,349 ----
+    call mkdir('Xdir')
+    split Xdir
+    call assert_equal('+++', g:val)
+! 
+!   " On MS-Windows we can't edit the directory, make sure we wipe the right
+!   " buffer.
+!   bwipe! Xdir
+  
+    call delete('Xdir', 'd')
+    au! BufEnter
+***************
+*** 349,388 ****
+  " Closing a window might cause an endless loop
+  " E814 for older Vims
+  function Test_autocmd_bufwipe_in_SessLoadPost()
+-   if has('win32')
+-     throw 'Skipped: test hangs on MS-Windows'
+-   endif
+    tabnew
+    set noswapfile
+-   let g:bufnr=bufnr('%')
+    mksession!
+  
+!   let content=['set nocp noswapfile',
+          \ 'let v:swapchoice="e"',
+          \ 'augroup test_autocmd_sessionload',
+          \ 'autocmd!',
+          \ 'autocmd SessionLoadPost * 4bw!',
+!         \ 'augroup END'
+          \ ]
+    call writefile(content, 'Xvimrc')
+!   let a=system(v:progpath. ' -u Xvimrc --noplugins -S Session.vim')
+!   call assert_match('E814', a)
+  
+-   unlet! g:bufnr
+    set swapfile
+!   for file in ['Session.vim', 'Xvimrc']
+      call delete(file)
+    endfor
+  endfunc
+  
+  " SEGV occurs in older versions.
+  function Test_autocmd_bufwipe_in_SessLoadPost2()
+-   if has('win32')
+-     throw 'Skipped: test hangs on MS-Windows'
+-   endif
+    tabnew
+    set noswapfile
+-   let g:bufnr=bufnr('%')
+    mksession!
+  
+    let content = ['set nocp noswapfile',
+--- 352,388 ----
+  " Closing a window might cause an endless loop
+  " E814 for older Vims
+  function Test_autocmd_bufwipe_in_SessLoadPost()
+    tabnew
+    set noswapfile
+    mksession!
+  
+!   let content = ['set nocp noswapfile',
+          \ 'let v:swapchoice="e"',
+          \ 'augroup test_autocmd_sessionload',
+          \ 'autocmd!',
+          \ 'autocmd SessionLoadPost * 4bw!',
+!         \ 'augroup END',
+! 	\ '',
+! 	\ 'func WriteErrors()',
+! 	\ '  call writefile([execute("messages")], "Xerrors")',
+! 	\ 'endfunc',
+! 	\ 'au VimLeave * call WriteErrors()',
+          \ ]
+    call writefile(content, 'Xvimrc')
+!   call system(v:progpath. ' -u Xvimrc --not-a-term --noplugins -S Session.vim -c cq')
+!   let errors = join(readfile('Xerrors'))
+!   call assert_match('E814', errors)
+  
+    set swapfile
+!   for file in ['Session.vim', 'Xvimrc', 'Xerrors']
+      call delete(file)
+    endfor
+  endfunc
+  
+  " SEGV occurs in older versions.
+  function Test_autocmd_bufwipe_in_SessLoadPost2()
+    tabnew
+    set noswapfile
+    mksession!
+  
+    let content = ['set nocp noswapfile',
+***************
+*** 397,416 ****
+        \ '      exec ''bwipeout '' . b',
+        \ '    endif',
+        \ '  endfor',
+!       \ 'call append("1", "SessionLoadPost DONE")',
+        \ 'endfunction',
+!       \ 'au SessionLoadPost * call DeleteInactiveBufs()']
+    call writefile(content, 'Xvimrc')
+!   let a=system(v:progpath. ' -u Xvimrc --noplugins -S Session.vim')
+!   " this probably only matches on unix
+!   if has("unix")
+!     call assert_notmatch('Caught deadly signal SEGV', a)
+!   endif
+!   call assert_match('SessionLoadPost DONE', a)
+  
+-   unlet! g:bufnr
+    set swapfile
+!   for file in ['Session.vim', 'Xvimrc']
+      call delete(file)
+    endfor
+  endfunc
+--- 397,420 ----
+        \ '      exec ''bwipeout '' . b',
+        \ '    endif',
+        \ '  endfor',
+!       \ '  echomsg "SessionLoadPost DONE"',
+        \ 'endfunction',
+!       \ 'au SessionLoadPost * call DeleteInactiveBufs()',
+!       \ '',
+!       \ 'func WriteErrors()',
+!       \ '  call writefile([execute("messages")], "Xerrors")',
+!       \ 'endfunc',
+!       \ 'au VimLeave * call WriteErrors()',
+!       \ ]
+    call writefile(content, 'Xvimrc')
+!   call system(v:progpath. ' -u Xvimrc --not-a-term --noplugins -S Session.vim -c cq')
+!   let errors = join(readfile('Xerrors'))
+!   " This probably only ever matches on unix.
+!   call assert_notmatch('Caught deadly signal SEGV', errors)
+!   call assert_match('SessionLoadPost DONE', errors)
+  
+    set swapfile
+!   for file in ['Session.vim', 'Xvimrc', 'Xerrors']
+      call delete(file)
+    endfor
+  endfunc
+*** ../vim-8.0.0497/src/version.c	2017-03-21 13:22:40.681468530 +0100
+--- src/version.c	2017-03-21 15:49:08.677553417 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     498,
+  /**/
+
+-- 
+If Microsoft would build a car...
+... You'd have to press the "Start" button to turn the engine off.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

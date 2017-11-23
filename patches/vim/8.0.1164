@@ -1,0 +1,181 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1164
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1164
+Problem:    Changing StatusLine highlight while evaluating 'statusline' may
+            not change the status line color.
+Solution:   When changing highlighting while redrawing don't cause another
+            redraw. (suggested by Ozaki Kiichi, closes #2171, closes #2120)
+Files:      src/buffer.c, src/syntax.c
+
+
+*** ../vim-8.0.1163/src/buffer.c	2017-09-17 19:07:58.524464106 +0200
+--- src/buffer.c	2017-09-30 15:59:57.391510095 +0200
+***************
+*** 3910,3916 ****
+      struct stl_hlrec *sp;
+      int		save_must_redraw = must_redraw;
+      int		save_redr_type = curwin->w_redr_type;
+-     int		save_highlight_shcnaged = need_highlight_changed;
+  
+  #ifdef FEAT_EVAL
+      /*
+--- 3910,3915 ----
+***************
+*** 4683,4694 ****
+  	sp->userhl = 0;
+      }
+  
+!     /* We do not want redrawing a stausline, ruler, title, etc. to trigger
+!      * another redraw, it may cause an endless loop.  This happens when a
+!      * statusline changes a highlight group. */
+!     must_redraw = save_must_redraw;
+!     curwin->w_redr_type = save_redr_type;
+!     need_highlight_changed = save_highlight_shcnaged;
+  
+      return width;
+  }
+--- 4682,4694 ----
+  	sp->userhl = 0;
+      }
+  
+!     /* When inside update_screen we do not want redrawing a stausline, ruler,
+!      * title, etc. to trigger another redraw, it may cause an endless loop. */
+!     if (updating_screen)
+!     {
+! 	must_redraw = save_must_redraw;
+! 	curwin->w_redr_type = save_redr_type;
+!     }
+  
+      return width;
+  }
+*** ../vim-8.0.1163/src/syntax.c	2017-09-28 22:35:21.394447828 +0200
+--- src/syntax.c	2017-09-30 15:58:44.143961060 +0200
+***************
+*** 7378,7383 ****
+--- 7378,7384 ----
+      int		id;
+      int		idx;
+      struct hl_group item_before;
++     int		did_change = FALSE;
+      int		dodefault = FALSE;
+      int		doclear = FALSE;
+      int		dolink = FALSE;
+***************
+*** 7787,7792 ****
+--- 7788,7794 ----
+  		/* GUI not started yet, always accept the name. */
+  		vim_free(HL_TABLE()[idx].sg_font_name);
+  		HL_TABLE()[idx].sg_font_name = vim_strsave(arg);
++ 		did_change = TRUE;
+  	    }
+  	    else
+  	    {
+***************
+*** 7815,7820 ****
+--- 7817,7823 ----
+  		    gui_mch_free_fontset(temp_sg_fontset);
+  		    vim_free(HL_TABLE()[idx].sg_font_name);
+  		    HL_TABLE()[idx].sg_font_name = vim_strsave(arg);
++ 		    did_change = TRUE;
+  		}
+  		else
+  		    HL_TABLE()[idx].sg_fontset = temp_sg_fontset;
+***************
+*** 7826,7831 ****
+--- 7829,7835 ----
+  		    gui_mch_free_font(temp_sg_font);
+  		    vim_free(HL_TABLE()[idx].sg_font_name);
+  		    HL_TABLE()[idx].sg_font_name = vim_strsave(arg);
++ 		    did_change = TRUE;
+  		}
+  		else
+  		    HL_TABLE()[idx].sg_font = temp_sg_font;
+***************
+*** 7991,7996 ****
+--- 7995,8001 ----
+  			    *namep = vim_strsave(arg);
+  			else
+  			    *namep = NULL;
++ 			did_change = TRUE;
+  		    }
+  # if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  #  ifdef FEAT_GUI_X11
+***************
+*** 8041,8046 ****
+--- 8046,8052 ----
+  			    *namep = vim_strsave(arg);
+  			else
+  			    *namep = NULL;
++ 			did_change = TRUE;
+  		    }
+  # if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  #  ifdef FEAT_GUI_X11
+***************
+*** 8090,8095 ****
+--- 8096,8102 ----
+  			    *namep = vim_strsave(arg);
+  			else
+  			    *namep = NULL;
++ 			did_change = TRUE;
+  		    }
+  # ifdef FEAT_GUI
+  		}
+***************
+*** 8259,8271 ****
+  
+      /* Only call highlight_changed() once, after a sequence of highlight
+       * commands, and only if an attribute actually changed. */
+!     if (memcmp(&HL_TABLE()[idx], &item_before, sizeof(item_before)) != 0
+  #if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  	    && !did_highlight_changed
+  #endif
+         )
+      {
+! 	redraw_all_later(NOT_VALID);
+  	need_highlight_changed = TRUE;
+      }
+  }
+--- 8266,8283 ----
+  
+      /* Only call highlight_changed() once, after a sequence of highlight
+       * commands, and only if an attribute actually changed. */
+!     if ((did_change
+! 	   || memcmp(&HL_TABLE()[idx], &item_before, sizeof(item_before)) != 0)
+  #if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  	    && !did_highlight_changed
+  #endif
+         )
+      {
+! 	/* Do not trigger a redraw when highlighting is changed while
+! 	 * redrawing.  This may happen when evaluating 'statusline' changes the
+! 	 * StatusLine group. */
+! 	if (!updating_screen)
+! 	    redraw_all_later(NOT_VALID);
+  	need_highlight_changed = TRUE;
+      }
+  }
+*** ../vim-8.0.1163/src/version.c	2017-09-30 14:39:23.625388928 +0200
+--- src/version.c	2017-09-30 15:49:54.023228820 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1164,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+235. You start naming your kids Pascal, COBOL, Algol and Fortran.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

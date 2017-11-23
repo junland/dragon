@@ -1,0 +1,515 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1200
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1200
+Problem:    Tests switch the bell off twice.
+Solution:   Don't set 'belloff' in individual tests. (Christian Brabandt)
+Files:      src/testdir/test_alot.vim, src/testdir/test_alot_utf8.vim,
+            src/testdir/test_autocmd.vim, src/testdir/test_cmdline.vim,
+            src/testdir/test_diffmode.vim, src/testdir/test_digraph.vim,
+            src/testdir/test_edit.vim, src/testdir/test_file_size.vim,
+            src/testdir/test_gn.vim, src/testdir/test_normal.vim,
+            src/testdir/test_packadd.vim, src/testdir/test_popup.vim,
+            src/testdir/test_recover.vim, src/testdir/test_search.vim,
+            src/testdir/test_textobjects.vim, src/testdir/test_undo.vim,
+            src/testdir/test_usercommands.vim, src/testdir/test_visual.vim
+
+
+*** ../vim-8.0.1199/src/testdir/test_alot.vim	2017-09-30 14:26:54.073993747 +0200
+--- src/testdir/test_alot.vim	2017-10-15 22:02:53.125610599 +0200
+***************
+*** 1,7 ****
+  " A series of tests that can run in one Vim invocation.
+  " This makes testing go faster, since Vim doesn't need to restart.
+  
+- set belloff=all
+  source test_assign.vim
+  source test_bufline.vim
+  source test_cd.vim
+--- 1,6 ----
+*** ../vim-8.0.1199/src/testdir/test_alot_utf8.vim	2017-07-08 14:29:14.624978815 +0200
+--- src/testdir/test_alot_utf8.vim	2017-10-15 22:02:53.125610599 +0200
+***************
+*** 5,11 ****
+  " runtest.vim.  Checking for the multi_byte feature is in the individual
+  " files, so that they can be run by themselves.
+  
+- set belloff=all
+  source test_charsearch_utf8.vim
+  source test_expr_utf8.vim
+  source test_matchadd_conceal_utf8.vim
+--- 5,10 ----
+*** ../vim-8.0.1199/src/testdir/test_autocmd.vim	2017-10-14 21:15:49.307655074 +0200
+--- src/testdir/test_autocmd.vim	2017-10-15 22:02:53.125610599 +0200
+***************
+*** 1,6 ****
+  " Tests for autocommands
+  
+- set belloff=all
+  
+  func! s:cleanup_buffers() abort
+    for bnr in range(1, bufnr('$'))
+--- 1,5 ----
+*** ../vim-8.0.1199/src/testdir/test_cmdline.vim	2017-08-06 15:22:10.305211941 +0200
+--- src/testdir/test_cmdline.vim	2017-10-15 22:02:53.125610599 +0200
+***************
+*** 1,6 ****
+  " Tests for editing the command line.
+  
+- set belloff=all
+  
+  func Test_complete_tab()
+    call writefile(['testfile'], 'Xtestfile')
+--- 1,5 ----
+*** ../vim-8.0.1199/src/testdir/test_diffmode.vim	2017-09-26 19:41:37.655288861 +0200
+--- src/testdir/test_diffmode.vim	2017-10-15 22:02:53.125610599 +0200
+***************
+*** 1,5 ****
+  " Tests for diff mode
+- set belloff=all
+  
+  func Test_diff_fold_sync()
+    enew!
+--- 1,4 ----
+*** ../vim-8.0.1199/src/testdir/test_digraph.vim	2017-03-08 22:55:14.914181221 +0100
+--- src/testdir/test_digraph.vim	2017-10-15 22:02:53.125610599 +0200
+***************
+*** 3,9 ****
+  if !has("digraphs") || !has("multi_byte")
+    finish
+  endif
+- set belloff=all
+  
+  func! Put_Dig(chars)
+    exe "norm! o\<c-k>".a:chars
+--- 3,8 ----
+*** ../vim-8.0.1199/src/testdir/test_edit.vim	2017-09-26 20:04:49.570671607 +0200
+--- src/testdir/test_edit.vim	2017-10-15 22:02:53.129610572 +0200
+***************
+*** 3,9 ****
+  if exists("+t_kD")
+    let &t_kD="[3;*~"
+  endif
+- set belloff=
+  
+  " Needed for testing basic rightleft: Test_edit_rightleft
+  source view_util.vim
+--- 3,8 ----
+***************
+*** 26,32 ****
+    " set for Travis CI?
+    "  set nocp noesckeys
+    new
+-   set belloff=backspace
+    " 1) empty buffer
+    call assert_equal([''], getline(1,'$'))
+    " 2) delete in an empty line
+--- 25,30 ----
+***************
+*** 59,65 ****
+    call cursor(1, 1)
+    call feedkeys("A\<del>\<esc>", 'tnix')
+    call assert_equal(["abc def", "ghi jkl"], getline(1, 2))
+-   set belloff=
+    let &bs=_bs
+    bw!
+  endfunc
+--- 57,62 ----
+***************
+*** 475,487 ****
+    new
+    call setline(1, repeat([''], 5))
+    call cursor(1, 1)
+-   set belloff=all
+    try
+      call feedkeys("A\<NUL>", 'tnix')
+    catch /^Vim\%((\a\+)\)\=:E29/
+      call assert_true(1, 'E29 error caught')
+    endtry
+-   set belloff=
+    call cursor(1, 1)
+    call feedkeys("Afoobar \<esc>", 'tnix')
+    call cursor(2, 1)
+--- 472,482 ----
+***************
+*** 510,516 ****
+  
+  func! Test_edit_CTRL_G()
+    new
+-   set belloff=all
+    call setline(1, ['foobar', 'foobar', 'foobar'])
+    call cursor(2, 4)
+    call feedkeys("ioooooooo\<c-g>k\<c-r>.\<esc>", 'tnix')
+--- 505,510 ----
+***************
+*** 524,530 ****
+    call assert_equal([0, 3, 7, 0], getpos('.'))
+    call feedkeys("i\<c-g>j\<esc>", 'tnix')
+    call assert_equal([0, 3, 6, 0], getpos('.'))
+-   set belloff=
+    bw!
+  endfunc
+  
+--- 518,523 ----
+***************
+*** 604,610 ****
+    %d
+    call setline(1, 'A')
+    call cursor(1, 1)
+-   set belloff=all
+    let v:testing = 1
+    try
+      call feedkeys("A\<c-x>\<c-k>\<esc>", 'tnix')
+--- 597,602 ----
+***************
+*** 612,618 ****
+      " error sleeps 2 seconds, when v:testing is not set
+      let v:testing = 0
+    endtry
+-   set belloff=
+    call delete('Xdictionary.txt')
+  
+    if has("multi_byte")
+--- 604,609 ----
+***************
+*** 853,859 ****
+    %d
+    call setline(1, 'mad')
+    call cursor(1, 1)
+-   set belloff=all
+    let v:testing = 1
+    try
+      call feedkeys("A\<c-x>\<c-t>\<esc>", 'tnix')
+--- 844,849 ----
+***************
+*** 861,867 ****
+      " error sleeps 2 seconds, when v:testing is not set
+      let v:testing = 0
+    endtry
+-   set belloff=
+    call assert_equal(['mad'], getline(1, '$'))
+    call delete('Xthesaurus')
+    bw!
+--- 851,856 ----
+***************
+*** 1033,1039 ****
+  func! Test_edit_LEFT_RIGHT()
+    " Left, Shift-Left, Right, Shift-Right
+    new
+-   set belloff=all
+    call setline(1, ['abc def ghi', 'ABC DEF GHI', 'ZZZ YYY XXX'])
+    let _ww=&ww
+    set ww=
+--- 1022,1027 ----
+***************
+*** 1075,1081 ****
+    call feedkeys("A\<s-right>\<esc>", 'tnix')
+    call assert_equal([0, 3, 1, 0], getpos('.'))
+    let &ww = _ww
+-   set belloff=
+    bw!
+  endfunc
+  
+--- 1063,1068 ----
+***************
+*** 1135,1141 ****
+  endfunc
+  
+  func! Test_edit_PAGEUP_PAGEDOWN()
+-   set belloff=all
+    10new
+    call setline(1, repeat(['abc def ghi'], 30))
+    call cursor(1, 1)
+--- 1122,1127 ----
+***************
+*** 1231,1242 ****
+    call assert_equal([0, 30, 11, 0], getpos('.'))
+    call feedkeys("A\<S-Down>\<esc>", 'tnix')
+    call assert_equal([0, 30, 11, 0], getpos('.'))
+-   set startofline belloff=
+    bw!
+  endfunc
+  
+  func! Test_edit_forbidden()
+-   set belloff=error,esc
+    new
+    " 1) edit in the sandbox is not allowed
+    call setline(1, 'a')
+--- 1217,1226 ----
+***************
+*** 1293,1299 ****
+        set norevins nofkmap
+      endtry
+    endif
+-   set belloff=
+    bw!
+  endfunc
+  
+--- 1277,1282 ----
+*** ../vim-8.0.1199/src/testdir/test_file_size.vim	2017-09-28 21:51:52.574655020 +0200
+--- src/testdir/test_file_size.vim	2017-10-15 22:02:53.129610572 +0200
+***************
+*** 13,19 ****
+    endif
+  
+    new
+!   set belloff=all fileformat=unix undolevels=-1
+    for i in range(1, 2000000, 100)
+        call append(i, range(i, i + 99))
+    endfor
+--- 13,19 ----
+    endif
+  
+    new
+!   set fileformat=unix undolevels=-1
+    for i in range(1, 2000000, 100)
+        call append(i, range(i, i + 99))
+    endfor
+***************
+*** 26,32 ****
+  
+    enew!
+    call delete('Xtest')
+!   set belloff& fileformat& undolevels&
+  endfunc
+  
+  " Test for writing and reading a file of over 100 Kbyte
+--- 26,32 ----
+  
+    enew!
+    call delete('Xtest')
+!   set fileformat& undolevels&
+  endfunc
+  
+  " Test for writing and reading a file of over 100 Kbyte
+*** ../vim-8.0.1199/src/testdir/test_gn.vim	2017-09-26 12:28:41.546679685 +0200
+--- src/testdir/test_gn.vim	2017-10-15 22:02:53.129610572 +0200
+***************
+*** 1,7 ****
+  " Test for gn command
+  
+  func Test_gn_command()
+-   set belloff=all
+    noautocmd new
+    " replace a single char by itsself quoted:
+    call setline('.', 'abc x def x ghi x jkl')
+--- 1,6 ----
+***************
+*** 121,127 ****
+    sil! %d_
+  
+    set wrapscan&vim
+-   set belloff&vim
+  endfu
+  
+  " vim: shiftwidth=2 sts=2 expandtab
+--- 120,125 ----
+*** ../vim-8.0.1199/src/testdir/test_normal.vim	2017-09-16 20:54:47.122560269 +0200
+--- src/testdir/test_normal.vim	2017-10-15 22:02:53.129610572 +0200
+***************
+*** 1,6 ****
+  " Test for various Normal mode commands
+  
+- set belloff=all
+  func! Setup_NewWindow()
+    10new
+    call setline(1, range(1,100))
+--- 1,5 ----
+*** ../vim-8.0.1199/src/testdir/test_packadd.vim	2017-03-09 13:57:58.283298820 +0100
+--- src/testdir/test_packadd.vim	2017-10-15 22:02:53.129610572 +0200
+***************
+*** 1,6 ****
+  " Tests for 'packpath' and :packadd
+  
+- set belloff=all
+  
+  func SetUp()
+    let s:topdir = expand('%:h') . '/Xdir'
+--- 1,5 ----
+*** ../vim-8.0.1199/src/testdir/test_popup.vim	2017-10-07 20:03:19.323835305 +0200
+--- src/testdir/test_popup.vim	2017-10-15 22:02:53.129610572 +0200
+***************
+*** 38,44 ****
+  func! Test_popup_complete()
+    new
+    inoremap <f5> <c-r>=ListMonths()<cr>
+-   set belloff=all
+  
+    " <C-E> - select original typed text before the completion started
+    call feedkeys("aJu\<f5>\<down>\<c-e>\<esc>", 'tx')
+--- 38,43 ----
+***************
+*** 215,221 ****
+    call feedkeys("aM\<f5>\<enter>\<esc>", 'tx')
+    call assert_equal(["March", "M", "March"], getline(1,4))
+    %d
+-   set belloff&
+  endfu
+  
+  
+--- 214,219 ----
+***************
+*** 517,523 ****
+  
+  func Test_completion_respect_bs_option()
+    new
+-   set belloff=all
+    let li = ["aaa", "aaa12345", "aaaabcdef", "aaaABC"]
+  
+    set bs=indent,eol
+--- 515,520 ----
+***************
+*** 533,539 ****
+    call feedkeys("A\<C-X>\<C-N>\<C-P>\<BS>\<BS>\<BS>\<Esc>", "tx")
+    call assert_equal('', getline(1))
+  
+-   set belloff&
+    bw!
+  endfunc
+  
+--- 530,535 ----
+***************
+*** 620,626 ****
+  
+  func Test_complete_CTRLN_startofbuffer()
+    new
+-   set belloff=all
+    call setline(1, [ 'organize(cupboard, 3, 2);',
+          \ 'prioritize(bureau, 8, 7);',
+          \ 'realize(bannister, 4, 4);',
+--- 616,621 ----
+***************
+*** 631,637 ****
+          \ 'railing.moralize(3,9);']
+    call feedkeys("qai\<c-n>\<c-n>.\<esc>3wdW\<cr>q3@a", 'tx')
+    call assert_equal(expected, getline(1,'$'))
+-   set belloff&
+    bwipe!
+  endfunc
+  
+--- 626,631 ----
+*** ../vim-8.0.1199/src/testdir/test_recover.vim	2017-10-12 21:28:53.969436351 +0200
+--- src/testdir/test_recover.vim	2017-10-15 22:02:53.129610572 +0200
+***************
+*** 21,27 ****
+  " We need about 10000 lines of 100 characters to get two levels of pointer
+  " blocks.
+  func Test_swap_file()
+!   set fileformat=unix undolevels=-1 belloff=all
+    edit! Xtest
+    let text = "\tabcdefghijklmnoparstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnoparstuvwxyz0123456789"
+    let i = 1
+--- 21,27 ----
+  " We need about 10000 lines of 100 characters to get two levels of pointer
+  " blocks.
+  func Test_swap_file()
+!   set fileformat=unix undolevels=-1
+    edit! Xtest
+    let text = "\tabcdefghijklmnoparstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnoparstuvwxyz0123456789"
+    let i = 1
+*** ../vim-8.0.1199/src/testdir/test_search.vim	2017-09-28 21:51:52.574655020 +0200
+--- src/testdir/test_search.vim	2017-10-15 22:02:53.129610572 +0200
+***************
+*** 1,6 ****
+  " Test for the search command
+  
+- set belloff=all
+  func Test_search_cmdline()
+    if !exists('+incsearch')
+      return
+--- 1,5 ----
+*** ../vim-8.0.1199/src/testdir/test_textobjects.vim	2017-09-28 21:51:52.578654996 +0200
+--- src/testdir/test_textobjects.vim	2017-10-15 22:02:53.129610572 +0200
+***************
+*** 4,10 ****
+    finish
+  endif
+  
+- set belloff=all
+  func CpoM(line, useM, expected)
+    new
+  
+--- 4,9 ----
+*** ../vim-8.0.1199/src/testdir/test_undo.vim	2017-03-08 22:55:14.918181192 +0100
+--- src/testdir/test_undo.vim	2017-10-15 22:02:53.129610572 +0200
+***************
+*** 3,9 ****
+  " undo-able pieces.  Do that by setting 'undolevels'.
+  " Also tests :earlier and :later.
+  
+- set belloff=all
+  func Test_undotree()
+    exe "normal Aabc\<Esc>"
+    set ul=100
+--- 3,8 ----
+*** ../vim-8.0.1199/src/testdir/test_usercommands.vim	2017-03-08 22:55:14.918181192 +0100
+--- src/testdir/test_usercommands.vim	2017-10-15 22:02:53.129610572 +0200
+***************
+*** 1,7 ****
+  " Tests for user defined commands
+  
+  " Test for <mods> in user defined commands
+- set belloff=all
+  function Test_cmdmods()
+    let g:mods = ''
+  
+--- 1,6 ----
+*** ../vim-8.0.1199/src/testdir/test_visual.vim	2017-08-07 22:02:09.319624624 +0200
+--- src/testdir/test_visual.vim	2017-10-15 22:02:53.129610572 +0200
+***************
+*** 3,9 ****
+    finish
+  endif
+  
+- set belloff=all
+  
+  func Test_block_shift_multibyte()
+    " Uses double-wide character.
+--- 3,8 ----
+***************
+*** 76,82 ****
+  endfunc
+  
+  func Test_visual_mode_reset()
+-   set belloff=all
+    enew
+    let g:msg="Everything's fine."
+    enew
+--- 75,80 ----
+***************
+*** 89,93 ****
+    exe "normal! GV:call TriggerTheProblem()\<CR>"
+    call assert_equal("Everything's fine.", g:msg)
+  
+-   set belloff&
+  endfunc
+--- 87,91 ----
+    exe "normal! GV:call TriggerTheProblem()\<CR>"
+    call assert_equal("Everything's fine.", g:msg)
+  
+  endfunc
++ 
+*** ../vim-8.0.1199/src/version.c	2017-10-15 21:46:57.700140459 +0200
+--- src/version.c	2017-10-15 22:07:10.167854253 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1200,
+  /**/
+
+-- 
+Q: How does a UNIX Guru do Sex ?
+A: unzip;strip;touch;finger;mount;fsck;more;yes;umount;sleep
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

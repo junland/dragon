@@ -1,0 +1,74 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1243
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1243
+Problem:    No test for what 8.0.1227 fixes.
+Solution:   Add a test that triggers the problem. (Christian Brabandt)
+Files:      src/testdir/test_normal.vim, src/testdir/test_search.vim
+
+
+*** ../vim-8.0.1242/src/testdir/test_normal.vim	2017-10-15 22:07:35.211683156 +0200
+--- src/testdir/test_normal.vim	2017-11-02 15:59:42.764280726 +0100
+***************
+*** 1208,1213 ****
+--- 1208,1220 ----
+    call assert_match("Word 'goood' added to ./Xspellfile2.add", a)
+    call assert_equal('goood', cnt[0])
+  
++   " Test for :spellgood!
++   let temp = execute(':spe!0/0')
++   call assert_match('Invalid region', temp)
++   let spellfile = matchstr(temp, 'Invalid region nr in \zs.*\ze line \d: 0')
++   call assert_equal(['# goood', '# goood/!', '#oood', '0/0'], readfile(spellfile))
++   call delete(spellfile)
++ 
+    " clean up
+    exe "lang" oldlang
+    call delete("./Xspellfile.add")
+*** ../vim-8.0.1242/src/testdir/test_search.vim	2017-10-30 21:48:36.482732724 +0100
+--- src/testdir/test_search.vim	2017-11-02 15:57:04.761240907 +0100
+***************
+*** 567,569 ****
+--- 567,584 ----
+  
+    bwipe!
+  endfunc
++ 
++ func Test_search_undefined_behaviour()
++   if !has("terminal")
++     return
++   endif
++   let h = winheight(0)
++   if h < 3
++     return
++   endif
++   " did cause an undefined left shift
++   let g:buf = term_start([GetVimProg(), '--clean', '-e', '-s', '-c', 'call search(getline("."))', 'samples/test000'], {'term_rows': 3})
++   call assert_equal([''], getline(1, '$'))
++   call term_sendkeys(g:buf, ":qa!\<cr>")
++   bwipe!
++ endfunc
+*** ../vim-8.0.1242/src/version.c	2017-11-02 15:44:07.917903684 +0100
+--- src/version.c	2017-11-02 15:46:51.164925137 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1243,
+  /**/
+
+-- 
+Q: What kind of stuff do you do?
+A: I collect hobbies.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

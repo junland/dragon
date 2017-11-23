@@ -1,0 +1,146 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0962
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0962
+Problem:    Crash with virtualedit and joining lines. (Joshua T Corbin, Neovim
+            #6726)
+Solution:   When using a mark check that coladd is valid.
+Files:      src/normal.c, src/misc2.c, src/Makefile,
+            src/testdir/test_virtualedit.vim, src/testdir/test_alot.vim
+
+
+*** ../vim-8.0.0961/src/normal.c	2017-08-16 22:45:57.681684043 +0200
+--- src/normal.c	2017-08-19 15:04:31.940273916 +0200
+***************
+*** 1571,1577 ****
+--- 1571,1582 ----
+  
+  	    oap->start = VIsual;
+  	    if (VIsual_mode == 'V')
++ 	    {
+  		oap->start.col = 0;
++ # ifdef FEAT_VIRTUALEDIT
++ 		oap->start.coladd = 0;
++ # endif
++ 	    }
+  	}
+  
+  	/*
+***************
+*** 7580,7585 ****
+--- 7585,7591 ----
+      if (!virtual_active())
+  	curwin->w_cursor.coladd = 0;
+  #endif
++     check_cursor_col();
+  #ifdef FEAT_FOLDING
+      if (cap->oap->op_type == OP_NOP
+  	    && pos != NULL
+*** ../vim-8.0.0961/src/misc2.c	2017-07-22 21:11:49.260678364 +0200
+--- src/misc2.c	2017-08-19 14:58:21.842539956 +0200
+***************
+*** 605,611 ****
+--- 605,622 ----
+      else if (ve_flags == VE_ALL)
+      {
+  	if (oldcoladd > win->w_cursor.col)
++ 	{
+  	    win->w_cursor.coladd = oldcoladd - win->w_cursor.col;
++ 	    if (win->w_cursor.col < len && win->w_cursor.coladd > 0)
++ 	    {
++ 		int cs, ce;
++ 
++ 		/* check that coladd is not more than the char width */
++ 		getvcol(win, &win->w_cursor, &cs, NULL, &ce);
++ 		if (win->w_cursor.coladd > ce - cs)
++ 		    win->w_cursor.coladd = ce - cs;
++ 	    }
++ 	}
+  	else
+  	    /* avoid weird number when there is a miscalculation or overflow */
+  	    win->w_cursor.coladd = 0;
+*** ../vim-8.0.0961/src/Makefile	2017-08-07 22:02:09.323624594 +0200
+--- src/Makefile	2017-08-19 14:53:52.964182348 +0200
+***************
+*** 2274,2279 ****
+--- 2277,2283 ----
+  	test_utf8_comparisons \
+  	test_viminfo \
+  	test_vimscript \
++ 	test_virtualedit \
+  	test_visual \
+  	test_window_cmd \
+  	test_window_id \
+*** ../vim-8.0.0961/src/testdir/test_virtualedit.vim	2017-08-19 15:02:03.121186699 +0200
+--- src/testdir/test_virtualedit.vim	2017-08-19 14:55:18.971657056 +0200
+***************
+*** 0 ****
+--- 1,31 ----
++ " Tests for 'virtualedit'.
++ 
++ func Test_yank_move_change()
++   split
++   call setline(1, [
++ 	\ "func foo() error {",
++ 	\ "\tif n, err := bar();",
++ 	\ "\terr != nil {",
++ 	\ "\t\treturn err",
++ 	\ "\t}",
++ 	\ "\tn = n * n",
++ 	\ ])
++   set virtualedit=all
++   set ts=4
++   function! MoveSelectionDown(count) abort
++     normal! m`
++     silent! exe "'<,'>move'>+".a:count
++     norm! ``
++   endfunction
++ 
++   xmap ]e :<C-U>call MoveSelectionDown(v:count1)<CR>
++   2
++   normal 2gg
++   normal J
++   normal jVj
++   normal ]e
++   normal ce
++   bwipe!
++   set virtualedit=
++   set ts=8
++ endfunc
+*** ../vim-8.0.0961/src/testdir/test_alot.vim	2017-07-08 14:29:14.624978815 +0200
+--- src/testdir/test_alot.vim	2017-08-19 14:52:39.892628581 +0200
+***************
+*** 55,58 ****
+--- 55,59 ----
+  source test_timers.vim
+  source test_true_false.vim
+  source test_unlet.vim
++ source test_virtualedit.vim
+  source test_window_cmd.vim
+*** ../vim-8.0.0961/src/version.c	2017-08-19 13:29:13.563444431 +0200
+--- src/version.c	2017-08-19 15:02:12.953126400 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     962,
+  /**/
+
+-- 
+   A village.  Sound of chanting of Latin canon, punctuated by short, sharp
+   cracks.  It comes nearer.  We see it is a line of MONKS ala SEVENTH SEAL
+   flagellation scene, chanting and banging themselves on the foreheads with
+   wooden boards.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

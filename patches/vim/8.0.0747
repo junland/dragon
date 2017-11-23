@@ -1,0 +1,77 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0747
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0747
+Problem:    :terminal without an argument doesn't work.
+Solution:   Use the 'shell' option. (Yasuhiro Matsumoto, closes #1860)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0746/src/terminal.c	2017-07-22 18:38:54.978753810 +0200
+--- src/terminal.c	2017-07-22 18:59:49.377633342 +0200
+***************
+*** 36,42 ****
+   *   up.
+   * - set buffer options to be scratch, hidden, nomodifiable, etc.
+   * - set buffer name to command, add (1) to avoid duplicates.
+-  * - If [command] is not given the 'shell' option is used.
+   * - Add a scrollback buffer (contains lines to scroll off the top).
+   *   Can use the buf_T lines, store attributes somewhere else?
+   * - When the job ends:
+--- 36,41 ----
+***************
+*** 163,168 ****
+--- 162,168 ----
+      exarg_T	split_ea;
+      win_T	*old_curwin = curwin;
+      term_T	*term;
++     char_u	*cmd = eap->arg;
+  
+      if (check_restricted() || check_secure())
+  	return;
+***************
+*** 195,202 ****
+  
+      set_term_and_win_size(term);
+  
+      /* System dependent: setup the vterm and start the job in it. */
+!     if (term_and_job_init(term, term->tl_rows, term->tl_cols, eap->arg) == OK)
+      {
+  	/* store the size we ended up with */
+  	vterm_get_size(term->tl_vterm, &term->tl_rows, &term->tl_cols);
+--- 195,205 ----
+  
+      set_term_and_win_size(term);
+  
++     if (cmd == NULL || *cmd == NUL)
++ 	cmd = p_sh;
++ 
+      /* System dependent: setup the vterm and start the job in it. */
+!     if (term_and_job_init(term, term->tl_rows, term->tl_cols, cmd) == OK)
+      {
+  	/* store the size we ended up with */
+  	vterm_get_size(term->tl_vterm, &term->tl_rows, &term->tl_cols);
+*** ../vim-8.0.0746/src/version.c	2017-07-22 18:38:54.978753810 +0200
+--- src/version.c	2017-07-22 19:03:00.404245887 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     747,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+209. Your house stinks because you haven't cleaned it in a week.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,96 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0211
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0211 (after 8.0.0210)
+Problem:    Build fails if the multi-byte feature is disabled.
+Solution:   Change #ifdef around ins_char_bytes.
+Files:      src/misc1.c
+
+
+*** ../vim-8.0.0210/src/misc1.c	2017-01-12 21:44:45.142171836 +0100
+--- src/misc1.c	2017-01-21 21:47:16.948216111 +0100
+***************
+*** 2177,2192 ****
+      void
+  ins_char(int c)
+  {
+- #if defined(FEAT_MBYTE) || defined(PROTO)
+      char_u	buf[MB_MAXBYTES + 1];
+!     int		n;
+  
+      n = (*mb_char2bytes)(c, buf);
+  
+      /* When "c" is 0x100, 0x200, etc. we don't want to insert a NUL byte.
+       * Happens for CTRL-Vu9900. */
+      if (buf[0] == 0)
+  	buf[0] = '\n';
+  
+      ins_char_bytes(buf, n);
+  }
+--- 2177,2195 ----
+      void
+  ins_char(int c)
+  {
+      char_u	buf[MB_MAXBYTES + 1];
+!     int		n = 1;
+  
++ #if defined(FEAT_MBYTE) || defined(PROTO)
+      n = (*mb_char2bytes)(c, buf);
+  
+      /* When "c" is 0x100, 0x200, etc. we don't want to insert a NUL byte.
+       * Happens for CTRL-Vu9900. */
+      if (buf[0] == 0)
+  	buf[0] = '\n';
++ #else
++     buf[0] = c;
++ #endif
+  
+      ins_char_bytes(buf, n);
+  }
+***************
+*** 2195,2201 ****
+  ins_char_bytes(char_u *buf, int charlen)
+  {
+      int		c = buf[0];
+- #endif
+      int		newlen;		/* nr of bytes inserted */
+      int		oldlen;		/* nr of bytes deleted (0 when not replacing) */
+      char_u	*p;
+--- 2198,2203 ----
+***************
+*** 2218,2228 ****
+  
+      /* The lengths default to the values for when not replacing. */
+      oldlen = 0;
+- #ifdef FEAT_MBYTE
+      newlen = charlen;
+- #else
+-     newlen = 1;
+- #endif
+  
+      if (State & REPLACE_FLAG)
+      {
+--- 2220,2226 ----
+*** ../vim-8.0.0210/src/version.c	2017-01-21 20:04:17.570757762 +0100
+--- src/version.c	2017-01-21 22:49:46.558730896 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     211,
+  /**/
+
+-- 
+Just think of all the things we haven't thought of yet.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

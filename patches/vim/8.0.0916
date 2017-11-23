@@ -1,0 +1,237 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0916
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0916
+Problem:    Cannot specify properties of window for when opening a window for
+            a finished terminal job.
+Solution:   Add "term_opencmd".
+Files:      src/channel.c, src/structs.h, src/terminal.c,
+            runtime/doc/eval.txt, src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0915/src/channel.c	2017-08-12 14:32:25.898039925 +0200
+--- src/channel.c	2017-08-12 15:44:35.544766953 +0200
+***************
+*** 4434,4439 ****
+--- 4434,4461 ----
+  		opt->jo_set2 |= JO2_TERM_FINISH;
+  		opt->jo_term_finish = *val;
+  	    }
++ 	    else if (STRCMP(hi->hi_key, "term_opencmd") == 0)
++ 	    {
++ 		char_u *p;
++ 
++ 		if (!(supported2 & JO2_TERM_OPENCMD))
++ 		    break;
++ 		opt->jo_set2 |= JO2_TERM_OPENCMD;
++ 		p = opt->jo_term_opencmd = get_tv_string_chk(item);
++ 		if (p != NULL)
++ 		{
++ 		    /* Must have %d and no other %. */
++ 		    p = vim_strchr(p, '%');
++ 		    if (p != NULL && (p[1] != 'd'
++ 					    || vim_strchr(p + 2, '%') != NULL))
++ 			p = NULL;
++ 		}
++ 		if (p == NULL)
++ 		{
++ 		    EMSG2(_(e_invarg2), "term_opencmd");
++ 		    return FAIL;
++ 		}
++ 	    }
+  	    else if (STRCMP(hi->hi_key, "term_rows") == 0)
+  	    {
+  		if (!(supported2 & JO2_TERM_ROWS))
+*** ../vim-8.0.0915/src/structs.h	2017-08-12 14:32:25.898039925 +0200
+--- src/structs.h	2017-08-12 15:38:26.510915235 +0200
+***************
+*** 1693,1699 ****
+  #define JO2_VERTICAL	    0x0100	/* "vertical" */
+  #define JO2_CURWIN	    0x0200	/* "curwin" */
+  #define JO2_HIDDEN	    0x0400	/* "hidden" */
+! #define JO2_ALL		    0x07FF
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+  #define JO_CB_ALL \
+--- 1693,1700 ----
+  #define JO2_VERTICAL	    0x0100	/* "vertical" */
+  #define JO2_CURWIN	    0x0200	/* "curwin" */
+  #define JO2_HIDDEN	    0x0400	/* "hidden" */
+! #define JO2_TERM_OPENCMD    0x0800	/* "term_opencmd" */
+! #define JO2_ALL		    0x0FFF
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+  #define JO_CB_ALL \
+***************
+*** 1757,1762 ****
+--- 1758,1764 ----
+      int		jo_curwin;
+      int		jo_hidden;
+      char_u	*jo_term_name;
++     char_u	*jo_term_opencmd;
+      int		jo_term_finish;
+  #endif
+  } jobopt_T;
+*** ../vim-8.0.0915/src/terminal.c	2017-08-12 14:52:11.739135421 +0200
+--- src/terminal.c	2017-08-12 15:47:57.515582164 +0200
+***************
+*** 36,43 ****
+   * that buffer, attributes come from the scrollback buffer tl_scrollback.
+   *
+   * TODO:
+-  * - When using term_finish "open" have a way to specify how the window is to
+-  *   be opened.  E.g. term_opencmd "10split buffer %d".
+   * - support different cursor shapes, colors and attributes
+   * - make term_getcursor() return type (none/block/bar/underline) and
+   *   attributes (color, blink, etc.)
+--- 36,41 ----
+***************
+*** 119,124 ****
+--- 117,123 ----
+      int		tl_normal_mode; /* TRUE: Terminal-Normal mode */
+      int		tl_channel_closed;
+      int		tl_finish;	/* 'c' for ++close, 'o' for ++open */
++     char_u	*tl_opencmd;
+  
+  #ifdef WIN3264
+      void	*tl_winpty_config;
+***************
+*** 365,370 ****
+--- 364,372 ----
+      }
+      curbuf->b_fname = curbuf->b_ffname;
+  
++     if (opt->jo_term_opencmd != NULL)
++ 	term->tl_opencmd = vim_strsave(opt->jo_term_opencmd);
++ 
+      set_string_option_direct((char_u *)"buftype", -1,
+  				  (char_u *)"terminal", OPT_FREE|OPT_LOCAL, 0);
+  
+***************
+*** 514,519 ****
+--- 516,522 ----
+      term_free_vterm(term);
+      vim_free(term->tl_title);
+      vim_free(term->tl_status_text);
++     vim_free(term->tl_opencmd);
+      vim_free(term);
+      buf->b_term = NULL;
+  }
+***************
+*** 1539,1545 ****
+  
+  		    /* TODO: use term_opencmd */
+  		    ch_log(NULL, "terminal job finished, opening window");
+! 		    vim_snprintf(buf, sizeof(buf), "botright sbuf %d", fnum);
+  		    do_cmdline_cmd((char_u *)buf);
+  		}
+  		else
+--- 1542,1550 ----
+  
+  		    /* TODO: use term_opencmd */
+  		    ch_log(NULL, "terminal job finished, opening window");
+! 		    vim_snprintf(buf, sizeof(buf),
+! 			    term->tl_opencmd == NULL
+! 				? "botright sbuf %d" : term->tl_opencmd, fnum);
+  		    do_cmdline_cmd((char_u *)buf);
+  		}
+  		else
+***************
+*** 2434,2440 ****
+  	    && get_job_options(&argvars[1], &opt,
+  		JO_TIMEOUT_ALL + JO_STOPONEXIT
+  		    + JO_EXIT_CB + JO_CLOSE_CALLBACK,
+! 		JO2_TERM_NAME + JO2_TERM_FINISH + JO2_HIDDEN
+  		    + JO2_TERM_COLS + JO2_TERM_ROWS + JO2_VERTICAL + JO2_CURWIN
+  		    + JO2_CWD + JO2_ENV) == FAIL)
+  	return;
+--- 2439,2445 ----
+  	    && get_job_options(&argvars[1], &opt,
+  		JO_TIMEOUT_ALL + JO_STOPONEXIT
+  		    + JO_EXIT_CB + JO_CLOSE_CALLBACK,
+! 		JO2_TERM_NAME + JO2_TERM_FINISH + JO2_HIDDEN + JO2_TERM_OPENCMD
+  		    + JO2_TERM_COLS + JO2_TERM_ROWS + JO2_VERTICAL + JO2_CURWIN
+  		    + JO2_CWD + JO2_ENV) == FAIL)
+  	return;
+*** ../vim-8.0.0915/runtime/doc/eval.txt	2017-08-11 22:27:44.509127632 +0200
+--- runtime/doc/eval.txt	2017-08-12 15:48:52.391260432 +0200
+***************
+*** 8085,8090 ****
+--- 8085,8096 ----
+  					"open": open window if needed
+  				     Note that "open" can be interruptive.
+  				     See |term++close| and |term++open|.
++ 		   "term_opencmd"    command to use for opening the window when
++ 				     "open" is used for "term_finish"; must
++ 				     have "%d" where the buffer number goes,
++ 				     e.g. "10split|buffer %d"; when not
++ 				     specified "botright sbuf %d" is used
++ 
+  		{only available when compiled with the |+terminal| feature}
+  
+  term_wait({buf} [, {time}])					*term_wait()*
+*** ../vim-8.0.0915/src/testdir/test_terminal.vim	2017-08-12 14:32:25.902039902 +0200
+--- src/testdir/test_terminal.vim	2017-08-12 15:58:59.711704408 +0200
+***************
+*** 320,326 ****
+  
+  endfunc
+  
+! func Test_finish_close()
+    call assert_equal(1, winnr('$'))
+  
+    if s:python != ''
+--- 320,326 ----
+  
+  endfunc
+  
+! func Test_finish_open_close()
+    call assert_equal(1, winnr('$'))
+  
+    if s:python != ''
+***************
+*** 371,376 ****
+--- 371,389 ----
+    call WaitFor("winnr('$') == 2", waittime)
+    call assert_equal(2, winnr('$'))
+    bwipe
++ 
++   call assert_fails("call term_start(cmd, {'term_opencmd': 'open'})", 'E475:')
++   call assert_fails("call term_start(cmd, {'term_opencmd': 'split %x'})", 'E475:')
++   call assert_fails("call term_start(cmd, {'term_opencmd': 'split %d and %s'})", 'E475:')
++   call assert_fails("call term_start(cmd, {'term_opencmd': 'split % and %d'})", 'E475:')
++ 
++   call term_start(cmd, {'term_finish': 'open', 'term_opencmd': '4split | buffer %d'})
++   close
++   call WaitFor("winnr('$') == 2", waittime)
++   call assert_equal(2, winnr('$'))
++   call assert_equal(4, winheight(0))
++   bwipe
++ 
+  endfunc
+  
+  func Test_terminal_cwd()
+*** ../vim-8.0.0915/src/version.c	2017-08-12 15:15:29.570927422 +0200
+--- src/version.c	2017-08-12 15:59:46.531430600 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     916,
+  /**/
+
+-- 
+Beer & pretzels can't be served at the same time in any bar or restaurant.
+		[real standing law in North Dakota, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

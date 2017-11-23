@@ -1,0 +1,228 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0474
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0474
+Problem:    The client-server feature is not tested.
+Solution:   Add a test.
+Files:      src/Makefile, src/testdir/Make_all.mak, src/testdir/shared.vim,
+            src/testdir/test_clientserver.vim, src/os_mswin.c
+
+
+*** ../vim-8.0.0473/src/Makefile	2017-03-12 16:32:27.490343281 +0100
+--- src/Makefile	2017-03-18 15:16:07.258504429 +0100
+***************
+*** 2097,2107 ****
+  	test_breakindent \
+  	test_bufwintabinfo \
+  	test_cdo \
+  	test_channel \
+  	test_charsearch \
+  	test_charsearch_utf8 \
+- 	test_changedtick \
+  	test_cindent \
+  	test_cmdline \
+  	test_command_count \
+  	test_crypt \
+--- 2096,2107 ----
+  	test_breakindent \
+  	test_bufwintabinfo \
+  	test_cdo \
++ 	test_changedtick \
+  	test_channel \
+  	test_charsearch \
+  	test_charsearch_utf8 \
+  	test_cindent \
++ 	test_clientserver \
+  	test_cmdline \
+  	test_command_count \
+  	test_crypt \
+*** ../vim-8.0.0473/src/testdir/Make_all.mak	2017-03-09 18:19:58.161107848 +0100
+--- src/testdir/Make_all.mak	2017-03-18 15:16:19.070420050 +0100
+***************
+*** 144,149 ****
+--- 144,150 ----
+  	    test_channel.res \
+  	    test_charsearch.res \
+  	    test_cindent.res \
++ 	    test_clientserver.res \
+  	    test_cmdline.res \
+  	    test_command_count.res \
+  	    test_crypt.res \
+*** ../vim-8.0.0473/src/testdir/shared.vim	2017-03-02 22:42:56.944691932 +0100
+--- src/testdir/shared.vim	2017-03-18 15:24:58.030713075 +0100
+***************
+*** 164,169 ****
+--- 164,185 ----
+    call feedkeys('x', 'nt')
+  endfunc
+  
++ " Get the command to run Vim, with -u NONE and --not-a-term arguments.
++ " Returns an empty string on error.
++ func GetVimCommand()
++   if !filereadable('vimcmd')
++     return ''
++   endif
++   let cmd = readfile('vimcmd')[0]
++   let cmd = substitute(cmd, '-u \f\+', '-u NONE', '')
++   if cmd !~ '-u NONE'
++     let cmd = cmd . ' -u NONE'
++   endif
++   let cmd .= ' --not-a-term'
++   let cmd = substitute(cmd, 'VIMRUNTIME=.*VIMRUNTIME;', '', '')
++   return cmd
++ endfunc
++ 
+  " Run Vim, using the "vimcmd" file and "-u NORC".
+  " "before" is a list of Vim commands to be executed before loading plugins.
+  " "after" is a list of Vim commands to be executed after loading plugins.
+***************
+*** 174,180 ****
+  endfunc
+  
+  func RunVimPiped(before, after, arguments, pipecmd)
+!   if !filereadable('vimcmd')
+      return 0
+    endif
+    let args = ''
+--- 190,197 ----
+  endfunc
+  
+  func RunVimPiped(before, after, arguments, pipecmd)
+!   let cmd = GetVimCommand()
+!   if cmd == ''
+      return 0
+    endif
+    let args = ''
+***************
+*** 187,204 ****
+      let args .= ' -S Xafter.vim'
+    endif
+  
+-   let cmd = readfile('vimcmd')[0]
+-   let cmd = substitute(cmd, '-u \f\+', '-u NONE', '')
+-   if cmd !~ '-u NONE'
+-     let cmd = cmd . ' -u NONE'
+-   endif
+-   let cmd .= ' --not-a-term'
+- 
+-   " With pipecmd we can't set VIMRUNTIME.
+-   if a:pipecmd != ''
+-     let cmd = substitute(cmd, 'VIMRUNTIME=.*VIMRUNTIME;', '', '')
+-   endif
+- 
+    exe "silent !" . a:pipecmd . cmd . args . ' ' . a:arguments
+  
+    if len(a:before) > 0
+--- 204,209 ----
+*** ../vim-8.0.0473/src/testdir/test_clientserver.vim	2017-03-18 16:17:23.104139345 +0100
+--- src/testdir/test_clientserver.vim	2017-03-18 16:14:06.214630521 +0100
+***************
+*** 0 ****
+--- 1,42 ----
++ " Tests for the +clientserver feature.
++ 
++ if !has('job') || !has('clientserver')
++   finish
++ endif
++ 
++ source shared.vim
++ 
++ func Test_client_server()
++   let cmd = GetVimCommand()
++   if cmd == ''
++     return
++   endif
++   let name = 'XVIMTEXT'
++   let cmd .= ' --servername ' . name
++   let g:job = job_start(cmd, {'stoponexit': 'kill', 'out_io': 'null'})
++   call WaitFor('job_status(g:job) == "run"')
++   if job_status(g:job) != 'run'
++     call assert_true(0, 'Cannot run the Vim server')
++     return
++   endif
++ 
++   " Takes a short while for the server to be active.
++   call WaitFor('serverlist() =~ "' . name . '"')
++   call assert_match(name, serverlist())
++ 
++   call remote_foreground(name)
++ 
++   call remote_send(name, ":let testvar = 'yes'\<CR>")
++   call WaitFor('remote_expr("' . name . '", "testvar") == "yes"')
++   call assert_equal('yes', remote_expr(name, "testvar"))
++ 
++   call remote_send(name, ":qa!\<CR>")
++   call WaitFor('job_status(g:job) == "dead"')
++   if job_status(g:job) != 'dead'
++     call assert_true(0, 'Server did not exit')
++     call job_stop(g:job, 'kill')
++   endif
++ endfunc
++ 
++ " Uncomment this line to get a debugging log
++ " call ch_logfile('channellog', 'w')
+*** ../vim-8.0.0473/src/os_mswin.c	2017-03-12 19:22:31.760584901 +0100
+--- src/os_mswin.c	2017-03-18 16:07:12.472529228 +0100
+***************
+*** 2105,2115 ****
+  
+  	    str = serverConvert(client_enc, (char_u *)data->lpData, &tofree);
+  	    res = eval_client_expr_to_string(str);
+- 	    vim_free(tofree);
+  
+  	    if (res == NULL)
+  	    {
+! 		res = vim_strsave((char_u *)_(e_invexprmsg));
+  		reply.dwData = COPYDATA_ERROR_RESULT;
+  	    }
+  	    else
+--- 2105,2119 ----
+  
+  	    str = serverConvert(client_enc, (char_u *)data->lpData, &tofree);
+  	    res = eval_client_expr_to_string(str);
+  
+  	    if (res == NULL)
+  	    {
+! 		char	*err = _(e_invexprmsg);
+! 		size_t	len = STRLEN(str) + STRLEN(err) + 5;
+! 
+! 		res = alloc(len);
+! 		if (res != NULL)
+! 		    vim_snprintf((char *)res, len, "%s: \"%s\"", err, str);
+  		reply.dwData = COPYDATA_ERROR_RESULT;
+  	    }
+  	    else
+***************
+*** 2120,2125 ****
+--- 2124,2130 ----
+  	    serverSendEnc(sender);
+  	    retval = (int)SendMessage(sender, WM_COPYDATA,
+  				    (WPARAM)message_window, (LPARAM)(&reply));
++ 	    vim_free(tofree);
+  	    vim_free(res);
+  	    return retval;
+  
+*** ../vim-8.0.0473/src/version.c	2017-03-16 22:52:28.508835911 +0100
+--- src/version.c	2017-03-18 16:17:08.400245018 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     474,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+145. You e-mail your boss, informing him you'll be late.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

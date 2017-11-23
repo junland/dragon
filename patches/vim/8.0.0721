@@ -1,0 +1,207 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0721
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0721
+Problem:    :argedit can only have one argument.
+Solution:   Allow for multiple arguments. (Christian Brabandt)
+Files:      runtime/doc/editing.txt, src/ex_cmds.h, src/ex_cmds2.c,
+            src/testdir/test_arglist.vim
+
+
+*** ../vim-8.0.0720/runtime/doc/editing.txt	2016-09-12 12:45:25.000000000 +0200
+--- runtime/doc/editing.txt	2017-07-16 13:53:45.899646259 +0200
+***************
+*** 616,631 ****
+  			Also see |++opt| and |+cmd|.
+  			{Vi: no ++opt}
+  
+! :[count]arge[dit][!] [++opt] [+cmd] {name}		*:arge* *:argedit*
+! 			Add {name} to the argument list and edit it.
+  			When {name} already exists in the argument list, this
+  			entry is edited.
+  			This is like using |:argadd| and then |:edit|.
+! 			Note that only one file name is allowed, and spaces
+! 			inside the file name are allowed, like with |:edit|.
+  			[count] is used like with |:argadd|.
+! 			[!] is required if the current file cannot be
+! 			|abandon|ed.
+  			Also see |++opt| and |+cmd|.
+  			{not in Vi}
+  
+--- 617,632 ----
+  			Also see |++opt| and |+cmd|.
+  			{Vi: no ++opt}
+  
+! :[count]arge[dit][!] [++opt] [+cmd] {name} ..		*:arge* *:argedit*
+! 			Add {name}s to the argument list and edit it.
+  			When {name} already exists in the argument list, this
+  			entry is edited.
+  			This is like using |:argadd| and then |:edit|.
+! 			Spaces in filenames have to be escaped with "\".
+  			[count] is used like with |:argadd|.
+! 			If the current file cannot be |abandon|ed {name}s will
+! 			still be added to the argument list, but won't be
+! 			edited. No check for duplicates is done.
+  			Also see |++opt| and |+cmd|.
+  			{not in Vi}
+  
+*** ../vim-8.0.0720/src/ex_cmds.h	2017-07-09 15:41:44.625938780 +0200
+--- src/ex_cmds.h	2017-07-16 13:51:27.896683048 +0200
+***************
+*** 137,143 ****
+  			BANG|NEEDARG|EXTRA|NOTRLCOM|RANGE|NOTADR|DFLALL,
+  			ADDR_ARGUMENTS),
+  EX(CMD_argedit,		"argedit",	ex_argedit,
+! 			BANG|NEEDARG|RANGE|NOTADR|ZEROR|FILE1|EDITCMD|ARGOPT|TRLBAR,
+  			ADDR_ARGUMENTS),
+  EX(CMD_argglobal,	"argglobal",	ex_args,
+  			BANG|FILES|EDITCMD|ARGOPT|TRLBAR,
+--- 137,143 ----
+  			BANG|NEEDARG|EXTRA|NOTRLCOM|RANGE|NOTADR|DFLALL,
+  			ADDR_ARGUMENTS),
+  EX(CMD_argedit,		"argedit",	ex_argedit,
+! 			BANG|NEEDARG|RANGE|NOTADR|ZEROR|FILES|EDITCMD|ARGOPT|TRLBAR,
+  			ADDR_ARGUMENTS),
+  EX(CMD_argglobal,	"argglobal",	ex_args,
+  			BANG|FILES|EDITCMD|ARGOPT|TRLBAR,
+*** ../vim-8.0.0720/src/ex_cmds2.c	2017-07-10 22:12:06.033062132 +0200
+--- src/ex_cmds2.c	2017-07-16 13:51:27.900683019 +0200
+***************
+*** 2801,2834 ****
+      void
+  ex_argedit(exarg_T *eap)
+  {
+!     int		fnum;
+!     int		i;
+!     char_u	*s;
+  
+!     /* Add the argument to the buffer list and get the buffer number. */
+!     fnum = buflist_add(eap->arg, BLN_LISTED);
+! 
+!     /* Check if this argument is already in the argument list. */
+!     for (i = 0; i < ARGCOUNT; ++i)
+! 	if (ARGLIST[i].ae_fnum == fnum)
+! 	    break;
+!     if (i == ARGCOUNT)
+!     {
+! 	/* Can't find it, add it to the argument list. */
+! 	s = vim_strsave(eap->arg);
+! 	if (s == NULL)
+! 	    return;
+! 	i = alist_add_list(1, &s,
+! 	       eap->addr_count > 0 ? (int)eap->line2 : curwin->w_arg_idx + 1);
+! 	if (i < 0)
+! 	    return;
+! 	curwin->w_arg_idx = i;
+!     }
+! 
+!     alist_check_arg_idx();
+  
+      /* Edit the argument. */
+!     do_argfile(eap, i);
+  }
+  
+  /*
+--- 2801,2820 ----
+      void
+  ex_argedit(exarg_T *eap)
+  {
+!     int i = eap->addr_count ? (int)eap->line2 : curwin->w_arg_idx + 1;
+  
+!     if (do_arglist(eap->arg, AL_ADD, i) == FAIL)
+! 	return;
+! #ifdef FEAT_TITLE
+!     maketitle();
+! #endif
+  
++     if (curwin->w_arg_idx == 0 && (curbuf->b_ml.ml_flags & ML_EMPTY)
++ 	    && curbuf->b_ffname == NULL)
++ 	i = 0;
+      /* Edit the argument. */
+!     if (i < ARGCOUNT)
+! 	do_argfile(eap, i);
+  }
+  
+  /*
+*** ../vim-8.0.0720/src/testdir/test_arglist.vim	2017-03-16 22:52:28.508835911 +0100
+--- src/testdir/test_arglist.vim	2017-07-16 13:51:27.900683019 +0200
+***************
+*** 188,193 ****
+--- 188,198 ----
+    2argu
+    arga third
+    call assert_equal(['edited', 'a', 'third', 'b', 'c', 'd'], argv())
++ 
++   2argu
++   argedit file\ with\ spaces another file
++   call assert_equal(['edited', 'a', 'file with spaces', 'another', 'file', 'third', 'b', 'c', 'd'], argv())
++   call assert_equal('file with spaces', expand('%'))
+  endfunc
+  
+  func Reset_arglist()
+***************
+*** 239,258 ****
+    call assert_equal(['a', 'b'], argv())
+    call assert_equal('b', expand('%:t'))
+    argedit a
+!   call assert_equal(['a', 'b'], argv())
+    call assert_equal('a', expand('%:t'))
+!   if has('unix')
+!     " on MS-Windows this would edit file "a b"
+!     call assert_fails('argedit a b', 'E172:')
+!   endif
+    argedit c
+!   call assert_equal(['a', 'c', 'b'], argv())
+    0argedit x
+!   call assert_equal(['x', 'a', 'c', 'b'], argv())
+    enew! | set modified
+    call assert_fails('argedit y', 'E37:')
+    argedit! y
+!   call assert_equal(['x', 'y', 'a', 'c', 'b'], argv())
+    %argd
+  endfunc
+  
+--- 244,262 ----
+    call assert_equal(['a', 'b'], argv())
+    call assert_equal('b', expand('%:t'))
+    argedit a
+!   call assert_equal(['a', 'b', 'a'], argv())
+    call assert_equal('a', expand('%:t'))
+!   argedit C D
+!   call assert_equal('C', expand('%:t'))
+!   call assert_equal(['a', 'b', 'a', 'C', 'D'], argv())
+    argedit c
+!   call assert_equal(['a', 'b', 'a', 'C', 'c', 'D'], argv())
+    0argedit x
+!   call assert_equal(['x', 'a', 'b', 'a', 'C', 'c', 'D'], argv())
+    enew! | set modified
+    call assert_fails('argedit y', 'E37:')
+    argedit! y
+!   call assert_equal(['x', 'y', 'y', 'a', 'b', 'a', 'C', 'c', 'D'], argv())
+    %argd
+  endfunc
+  
+*** ../vim-8.0.0720/src/version.c	2017-07-16 15:23:53.638383479 +0200
+--- src/version.c	2017-07-16 15:30:17.651479683 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     721,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+168. You have your own domain name.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

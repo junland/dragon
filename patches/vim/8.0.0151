@@ -1,0 +1,195 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0151
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0151
+Problem:    To pass buffer content to system() and systemlist() one has to
+            first create a string or list.
+Solution:   Allow passing a buffer number. (LemonBoy, closes #1240)
+Files:      runtime/doc/eval.txt, src/Makefile, src/evalfunc.c,
+            src/testdir/Make_all.mak, src/testdir/test_system.vim
+
+
+*** ../vim-8.0.0150/runtime/doc/eval.txt	2016-11-29 21:54:41.120260177 +0100
+--- runtime/doc/eval.txt	2017-01-08 13:20:15.812784917 +0100
+***************
+*** 7551,7557 ****
+  		If {input} is given and is a |List| it is written to the file
+  		in a way |writefile()| does with {binary} set to "b" (i.e.
+  		with a newline between each list item with newlines inside
+! 		list items converted to NULs).  
+  
+  		Pipes are not used, the 'shelltemp' option is not used.
+  
+--- 7561,7571 ----
+  		If {input} is given and is a |List| it is written to the file
+  		in a way |writefile()| does with {binary} set to "b" (i.e.
+  		with a newline between each list item with newlines inside
+! 		list items converted to NULs).
+! 		When {input} is given and is a number that is a valid id for
+! 		an existing buffer then the content of the buffer is written
+! 		to the file line by line, each line terminated by a NL and
+! 		NULs characters where the text has a NL.
+  
+  		Pipes are not used, the 'shelltemp' option is not used.
+  
+*** ../vim-8.0.0150/src/Makefile	2017-01-02 14:27:15.619201170 +0100
+--- src/Makefile	2017-01-08 13:10:08.673262414 +0100
+***************
+*** 2164,2169 ****
+--- 2164,2170 ----
+  	test_substitute \
+  	test_syn_attr \
+  	test_syntax \
++ 	test_system \
+  	test_tabline \
+  	test_tabpage \
+  	test_tagcase \
+*** ../vim-8.0.0150/src/evalfunc.c	2017-01-06 20:03:45.426748945 +0100
+--- src/evalfunc.c	2017-01-08 13:14:11.223473098 +0100
+***************
+*** 11817,11823 ****
+      char_u	*res = NULL;
+      char_u	*p;
+      char_u	*infile = NULL;
+-     char_u	buf[NUMBUFLEN];
+      int		err = FALSE;
+      FILE	*fd;
+      list_T	*list = NULL;
+--- 11817,11822 ----
+***************
+*** 11831,11837 ****
+      if (argvars[1].v_type != VAR_UNKNOWN)
+      {
+  	/*
+! 	 * Write the string to a temp file, to be used for input of the shell
+  	 * command.
+  	 */
+  	if ((infile = vim_tempname('i', TRUE)) == NULL)
+--- 11830,11836 ----
+      if (argvars[1].v_type != VAR_UNKNOWN)
+      {
+  	/*
+! 	 * Write the text to a temp file, to be used for input of the shell
+  	 * command.
+  	 */
+  	if ((infile = vim_tempname('i', TRUE)) == NULL)
+***************
+*** 11846,11859 ****
+  	    EMSG2(_(e_notopen), infile);
+  	    goto errret;
+  	}
+! 	if (argvars[1].v_type == VAR_LIST)
+  	{
+  	    if (write_list(fd, argvars[1].vval.v_list, TRUE) == FAIL)
+  		err = TRUE;
+  	}
+  	else
+  	{
+! 	    size_t len;
+  
+  	    p = get_tv_string_buf_chk(&argvars[1], buf);
+  	    if (p == NULL)
+--- 11845,11886 ----
+  	    EMSG2(_(e_notopen), infile);
+  	    goto errret;
+  	}
+! 	if (argvars[1].v_type == VAR_NUMBER)
+! 	{
+! 	    linenr_T	lnum;
+! 	    buf_T	*buf;
+! 
+! 	    buf = buflist_findnr(argvars[1].vval.v_number);
+! 	    if (buf == NULL)
+! 	    {
+! 		EMSGN(_(e_nobufnr), argvars[1].vval.v_number);
+! 		goto errret;
+! 	    }
+! 
+! 	    for (lnum = 1; lnum <= buf->b_ml.ml_line_count; lnum++)
+! 	    {
+! 		for (p = ml_get_buf(buf, lnum, FALSE); *p != NUL; ++p)
+! 		    if (putc(*p == '\n' ? NUL : *p, fd) == EOF)
+! 		    {
+! 			err = TRUE;
+! 			break;
+! 		    }
+! 		if (putc(NL, fd) == EOF)
+! 		{
+! 		    err = TRUE;
+! 		    break;
+! 		}
+! 	    }
+! 	}
+! 	else if (argvars[1].v_type == VAR_LIST)
+  	{
+  	    if (write_list(fd, argvars[1].vval.v_list, TRUE) == FAIL)
+  		err = TRUE;
+  	}
+  	else
+  	{
+! 	    size_t	len;
+! 	    char_u	buf[NUMBUFLEN];
+  
+  	    p = get_tv_string_buf_chk(&argvars[1], buf);
+  	    if (p == NULL)
+*** ../vim-8.0.0150/src/testdir/Make_all.mak	2017-01-02 14:27:15.619201170 +0100
+--- src/testdir/Make_all.mak	2017-01-08 12:53:25.608672491 +0100
+***************
+*** 184,189 ****
+--- 184,190 ----
+  	    test_stat.res \
+  	    test_substitute.res \
+  	    test_syntax.res \
++ 	    test_system.res \
+  	    test_textobjects.res \
+  	    test_undo.res \
+  	    test_usercommands.res \
+*** ../vim-8.0.0150/src/testdir/test_system.vim	2017-01-08 13:23:40.599275697 +0100
+--- src/testdir/test_system.vim	2017-01-08 13:18:48.137431212 +0100
+***************
+*** 0 ****
+--- 1,20 ----
++ " Tests for system() and systemlist()
++ 
++ function! Test_System()
++   if !executable('echo') || !executable('cat') || !executable('wc')
++     return
++   endif
++   call assert_equal("123\n", system('echo 123'))
++   call assert_equal(['123'], systemlist('echo 123'))
++   call assert_equal('123',   system('cat', '123'))
++   call assert_equal(['123'], systemlist('cat', '123'))
++   call assert_equal(["as\<NL>df"], systemlist('cat', ["as\<NL>df"]))
++   new Xdummy
++   call setline(1, ['asdf', "pw\<NL>er", 'xxxx'])
++   call assert_equal("3\n",  system('wc -l', bufnr('%')))
++   call assert_equal(['3'],  systemlist('wc -l', bufnr('%')))
++   call assert_equal(['asdf', "pw\<NL>er", 'xxxx'],  systemlist('cat', bufnr('%')))
++   bwipe!
++ 
++   call assert_fails('call system("wc -l", 99999)', 'E86:')
++ endfunction
+*** ../vim-8.0.0150/src/version.c	2017-01-07 20:39:49.970046560 +0100
+--- src/version.c	2017-01-08 13:00:31.081527302 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     151,
+  /**/
+
+-- 
+From the classified section of a city newspaper:
+Dog for sale: eats anything and is fond of children.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

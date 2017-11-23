@@ -1,0 +1,149 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1143
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1143
+Problem:    Macros always expand to the same thing.
+Solution:   Remove W_VSEP_WIDTH() and W_STATUS_HEIGHT().
+Files:      src/vim.h, src/structs.h, src/gui.c, src/ex_getln.c, src/screen.c
+
+
+*** ../vim-8.0.1142/src/vim.h	2017-09-23 15:08:13.180518917 +0200
+--- src/vim.h	2017-09-24 16:20:59.717815875 +0200
+***************
+*** 860,867 ****
+  #define FINDFILE_BOTH	2	/* files and directories */
+  
+  #define W_ENDCOL(wp)	(wp->w_wincol + wp->w_width)
+- #define W_VSEP_WIDTH(wp) (wp->w_vsep_width)
+- #define W_STATUS_HEIGHT(wp) (wp->w_status_height)
+  #ifdef FEAT_MENU
+  # define W_WINROW(wp)	(wp->w_winrow + wp->w_winbar_height)
+  #else
+--- 860,865 ----
+*** ../vim-8.0.1142/src/structs.h	2017-09-23 16:33:40.857195233 +0200
+--- src/structs.h	2017-09-24 16:19:29.306359155 +0200
+***************
+*** 2702,2709 ****
+      int		w_status_height;    /* number of status lines (0 or 1) */
+      int		w_wincol;	    /* Leftmost column of window in screen. */
+      int		w_width;	    /* Width of window, excluding separation. */
+!     int		w_vsep_width;	    /* Number of separator columns (0 or 1).
+! 				       use W_VSEP_WIDTH() */
+      /*
+       * === start of cached values ====
+       */
+--- 2702,2709 ----
+      int		w_status_height;    /* number of status lines (0 or 1) */
+      int		w_wincol;	    /* Leftmost column of window in screen. */
+      int		w_width;	    /* Width of window, excluding separation. */
+!     int		w_vsep_width;	    /* Number of separator columns (0 or 1). */
+! 
+      /*
+       * === start of cached values ====
+       */
+*** ../vim-8.0.1142/src/gui.c	2017-09-22 15:20:27.736148641 +0200
+--- src/gui.c	2017-09-24 16:20:44.901904897 +0200
+***************
+*** 4910,4919 ****
+      }
+      else if (row > wp->w_height)	/* below status line */
+  	update_mouseshape(SHAPE_IDX_CLINE);
+!     else if (!(State & CMDLINE) && W_VSEP_WIDTH(wp) > 0 && col == wp->w_width
+  	    && (row != wp->w_height || !stl_connected(wp)) && msg_scrolled == 0)
+  	update_mouseshape(SHAPE_IDX_VSEP);
+!     else if (!(State & CMDLINE) && W_STATUS_HEIGHT(wp) > 0
+  				  && row == wp->w_height && msg_scrolled == 0)
+  	update_mouseshape(SHAPE_IDX_STATUS);
+      else
+--- 4910,4919 ----
+      }
+      else if (row > wp->w_height)	/* below status line */
+  	update_mouseshape(SHAPE_IDX_CLINE);
+!     else if (!(State & CMDLINE) && wp->w_vsep_width > 0 && col == wp->w_width
+  	    && (row != wp->w_height || !stl_connected(wp)) && msg_scrolled == 0)
+  	update_mouseshape(SHAPE_IDX_VSEP);
+!     else if (!(State & CMDLINE) && wp->w_status_height > 0
+  				  && row == wp->w_height && msg_scrolled == 0)
+  	update_mouseshape(SHAPE_IDX_STATUS);
+      else
+*** ../vim-8.0.1142/src/ex_getln.c	2017-09-16 20:54:47.094560435 +0200
+--- src/ex_getln.c	2017-09-24 16:21:34.065609489 +0200
+***************
+*** 3438,3444 ****
+  	cmdline_row = Rows - 1;
+      else
+  	cmdline_row = W_WINROW(lastwin) + lastwin->w_height
+! 						   + W_STATUS_HEIGHT(lastwin);
+  }
+  
+      static void
+--- 3438,3444 ----
+  	cmdline_row = Rows - 1;
+      else
+  	cmdline_row = W_WINROW(lastwin) + lastwin->w_height
+! 						    + lastwin->w_status_height;
+  }
+  
+      static void
+*** ../vim-8.0.1142/src/screen.c	2017-09-22 15:20:27.744148592 +0200
+--- src/screen.c	2017-09-24 16:21:47.357529621 +0200
+***************
+*** 622,629 ****
+  		    else
+  		    {
+  			wp->w_redr_type = NOT_VALID;
+! 			if (W_WINROW(wp) + wp->w_height + W_STATUS_HEIGHT(wp)
+! 				<= msg_scrolled)
+  			    wp->w_redr_status = TRUE;
+  		    }
+  		}
+--- 622,629 ----
+  		    else
+  		    {
+  			wp->w_redr_type = NOT_VALID;
+! 			if (W_WINROW(wp) + wp->w_height + wp->w_status_height
+! 							       <= msg_scrolled)
+  			    wp->w_redr_status = TRUE;
+  		    }
+  		}
+***************
+*** 9490,9496 ****
+      {
+  	wp->w_redr_status = TRUE;
+  	redraw_cmdline = TRUE;
+! 	nextrow = W_WINROW(wp) + wp->w_height + W_STATUS_HEIGHT(wp);
+  	lastrow = nextrow + line_count;
+  	if (lastrow > Rows)
+  	    lastrow = Rows;
+--- 9490,9496 ----
+      {
+  	wp->w_redr_status = TRUE;
+  	redraw_cmdline = TRUE;
+! 	nextrow = W_WINROW(wp) + wp->w_height + wp->w_status_height;
+  	lastrow = nextrow + line_count;
+  	if (lastrow > Rows)
+  	    lastrow = Rows;
+*** ../vim-8.0.1142/src/version.c	2017-09-23 23:58:21.188315512 +0200
+--- src/version.c	2017-09-24 16:19:00.742530803 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1143,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+188. You purchase a laptop so you can surf while sitting on the can.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

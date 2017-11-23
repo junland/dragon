@@ -1,0 +1,56 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0170
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0170 (after 8.0.0169)
+Problem:    Channel test fails for using freed memory.
+Solution:   Fix memory use in json_decode().
+Files:      src/json.c
+
+
+*** ../vim-8.0.0169/src/json.c	2017-01-10 19:44:14.594027155 +0100
+--- src/json.c	2017-01-10 22:52:50.684942313 +0100
+***************
+*** 577,582 ****
+--- 577,584 ----
+      ga_init2(&stack, sizeof(json_dec_item_T), 100);
+      cur_item = res;
+      init_tv(&item);
++     if (res != NULL)
++     init_tv(res);
+  
+      fill_numbuflen(reader);
+      p = reader->js_buf + reader->js_used;
+***************
+*** 985,991 ****
+  
+  theend:
+      ga_clear(&stack);
+-     clear_tv(&item);
+      return retval;
+  }
+  
+--- 987,992 ----
+*** ../vim-8.0.0169/src/version.c	2017-01-10 19:44:14.594027155 +0100
+--- src/version.c	2017-01-10 22:56:53.935190921 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     170,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+243. You unsuccessfully try to download a pizza from www.dominos.com.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

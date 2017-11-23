@@ -1,0 +1,73 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0398
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0398
+Problem:    Illegal memory access with "t".
+Solution:   Use strncmp() instead of memcmp(). (Dominique Pelle, closes #1528)
+Files:      src/search.c, src/testdir/test_search.vim
+
+
+*** ../vim-8.0.0397/src/search.c	2017-02-18 23:11:57.341793867 +0100
+--- src/search.c	2017-03-01 22:12:50.380085355 +0100
+***************
+*** 1693,1704 ****
+  		    if (p[col] == c && stop)
+  			break;
+  		}
+! 		else
+! 		{
+! 		    if (memcmp(p + col, lastc_bytes, lastc_bytelen) == 0
+  								       && stop)
+! 			break;
+! 		}
+  		stop = TRUE;
+  	    }
+  	}
+--- 1693,1701 ----
+  		    if (p[col] == c && stop)
+  			break;
+  		}
+! 		else if (STRNCMP(p + col, lastc_bytes, lastc_bytelen) == 0
+  								       && stop)
+! 		    break;
+  		stop = TRUE;
+  	    }
+  	}
+*** ../vim-8.0.0397/src/testdir/test_search.vim	2017-01-06 20:03:45.426748945 +0100
+--- src/testdir/test_search.vim	2017-03-01 22:10:32.129166002 +0100
+***************
+*** 294,296 ****
+--- 294,303 ----
+    q!
+  endfunc
+  
++ func Test_searchc()
++   " These commands used to cause memory overflow in searchc().
++   new
++   norm ixx
++   exe "norm 0t\u93cf"
++   bw!
++ endfunc
+*** ../vim-8.0.0397/src/version.c	2017-03-01 20:40:35.623484230 +0100
+--- src/version.c	2017-03-01 22:11:38.928643793 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     398,
+  /**/
+
+-- 
+Everyone has a photographic memory. Some don't have film.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

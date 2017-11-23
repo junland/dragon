@@ -1,0 +1,132 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0017
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0017
+Problem:    Cannot get the number of the current quickfix or location list.
+Solution:   Use the current list if "nr" in "what" is zero. (Yegappan
+            Lakshmanan)  Remove debug command from test.
+Files:      src/quickfix.c, src/testdir/test_quickfix.vim,
+            runtime/doc/eval.txt
+
+
+*** ../vim-8.0.0016/src/quickfix.c	2016-09-25 21:44:59.445600117 +0200
+--- src/quickfix.c	2016-09-27 21:27:48.729788268 +0200
+***************
+*** 4591,4599 ****
+  	/* Use the specified quickfix/location list */
+  	if (di->di_tv.v_type == VAR_NUMBER)
+  	{
+! 	    qf_idx = di->di_tv.vval.v_number - 1;
+! 	    if (qf_idx < 0 || qf_idx >= qi->qf_listcount)
+! 		return FAIL;
+  	    flags |= QF_GETLIST_NR;
+  	}
+  	else
+--- 4591,4603 ----
+  	/* Use the specified quickfix/location list */
+  	if (di->di_tv.v_type == VAR_NUMBER)
+  	{
+! 	    /* for zero use the current list */
+! 	    if (di->di_tv.vval.v_number != 0)
+! 	    {
+! 		qf_idx = di->di_tv.vval.v_number - 1;
+! 		if (qf_idx < 0 || qf_idx >= qi->qf_listcount)
+! 		    return FAIL;
+! 	    }
+  	    flags |= QF_GETLIST_NR;
+  	}
+  	else
+*** ../vim-8.0.0016/src/testdir/test_quickfix.vim	2016-09-01 15:39:30.000000000 +0200
+--- src/testdir/test_quickfix.vim	2016-09-27 21:22:51.671854368 +0200
+***************
+*** 1429,1440 ****
+    laddexpr 'one.txt:3:one one one'
+  
+    let loc_one = getloclist(one_id)
+- echo string(loc_one)
+    call assert_equal('Xone/a/one.txt', bufname(loc_one[1].bufnr))
+    call assert_equal(3, loc_one[1].lnum)
+  
+    let loc_two = getloclist(two_id)
+- echo string(loc_two)
+    call assert_equal('Xtwo/a/two.txt', bufname(loc_two[1].bufnr))
+    call assert_equal(5, loc_two[1].lnum)
+  
+--- 1429,1438 ----
+***************
+*** 1534,1539 ****
+--- 1532,1542 ----
+      call assert_equal('N1', g:Xgetlist({'all':1}).title)
+      call g:Xsetlist([], ' ', {'title' : 'N2'})
+      call assert_equal(qfnr + 1, g:Xgetlist({'all':1}).nr)
++ 
++     let res = g:Xgetlist({'nr': 0})
++     call assert_equal(qfnr + 1, res.nr)
++     call assert_equal(['nr'], keys(res))
++ 
+      call g:Xsetlist([], ' ', {'title' : 'N3'})
+      call assert_equal('N2', g:Xgetlist({'nr':2, 'title':1}).title)
+  
+***************
+*** 1546,1552 ****
+      call assert_equal({}, g:Xgetlist({'abc':1}))
+  
+      if a:cchar == 'l'
+! 	call assert_equal({}, getloclist(99, ['title']))
+      endif
+  endfunction
+  
+--- 1549,1555 ----
+      call assert_equal({}, g:Xgetlist({'abc':1}))
+  
+      if a:cchar == 'l'
+! 	call assert_equal({}, getloclist(99, {'title': 1}))
+      endif
+  endfunction
+  
+*** ../vim-8.0.0016/runtime/doc/eval.txt	2016-09-26 22:36:50.619386344 +0200
+--- runtime/doc/eval.txt	2016-09-27 21:14:57.863151829 +0200
+***************
+*** 4510,4516 ****
+  		If the optional {what} dictionary argument is supplied, then
+  		returns only the items listed in {what} as a dictionary. The
+  		following string items are supported in {what}:
+! 			nr	get information for this quickfix list
+  			title	get the list title
+  			winid	get the |window-ID| (if opened)
+  			all	all of the above quickfix properties
+--- 4516,4523 ----
+  		If the optional {what} dictionary argument is supplied, then
+  		returns only the items listed in {what} as a dictionary. The
+  		following string items are supported in {what}:
+! 			nr	get information for this quickfix list; zero
+! 				means the current quickfix list
+  			title	get the list title
+  			winid	get the |window-ID| (if opened)
+  			all	all of the above quickfix properties
+*** ../vim-8.0.0016/src/version.c	2016-09-26 22:58:54.498255420 +0200
+--- src/version.c	2016-09-27 21:17:23.714136503 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     17,
+  /**/
+
+-- 
+This is the polymorph virus!  Follow these instructions carefully:
+1. Send this message to everybody you know.
+2. Format your harddisk.
+Thank you for your cooperation in spreading the most powerful virus ever!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

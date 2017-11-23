@@ -1,0 +1,54 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0528
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0528
+Problem:    When 'wildmenu' is set and 'wildmode' has "longest" then the first
+            file name is highlighted, even though the text shows the longest
+            match.
+Solution:   Do not highlight the first match. (LemonBoy, closes #1602)
+Files:      src/ex_getln.c
+
+
+*** ../vim-8.0.0527/src/ex_getln.c	2017-03-16 19:58:19.416253412 +0100
+--- src/ex_getln.c	2017-03-30 21:55:49.829217726 +0200
+***************
+*** 4147,4153 ****
+  	got_int = FALSE;	/* only int. the completion, not the cmd line */
+  #ifdef FEAT_WILDMENU
+      else if (wildmenu)
+! 	win_redr_status_matches(xp, num_files, files_found, 0, showtail);
+  #endif
+      else
+      {
+--- 4147,4153 ----
+  	got_int = FALSE;	/* only int. the completion, not the cmd line */
+  #ifdef FEAT_WILDMENU
+      else if (wildmenu)
+! 	win_redr_status_matches(xp, num_files, files_found, -1, showtail);
+  #endif
+      else
+      {
+*** ../vim-8.0.0527/src/version.c	2017-03-30 21:51:18.846889322 +0200
+--- src/version.c	2017-03-30 22:04:17.166090807 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     528,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+240. You think Webster's Dictionary is a directory of WEB sites.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

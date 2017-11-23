@@ -1,0 +1,140 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1210
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1210
+Problem:    When typing a search pattern CTRL-G and CTRL-T are ignored when
+            there is typeahead.
+Solution:   Don't pass SEARCH_PEEK and don't call char_avail(). (haya14busa,
+            closes #2233)
+Files:      src/ex_getln.c, src/testdir/test_search.vim
+
+
+*** ../vim-8.0.1209/src/ex_getln.c	2017-10-19 18:35:46.090557740 +0200
+--- src/ex_getln.c	2017-10-22 14:41:23.480917306 +0200
+***************
+*** 159,164 ****
+--- 159,178 ----
+  #endif
+  
+  /*
++  * Abandon the command line.
++  */
++     static void
++ abandon_cmdline(void)
++ {
++     vim_free(ccline.cmdbuff);
++     ccline.cmdbuff = NULL;
++     if (msg_scrolled == 0)
++ 	compute_cmdrow();
++     MSG("");
++     redraw_cmdline = TRUE;
++ }
++ 
++ /*
+   * getcmdline() - accept a command line starting with firstc.
+   *
+   * firstc == ':'	    get ":" command line.
+***************
+*** 1702,1712 ****
+  		if (p_is && !cmd_silent && (firstc == '/' || firstc == '?'))
+  		{
+  		    pos_T  t;
+! 		    int    search_flags = SEARCH_KEEP + SEARCH_NOOF
+! 							     + SEARCH_PEEK;
+  
+- 		    if (char_avail())
+- 			continue;
+  		    cursor_off();
+  		    out_flush();
+  		    if (c == Ctrl_G)
+--- 1716,1723 ----
+  		if (p_is && !cmd_silent && (firstc == '/' || firstc == '?'))
+  		{
+  		    pos_T  t;
+! 		    int    search_flags = SEARCH_KEEP + SEARCH_NOOF;
+  
+  		    cursor_off();
+  		    out_flush();
+  		    if (c == Ctrl_G)
+***************
+*** 2083,2097 ****
+  	}
+  #endif
+  
+! 	if (gotesc)	    /* abandon command line */
+! 	{
+! 	    vim_free(ccline.cmdbuff);
+! 	    ccline.cmdbuff = NULL;
+! 	    if (msg_scrolled == 0)
+! 		compute_cmdrow();
+! 	    MSG("");
+! 	    redraw_cmdline = TRUE;
+! 	}
+      }
+  
+      /*
+--- 2094,2101 ----
+  	}
+  #endif
+  
+! 	if (gotesc)
+! 	    abandon_cmdline();
+      }
+  
+      /*
+*** ../vim-8.0.1209/src/testdir/test_search.vim	2017-10-15 22:07:35.211683156 +0200
+--- src/testdir/test_search.vim	2017-10-22 14:41:23.480917306 +0200
+***************
+*** 356,361 ****
+--- 356,381 ----
+    bw!
+  endfunc
+  
++ func Test_search_cmdline5()
++   if !exists('+incsearch')
++     return
++   endif
++   " Do not call test_override("char_avail", 1) so that <C-g> and <C-t> work
++   " regardless char_avail.
++   new
++   call setline(1, ['  1 the first', '  2 the second', '  3 the third'])
++   set incsearch
++   1
++   call feedkeys("/the\<c-g>\<c-g>\<cr>", 'tx')
++   call assert_equal('  3 the third', getline('.'))
++   $
++   call feedkeys("?the\<c-t>\<c-t>\<c-t>\<cr>", 'tx')
++   call assert_equal('  2 the second', getline('.'))
++   " clean up
++   set noincsearch
++   bw!
++ endfunc
++ 
+  " Tests for regexp with various magic settings
+  func Test_search_regexp()
+    enew!
+*** ../vim-8.0.1209/src/version.c	2017-10-22 14:23:40.124199208 +0200
+--- src/version.c	2017-10-22 14:43:15.976148001 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1210,
+  /**/
+
+-- 
+I'm sure that I asked CBuilder to do a "full" install.  Looks like I got
+a "fool" install, instead.		Charles E Campbell, Jr, PhD
+
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

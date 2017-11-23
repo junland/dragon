@@ -1,0 +1,115 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0913
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0913
+Problem:    MS-Windows: CTRL-C kills shell in terminal window instead of the
+            command running in the shell.
+Solution:   Make CTRL-C only send a CTRL_C_EVENT and have CTRL-BREAK kill the
+            job. (partly by Yasuhiro Matsumoto, closes #1962)
+Files:      src/os_win32.c, src/gui_w32.c, src/terminal.c, src/globals.h
+
+
+*** ../vim-8.0.0912/src/os_win32.c	2017-08-11 20:36:55.676558704 +0200
+--- src/os_win32.c	2017-08-12 14:41:48.902794429 +0200
+***************
+*** 6296,6301 ****
+--- 6296,6302 ----
+  #ifndef FEAT_GUI_W32	    /* never used */
+      if (g_fCtrlCPressed || g_fCBrkPressed)
+      {
++ 	ctrl_break_was_pressed = g_fCBrkPressed;
+  	g_fCtrlCPressed = g_fCBrkPressed = FALSE;
+  	got_int = TRUE;
+      }
+*** ../vim-8.0.0912/src/gui_w32.c	2017-07-23 16:45:05.673761155 +0200
+--- src/gui_w32.c	2017-08-12 14:47:20.156869595 +0200
+***************
+*** 1840,1845 ****
+--- 1840,1846 ----
+  	{
+  	    trash_input_buf();
+  	    got_int = TRUE;
++ 	    ctrl_break_was_pressed = TRUE;
+  	    string[0] = Ctrl_C;
+  	    add_to_input_buf(string, 1);
+  	}
+*** ../vim-8.0.0912/src/terminal.c	2017-08-12 14:32:25.894039948 +0200
+--- src/terminal.c	2017-08-12 14:45:10.677631480 +0200
+***************
+*** 1016,1021 ****
+--- 1016,1024 ----
+      ++no_mapping;
+      ++allow_keys;
+      got_int = FALSE;
++ #ifdef WIN3264
++     ctrl_break_was_pressed = FALSE;
++ #endif
+      c = vgetc();
+      got_int = FALSE;
+      --no_mapping;
+***************
+*** 1201,1211 ****
+  	may_send_sigint(c, curbuf->b_term->tl_job->jv_pid, 0);
+  #endif
+  #ifdef WIN3264
+  	if (c == Ctrl_C)
+! 	    /* We don't know if the job can handle CTRL-C itself or not, this
+! 	     * may kill the shell instead of killing the command running in the
+! 	     * shell. */
+! 	    mch_signal_job(curbuf->b_term->tl_job, (char_u *)"quit");
+  #endif
+  
+  	if (c == (termkey == 0 ? Ctrl_W : termkey) || c == Ctrl_BSL)
+--- 1204,1217 ----
+  	may_send_sigint(c, curbuf->b_term->tl_job->jv_pid, 0);
+  #endif
+  #ifdef WIN3264
++ 	/* On Windows we do not know whether the job can handle CTRL-C itself
++ 	 * or not.  Therefore CTRL-C only sends a CTRL_C_EVENT to avoid killing
++ 	 * the shell instead of a command running in the shell.
++ 	 * Use CTRL-BREAK to kill the job. */
+  	if (c == Ctrl_C)
+! 	    mch_signal_job(curbuf->b_term->tl_job, (char_u *)"int");
+! 	if (ctrl_break_was_pressed)
+! 	    mch_signal_job(curbuf->b_term->tl_job, (char_u *)"kill");
+  #endif
+  
+  	if (c == (termkey == 0 ? Ctrl_W : termkey) || c == Ctrl_BSL)
+*** ../vim-8.0.0912/src/globals.h	2017-07-15 19:22:33.646179881 +0200
+--- src/globals.h	2017-08-12 14:43:51.522087689 +0200
+***************
+*** 1671,1676 ****
+--- 1671,1680 ----
+  EXTERN int *eval_lavars_used INIT(= NULL);
+  #endif
+  
++ #ifdef WIN3264
++ EXTERN int ctrl_break_was_pressed = FALSE;
++ #endif
++ 
+  /*
+   * Optional Farsi support.  Include it here, so EXTERN and INIT are defined.
+   */
+*** ../vim-8.0.0912/src/version.c	2017-08-12 14:32:25.902039902 +0200
+--- src/version.c	2017-08-12 14:51:26.859402089 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     913,
+  /**/
+
+-- 
+What do you get when you cross a joke with a rehtorical question?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

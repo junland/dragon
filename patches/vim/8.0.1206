@@ -1,0 +1,227 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1206
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1206
+Problem:    No autocmd for entering or leaving the command line.
+Solution:   Add CmdlineEnter and CmdlineLeave.
+Files:      runtime/doc/autocmd.txt, src/ex_getln.c, src/fileio.c, src/vim.h,
+            src/testdir/test_autocmd.vim
+
+
+*** ../vim-8.0.1205/runtime/doc/autocmd.txt	2016-09-12 12:45:25.000000000 +0200
+--- runtime/doc/autocmd.txt	2017-10-19 17:38:34.717863452 +0200
+***************
+*** 483,488 ****
+--- 492,509 ----
+  				command is defined.  An alternative is to
+  				always define the user command and have it
+  				invoke an autoloaded function.  See |autoload|.
++ 							*CmdlineEnter*
++ CmdlineEnter			After moving the cursor to the command line,
++ 				where the user can type a command or search
++ 				string.
++ 				<afile> is set to a single character,
++ 				indicating the type of command-line.
++ 				|cmdwin-char|
++ 							*CmdlineLeave*
++ CmdlineLeave			Before leaving the command line.
++ 				<afile> is set to a single character,
++ 				indicating the type of command-line.
++ 				|cmdwin-char|
+  							*CmdwinEnter*
+  CmdwinEnter			After entering the command-line window.
+  				Useful for setting options specifically for
+*** ../vim-8.0.1205/src/ex_getln.c	2017-09-24 16:24:28.628560182 +0200
+--- src/ex_getln.c	2017-10-19 17:52:48.148030887 +0200
+***************
+*** 145,150 ****
+--- 145,163 ----
+  static void set_search_match(pos_T *t);
+  #endif
+  
++ 
++ #ifdef FEAT_AUTOCMD
++     static void
++ trigger_cmd_autocmd(int typechar, int evt)
++ {
++     char_u	typestr[2];
++ 
++     typestr[0] = typechar;
++     typestr[1] = NUL;
++     apply_autocmds(evt, typestr, typestr, FALSE, curbuf);
++ }
++ #endif
++ 
+  /*
+   * getcmdline() - accept a command line starting with firstc.
+   *
+***************
+*** 222,227 ****
+--- 235,243 ----
+       * custom status line may invoke ":normal". */
+      struct cmdline_info save_ccline;
+  #endif
++ #ifdef FEAT_AUTOCMD
++     int		cmdline_type;
++ #endif
+  
+  #ifdef FEAT_EVAL
+      if (firstc == -1)
+***************
+*** 349,354 ****
+--- 365,376 ----
+       * terminal mode set to cooked.  Need to set raw mode here then. */
+      settmode(TMODE_RAW);
+  
++ #ifdef FEAT_AUTOCMD
++     /* Trigger CmdlineEnter autocommands. */
++     cmdline_type = firstc == NUL ? '-' : firstc;
++     trigger_cmd_autocmd(cmdline_type, EVENT_CMDLINEENTER);
++ #endif
++ 
+  #ifdef FEAT_CMDHIST
+      init_history();
+      hiscnt = hislen;		/* set hiscnt to impossible history value */
+***************
+*** 2085,2090 ****
+--- 2107,2117 ----
+      if (some_key_typed)
+  	need_wait_return = FALSE;
+  
++ #ifdef FEAT_AUTOCMD
++     /* Trigger CmdlineLeave autocommands. */
++     trigger_cmd_autocmd(cmdline_type, EVENT_CMDLINELEAVE);
++ #endif
++ 
+      State = save_State;
+  #ifdef USE_IM_CONTROL
+      if (b_im_ptr != NULL && *b_im_ptr != B_IMODE_LMAP)
+***************
+*** 6834,6842 ****
+      linenr_T		lnum;
+      int			histtype;
+      garray_T		winsizes;
+- #ifdef FEAT_AUTOCMD
+-     char_u		typestr[2];
+- #endif
+      int			save_restart_edit = restart_edit;
+      int			save_State = State;
+      int			save_exmode = exmode_active;
+--- 6861,6866 ----
+***************
+*** 6965,6973 ****
+  
+  # ifdef FEAT_AUTOCMD
+      /* Trigger CmdwinEnter autocommands. */
+!     typestr[0] = cmdwin_type;
+!     typestr[1] = NUL;
+!     apply_autocmds(EVENT_CMDWINENTER, typestr, typestr, FALSE, curbuf);
+      if (restart_edit != 0)	/* autocmd with ":startinsert" */
+  	stuffcharReadbuff(K_NOP);
+  # endif
+--- 6989,6995 ----
+  
+  # ifdef FEAT_AUTOCMD
+      /* Trigger CmdwinEnter autocommands. */
+!     trigger_cmd_autocmd(cmdwin_type, EVENT_CMDWINENTER);
+      if (restart_edit != 0)	/* autocmd with ":startinsert" */
+  	stuffcharReadbuff(K_NOP);
+  # endif
+***************
+*** 6990,6996 ****
+  #  endif
+  
+      /* Trigger CmdwinLeave autocommands. */
+!     apply_autocmds(EVENT_CMDWINLEAVE, typestr, typestr, FALSE, curbuf);
+  
+  #  ifdef FEAT_FOLDING
+      /* Restore KeyTyped in case it is modified by autocommands */
+--- 7012,7018 ----
+  #  endif
+  
+      /* Trigger CmdwinLeave autocommands. */
+!     trigger_cmd_autocmd(cmdwin_type, EVENT_CMDWINLEAVE);
+  
+  #  ifdef FEAT_FOLDING
+      /* Restore KeyTyped in case it is modified by autocommands */
+*** ../vim-8.0.1205/src/fileio.c	2017-09-16 20:54:47.098560411 +0200
+--- src/fileio.c	2017-10-19 17:53:25.627775840 +0200
+***************
+*** 7731,7736 ****
+--- 7731,7738 ----
+      {"BufWritePost",	EVENT_BUFWRITEPOST},
+      {"BufWritePre",	EVENT_BUFWRITEPRE},
+      {"BufWriteCmd",	EVENT_BUFWRITECMD},
++     {"CmdlineEnter",	EVENT_CMDLINEENTER},
++     {"CmdlineLeave",	EVENT_CMDLINELEAVE},
+      {"CmdwinEnter",	EVENT_CMDWINENTER},
+      {"CmdwinLeave",	EVENT_CMDWINLEAVE},
+      {"CmdUndefined",	EVENT_CMDUNDEFINED},
+*** ../vim-8.0.1205/src/vim.h	2017-10-14 23:24:20.742889804 +0200
+--- src/vim.h	2017-10-19 17:53:53.535585924 +0200
+***************
+*** 1295,1300 ****
+--- 1295,1302 ----
+      EVENT_BUFWRITEPOST,		/* after writing a buffer */
+      EVENT_BUFWRITEPRE,		/* before writing a buffer */
+      EVENT_BUFWRITECMD,		/* write buffer using command */
++     EVENT_CMDLINEENTER,		/* after entering the command line */
++     EVENT_CMDLINELEAVE,		/* before leaving the command line */
+      EVENT_CMDWINENTER,		/* after entering the cmdline window */
+      EVENT_CMDWINLEAVE,		/* before leaving the cmdline window */
+      EVENT_COLORSCHEME,		/* after loading a colorscheme */
+*** ../vim-8.0.1205/src/testdir/test_autocmd.vim	2017-10-19 12:37:38.313753603 +0200
+--- src/testdir/test_autocmd.vim	2017-10-19 18:27:12.054025207 +0200
+***************
+*** 793,795 ****
+--- 793,817 ----
+    bwipe Xfoo
+    bwipe Xbar
+  endfunc
++ 
++ func Test_Cmdline()
++   au! CmdlineEnter : let g:entered = expand('<afile>')
++   au! CmdlineLeave : let g:left = expand('<afile>')
++   let g:entered = 0
++   let g:left = 0
++   call feedkeys(":echo 'hello'\<CR>", 'xt')
++   call assert_equal(':', g:entered)
++   call assert_equal(':', g:left)
++   au! CmdlineEnter
++   au! CmdlineLeave
++ 
++   au! CmdlineEnter / let g:entered = expand('<afile>')
++   au! CmdlineLeave / let g:left = expand('<afile>')
++   let g:entered = 0
++   let g:left = 0
++   call feedkeys("/hello<CR>", 'xt')
++   call assert_equal('/', g:entered)
++   call assert_equal('/', g:left)
++   au! CmdlineEnter
++   au! CmdlineLeave
++ endfunc
+*** ../vim-8.0.1205/src/version.c	2017-10-19 17:12:01.308776775 +0200
+--- src/version.c	2017-10-19 17:39:33.585460224 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1206,
+  /**/
+
+-- 
+A computer programmer is a device for turning requirements into
+undocumented features.  It runs on cola, pizza and Dilbert cartoons.
+					Bram Moolenaar
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

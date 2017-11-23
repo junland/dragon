@@ -1,0 +1,166 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0056
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0056
+Problem:    When setting 'filetype' there is no check for a valid name.
+Solution:   Only allow valid characters in 'filetype', 'syntax' and 'keymap'.
+Files:      src/option.c, src/testdir/test_options.vim
+
+
+*** ../vim-8.0.0055/src/option.c	2016-10-12 17:45:13.638857445 +0200
+--- src/option.c	2016-11-04 15:15:21.485747398 +0100
+***************
+*** 5823,5828 ****
+--- 5823,5843 ----
+  }
+  
+  /*
++  * Return TRUE if "val" is a valid 'filetype' name.
++  * Also used for 'syntax' and 'keymap'.
++  */
++     static int
++ valid_filetype(char_u *val)
++ {
++     char_u *s;
++ 
++     for (s = val; *s != NUL; ++s)
++ 	if (!ASCII_ISALNUM(*s) && vim_strchr((char_u *)".-_", *s) == NULL)
++ 	    return FALSE;
++     return TRUE;
++ }
++ 
++ /*
+   * Handle string options that need some action to perform when changed.
+   * Returns NULL for success, or an error message for an error.
+   */
+***************
+*** 6235,6242 ****
+  #ifdef FEAT_KEYMAP
+      else if (varp == &curbuf->b_p_keymap)
+      {
+! 	/* load or unload key mapping tables */
+! 	errmsg = keymap_init();
+  
+  	if (errmsg == NULL)
+  	{
+--- 6250,6260 ----
+  #ifdef FEAT_KEYMAP
+      else if (varp == &curbuf->b_p_keymap)
+      {
+! 	if (!valid_filetype(*varp))
+! 	    errmsg = e_invarg;
+! 	else
+! 	    /* load or unload key mapping tables */
+! 	    errmsg = keymap_init();
+  
+  	if (errmsg == NULL)
+  	{
+***************
+*** 7221,7226 ****
+--- 7239,7260 ----
+  	    errmsg = e_invarg;
+      }
+  #endif
++ 
++ #ifdef FEAT_AUTOCMD
++     else if (gvarp == &p_ft)
++     {
++ 	if (!valid_filetype(*varp))
++ 	    errmsg = e_invarg;
++     }
++ #endif
++ 
++ #ifdef FEAT_SYN_HL
++     else if (gvarp == &p_syn)
++     {
++ 	if (!valid_filetype(*varp))
++ 	    errmsg = e_invarg;
++     }
++ #endif
+  
+      /* Options that are a list of flags. */
+      else
+*** ../vim-8.0.0055/src/testdir/test_options.vim	2016-08-12 19:14:36.000000000 +0200
+--- src/testdir/test_options.vim	2016-11-04 15:16:04.909425894 +0100
+***************
+*** 48,50 ****
+--- 48,99 ----
+    endif
+  endfunc
+  
++ func Test_filetype_valid()
++   set ft=valid_name
++   call assert_equal("valid_name", &filetype)
++   set ft=valid-name
++   call assert_equal("valid-name", &filetype)
++ 
++   call assert_fails(":set ft=wrong;name", "E474:")
++   call assert_fails(":set ft=wrong\\\\name", "E474:")
++   call assert_fails(":set ft=wrong\\|name", "E474:")
++   call assert_fails(":set ft=wrong/name", "E474:")
++   call assert_fails(":set ft=wrong\\\nname", "E474:")
++   call assert_equal("valid-name", &filetype)
++ 
++   exe "set ft=trunc\x00name"
++   call assert_equal("trunc", &filetype)
++ endfunc
++ 
++ func Test_syntax_valid()
++   set syn=valid_name
++   call assert_equal("valid_name", &syntax)
++   set syn=valid-name
++   call assert_equal("valid-name", &syntax)
++ 
++   call assert_fails(":set syn=wrong;name", "E474:")
++   call assert_fails(":set syn=wrong\\\\name", "E474:")
++   call assert_fails(":set syn=wrong\\|name", "E474:")
++   call assert_fails(":set syn=wrong/name", "E474:")
++   call assert_fails(":set syn=wrong\\\nname", "E474:")
++   call assert_equal("valid-name", &syntax)
++ 
++   exe "set syn=trunc\x00name"
++   call assert_equal("trunc", &syntax)
++ endfunc
++ 
++ func Test_keymap_valid()
++   call assert_fails(":set kmp=valid_name", "E544:")
++   call assert_fails(":set kmp=valid_name", "valid_name")
++   call assert_fails(":set kmp=valid-name", "E544:")
++   call assert_fails(":set kmp=valid-name", "valid-name")
++ 
++   call assert_fails(":set kmp=wrong;name", "E474:")
++   call assert_fails(":set kmp=wrong\\\\name", "E474:")
++   call assert_fails(":set kmp=wrong\\|name", "E474:")
++   call assert_fails(":set kmp=wrong/name", "E474:")
++   call assert_fails(":set kmp=wrong\\\nname", "E474:")
++ 
++   call assert_fails(":set kmp=trunc\x00name", "E544:")
++   call assert_fails(":set kmp=trunc\x00name", "trunc")
++ endfunc
+*** ../vim-8.0.0055/src/version.c	2016-10-30 21:57:48.074395566 +0100
+--- src/version.c	2016-11-04 14:34:35.299868887 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     56,
+  /**/
+
+-- 
+Team-building exercises come in many forms but they all trace their roots back
+to the prison system.  In your typical team-building exercise the employees
+are subjected to a variety of unpleasant situations until they become either a
+cohesive team or a ring of car jackers.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

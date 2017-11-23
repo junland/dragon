@@ -1,0 +1,423 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0252
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0252
+Problem:    Characters below 256 that are not one byte are not always
+            recognized as word characters.
+Solution:   Make vim_iswordc() and vim_iswordp() work the same way. Add a test
+            for this. (Ozaki Kiichi)
+Files:      src/Makefile, src/charset.c, src/kword_test.c, src/mbyte.c,
+            src/proto/mbyte.pro
+
+
+*** ../vim-8.0.0251/src/Makefile	2017-01-28 15:58:45.340197300 +0100
+--- src/Makefile	2017-01-28 16:25:02.926150460 +0100
+***************
+*** 1584,1597 ****
+  # Unittest files
+  JSON_TEST_SRC = json_test.c
+  JSON_TEST_TARGET = json_test$(EXEEXT)
+  MEMFILE_TEST_SRC = memfile_test.c
+  MEMFILE_TEST_TARGET = memfile_test$(EXEEXT)
+  MESSAGE_TEST_SRC = message_test.c
+  MESSAGE_TEST_TARGET = message_test$(EXEEXT)
+  
+! UNITTEST_SRC = $(JSON_TEST_SRC) $(MEMFILE_TEST_SRC) $(MESSAGE_TEST_SRC)
+! UNITTEST_TARGETS = $(JSON_TEST_TARGET) $(MEMFILE_TEST_TARGET) $(MESSAGE_TEST_TARGET)
+! RUN_UNITTESTS = run_json_test run_memfile_test run_message_test
+  
+  # All sources, also the ones that are not configured
+  ALL_SRC = $(BASIC_SRC) $(ALL_GUI_SRC) $(UNITTEST_SRC) $(EXTRA_SRC)
+--- 1584,1599 ----
+  # Unittest files
+  JSON_TEST_SRC = json_test.c
+  JSON_TEST_TARGET = json_test$(EXEEXT)
++ KWORD_TEST_SRC = kword_test.c
++ KWORD_TEST_TARGET = kword_test$(EXEEXT)
+  MEMFILE_TEST_SRC = memfile_test.c
+  MEMFILE_TEST_TARGET = memfile_test$(EXEEXT)
+  MESSAGE_TEST_SRC = message_test.c
+  MESSAGE_TEST_TARGET = message_test$(EXEEXT)
+  
+! UNITTEST_SRC = $(JSON_TEST_SRC) $(KWORD_TEST_SRC) $(MEMFILE_TEST_SRC) $(MESSAGE_TEST_SRC)
+! UNITTEST_TARGETS = $(JSON_TEST_TARGET) $(KWORD_TEST_TARGET) $(MEMFILE_TEST_TARGET) $(MESSAGE_TEST_TARGET)
+! RUN_UNITTESTS = run_json_test run_kword_test run_memfile_test run_message_test
+  
+  # All sources, also the ones that are not configured
+  ALL_SRC = $(BASIC_SRC) $(ALL_GUI_SRC) $(UNITTEST_SRC) $(EXTRA_SRC)
+***************
+*** 1611,1617 ****
+  	objects/arabic.o \
+  	objects/buffer.o \
+  	objects/blowfish.o \
+- 	objects/charset.o \
+  	objects/crypt.o \
+  	objects/crypt_zip.o \
+  	objects/dict.o \
+--- 1613,1618 ----
+***************
+*** 1679,1684 ****
+--- 1680,1686 ----
+  
+  # The files included by tests are not in OBJ_COMMON.
+  OBJ_MAIN = \
++ 	objects/charset.o \
+  	objects/json.o \
+  	objects/main.o \
+  	objects/memfile.o \
+***************
+*** 1687,1699 ****
+--- 1689,1711 ----
+  OBJ = $(OBJ_COMMON) $(OBJ_MAIN)
+  
+  OBJ_JSON_TEST = \
++ 	objects/charset.o \
+  	objects/memfile.o \
+  	objects/message.o \
+  	objects/json_test.o
+  
+  JSON_TEST_OBJ = $(OBJ_COMMON) $(OBJ_JSON_TEST)
+  
++ OBJ_KWORD_TEST = \
++ 	objects/json.o \
++ 	objects/memfile.o \
++ 	objects/message.o \
++ 	objects/kword_test.o
++ 
++ KWORD_TEST_OBJ = $(OBJ_COMMON) $(OBJ_KWORD_TEST)
++ 
+  OBJ_MEMFILE_TEST = \
++ 	objects/charset.o \
+  	objects/json.o \
+  	objects/message.o \
+  	objects/memfile_test.o
+***************
+*** 1701,1706 ****
+--- 1713,1719 ----
+  MEMFILE_TEST_OBJ = $(OBJ_COMMON) $(OBJ_MEMFILE_TEST)
+  
+  OBJ_MESSAGE_TEST = \
++ 	objects/charset.o \
+  	objects/json.o \
+  	objects/memfile.o \
+  	objects/message_test.o
+***************
+*** 1710,1715 ****
+--- 1723,1729 ----
+  ALL_OBJ = $(OBJ_COMMON) \
+  	  $(OBJ_MAIN) \
+  	  $(OBJ_JSON_TEST) \
++ 	  $(OBJ_KWORD_TEST) \
+  	  $(OBJ_MEMFILE_TEST) \
+  	  $(OBJ_MESSAGE_TEST)
+  
+***************
+*** 2036,2041 ****
+--- 2050,2058 ----
+  run_json_test: $(JSON_TEST_TARGET)
+  	$(VALGRIND) ./$(JSON_TEST_TARGET) || exit 1; echo $* passed;
+  
++ run_kword_test: $(KWORD_TEST_TARGET)
++ 	$(VALGRIND) ./$(KWORD_TEST_TARGET) || exit 1; echo $* passed;
++ 
+  run_memfile_test: $(MEMFILE_TEST_TARGET)
+  	$(VALGRIND) ./$(MEMFILE_TEST_TARGET) || exit 1; echo $* passed;
+  
+***************
+*** 2222,2227 ****
+--- 2239,2251 ----
+  		MAKE="$(MAKE)" LINK_AS_NEEDED=$(LINK_AS_NEEDED) \
+  		sh $(srcdir)/link.sh
+  
++ $(KWORD_TEST_TARGET): auto/config.mk objects $(KWORD_TEST_OBJ)
++ 	$(CCC) version.c -o objects/version.o
++ 	@LINK="$(PURIFY) $(SHRPENV) $(CClink) $(ALL_LIB_DIRS) $(LDFLAGS) \
++ 		-o $(KWORD_TEST_TARGET) $(KWORD_TEST_OBJ) $(ALL_LIBS)" \
++ 		MAKE="$(MAKE)" LINK_AS_NEEDED=$(LINK_AS_NEEDED) \
++ 		sh $(srcdir)/link.sh
++ 
+  $(MEMFILE_TEST_TARGET): auto/config.mk objects $(MEMFILE_TEST_OBJ)
+  	$(CCC) version.c -o objects/version.o
+  	@LINK="$(PURIFY) $(SHRPENV) $(CClink) $(ALL_LIB_DIRS) $(LDFLAGS) \
+***************
+*** 3058,3063 ****
+--- 3082,3090 ----
+  objects/json_test.o: json_test.c
+  	$(CCC) -o $@ json_test.c
+  
++ objects/kword_test.o: kword_test.c
++ 	$(CCC) -o $@ kword_test.c
++ 
+  objects/list.o: list.c
+  	$(CCC) -o $@ list.c
+  
+***************
+*** 3597,3602 ****
+--- 3624,3633 ----
+   auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
+   regexp.h gui.h gui_beval.h proto/gui_beval.pro alloc.h ex_cmds.h spell.h \
+   proto.h globals.h farsi.h arabic.h json.c
++ objects/kword_test.o: kword_test.c main.c vim.h auto/config.h feature.h os_unix.h \
++  auto/osdef.h ascii.h keymap.h term.h macros.h option.h structs.h \
++  regexp.h gui.h gui_beval.h proto/gui_beval.pro alloc.h ex_cmds.h spell.h \
++  proto.h globals.h farsi.h arabic.h charset.c mbyte.c
+  objects/memfile_test.o: memfile_test.c main.c vim.h auto/config.h feature.h \
+   os_unix.h auto/osdef.h ascii.h keymap.h term.h macros.h option.h \
+   structs.h regexp.h gui.h gui_beval.h proto/gui_beval.pro alloc.h \
+*** ../vim-8.0.0251/src/charset.c	2017-01-28 13:47:48.514498621 +0100
+--- src/charset.c	2017-01-28 16:25:02.926150460 +0100
+***************
+*** 899,914 ****
+      int
+  vim_iswordc_buf(int c, buf_T *buf)
+  {
+- #ifdef FEAT_MBYTE
+      if (c >= 0x100)
+      {
+  	if (enc_dbcs != 0)
+  	    return dbcs_class((unsigned)c >> 8, (unsigned)(c & 0xff)) >= 2;
+  	if (enc_utf8)
+! 	    return utf_class(c) >= 2;
+!     }
+  #endif
+!     return (c > 0 && c < 0x100 && GET_CHARTAB(buf, c) != 0);
+  }
+  
+  /*
+--- 899,915 ----
+      int
+  vim_iswordc_buf(int c, buf_T *buf)
+  {
+      if (c >= 0x100)
+      {
++ #ifdef FEAT_MBYTE
+  	if (enc_dbcs != 0)
+  	    return dbcs_class((unsigned)c >> 8, (unsigned)(c & 0xff)) >= 2;
+  	if (enc_utf8)
+! 	    return utf_class_buf(c, buf) >= 2;
+  #endif
+! 	return FALSE;
+!     }
+!     return (c > 0 && GET_CHARTAB(buf, c) != 0);
+  }
+  
+  /*
+***************
+*** 917,937 ****
+      int
+  vim_iswordp(char_u *p)
+  {
+! #ifdef FEAT_MBYTE
+!     if (has_mbyte && MB_BYTE2LEN(*p) > 1)
+! 	return mb_get_class(p) >= 2;
+! #endif
+!     return GET_CHARTAB(curbuf, *p) != 0;
+  }
+  
+      int
+  vim_iswordp_buf(char_u *p, buf_T *buf)
+  {
+  #ifdef FEAT_MBYTE
+!     if (has_mbyte && MB_BYTE2LEN(*p) > 1)
+! 	return mb_get_class(p) >= 2;
+  #endif
+!     return (GET_CHARTAB(buf, *p) != 0);
+  }
+  
+  /*
+--- 918,936 ----
+      int
+  vim_iswordp(char_u *p)
+  {
+!     return vim_iswordp_buf(p, curbuf);
+  }
+  
+      int
+  vim_iswordp_buf(char_u *p, buf_T *buf)
+  {
++     int	c = *p;
++ 
+  #ifdef FEAT_MBYTE
+!     if (has_mbyte && MB_BYTE2LEN(c) > 1)
+! 	c = (*mb_ptr2char)(p);
+  #endif
+!     return vim_iswordc_buf(c, buf);
+  }
+  
+  /*
+*** ../vim-8.0.0251/src/kword_test.c	2017-01-28 16:38:29.225031457 +0100
+--- src/kword_test.c	2017-01-28 16:33:18.011007224 +0100
+***************
+*** 0 ****
+--- 1,85 ----
++ /* vi:set ts=8 sts=4 sw=4 noet:
++  *
++  * VIM - Vi IMproved	by Bram Moolenaar
++  *
++  * Do ":help uganda"  in Vim to read copying and usage conditions.
++  * Do ":help credits" in Vim to see a list of people who contributed.
++  * See README.txt for an overview of the Vim source code.
++  */
++ 
++ /*
++  * kword_test.c: Unittests for vim_iswordc() and vim_iswordp().
++  */
++ 
++ #undef NDEBUG
++ #include <assert.h>
++ 
++ /* Must include main.c because it contains much more than just main() */
++ #define NO_VIM_MAIN
++ #include "main.c"
++ 
++ /* This file has to be included because the tested functions are static */
++ #include "charset.c"
++ 
++ #ifdef FEAT_MBYTE
++ /*
++  * Test the results of vim_iswordc() and vim_iswordp() are matched.
++  */
++     static void
++ test_isword_funcs_utf8(void)
++ {
++     buf_T buf;
++     int c;
++ 
++     vim_memset(&buf, 0, sizeof(buf));
++     p_enc = (char_u *)"utf-8";
++     p_isi = (char_u *)"";
++     p_isp = (char_u *)"";
++     p_isf = (char_u *)"";
++     buf.b_p_isk = (char_u *)"@,48-57,_,128-167,224-235";
++ 
++     curbuf = &buf;
++     mb_init(); /* calls init_chartab() */
++ 
++     for (c = 0; c < 0x10000; ++c)
++     {
++ 	char_u p[4] = {0};
++ 	int c1;
++ 	int retc;
++ 	int retp;
++ 
++ 	utf_char2bytes(c, p);
++ 	c1 = utf_ptr2char(p);
++ 	if (c != c1)
++ 	{
++ 	    fprintf(stderr, "Failed: ");
++ 	    fprintf(stderr,
++ 		    "[c = %#04x, p = {%#02x, %#02x, %#02x}] ",
++ 		    c, p[0], p[1], p[2]);
++ 	    fprintf(stderr, "c != utf_ptr2char(p) (=%#04x)\n", c1);
++ 	    abort();
++ 	}
++ 	retc = vim_iswordc_buf(c, &buf);
++ 	retp = vim_iswordp_buf(p, &buf);
++ 	if (retc != retp)
++ 	{
++ 	    fprintf(stderr, "Failed: ");
++ 	    fprintf(stderr,
++ 		    "[c = %#04x, p = {%#02x, %#02x, %#02x}] ",
++ 		    c, p[0], p[1], p[2]);
++ 	    fprintf(stderr, "vim_iswordc(c) (=%d) != vim_iswordp(p) (=%d)\n",
++ 		    retc, retp);
++ 	    abort();
++ 	}
++     }
++ }
++ #endif
++ 
++     int
++ main(void)
++ {
++ #ifdef FEAT_MBYTE
++     test_isword_funcs_utf8();
++ #endif
++     return 0;
++ }
+*** ../vim-8.0.0251/src/mbyte.c	2017-01-12 21:44:45.138171868 +0100
+--- src/mbyte.c	2017-01-28 16:25:02.930150435 +0100
+***************
+*** 895,901 ****
+      if (enc_dbcs != 0 && p[0] != NUL && p[1] != NUL)
+  	return dbcs_class(p[0], p[1]);
+      if (enc_utf8)
+! 	return utf_class(utf_ptr2char(p));
+      return 0;
+  }
+  
+--- 895,901 ----
+      if (enc_dbcs != 0 && p[0] != NUL && p[1] != NUL)
+  	return dbcs_class(p[0], p[1]);
+      if (enc_utf8)
+! 	return utf_class_buf(utf_ptr2char(p), buf);
+      return 0;
+  }
+  
+***************
+*** 2694,2699 ****
+--- 2694,2705 ----
+      int
+  utf_class(int c)
+  {
++     return utf_class_buf(c, curbuf);
++ }
++ 
++     int
++ utf_class_buf(int c, buf_T *buf)
++ {
+      /* sorted list of non-overlapping intervals */
+      static struct clinterval
+      {
+***************
+*** 2780,2786 ****
+      {
+  	if (c == ' ' || c == '\t' || c == NUL || c == 0xa0)
+  	    return 0;	    /* blank */
+! 	if (vim_iswordc(c))
+  	    return 2;	    /* word character */
+  	return 1;	    /* punctuation */
+      }
+--- 2786,2792 ----
+      {
+  	if (c == ' ' || c == '\t' || c == NUL || c == 0xa0)
+  	    return 0;	    /* blank */
+! 	if (vim_iswordc_buf(c, buf))
+  	    return 2;	    /* word character */
+  	return 1;	    /* punctuation */
+      }
+*** ../vim-8.0.0251/src/proto/mbyte.pro	2016-09-12 13:04:11.000000000 +0200
+--- src/proto/mbyte.pro	2017-01-28 16:25:02.930150435 +0100
+***************
+*** 40,45 ****
+--- 40,46 ----
+  int utf_iscomposing(int c);
+  int utf_printable(int c);
+  int utf_class(int c);
++ int utf_class_buf(int c, buf_T *buf);
+  int utf_ambiguous_width(int c);
+  int utf_fold(int a);
+  int utf_toupper(int a);
+*** ../vim-8.0.0251/src/version.c	2017-01-28 15:58:45.352197224 +0100
+--- src/version.c	2017-01-28 16:37:46.057305507 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     252,
+  /**/
+
+-- 
+The early bird gets the worm. The second mouse gets the cheese.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

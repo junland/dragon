@@ -1,0 +1,118 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0041
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0041
+Problem:    When using Insert mode completion but not actually inserting
+            anything an undo item is still created. (Tommy Allen)
+Solution:   Do not call stop_arrow() when not inserting anything.
+Files:      src/edit.c, src/testdir/test_popup.vim
+
+
+*** ../vim-8.0.0040/src/edit.c	2016-10-15 17:06:42.086912756 +0200
+--- src/edit.c	2016-10-16 15:34:26.985734970 +0200
+***************
+*** 2799,2807 ****
+  	ins_compl_prep(' ');
+      ins_compl_clear();
+  
+-     if (stop_arrow() == FAIL)
+- 	return;
+- 
+      compl_direction = FORWARD;
+      if (startcol > curwin->w_cursor.col)
+  	startcol = curwin->w_cursor.col;
+--- 2799,2804 ----
+***************
+*** 3876,3882 ****
+  		/* put the cursor on the last char, for 'tw' formatting */
+  		if (prev_col > 0)
+  		    dec_cursor();
+! 		if (stop_arrow() == OK)
+  		    insertchar(NUL, 0, -1);
+  		if (prev_col > 0
+  			     && ml_get_curline()[curwin->w_cursor.col] != NUL)
+--- 3873,3880 ----
+  		/* put the cursor on the last char, for 'tw' formatting */
+  		if (prev_col > 0)
+  		    dec_cursor();
+! 		/* only format when something was inserted */
+! 		if (!arrow_used && !ins_need_undo)
+  		    insertchar(NUL, 0, -1);
+  		if (prev_col > 0
+  			     && ml_get_curline()[curwin->w_cursor.col] != NUL)
+*** ../vim-8.0.0040/src/testdir/test_popup.vim	2016-10-15 17:06:42.094912699 +0200
+--- src/testdir/test_popup.vim	2016-10-16 15:33:41.586069579 +0200
+***************
+*** 378,384 ****
+    endif
+  endfunc
+  
+! :"Test that 'completefunc' works when it's OK.
+  func Test_omnifunc_with_check()
+    new
+    setlocal omnifunc=DummyCompleteFour
+--- 378,384 ----
+    endif
+  endfunc
+  
+! " Test that 'completefunc' works when it's OK.
+  func Test_omnifunc_with_check()
+    new
+    setlocal omnifunc=DummyCompleteFour
+***************
+*** 400,403 ****
+--- 400,429 ----
+    q!
+  endfunc
+  
++ function UndoComplete()
++   call complete(1, ['January', 'February', 'March',
++         \ 'April', 'May', 'June', 'July', 'August', 'September',
++         \ 'October', 'November', 'December'])
++   return ''
++ endfunc
++ 
++ " Test that no undo item is created when no completion is inserted
++ func Test_complete_no_undo()
++   set completeopt=menu,preview,noinsert,noselect
++   inoremap <Right> <C-R>=UndoComplete()<CR>
++   new
++   call feedkeys("ixxx\<CR>\<CR>yyy\<Esc>k", 'xt')
++   call feedkeys("iaaa\<Esc>0", 'xt')
++   call assert_equal('aaa', getline(2))
++   call feedkeys("i\<Right>\<Esc>", 'xt')
++   call assert_equal('aaa', getline(2))
++   call feedkeys("u", 'xt')
++   call assert_equal('', getline(2))
++ 
++   iunmap <Right>
++   set completeopt&
++   q!
++ endfunc
++ 
++ 
+  " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.0040/src/version.c	2016-10-16 14:35:44.547696415 +0200
+--- src/version.c	2016-10-16 15:35:09.805419375 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     41,
+  /**/
+
+-- 
+Sometimes I think the surest sign that intelligent life exists elsewhere
+in the universe is that none of it has tried to contact us.     (Calvin)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

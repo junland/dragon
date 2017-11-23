@@ -1,0 +1,382 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0175
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0175
+Problem:    Setting language in gvim on MS-Windows does not work when
+            libintl.dll is dynamically linked with msvcrt.dll.
+Solution:   Use putenv() from libintl as well. (Ken Takata, closes #1082)
+Files:      src/mbyte.c, src/misc1.c, src/os_win32.c, src/proto/os_win32.pro,
+            src/vim.h
+
+
+*** ../vim-8.0.0174/src/mbyte.c	2016-12-03 16:40:44.432532400 +0100
+--- src/mbyte.c	2017-01-12 21:39:35.536587643 +0100
+***************
+*** 4584,4630 ****
+  #   endif
+  
+  /*
+-  * Get the address of 'funcname' which is imported by 'hInst' DLL.
+-  */
+-     static void *
+- get_iconv_import_func(HINSTANCE hInst, const char *funcname)
+- {
+-     PBYTE			pImage = (PBYTE)hInst;
+-     PIMAGE_DOS_HEADER		pDOS = (PIMAGE_DOS_HEADER)hInst;
+-     PIMAGE_NT_HEADERS		pPE;
+-     PIMAGE_IMPORT_DESCRIPTOR	pImpDesc;
+-     PIMAGE_THUNK_DATA		pIAT;	    /* Import Address Table */
+-     PIMAGE_THUNK_DATA		pINT;	    /* Import Name Table */
+-     PIMAGE_IMPORT_BY_NAME	pImpName;
+- 
+-     if (pDOS->e_magic != IMAGE_DOS_SIGNATURE)
+- 	return NULL;
+-     pPE = (PIMAGE_NT_HEADERS)(pImage + pDOS->e_lfanew);
+-     if (pPE->Signature != IMAGE_NT_SIGNATURE)
+- 	return NULL;
+-     pImpDesc = (PIMAGE_IMPORT_DESCRIPTOR)(pImage
+- 	    + pPE->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT]
+- 							    .VirtualAddress);
+-     for (; pImpDesc->FirstThunk; ++pImpDesc)
+-     {
+- 	if (!pImpDesc->OriginalFirstThunk)
+- 	    continue;
+- 	pIAT = (PIMAGE_THUNK_DATA)(pImage + pImpDesc->FirstThunk);
+- 	pINT = (PIMAGE_THUNK_DATA)(pImage + pImpDesc->OriginalFirstThunk);
+- 	for (; pIAT->u1.Function; ++pIAT, ++pINT)
+- 	{
+- 	    if (IMAGE_SNAP_BY_ORDINAL(pINT->u1.Ordinal))
+- 		continue;
+- 	    pImpName = (PIMAGE_IMPORT_BY_NAME)(pImage
+- 					+ (UINT_PTR)(pINT->u1.AddressOfData));
+- 	    if (strcmp((char *)pImpName->Name, funcname) == 0)
+- 		return (void *)pIAT->u1.Function;
+- 	}
+-     }
+-     return NULL;
+- }
+- 
+- /*
+   * Try opening the iconv.dll and return TRUE if iconv() can be used.
+   */
+      int
+--- 4584,4589 ----
+***************
+*** 4671,4677 ****
+      iconv_open	= (void *)GetProcAddress(hIconvDLL, "libiconv_open");
+      iconv_close	= (void *)GetProcAddress(hIconvDLL, "libiconv_close");
+      iconvctl	= (void *)GetProcAddress(hIconvDLL, "libiconvctl");
+!     iconv_errno	= get_iconv_import_func(hIconvDLL, "_errno");
+      if (iconv_errno == NULL)
+  	iconv_errno = (void *)GetProcAddress(hMsvcrtDLL, "_errno");
+      if (iconv == NULL || iconv_open == NULL || iconv_close == NULL
+--- 4630,4636 ----
+      iconv_open	= (void *)GetProcAddress(hIconvDLL, "libiconv_open");
+      iconv_close	= (void *)GetProcAddress(hIconvDLL, "libiconv_close");
+      iconvctl	= (void *)GetProcAddress(hIconvDLL, "libiconvctl");
+!     iconv_errno	= get_dll_import_func(hIconvDLL, "_errno");
+      if (iconv_errno == NULL)
+  	iconv_errno = (void *)GetProcAddress(hMsvcrtDLL, "_errno");
+      if (iconv == NULL || iconv_open == NULL || iconv_close == NULL
+*** ../vim-8.0.0174/src/misc1.c	2017-01-07 15:39:36.397759526 +0100
+--- src/misc1.c	2017-01-12 21:39:35.536587643 +0100
+***************
+*** 4455,4460 ****
+--- 4455,4463 ----
+      {
+  	sprintf((char *)envbuf, "%s=%s", name, val);
+  	putenv((char *)envbuf);
++ # ifdef libintl_putenv
++ 	libintl_putenv((char *)envbuf);
++ # endif
+      }
+  #endif
+  #ifdef FEAT_GETTEXT
+*** ../vim-8.0.0174/src/os_win32.c	2016-11-26 15:13:29.406218061 +0100
+--- src/os_win32.c	2017-01-12 21:42:16.767329718 +0100
+***************
+*** 425,430 ****
+--- 425,508 ----
+      return dll;
+  }
+  
++ #if defined(DYNAMIC_ICONV) || defined(DYNAMIC_GETTEXT) || defined(PROTO)
++ /*
++  * Get related information about 'funcname' which is imported by 'hInst'.
++  * If 'info' is 0, return the function address.
++  * If 'info' is 1, return the module name which the function is imported from.
++  */
++     static void *
++ get_imported_func_info(HINSTANCE hInst, const char *funcname, int info)
++ {
++     PBYTE			pImage = (PBYTE)hInst;
++     PIMAGE_DOS_HEADER		pDOS = (PIMAGE_DOS_HEADER)hInst;
++     PIMAGE_NT_HEADERS		pPE;
++     PIMAGE_IMPORT_DESCRIPTOR	pImpDesc;
++     PIMAGE_THUNK_DATA		pIAT;	    /* Import Address Table */
++     PIMAGE_THUNK_DATA		pINT;	    /* Import Name Table */
++     PIMAGE_IMPORT_BY_NAME	pImpName;
++ 
++     if (pDOS->e_magic != IMAGE_DOS_SIGNATURE)
++ 	return NULL;
++     pPE = (PIMAGE_NT_HEADERS)(pImage + pDOS->e_lfanew);
++     if (pPE->Signature != IMAGE_NT_SIGNATURE)
++ 	return NULL;
++     pImpDesc = (PIMAGE_IMPORT_DESCRIPTOR)(pImage
++ 	    + pPE->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT]
++ 							    .VirtualAddress);
++     for (; pImpDesc->FirstThunk; ++pImpDesc)
++     {
++ 	if (!pImpDesc->OriginalFirstThunk)
++ 	    continue;
++ 	pIAT = (PIMAGE_THUNK_DATA)(pImage + pImpDesc->FirstThunk);
++ 	pINT = (PIMAGE_THUNK_DATA)(pImage + pImpDesc->OriginalFirstThunk);
++ 	for (; pIAT->u1.Function; ++pIAT, ++pINT)
++ 	{
++ 	    if (IMAGE_SNAP_BY_ORDINAL(pINT->u1.Ordinal))
++ 		continue;
++ 	    pImpName = (PIMAGE_IMPORT_BY_NAME)(pImage
++ 					+ (UINT_PTR)(pINT->u1.AddressOfData));
++ 	    if (strcmp((char *)pImpName->Name, funcname) == 0)
++ 	    {
++ 		switch (info)
++ 		{
++ 		    case 0:
++ 			return (void *)pIAT->u1.Function;
++ 		    case 1:
++ 			return (void *)(pImage + pImpDesc->Name);
++ 		    default:
++ 			return NULL;
++ 		}
++ 	    }
++ 	}
++     }
++     return NULL;
++ }
++ 
++ /*
++  * Get the module handle which 'funcname' in 'hInst' is imported from.
++  */
++     HINSTANCE
++ find_imported_module_by_funcname(HINSTANCE hInst, const char *funcname)
++ {
++     char    *modulename;
++ 
++     modulename = (char *)get_imported_func_info(hInst, funcname, 1);
++     if (modulename != NULL)
++ 	return GetModuleHandleA(modulename);
++     return NULL;
++ }
++ 
++ /*
++  * Get the address of 'funcname' which is imported by 'hInst' DLL.
++  */
++     void *
++ get_dll_import_func(HINSTANCE hInst, const char *funcname)
++ {
++     return get_imported_func_info(hInst, funcname, 0);
++ }
++ #endif
++ 
+  #if defined(DYNAMIC_GETTEXT) || defined(PROTO)
+  # ifndef GETTEXT_DLL
+  #  define GETTEXT_DLL "libintl.dll"
+***************
+*** 436,441 ****
+--- 514,520 ----
+  static char *null_libintl_textdomain(const char *);
+  static char *null_libintl_bindtextdomain(const char *, const char *);
+  static char *null_libintl_bind_textdomain_codeset(const char *, const char *);
++ static int null_libintl_putenv(const char *);
+  
+  static HINSTANCE hLibintlDLL = NULL;
+  char *(*dyn_libintl_gettext)(const char *) = null_libintl_gettext;
+***************
+*** 446,451 ****
+--- 525,531 ----
+  						= null_libintl_bindtextdomain;
+  char *(*dyn_libintl_bind_textdomain_codeset)(const char *, const char *)
+  				       = null_libintl_bind_textdomain_codeset;
++ int (*dyn_libintl_putenv)(const char *) = null_libintl_putenv;
+  
+      int
+  dyn_libintl_init(void)
+***************
+*** 463,468 ****
+--- 543,549 ----
+  	{"bindtextdomain", (FARPROC*)&dyn_libintl_bindtextdomain},
+  	{NULL, NULL}
+      };
++     HINSTANCE hmsvcrt;
+  
+      /* No need to initialize twice. */
+      if (hLibintlDLL)
+***************
+*** 507,512 ****
+--- 588,600 ----
+  	dyn_libintl_bind_textdomain_codeset =
+  					 null_libintl_bind_textdomain_codeset;
+  
++     /* _putenv() function for the libintl.dll is optional. */
++     hmsvcrt = find_imported_module_by_funcname(hLibintlDLL, "getenv");
++     if (hmsvcrt != NULL)
++ 	dyn_libintl_putenv = (void *)GetProcAddress(hmsvcrt, "_putenv");
++     if (dyn_libintl_putenv == NULL || dyn_libintl_putenv == putenv)
++ 	dyn_libintl_putenv = null_libintl_putenv;
++ 
+      return 1;
+  }
+  
+***************
+*** 521,526 ****
+--- 609,615 ----
+      dyn_libintl_textdomain	= null_libintl_textdomain;
+      dyn_libintl_bindtextdomain	= null_libintl_bindtextdomain;
+      dyn_libintl_bind_textdomain_codeset = null_libintl_bind_textdomain_codeset;
++     dyn_libintl_putenv		= null_libintl_putenv;
+  }
+  
+  /*ARGSUSED*/
+***************
+*** 562,567 ****
+--- 651,663 ----
+      return NULL;
+  }
+  
++ /*ARGSUSED*/
++     int
++ null_libintl_putenv(const char *envstring)
++ {
++     return 0;
++ }
++ 
+  #endif /* DYNAMIC_GETTEXT */
+  
+  /* This symbol is not defined in older versions of the SDK or Visual C++ */
+***************
+*** 4781,4812 ****
+  #if defined(FEAT_JOB_CHANNEL) || defined(PROTO)
+      static HANDLE
+  job_io_file_open(
+!         char_u *fname,
+!         DWORD dwDesiredAccess,
+!         DWORD dwShareMode,
+!         LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+!         DWORD dwCreationDisposition,
+!         DWORD dwFlagsAndAttributes)
+  {
+      HANDLE h;
+  # ifdef FEAT_MBYTE
+      WCHAR *wn = NULL;
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+!         wn = enc_to_utf16(fname, NULL);
+!         if (wn != NULL)
+!         {
+!             h = CreateFileW(wn, dwDesiredAccess, dwShareMode,
+!                      lpSecurityAttributes, dwCreationDisposition,
+!                      dwFlagsAndAttributes, NULL);
+!             vim_free(wn);
+!         }
+      }
+      if (wn == NULL)
+  # endif
+!         h = CreateFile((LPCSTR)fname, dwDesiredAccess, dwShareMode,
+!                      lpSecurityAttributes, dwCreationDisposition,
+!                      dwFlagsAndAttributes, NULL);
+      return h;
+  }
+  
+--- 4877,4908 ----
+  #if defined(FEAT_JOB_CHANNEL) || defined(PROTO)
+      static HANDLE
+  job_io_file_open(
+! 	char_u *fname,
+! 	DWORD dwDesiredAccess,
+! 	DWORD dwShareMode,
+! 	LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+! 	DWORD dwCreationDisposition,
+! 	DWORD dwFlagsAndAttributes)
+  {
+      HANDLE h;
+  # ifdef FEAT_MBYTE
+      WCHAR *wn = NULL;
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+! 	wn = enc_to_utf16(fname, NULL);
+! 	if (wn != NULL)
+! 	{
+! 	    h = CreateFileW(wn, dwDesiredAccess, dwShareMode,
+! 		    lpSecurityAttributes, dwCreationDisposition,
+! 		    dwFlagsAndAttributes, NULL);
+! 	    vim_free(wn);
+! 	}
+      }
+      if (wn == NULL)
+  # endif
+! 	h = CreateFile((LPCSTR)fname, dwDesiredAccess, dwShareMode,
+! 		lpSecurityAttributes, dwCreationDisposition,
+! 		dwFlagsAndAttributes, NULL);
+      return h;
+  }
+  
+*** ../vim-8.0.0174/src/proto/os_win32.pro	2016-10-15 18:36:45.353910276 +0200
+--- src/proto/os_win32.pro	2017-01-12 21:39:35.540587611 +0100
+***************
+*** 1,5 ****
+--- 1,7 ----
+  /* os_win32.c */
+  HINSTANCE vimLoadLib(char *name);
++ HINSTANCE find_imported_module_by_funcname(HINSTANCE hInst, const char *funcname);
++ void *get_dll_import_func(HINSTANCE hInst, const char *funcname);
+  int dyn_libintl_init(void);
+  void dyn_libintl_end(void);
+  void PlatformId(void);
+*** ../vim-8.0.0174/src/vim.h	2016-12-03 16:40:44.432532400 +0100
+--- src/vim.h	2017-01-12 21:39:35.540587611 +0100
+***************
+*** 574,579 ****
+--- 574,580 ----
+  extern char *(*dyn_libintl_bindtextdomain)(const char *domainname, const char *dirname);
+  extern char *(*dyn_libintl_bind_textdomain_codeset)(const char *domainname, const char *codeset);
+  extern char *(*dyn_libintl_textdomain)(const char *domainname);
++ extern int (*dyn_libintl_putenv)(const char *envstring);
+  #endif
+  
+  
+***************
+*** 592,597 ****
+--- 593,599 ----
+  #   define HAVE_BIND_TEXTDOMAIN_CODESET 1
+  #  endif
+  #  define textdomain(domain) (*dyn_libintl_textdomain)(domain)
++ #  define libintl_putenv(envstring) (*dyn_libintl_putenv)(envstring)
+  # else
+  #  include <libintl.h>
+  #  define _(x) gettext((char *)(x))
+*** ../vim-8.0.0174/src/version.c	2017-01-12 20:28:22.454078272 +0100
+--- src/version.c	2017-01-12 21:39:20.840702285 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     175,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+257. Your "hundred-and-one" lists include well over 101 items, since you
+     automatically interpret all numbers in hexadecimal notation.
+     (hex 101 = decimal 257)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,107 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0830
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0830
+Problem:    Translating messages is not ideal.
+Solution:   Add a remark about obsolete messages.  Use msgfmt in the check
+            script. (Christian Brabandt)
+Files:      src/po/README.txt, src/po/check.vim
+
+
+*** ../vim-8.0.0829/src/po/README.txt	2013-06-23 13:20:53.000000000 +0200
+--- src/po/README.txt	2017-08-01 17:28:36.769979152 +0200
+***************
+*** 84,90 ****
+      You should include your name and E-mail address instead, for example:
+  	msgstr "Berichten übersetzt bei: John Doe <john@doe.org>"
+  
+! (3) Clean up
+      This is very important to make sure the translation works on all systems.
+      Comment-out all non-translated strings.  There are two types:
+      - items marked with "#, fuzzy"
+--- 84,96 ----
+      You should include your name and E-mail address instead, for example:
+  	msgstr "Berichten übersetzt bei: John Doe <john@doe.org>"
+  
+! (3) Remove unused messages (optional)
+!     Remove messages that have been marked as obsolete. 
+!     Such messages start with "#~".
+! 
+!     The cleanup script will also do that (see next step).
+! 
+! (4) Clean up
+      This is very important to make sure the translation works on all systems.
+      Comment-out all non-translated strings.  There are two types:
+      - items marked with "#, fuzzy"
+***************
+*** 100,107 ****
+      messed up by changes in line numbers and show the actual changes in the
+      text.
+  
+! (4) Check:
+  
+  	vim -S check.vim xx.po
+  	make xx.mo
+  
+--- 106,117 ----
+      messed up by changes in line numbers and show the actual changes in the
+      text.
+  
+! (5) Check:
+! 
+!     While editing the .po file:
+!         :source check.vim
+  
++     From the command line:
+  	vim -S check.vim xx.po
+  	make xx.mo
+  
+*** ../vim-8.0.0829/src/po/check.vim	2017-07-28 16:46:36.213711794 +0200
+--- src/po/check.vim	2017-08-01 17:37:33.838145197 +0200
+***************
+*** 143,148 ****
+--- 143,158 ----
+    endif
+  endwhile
+  
++ " Check that the file is well formed according to msgfmts understanding
++ if executable("msgfmt")
++   let filename = expand("%")
++   let a = system("msgfmt --statistics OLD_PO_FILE_INPUT=yes" . filename)
++   if v:shell_error != 0
++     let error = matchstr(a, filename.':\zs\d\+\ze:')+0
++     for line in split(a, '\n') | echomsg line | endfor
++   endif
++ endif
++ 
+  if error == 0
+    " If all was OK restore the view.
+    call winrestview(wsv)
+*** ../vim-8.0.0829/src/version.c	2017-08-01 17:14:16.784118200 +0200
+--- src/version.c	2017-08-01 17:30:24.273211725 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     830,
+  /**/
+
+-- 
+GUARD #1:  Where'd you get the coconut?
+ARTHUR:    We found them.
+GUARD #1:  Found them?  In Mercea?  The coconut's tropical!
+ARTHUR:    What do you mean?
+GUARD #1:  Well, this is a temperate zone.
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

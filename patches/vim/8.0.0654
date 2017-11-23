@@ -1,0 +1,146 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0654
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0654
+Problem:    Text found after :endfunction is silently ignored.
+Solution:   Give a warning if 'verbose' is set.  When | or \n are used,
+            execute the text as a command.
+Files:      src/testdir/test_vimscript.vim, src/userfunc.c,
+            runtime/doc/eval.txt
+
+
+*** ../vim-8.0.0653/src/testdir/test_vimscript.vim	2017-06-04 20:29:56.585724971 +0200
+--- src/testdir/test_vimscript.vim	2017-06-22 18:54:40.411532954 +0200
+***************
+*** 1363,1368 ****
+--- 1363,1395 ----
+      call assert_fails("call invert({})", 'E728:')
+  endfunc
+  
++ " Test trailing text after :endfunction				    {{{1
++ func Test_endfunction_trailing()
++     call assert_false(exists('*Xtest'))
++ 
++     exe "func Xtest()\necho 'hello'\nendfunc\nlet done = 'yes'"
++     call assert_true(exists('*Xtest'))
++     call assert_equal('yes', done)
++     delfunc Xtest
++     unlet done
++ 
++     exe "func Xtest()\necho 'hello'\nendfunc|let done = 'yes'"
++     call assert_true(exists('*Xtest'))
++     call assert_equal('yes', done)
++     delfunc Xtest
++     unlet done
++ 
++     set verbose=1
++     exe "func Xtest()\necho 'hello'\nendfunc \" garbage"
++     call assert_true(exists('*Xtest'))
++     delfunc Xtest
++ 
++     call assert_fails("func Xtest()\necho 'hello'\nendfunc garbage", 'E946')
++     call assert_true(exists('*Xtest'))
++     delfunc Xtest
++     set verbose=0
++ endfunc
++ 
+  "-------------------------------------------------------------------------------
+  " Modelines								    {{{1
+  " vim: ts=8 sw=4 tw=80 fdm=marker
+*** ../vim-8.0.0653/src/userfunc.c	2017-04-07 19:50:08.691049319 +0200
+--- src/userfunc.c	2017-06-22 18:40:56.814037821 +0200
+***************
+*** 2130,2135 ****
+--- 2130,2143 ----
+  	    /* Check for "endfunction". */
+  	    if (checkforcmd(&p, "endfunction", 4) && nesting-- == 0)
+  	    {
++ 		if (*p == '|')
++ 		    /* Another command follows. */
++ 		    eap->nextcmd = vim_strsave(p + 1);
++ 		else if (line_arg != NULL && *skipwhite(line_arg) != NUL)
++ 		    /* Another command follows. */
++ 		    eap->nextcmd = line_arg;
++ 		else if (*p != NUL && *p != '"' && p_verbose > 0)
++ 		    EMSG2((char_u *)_("E946: Text found after :endfunction: %s"), p);
+  		if (line_arg == NULL)
+  		    vim_free(theline);
+  		break;
+*** ../vim-8.0.0653/runtime/doc/eval.txt	2017-06-11 16:07:20.702719866 +0200
+--- runtime/doc/eval.txt	2017-06-22 19:08:52.484740712 +0200
+***************
+*** 8756,8773 ****
+  			implies that the effect of |:nohlsearch| is undone
+  			when the function returns.
+  
+! 					*:endf* *:endfunction* *E126* *E193*
+! :endf[unction]		The end of a function definition.  Must be on a line
+! 			by its own, without other commands.
+  
+  				*:delf* *:delfunction* *E130* *E131* *E933*
+! :delf[unction] {name}	Delete function {name}.
+  			{name} can also be a |Dictionary| entry that is a
+  			|Funcref|: >
+  				:delfunc dict.init
+  <			This will remove the "init" entry from "dict".  The
+  			function is deleted if there are no more references to
+  			it.
+  							*:retu* *:return* *E133*
+  :retu[rn] [expr]	Return from a function.  When "[expr]" is given, it is
+  			evaluated and returned as the result of the function.
+--- 8764,8795 ----
+  			implies that the effect of |:nohlsearch| is undone
+  			when the function returns.
+  
+! 				*:endf* *:endfunction* *E126* *E193* *E946*
+! :endf[unction] [argument]
+! 			The end of a function definition.  Best is to put it
+! 			on a line by its own, without [argument].
+! 
+! 			[argument] can be:
+! 				| command	command to execute next
+! 				\n command	command to execute next
+! 				" comment	always ignored
+! 				anything else	ignored, unless 'verbose' is
+! 						non-zero
+! 			The support for a following command was added in Vim
+! 			8.0.0654, before that any argument was silently
+! 			ignored.
+  
+  				*:delf* *:delfunction* *E130* *E131* *E933*
+! :delf[unction][!] {name}
+! 			Delete function {name}.
+  			{name} can also be a |Dictionary| entry that is a
+  			|Funcref|: >
+  				:delfunc dict.init
+  <			This will remove the "init" entry from "dict".  The
+  			function is deleted if there are no more references to
+  			it.
++ 			With the ! there is no error if the function does not
++ 			exist.
+  							*:retu* *:return* *E133*
+  :retu[rn] [expr]	Return from a function.  When "[expr]" is given, it is
+  			evaluated and returned as the result of the function.
+*** ../vim-8.0.0653/src/version.c	2017-06-22 16:04:23.809432669 +0200
+--- src/version.c	2017-06-22 19:09:15.772554124 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     654,
+  /**/
+
+-- 
+I'm trying to be an optimist, but I don't think it'll work.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

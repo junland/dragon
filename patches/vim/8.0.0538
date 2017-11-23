@@ -1,0 +1,53 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0538
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0538
+Problem:    No test for falling back to default term value.
+Solution:   Add a test.
+Files:      src/testdir/test_startup.vim
+
+
+*** ../vim-8.0.0537/src/testdir/test_startup.vim	2017-03-27 23:02:03.392337316 +0200
+--- src/testdir/test_startup.vim	2017-04-02 16:52:35.528579836 +0200
+***************
+*** 208,210 ****
+--- 208,223 ----
+    let out = system(GetVimCommand() . '-u NONE -es -c''set verbose=1|h|exe "%norm\<c-y>\<c-d>"'' -c cq')
+    call assert_notmatch('E315:', out)
+  endfunc
++ 
++ func Test_default_term()
++   if !has('unix') || has('gui_running')
++     " can't get output of Vim.
++     return
++   endif
++ 
++   let save_term = $TERM
++   let $TERM = 'unknown'
++   let out = system(GetVimCommand() . ' -c''set term'' -c cq')
++   call assert_match("defaulting to 'ansi'", out)
++   let $TERM = save_term
++ endfunc
+*** ../vim-8.0.0537/src/version.c	2017-04-02 15:45:00.381877182 +0200
+--- src/version.c	2017-04-02 16:53:19.460306740 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     538,
+  /**/
+
+-- 
+Place mark here ->[ ]<- if you want a dirty monitor.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

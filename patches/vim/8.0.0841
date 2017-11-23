@@ -1,0 +1,77 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0841
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0841
+Problem:    term_getline() may cause a crash.
+Solution:   Check that the row is valid. (Hirohito Higashi)
+Files:      src/terminal.c, src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0840/src/terminal.c	2017-08-01 22:24:21.553439094 +0200
+--- src/terminal.c	2017-08-02 22:03:59.631741285 +0200
+***************
+*** 1847,1852 ****
+--- 1847,1854 ----
+  	int		len;
+  	char_u		*p;
+  
++ 	if (row < 0 || row >= term->tl_rows)
++ 	    return;
+  	len = term->tl_cols * MB_MAXBYTES + 1;
+  	p = alloc(len);
+  	if (p == NULL)
+*** ../vim-8.0.0840/src/testdir/test_terminal.vim	2017-08-01 21:44:27.082445161 +0200
+--- src/testdir/test_terminal.vim	2017-08-02 22:02:21.800447024 +0200
+***************
+*** 81,86 ****
+--- 81,90 ----
+  endfunc
+  
+  func Check_123(buf)
++   let l = term_scrape(a:buf, 0)
++   call assert_true(len(l) == 0)
++   let l = term_scrape(a:buf, 999)
++   call assert_true(len(l) == 0)
+    let l = term_scrape(a:buf, 1)
+    call assert_true(len(l) > 0)
+    call assert_equal('1', l[0].chars)
+***************
+*** 93,98 ****
+--- 97,108 ----
+      call assert_equal('#000000', l[0].bg)
+    endif
+  
++   let l = term_getline(a:buf, -1)
++   call assert_equal('', l)
++   let l = term_getline(a:buf, 0)
++   call assert_equal('', l)
++   let l = term_getline(a:buf, 999)
++   call assert_equal('', l)
+    let l = term_getline(a:buf, 1)
+    call assert_equal('123', l)
+  endfunc
+*** ../vim-8.0.0840/src/version.c	2017-08-02 22:07:08.450378993 +0200
+--- src/version.c	2017-08-02 22:10:08.581078160 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     841,
+  /**/
+
+-- 
+A computer programmer is a device for turning requirements into
+undocumented features.  It runs on cola, pizza and Dilbert cartoons.
+					Bram Moolenaar
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

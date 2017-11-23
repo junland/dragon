@@ -1,0 +1,130 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0444
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0444 (after 8.0.0442)
+Problem:    Diffpatch fails when the file name has a quote.
+Solution:   Escape the name properly. (zetzei)
+Files:      src/diff.c, src/testdir/test_diffmode.vim
+
+
+*** ../vim-8.0.0443/src/diff.c	2017-03-09 19:21:25.867293683 +0100
+--- src/diff.c	2017-03-11 19:18:29.732108381 +0100
+***************
+*** 906,911 ****
+--- 906,912 ----
+      int		browse_flag = cmdmod.browse;
+  #endif
+      stat_T	st;
++     char_u	*esc_name = NULL;
+  
+  #ifdef FEAT_BROWSE
+      if (cmdmod.browse)
+***************
+*** 935,945 ****
+      /* Get the absolute path of the patchfile, changing directory below. */
+      fullname = FullName_save(eap->arg, FALSE);
+  #endif
+!     buflen = STRLEN(tmp_orig) + (
+  # ifdef UNIX
+! 		    fullname != NULL ? STRLEN(fullname) :
+  # endif
+! 		    STRLEN(eap->arg)) + STRLEN(tmp_new) + 16;
+      buf = alloc((unsigned)buflen);
+      if (buf == NULL)
+  	goto theend;
+--- 936,949 ----
+      /* Get the absolute path of the patchfile, changing directory below. */
+      fullname = FullName_save(eap->arg, FALSE);
+  #endif
+!     esc_name = vim_strsave_shellescape(
+  # ifdef UNIX
+! 		    fullname != NULL ? fullname :
+  # endif
+! 		    eap->arg, TRUE, TRUE);
+!     if (esc_name == NULL)
+! 	goto theend;
+!     buflen = STRLEN(tmp_orig) + STRLEN(esc_name) + STRLEN(tmp_new) + 16;
+      buf = alloc((unsigned)buflen);
+      if (buf == NULL)
+  	goto theend;
+***************
+*** 977,993 ****
+      {
+  	/* Build the patch command and execute it.  Ignore errors.  Switch to
+  	 * cooked mode to allow the user to respond to prompts. */
+! 	vim_snprintf((char *)buf, buflen,
+! #ifdef UNIX
+! 		"patch -o %s %s < '%s'",
+! #else
+! 		"patch -o %s %s < \"%s\"",
+! #endif
+! 		tmp_new, tmp_orig,
+! # ifdef UNIX
+! 		fullname != NULL ? fullname :
+! # endif
+! 		eap->arg);
+  #ifdef FEAT_AUTOCMD
+  	block_autocmds();	/* Avoid ShellCmdPost stuff */
+  #endif
+--- 981,988 ----
+      {
+  	/* Build the patch command and execute it.  Ignore errors.  Switch to
+  	 * cooked mode to allow the user to respond to prompts. */
+! 	vim_snprintf((char *)buf, buflen, "patch -o %s %s < %s",
+! 						  tmp_new, tmp_orig, esc_name);
+  #ifdef FEAT_AUTOCMD
+  	block_autocmds();	/* Avoid ShellCmdPost stuff */
+  #endif
+***************
+*** 1078,1083 ****
+--- 1073,1079 ----
+  #ifdef UNIX
+      vim_free(fullname);
+  #endif
++     vim_free(esc_name);
+  #ifdef FEAT_BROWSE
+      vim_free(browseFile);
+      cmdmod.browse = browse_flag;
+*** ../vim-8.0.0443/src/testdir/test_diffmode.vim	2017-03-09 19:21:25.871293655 +0100
+--- src/testdir/test_diffmode.vim	2017-03-11 19:15:12.109479360 +0100
+***************
+*** 319,325 ****
+    new
+    call assert_fails('diffpatch Xpatch', 'E816:')
+  
+!   for name in ['Xpatch', 'Xpatch$HOME']
+      call setline(1, ['1', '2', '3'])
+      if name != 'Xpatch'
+        call rename('Xpatch', name)
+--- 319,325 ----
+    new
+    call assert_fails('diffpatch Xpatch', 'E816:')
+  
+!   for name in ['Xpatch', 'Xpatch$HOME', 'Xpa''tch']
+      call setline(1, ['1', '2', '3'])
+      if name != 'Xpatch'
+        call rename('Xpatch', name)
+*** ../vim-8.0.0443/src/version.c	2017-03-11 18:42:51.074931537 +0100
+--- src/version.c	2017-03-11 19:21:38.110801169 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     444,
+  /**/
+
+-- 
+From "know your smileys":
+ |-(	Contact lenses, but has lost them
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

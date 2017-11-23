@@ -1,0 +1,146 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1179
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1179
+Problem:    Test_popup_and_window_resize() does not always pass.
+Solution:   Do not use $VIMPROG, pass the Vim executable in the vimcmd file.
+            (Ozaki Kiichi, closes #2186)
+Files:      src/testdir/Makefile, src/testdir/shared.vim,
+            src/testdir/test_popup.vim
+
+
+*** ../vim-8.0.1178/src/testdir/Makefile	2017-03-12 17:10:14.417925081 +0100
+--- src/testdir/Makefile	2017-10-07 19:58:10.621538813 +0200
+***************
+*** 126,143 ****
+  newtestssilent: $(NEW_TESTS)
+  
+  
+! .vim.res:
+! 	@echo "$(RUN_VIMTEST)" > vimcmd
+  	$(RUN_VIMTEST) $(NO_INITS) -S runtest.vim $*.vim
+  	@rm vimcmd
+  
+  test_gui.res: test_gui.vim
+! 	@echo "$(RUN_GVIMTEST)" > vimcmd
+  	$(RUN_VIMTEST) -u NONE $(NO_INITS) -S runtest.vim $<
+  	@rm vimcmd
+  
+  test_gui_init.res: test_gui_init.vim
+! 	@echo "$(RUN_GVIMTEST_WITH_GVIMRC)" > vimcmd
+  	$(RUN_VIMTEST) -u gui_preinit.vim -U gui_init.vim $(NO_PLUGINS) -S runtest.vim $<
+  	@rm vimcmd
+  
+--- 126,146 ----
+  newtestssilent: $(NEW_TESTS)
+  
+  
+! .vim.res: writevimcmd
+! 	@echo "$(VIMPROG)" > vimcmd
+! 	@echo "$(RUN_VIMTEST)" >> vimcmd
+  	$(RUN_VIMTEST) $(NO_INITS) -S runtest.vim $*.vim
+  	@rm vimcmd
+  
+  test_gui.res: test_gui.vim
+! 	@echo "$(VIMPROG)" > vimcmd
+! 	@echo "$(RUN_GVIMTEST)" >> vimcmd
+  	$(RUN_VIMTEST) -u NONE $(NO_INITS) -S runtest.vim $<
+  	@rm vimcmd
+  
+  test_gui_init.res: test_gui_init.vim
+! 	@echo "$(VIMPROG)" > vimcmd
+! 	@echo "$(RUN_GVIMTEST_WITH_GVIMRC)" >> vimcmd
+  	$(RUN_VIMTEST) -u gui_preinit.vim -U gui_init.vim $(NO_PLUGINS) -S runtest.vim $<
+  	@rm vimcmd
+  
+*** ../vim-8.0.1178/src/testdir/shared.vim	2017-09-29 22:42:29.582007968 +0200
+--- src/testdir/shared.vim	2017-10-07 20:00:04.468910550 +0200
+***************
+*** 170,175 ****
+--- 170,184 ----
+    call feedkeys('x', 'nt')
+  endfunc
+  
++ " Get $VIMPROG to run Vim executable.
++ " The Makefile writes it as the first line in the "vimcmd" file.
++ func GetVimProg()
++   if !filereadable('vimcmd')
++     return ''
++   endif
++   return readfile('vimcmd')[0]
++ endfunc
++ 
+  " Get the command to run Vim, with -u NONE and --not-a-term arguments.
+  " If there is an argument use it instead of "NONE".
+  " Returns an empty string on error.
+***************
+*** 182,188 ****
+    else
+      let name = a:1
+    endif
+!   let cmd = readfile('vimcmd')[0]
+    let cmd = substitute(cmd, '-u \f\+', '-u ' . name, '')
+    if cmd !~ '-u '. name
+      let cmd = cmd . ' -u ' . name
+--- 191,202 ----
+    else
+      let name = a:1
+    endif
+!   " For Unix Makefile writes the command to use in the second line of the
+!   " "vimcmd" file, including environment options.
+!   " Other Makefiles just write the executable in the first line, so fall back
+!   " to that if there is no second line.
+!   let lines = readfile('vimcmd')
+!   let cmd = get(lines, 1, lines[0])
+    let cmd = substitute(cmd, '-u \f\+', '-u ' . name, '')
+    if cmd !~ '-u '. name
+      let cmd = cmd . ' -u ' . name
+*** ../vim-8.0.1178/src/testdir/test_popup.vim	2017-10-01 16:59:13.863141636 +0200
+--- src/testdir/test_popup.vim	2017-10-07 19:55:16.458500033 +0200
+***************
+*** 643,652 ****
+    if h < 15
+      return
+    endif
+!   let g:buf = term_start([$VIMPROG, '--clean', '-c', 'set noswapfile'], {'term_rows': h / 3})
+!   call term_sendkeys(g:buf, (h / 3 - 1)."o\<esc>G")
+!   call term_sendkeys(g:buf, "i\<c-x>")
+    call term_wait(g:buf, 200)
+    call term_sendkeys(g:buf, "\<c-v>")
+    call term_wait(g:buf, 100)
+    " popup first entry "!" must be at the top
+--- 643,652 ----
+    if h < 15
+      return
+    endif
+!   let g:buf = term_start([GetVimProg(), '--clean', '-c', 'set noswapfile'], {'term_rows': h / 3})
+!   call term_sendkeys(g:buf, (h / 3 - 1)."o\<esc>")
+    call term_wait(g:buf, 200)
++   call term_sendkeys(g:buf, "Gi\<c-x>")
+    call term_sendkeys(g:buf, "\<c-v>")
+    call term_wait(g:buf, 100)
+    " popup first entry "!" must be at the top
+*** ../vim-8.0.1178/src/version.c	2017-10-07 18:38:22.816118624 +0200
+--- src/version.c	2017-10-07 20:01:36.180404485 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1179,
+  /**/
+
+-- 
+There is a fine line between courage and foolishness.
+Unfortunately, it's not a fence.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

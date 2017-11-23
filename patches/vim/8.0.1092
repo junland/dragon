@@ -1,0 +1,314 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1092
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1092
+Problem:    Terminal debugger can't evaluate expressions.
+Solution:   Add :Evaluate and K.  Various other improvements.
+Files:      runtime/pack/dist/opt/termdebug/plugin/termdebug.vim,
+            runtime/doc/terminal.txt
+
+
+*** ../vim-8.0.1091/runtime/pack/dist/opt/termdebug/plugin/termdebug.vim	2017-09-09 22:19:41.929972064 +0200
+--- runtime/pack/dist/opt/termdebug/plugin/termdebug.vim	2017-09-10 19:10:29.011796374 +0200
+***************
+*** 54,59 ****
+--- 54,60 ----
+      return
+    endif
+    let pty = job_info(term_getjob(s:ptybuf))['tty_out']
++   let s:ptywin = win_getid(winnr())
+  
+    " Create a hidden terminal window to communicate with gdb
+    let s:commbuf = term_start('NONE', {
+***************
+*** 81,92 ****
+      exe 'bwipe! ' . s:commbuf
+      return
+    endif
+  
+    " Connect gdb to the communication pty, using the GDB/MI interface
+    call term_sendkeys(gdbbuf, 'new-ui mi ' . commpty . "\r")
+  
+!   " Install debugger commands.
+    call s:InstallCommands()
+  
+    let s:breakpoints = {}
+  endfunc
+--- 82,96 ----
+      exe 'bwipe! ' . s:commbuf
+      return
+    endif
++   let s:gdbwin = win_getid(winnr())
+  
+    " Connect gdb to the communication pty, using the GDB/MI interface
+    call term_sendkeys(gdbbuf, 'new-ui mi ' . commpty . "\r")
+  
+!   " Install debugger commands in the text window.
+!   call win_gotoid(s:startwin)
+    call s:InstallCommands()
++   call win_gotoid(s:gdbwin)
+  
+    let s:breakpoints = {}
+  endfunc
+***************
+*** 116,125 ****
+      if msg != ''
+        if msg =~ '^\*\(stopped\|running\)'
+  	call s:HandleCursor(msg)
+!       elseif msg =~ '^\^done,bkpt='
+  	call s:HandleNewBreakpoint(msg)
+        elseif msg =~ '^=breakpoint-deleted,'
+  	call s:HandleBreakpointDelete(msg)
+        endif
+      endif
+    endfor
+--- 120,133 ----
+      if msg != ''
+        if msg =~ '^\*\(stopped\|running\)'
+  	call s:HandleCursor(msg)
+!       elseif msg =~ '^\^done,bkpt=' || msg =~ '^=breakpoint-created,'
+  	call s:HandleNewBreakpoint(msg)
+        elseif msg =~ '^=breakpoint-deleted,'
+  	call s:HandleBreakpointDelete(msg)
++       elseif msg =~ '^\^done,value='
++ 	call s:HandleEvaluate(msg)
++       elseif msg =~ '^\^error,msg='
++ 	call s:HandleError(msg)
+        endif
+      endif
+    endfor
+***************
+*** 130,138 ****
+    command Break call s:SetBreakpoint()
+    command Delete call s:DeleteBreakpoint()
+    command Step call s:SendCommand('-exec-step')
+!   command NNext call s:SendCommand('-exec-next')
+    command Finish call s:SendCommand('-exec-finish')
+    command Continue call s:SendCommand('-exec-continue')
+  endfunc
+  
+  " Delete installed debugger commands in the current window.
+--- 138,152 ----
+    command Break call s:SetBreakpoint()
+    command Delete call s:DeleteBreakpoint()
+    command Step call s:SendCommand('-exec-step')
+!   command Over call s:SendCommand('-exec-next')
+    command Finish call s:SendCommand('-exec-finish')
+    command Continue call s:SendCommand('-exec-continue')
++   command -range -nargs=* Evaluate call s:Evaluate(<range>, <q-args>)
++   command Gdb call win_gotoid(s:gdbwin)
++   command Program call win_gotoid(s:ptywin)
++ 
++   " TODO: can the K mapping be restored?
++   nnoremap K :Evaluate<CR>
+  endfunc
+  
+  " Delete installed debugger commands in the current window.
+***************
+*** 140,148 ****
+    delcommand Break
+    delcommand Delete
+    delcommand Step
+!   delcommand NNext
+    delcommand Finish
+    delcommand Continue
+  endfunc
+  
+  " :Break - Set a breakpoint at the cursor position.
+--- 154,174 ----
+    delcommand Break
+    delcommand Delete
+    delcommand Step
+!   delcommand Over
+    delcommand Finish
+    delcommand Continue
++   delcommand Evaluate
++   delcommand Gdb
++   delcommand Program
++ 
++   nunmap K
++   sign undefine debugPC
++   sign undefine debugBreakpoint
++   exe 'sign unplace ' . s:pc_id
++   for key in keys(s:breakpoints)
++     exe 'sign unplace ' . (s:break_id + key)
++   endfor
++   unlet s:breakpoints
+  endfunc
+  
+  " :Break - Set a breakpoint at the cursor position.
+***************
+*** 171,176 ****
+--- 197,231 ----
+    call term_sendkeys(s:commbuf, a:cmd . "\r")
+  endfunc
+  
++ " :Evaluate - evaluate what is under the cursor
++ func s:Evaluate(range, arg)
++   if a:arg != ''
++     let expr = a:arg
++   elseif a:range == 2
++     let pos = getcurpos()
++     let reg = getreg('v', 1, 1)
++     let regt = getregtype('v')
++     normal! gv"vy
++     let expr = @v
++     call setpos('.', pos)
++     call setreg('v', reg, regt)
++   else
++     let expr = expand('<cexpr>')
++   endif
++   call term_sendkeys(s:commbuf, '-data-evaluate-expression "' . expr . "\"\r")
++   let s:evalexpr = expr
++ endfunc
++ 
++ " Handle the result of data-evaluate-expression
++ func s:HandleEvaluate(msg)
++   echomsg '"' . s:evalexpr . '": ' . substitute(a:msg, '.*value="\(.*\)"', '\1', '')
++ endfunc
++ 
++ " Handle an error.
++ func s:HandleError(msg)
++   echoerr substitute(a:msg, '.*msg="\(.*\)"', '\1', '')
++ endfunc
++ 
+  " Handle stopping and running message from gdb.
+  " Will update the sign that shows the current position.
+  func s:HandleCursor(msg)
+*** ../vim-8.0.1091/runtime/doc/terminal.txt	2017-09-09 22:19:41.929972064 +0200
+--- runtime/doc/terminal.txt	2017-09-10 19:02:27.890725110 +0200
+***************
+*** 1,4 ****
+! *terminal.txt*	For Vim version 8.0.  Last change: 2017 Sep 09
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+--- 1,4 ----
+! *terminal.txt*	For Vim version 8.0.  Last change: 2017 Sep 10
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+***************
+*** 318,328 ****
+  	:TermDebug vim
+  
+  This opens two windows:
+! - A terminal window in which "gdb vim" is executed.  Here you can directly
+!   interact with gdb.  The buffer name is "!gdb".
+! - A terminal window for the executed program.  When "run" is used in gdb the
+!   program I/O will happen in this window, so that it does not interfere with
+!   controlling gdb.  The buffer name is "gdb program".
+  
+  The current window is used to show the source code.  When gdb pauses the
+  source file location will be displayed, if possible.  A sign is used to
+--- 318,329 ----
+  	:TermDebug vim
+  
+  This opens two windows:
+! gdb window	A terminal window in which "gdb vim" is executed.  Here you
+! 		can directly interact with gdb.  The buffer name is "!gdb".
+! program window	A terminal window for the executed program.  When "run" is
+! 		used in gdb the program I/O will happen in this window, so
+! 		that it does not interfere with controlling gdb.  The buffer
+! 		name is "gdb program".
+  
+  The current window is used to show the source code.  When gdb pauses the
+  source file location will be displayed, if possible.  A sign is used to
+***************
+*** 334,340 ****
+  Focus the terminal of the executed program to interact with it.  This works
+  the same as any command running in a terminal window.
+  
+! When the debugger ends the two opened windows are closed.
+  
+  
+  Stepping through code ~
+--- 335,342 ----
+  Focus the terminal of the executed program to interact with it.  This works
+  the same as any command running in a terminal window.
+  
+! When the debugger ends, typically by typing "quit" in the gdb window, the two
+! opened windows are closed.
+  
+  
+  Stepping through code ~
+***************
+*** 349,361 ****
+  - frame N   go to the Nth stack frame
+  - continue  continue execution
+  
+! In the window showing the source code some commands can passed to gdb:
+! - Break     set a breakpoint at the current line; a sign will be displayed
+! - Delete    delete a breakpoint at the current line
+! - Step	    execute the gdb "step" command
+! - NNext	    execute the gdb "next" command (:Next is a Vim command)
+! - Finish    execute the gdb "finish" command
+! - Continue  execute the gdb "continue" command
+  
+  
+  Communication ~
+--- 351,379 ----
+  - frame N   go to the Nth stack frame
+  - continue  continue execution
+  
+! In the window showing the source code some commands can used to control gdb:
+!  :Break     set a breakpoint at the current line; a sign will be displayed
+!  :Delete    delete a breakpoint at the current line
+!  :Step	    execute the gdb "step" command
+!  :Over      execute the gdb "next" command (:Next is a Vim command)
+!  :Finish    execute the gdb "finish" command
+!  :Continue  execute the gdb "continue" command
+! 
+! 
+! Inspecting variables ~
+! 
+!  :Evaluate	    evaluate the expression under the cursor
+!  K		    same
+!  :Evaluate {expr}   evaluate {expr}
+!  :'<,'>Evaluate	    evaluate the Visually selected text
+! 
+! This is similar to using "print" in the gdb window.
+! 
+! 
+! Other commands ~
+! 
+!  :Gdb	       jump to the gdb window
+!  :Program      jump to the window with the running program
+  
+  
+  Communication ~
+***************
+*** 386,394 ****
+    hi debugBreakpoint term=reverse ctermbg=red guibg=red
+  
+  
+- NOT WORKING YET: ~
+- 
+- Values of variables can be inspected, etc.
+- 
+  
+   vim:tw=78:ts=8:ft=help:norl:
+--- 404,408 ----
+*** ../vim-8.0.1091/src/version.c	2017-09-10 18:44:25.713358435 +0200
+--- src/version.c	2017-09-10 19:13:09.194820314 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1092,
+  /**/
+
+-- 
+Common sense is what tells you that the world is flat.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

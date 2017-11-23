@@ -1,0 +1,413 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0755
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0755
+Problem:    Terminal window does not have colors in the GUI.
+Solution:   Lookup the GUI color.
+Files:      src/terminal.c, src/syntax.c, src/proto/syntax.pro, src/term.c,
+            src/proto/term.pro, src/gui_gtk_x11.c, src/proto/gui_gtk_x11.pro,
+            src/gui_x11.c, src/proto/gui_x11.pro, src/gui_mac.c,
+            src/proto/gui_mac.pro, src/gui_photon.c, src/proto/gui_photon.pro,
+            src/gui_w32.c, src/proto/gui_w32.pro
+
+
+*** ../vim-8.0.0754/src/terminal.c	2017-07-23 15:48:33.309640325 +0200
+--- src/terminal.c	2017-07-23 16:41:23.479326524 +0200
+***************
+*** 33,39 ****
+   * while, if the terminal window is visible, the screen contents is drawn.
+   *
+   * TODO:
+-  * - color for GUI
+   * - color for 'termguicolors'
+   * - cursor flickers when moving the cursor
+   * - set buffer options to be scratch, hidden, nomodifiable, etc.
+--- 33,38 ----
+***************
+*** 720,726 ****
+  #ifdef FEAT_GUI
+      if (gui.in_use)
+      {
+! 	/* TODO */
+      }
+      else
+  #endif
+--- 719,729 ----
+  #ifdef FEAT_GUI
+      if (gui.in_use)
+      {
+! 	guicolor_T fg, bg;
+! 
+! 	fg = gui_mch_get_rgb_color(cell->fg.red, cell->fg.green, cell->fg.blue);
+! 	bg = gui_mch_get_rgb_color(cell->bg.red, cell->bg.green, cell->bg.blue);
+! 	return get_gui_attr_idx(attr, fg, bg);
+      }
+      else
+  #endif
+*** ../vim-8.0.0754/src/syntax.c	2017-07-23 15:48:33.317640269 +0200
+--- src/syntax.c	2017-07-23 16:20:51.804004017 +0200
+***************
+*** 7908,7914 ****
+  		    HL_TABLE()[idx].sg_gui_fg = i;
+  # endif
+  		    vim_free(HL_TABLE()[idx].sg_gui_fg_name);
+! 		    if (STRCMP(arg, "NONE"))
+  			HL_TABLE()[idx].sg_gui_fg_name = vim_strsave(arg);
+  		    else
+  			HL_TABLE()[idx].sg_gui_fg_name = NULL;
+--- 7908,7914 ----
+  		    HL_TABLE()[idx].sg_gui_fg = i;
+  # endif
+  		    vim_free(HL_TABLE()[idx].sg_gui_fg_name);
+! 		    if (STRCMP(arg, "NONE") != 0)
+  			HL_TABLE()[idx].sg_gui_fg_name = vim_strsave(arg);
+  		    else
+  			HL_TABLE()[idx].sg_gui_fg_name = NULL;
+***************
+*** 8789,8800 ****
+--- 8789,8819 ----
+  {
+      attrentry_T		at_en;
+  
++     vim_memset(&at_en, 0, sizeof(attrentry_T));
+      at_en.ae_attr = attr;
+      at_en.ae_u.cterm.fg_color = fg;
+      at_en.ae_u.cterm.bg_color = bg;
+      return get_attr_entry(&cterm_attr_table, &at_en);
+  }
+  
++ #if defined(FEAT_GUI) || defined(PROTO)
++ /*
++  * Get an attribute index for a cterm entry.
++  * Uses an existing entry when possible or adds one when needed.
++  */
++     int
++ get_gui_attr_idx(int attr, guicolor_T fg, guicolor_T bg)
++ {
++     attrentry_T		at_en;
++ 
++     vim_memset(&at_en, 0, sizeof(attrentry_T));
++     at_en.ae_attr = attr;
++     at_en.ae_u.gui.fg_color = fg;
++     at_en.ae_u.gui.bg_color = bg;
++     return get_attr_entry(&gui_attr_table, &at_en);
++ }
++ #endif
++ 
+  /*
+   * Clear all highlight tables.
+   */
+*** ../vim-8.0.0754/src/proto/syntax.pro	2017-07-23 15:48:33.317640269 +0200
+--- src/proto/syntax.pro	2017-07-23 16:09:22.932849087 +0200
+***************
+*** 32,37 ****
+--- 32,38 ----
+  void hl_set_bg_color_name(char_u *name);
+  void hl_set_fg_color_name(char_u *name);
+  int get_cterm_attr_idx(int attr, int fg, int bg);
++ int get_gui_attr_idx(int attr, guicolor_T fg, guicolor_T bg);
+  void clear_hl_tables(void);
+  int hl_combine_attr(int char_attr, int prim_attr);
+  attrentry_T *syn_gui_attr2entry(int attr);
+*** ../vim-8.0.0754/src/term.c	2017-07-22 21:15:36.971052650 +0200
+--- src/term.c	2017-07-23 16:41:27.203300286 +0200
+***************
+*** 6399,6402 ****
+--- 6399,6412 ----
+  
+      return INVALCOLOR;
+  }
++ 
++     guicolor_T
++ gui_get_rgb_color_cmn(int r, int g, int b)
++ {
++     guicolor_T  color = RGB(r, g, b);
++ 
++     if (color > 0xffffff)
++ 	return INVALCOLOR;
++     return color;
++ }
+  #endif
+*** ../vim-8.0.0754/src/proto/term.pro	2017-06-27 17:09:33.926938934 +0200
+--- src/proto/term.pro	2017-07-23 16:11:40.495881519 +0200
+***************
+*** 24,30 ****
+  void term_delete_lines(int line_count);
+  void term_set_winpos(int x, int y);
+  int term_get_winpos(int *x, int *y);
+! void term_set_winsize(int width, int height);
+  void term_fg_color(int n);
+  void term_bg_color(int n);
+  void term_fg_rgb_color(guicolor_T rgb);
+--- 24,30 ----
+  void term_delete_lines(int line_count);
+  void term_set_winpos(int x, int y);
+  int term_get_winpos(int *x, int *y);
+! void term_set_winsize(int height, int width);
+  void term_fg_color(int n);
+  void term_bg_color(int n);
+  void term_fg_rgb_color(guicolor_T rgb);
+***************
+*** 68,71 ****
+--- 68,72 ----
+  char_u *translate_mapping(char_u *str, int expmap);
+  void update_tcap(int attr);
+  guicolor_T gui_get_color_cmn(char_u *name);
++ guicolor_T gui_get_rgb_color_cmn(int r, int g, int b);
+  /* vim: set ft=c : */
+*** ../vim-8.0.0754/src/gui_gtk_x11.c	2017-06-05 15:07:04.944381581 +0200
+--- src/gui_gtk_x11.c	2017-07-23 16:15:30.310265166 +0200
+***************
+*** 5606,5621 ****
+      return name != NULL ? gui_get_color_cmn(name) : INVALCOLOR;
+  #else
+      guicolor_T color;
+-     GdkColor gcolor;
+-     int ret;
+  
+      color = (name != NULL) ? gui_get_color_cmn(name) : INVALCOLOR;
+      if (color == INVALCOLOR)
+  	return INVALCOLOR;
+  
+!     gcolor.red = (guint16)(((color & 0xff0000) >> 16) / 255.0 * 65535 + 0.5);
+!     gcolor.green = (guint16)(((color & 0xff00) >> 8) / 255.0 * 65535 + 0.5);
+!     gcolor.blue = (guint16)((color & 0xff) / 255.0 * 65535 + 0.5);
+  
+      ret = gdk_colormap_alloc_color(gtk_widget_get_colormap(gui.drawarea),
+  	    &gcolor, FALSE, TRUE);
+--- 5606,5639 ----
+      return name != NULL ? gui_get_color_cmn(name) : INVALCOLOR;
+  #else
+      guicolor_T color;
+  
+      color = (name != NULL) ? gui_get_color_cmn(name) : INVALCOLOR;
+      if (color == INVALCOLOR)
+  	return INVALCOLOR;
+  
+!     return gui_mch_get_rgb_color(
+! 	    (color & 0xff0000) >> 16,
+! 	    (color & 0xff00) >> 8,
+! 	    color & 0xff);
+! #endif
+! }
+! 
+! /*
+!  * Return the Pixel value (color) for the given RGB values.
+!  * Return INVALCOLOR for error.
+!  */
+!     guicolor_T
+! gui_mch_get_rgb_color(int r, int g, int b)
+! {
+! #if GTK_CHECK_VERSION(3,0,0)
+!     return gui_get_rgb_color_cmn(r, g, b);
+! #else
+!     GdkColor gcolor;
+!     int ret;
+! 
+!     gcolor.red = (guint16)(r / 255.0 * 65535 + 0.5);
+!     gcolor.green = (guint16)(g / 255.0 * 65535 + 0.5);
+!     gcolor.blue = (guint16)(b / 255.0 * 65535 + 0.5);
+  
+      ret = gdk_colormap_alloc_color(gtk_widget_get_colormap(gui.drawarea),
+  	    &gcolor, FALSE, TRUE);
+*** ../vim-8.0.0754/src/proto/gui_gtk_x11.pro	2016-09-12 13:04:27.000000000 +0200
+--- src/proto/gui_gtk_x11.pro	2017-07-23 16:15:38.022210927 +0200
+***************
+*** 36,41 ****
+--- 36,42 ----
+  char_u *gui_mch_get_fontname(GuiFont font, char_u *name);
+  void gui_mch_free_font(GuiFont font);
+  guicolor_T gui_mch_get_color(char_u *name);
++ guicolor_T gui_mch_get_rgb_color(int r, int g, int b);
+  void gui_mch_set_fg_color(guicolor_T color);
+  void gui_mch_set_bg_color(guicolor_T color);
+  void gui_mch_set_sp_color(guicolor_T color);
+***************
+*** 53,59 ****
+  void gui_mch_update(void);
+  int gui_mch_wait_for_chars(long wtime);
+  void gui_mch_flush(void);
+! void gui_mch_clear_block(int row1, int col1, int row2, int col2);
+  void gui_mch_clear_all(void);
+  void gui_mch_delete_lines(int row, int num_lines);
+  void gui_mch_insert_lines(int row, int num_lines);
+--- 54,60 ----
+  void gui_mch_update(void);
+  int gui_mch_wait_for_chars(long wtime);
+  void gui_mch_flush(void);
+! void gui_mch_clear_block(int row1arg, int col1arg, int row2arg, int col2arg);
+  void gui_mch_clear_all(void);
+  void gui_mch_delete_lines(int row, int num_lines);
+  void gui_mch_insert_lines(int row, int num_lines);
+*** ../vim-8.0.0754/src/gui_x11.c	2017-03-12 17:10:14.413925111 +0100
+--- src/gui_x11.c	2017-07-23 16:07:02.645835854 +0200
+***************
+*** 2272,2279 ****
+      guicolor_T  requested;
+      XColor      available;
+      Colormap	colormap;
+- #define COLORSPECBUFSIZE 8 /* space enough to hold "#RRGGBB" */
+-     char        spec[COLORSPECBUFSIZE];
+  
+      /* can't do this when GUI not running */
+      if (!gui.in_use || name == NULL || *name == NUL)
+--- 2272,2277 ----
+***************
+*** 2283,2293 ****
+      if (requested == INVALCOLOR)
+  	return INVALCOLOR;
+  
+!     vim_snprintf(spec, COLORSPECBUFSIZE, "#%.2x%.2x%.2x",
+  	    (requested & 0xff0000) >> 16,
+  	    (requested & 0xff00) >> 8,
+  	    requested & 0xff);
+! #undef COLORSPECBUFSIZE
+      colormap = DefaultColormap(gui.dpy, DefaultScreen(gui.dpy));
+      if (XParseColor(gui.dpy, colormap, (char *)spec, &available) != 0
+  	    && XAllocColor(gui.dpy, colormap, &available) != 0)
+--- 2281,2302 ----
+      if (requested == INVALCOLOR)
+  	return INVALCOLOR;
+  
+!     return gui_mch_get_rgb_color(
+  	    (requested & 0xff0000) >> 16,
+  	    (requested & 0xff00) >> 8,
+  	    requested & 0xff);
+! }
+! 
+! /*
+!  * Return the Pixel value (color) for the given RGB values.
+!  * Return INVALCOLOR for error.
+!  */
+!     guicolor_T
+! gui_mch_get_rgb_color(int r, int g, int b)
+! {
+!     char        spec[8]; /* space enough to hold "#RRGGBB" */
+! 
+!     vim_snprintf(spec, sizeof(spec), "#%.2x%.2x%.2x", r, g, b);
+      colormap = DefaultColormap(gui.dpy, DefaultScreen(gui.dpy));
+      if (XParseColor(gui.dpy, colormap, (char *)spec, &available) != 0
+  	    && XAllocColor(gui.dpy, colormap, &available) != 0)
+*** ../vim-8.0.0754/src/proto/gui_x11.pro	2016-09-12 13:04:27.000000000 +0200
+--- src/proto/gui_x11.pro	2017-07-23 16:05:53.830319911 +0200
+***************
+*** 25,30 ****
+--- 25,31 ----
+  int fontset_height(XFontSet fs);
+  int fontset_height2(XFontSet fs);
+  guicolor_T gui_mch_get_color(char_u *name);
++ guicolor_T gui_mch_get_rgb_color(int r, int g, int b);
+  void gui_mch_set_fg_color(guicolor_T color);
+  void gui_mch_set_bg_color(guicolor_T color);
+  void gui_mch_set_sp_color(guicolor_T color);
+*** ../vim-8.0.0754/src/gui_mac.c	2016-08-29 22:42:20.000000000 +0200
+--- src/gui_mac.c	2017-07-23 16:16:34.281815252 +0200
+***************
+*** 3726,3731 ****
+--- 3726,3737 ----
+      return gui_get_color_cmn(name);
+  }
+  
++     guicolor_T
++ gui_mch_get_rgb_color(int r, int g, int b)
++ {
++     return gui_get_rgb_color_cmn(r, g, b);
++ }
++ 
+  /*
+   * Set the current text foreground color.
+   */
+*** ../vim-8.0.0754/src/proto/gui_mac.pro	2016-08-22 22:38:43.000000000 +0200
+--- src/proto/gui_mac.pro	2017-07-23 16:18:05.133176304 +0200
+***************
+*** 47,52 ****
+--- 47,53 ----
+  int gui_mch_same_font(GuiFont f1, GuiFont f2);
+  void gui_mch_free_font(GuiFont font);
+  guicolor_T gui_mch_get_color(char_u *name);
++ guicolor_T gui_mch_get_rgb_color(int r, int g, int b);
+  void gui_mch_set_fg_color(guicolor_T color);
+  void gui_mch_set_bg_color(guicolor_T color);
+  void gui_mch_set_sp_color(guicolor_T color);
+*** ../vim-8.0.0754/src/gui_photon.c	2016-08-29 22:42:20.000000000 +0200
+--- src/gui_photon.c	2017-07-23 16:18:32.968980540 +0200
+***************
+*** 1986,1991 ****
+--- 1986,1997 ----
+      return gui_get_color_cmn(name);
+  }
+  
++     guicolor_T
++ gui_mch_get_rgb_color(int r, int g, int b)
++ {
++     return gui_get_rgb_color_cmn(r, g, b);
++ }
++ 
+      void
+  gui_mch_set_fg_color(guicolor_T color)
+  {
+*** ../vim-8.0.0754/src/proto/gui_photon.pro	2016-09-12 13:04:28.000000000 +0200
+--- src/proto/gui_photon.pro	2017-07-23 16:19:17.200669470 +0200
+***************
+*** 28,33 ****
+--- 28,34 ----
+  guicolor_T gui_mch_get_rgb(guicolor_T pixel);
+  void gui_mch_new_colors(void);
+  guicolor_T gui_mch_get_color(char_u *name);
++ guicolor_T gui_mch_get_rgb_color(int r, int g, int b);
+  void gui_mch_set_fg_color(guicolor_T color);
+  void gui_mch_set_bg_color(guicolor_T color);
+  void gui_mch_set_sp_color(guicolor_T color);
+*** ../vim-8.0.0754/src/gui_w32.c	2017-04-29 17:40:04.372484578 +0200
+--- src/gui_w32.c	2017-07-23 16:20:19.488231422 +0200
+***************
+*** 1597,1602 ****
+--- 1597,1608 ----
+      return gui_get_color_cmn(name);
+  }
+  
++     guicolor_T
++ gui_mch_get_rgb_color(int r, int g, int b)
++ {
++     return gui_get_rgb_color_cmn(r, g, b);
++ }
++ 
+  /*
+   * Return OK if the key with the termcap name "name" is supported.
+   */
+*** ../vim-8.0.0754/src/proto/gui_w32.pro	2016-09-12 13:04:28.000000000 +0200
+--- src/proto/gui_w32.pro	2017-07-23 16:20:23.944200086 +0200
+***************
+*** 21,26 ****
+--- 21,27 ----
+  char_u *gui_mch_get_fontname(GuiFont font, char_u *name);
+  void gui_mch_free_font(GuiFont font);
+  guicolor_T gui_mch_get_color(char_u *name);
++ guicolor_T gui_mch_get_rgb_color(int r, int g, int b);
+  int gui_mch_haskey(char_u *name);
+  void gui_mch_beep(void);
+  void gui_mch_invert_rectangle(int r, int c, int nr, int nc);
+*** ../vim-8.0.0754/src/version.c	2017-07-23 15:48:33.317640269 +0200
+--- src/version.c	2017-07-23 16:42:57.494664165 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     755,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+217. Your sex life has drastically improved...so what if it's only cyber-sex!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

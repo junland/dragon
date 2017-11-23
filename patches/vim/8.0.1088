@@ -1,0 +1,769 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1088
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1088
+Problem:    Occasional memory use after free.
+Solution:   Use the highlight table directly, don't keep a pointer.
+Files:      src/syntax.c
+
+
+*** ../vim-8.0.1087/src/syntax.c	2017-09-09 15:28:08.142515580 +0200
+--- src/syntax.c	2017-09-10 15:17:22.989138806 +0200
+***************
+*** 7364,7370 ****
+      int		attr;
+      int		id;
+      int		idx;
+-     struct hl_group *item;
+      struct hl_group item_before;
+      int		dodefault = FALSE;
+      int		doclear = FALSE;
+--- 7364,7369 ----
+***************
+*** 7464,7476 ****
+  	}
+  
+  	from_id = syn_check_group(from_start, (int)(from_end - from_start));
+- 	item = &HL_TABLE()[from_id - 1];
+  	if (STRNCMP(to_start, "NONE", 4) == 0)
+  	    to_id = 0;
+  	else
+  	    to_id = syn_check_group(to_start, (int)(to_end - to_start));
+  
+! 	if (from_id > 0 && (!init || item->sg_set == 0))
+  	{
+  	    /*
+  	     * Don't allow a link when there already is some highlighting
+--- 7463,7474 ----
+  	}
+  
+  	from_id = syn_check_group(from_start, (int)(from_end - from_start));
+  	if (STRNCMP(to_start, "NONE", 4) == 0)
+  	    to_id = 0;
+  	else
+  	    to_id = syn_check_group(to_start, (int)(to_end - to_start));
+  
+! 	if (from_id > 0 && (!init || HL_TABLE()[from_id - 1].sg_set == 0))
+  	{
+  	    /*
+  	     * Don't allow a link when there already is some highlighting
+***************
+*** 7482,7500 ****
+  		if (sourcing_name == NULL && !dodefault)
+  		    EMSG(_("E414: group has settings, highlight link ignored"));
+  	    }
+! 	    else if (item->sg_link != to_id
+  #ifdef FEAT_EVAL
+! 		    || item->sg_scriptID != current_SID
+  #endif
+! 		    || item->sg_cleared)
+  	    {
+  		if (!init)
+! 		    item->sg_set |= SG_LINK;
+! 		item->sg_link = to_id;
+  #ifdef FEAT_EVAL
+! 		item->sg_scriptID = current_SID;
+  #endif
+! 		item->sg_cleared = FALSE;
+  		redraw_all_later(SOME_VALID);
+  
+  		/* Only call highlight_changed() once after multiple changes. */
+--- 7480,7498 ----
+  		if (sourcing_name == NULL && !dodefault)
+  		    EMSG(_("E414: group has settings, highlight link ignored"));
+  	    }
+! 	    else if (HL_TABLE()[from_id - 1].sg_link != to_id
+  #ifdef FEAT_EVAL
+! 		    || HL_TABLE()[from_id - 1].sg_scriptID != current_SID
+  #endif
+! 		    || HL_TABLE()[from_id - 1].sg_cleared)
+  	    {
+  		if (!init)
+! 		    HL_TABLE()[from_id - 1].sg_set |= SG_LINK;
+! 		HL_TABLE()[from_id - 1].sg_link = to_id;
+  #ifdef FEAT_EVAL
+! 		HL_TABLE()[from_id - 1].sg_scriptID = current_SID;
+  #endif
+! 		HL_TABLE()[from_id - 1].sg_cleared = FALSE;
+  		redraw_all_later(SOME_VALID);
+  
+  		/* Only call highlight_changed() once after multiple changes. */
+***************
+*** 7588,7610 ****
+      if (id == 0)			/* failed (out of memory) */
+  	return;
+      idx = id - 1;			/* index is ID minus one */
+-     item = &HL_TABLE()[idx];
+  
+      /* Return if "default" was used and the group already has settings. */
+      if (dodefault && hl_has_settings(idx, TRUE))
+  	return;
+  
+      /* Make a copy so we can check if any attribute actually changed. */
+!     item_before = *item;
+  
+!     if (STRCMP(item->sg_name_u, "NORMAL") == 0)
+  	is_normal_group = TRUE;
+  #ifdef FEAT_GUI_X11
+!     else if (STRCMP(item->sg_name_u, "MENU") == 0)
+  	is_menu_group = TRUE;
+!     else if (STRCMP(item->sg_name_u, "SCROLLBAR") == 0)
+  	is_scrollbar_group = TRUE;
+!     else if (STRCMP(item->sg_name_u, "TOOLTIP") == 0)
+  	is_tooltip_group = TRUE;
+  #endif
+  
+--- 7586,7607 ----
+      if (id == 0)			/* failed (out of memory) */
+  	return;
+      idx = id - 1;			/* index is ID minus one */
+  
+      /* Return if "default" was used and the group already has settings. */
+      if (dodefault && hl_has_settings(idx, TRUE))
+  	return;
+  
+      /* Make a copy so we can check if any attribute actually changed. */
+!     item_before = HL_TABLE()[idx];
+  
+!     if (STRCMP(HL_TABLE()[idx].sg_name_u, "NORMAL") == 0)
+  	is_normal_group = TRUE;
+  #ifdef FEAT_GUI_X11
+!     else if (STRCMP(HL_TABLE()[idx].sg_name_u, "MENU") == 0)
+  	is_menu_group = TRUE;
+!     else if (STRCMP(HL_TABLE()[idx].sg_name_u, "SCROLLBAR") == 0)
+  	is_scrollbar_group = TRUE;
+!     else if (STRCMP(HL_TABLE()[idx].sg_name_u, "TOOLTIP") == 0)
+  	is_tooltip_group = TRUE;
+  #endif
+  
+***************
+*** 7613,7619 ****
+      {
+  	highlight_clear(idx);
+  	if (!doclear)
+! 	    item->sg_set = 0;
+      }
+  
+      if (!doclear)
+--- 7610,7616 ----
+      {
+  	highlight_clear(idx);
+  	if (!doclear)
+! 	    HL_TABLE()[idx].sg_set = 0;
+      }
+  
+      if (!doclear)
+***************
+*** 7644,7653 ****
+  
+  	if (STRCMP(key, "NONE") == 0)
+  	{
+! 	    if (!init || item->sg_set == 0)
+  	    {
+  		if (!init)
+! 		    item->sg_set |= SG_TERM+SG_CTERM+SG_GUI;
+  		highlight_clear(idx);
+  	    }
+  	    continue;
+--- 7641,7650 ----
+  
+  	if (STRCMP(key, "NONE") == 0)
+  	{
+! 	    if (!init || HL_TABLE()[idx].sg_set == 0)
+  	    {
+  		if (!init)
+! 		    HL_TABLE()[idx].sg_set |= SG_TERM+SG_CTERM+SG_GUI;
+  		highlight_clear(idx);
+  	    }
+  	    continue;
+***************
+*** 7734,7764 ****
+  		break;
+  	    if (*key == 'T')
+  	    {
+! 		if (!init || !(item->sg_set & SG_TERM))
+  		{
+  		    if (!init)
+! 			item->sg_set |= SG_TERM;
+! 		    item->sg_term = attr;
+  		}
+  	    }
+  	    else if (*key == 'C')
+  	    {
+! 		if (!init || !(item->sg_set & SG_CTERM))
+  		{
+  		    if (!init)
+! 			item->sg_set |= SG_CTERM;
+! 		    item->sg_cterm = attr;
+! 		    item->sg_cterm_bold = FALSE;
+  		}
+  	    }
+  #if defined(FEAT_GUI) || defined(FEAT_EVAL)
+  	    else
+  	    {
+! 		if (!init || !(item->sg_set & SG_GUI))
+  		{
+  		    if (!init)
+! 			item->sg_set |= SG_GUI;
+! 		    item->sg_gui = attr;
+  		}
+  	    }
+  #endif
+--- 7731,7761 ----
+  		break;
+  	    if (*key == 'T')
+  	    {
+! 		if (!init || !(HL_TABLE()[idx].sg_set & SG_TERM))
+  		{
+  		    if (!init)
+! 			HL_TABLE()[idx].sg_set |= SG_TERM;
+! 		    HL_TABLE()[idx].sg_term = attr;
+  		}
+  	    }
+  	    else if (*key == 'C')
+  	    {
+! 		if (!init || !(HL_TABLE()[idx].sg_set & SG_CTERM))
+  		{
+  		    if (!init)
+! 			HL_TABLE()[idx].sg_set |= SG_CTERM;
+! 		    HL_TABLE()[idx].sg_cterm = attr;
+! 		    HL_TABLE()[idx].sg_cterm_bold = FALSE;
+  		}
+  	    }
+  #if defined(FEAT_GUI) || defined(FEAT_EVAL)
+  	    else
+  	    {
+! 		if (!init || !(HL_TABLE()[idx].sg_set & SG_GUI))
+  		{
+  		    if (!init)
+! 			HL_TABLE()[idx].sg_set |= SG_GUI;
+! 		    HL_TABLE()[idx].sg_gui = attr;
+  		}
+  	    }
+  #endif
+***************
+*** 7767,7840 ****
+  	{
+  	    /* in non-GUI fonts are simply ignored */
+  #ifdef FEAT_GUI
+! 	    if (item->sg_font_name != NULL
+! 				       && STRCMP(item->sg_font_name, arg) == 0)
+  	    {
+  		/* Font name didn't change, ignore. */
+  	    }
+  	    else if (!gui.shell_created)
+  	    {
+  		/* GUI not started yet, always accept the name. */
+! 		vim_free(item->sg_font_name);
+! 		item->sg_font_name = vim_strsave(arg);
+  	    }
+  	    else
+  	    {
+! 		GuiFont temp_sg_font = item->sg_font;
+  # ifdef FEAT_XFONTSET
+! 		GuiFontset temp_sg_fontset = item->sg_fontset;
+  # endif
+  		/* First, save the current font/fontset.
+  		 * Then try to allocate the font/fontset.
+! 		 * If the allocation fails, item->sg_font OR
+  		 * sg_fontset will be set to NOFONT or NOFONTSET respectively.
+  		 */
+  
+! 		item->sg_font = NOFONT;
+  # ifdef FEAT_XFONTSET
+! 		item->sg_fontset = NOFONTSET;
+  # endif
+  		hl_do_font(idx, arg, is_normal_group, is_menu_group,
+  						     is_tooltip_group, FALSE);
+  
+  # ifdef FEAT_XFONTSET
+! 		if (item->sg_fontset != NOFONTSET)
+  		{
+  		    /* New fontset was accepted. Free the old one, if there
+  		     * was one. */
+  		    gui_mch_free_fontset(temp_sg_fontset);
+! 		    vim_free(item->sg_font_name);
+! 		    item->sg_font_name = vim_strsave(arg);
+  		}
+  		else
+! 		    item->sg_fontset = temp_sg_fontset;
+  # endif
+! 		if (item->sg_font != NOFONT)
+  		{
+  		    /* New font was accepted. Free the old one, if there was
+  		     * one. */
+  		    gui_mch_free_font(temp_sg_font);
+! 		    vim_free(item->sg_font_name);
+! 		    item->sg_font_name = vim_strsave(arg);
+  		}
+  		else
+! 		    item->sg_font = temp_sg_font;
+  	    }
+  #endif
+  	}
+  	else if (STRCMP(key, "CTERMFG") == 0 || STRCMP(key, "CTERMBG") == 0)
+  	{
+! 	  if (!init || !(item->sg_set & SG_CTERM))
+  	  {
+  	    if (!init)
+! 		item->sg_set |= SG_CTERM;
+  
+  	    /* When setting the foreground color, and previously the "bold"
+  	     * flag was set for a light color, reset it now */
+! 	    if (key[5] == 'F' && item->sg_cterm_bold)
+  	    {
+! 		item->sg_cterm &= ~HL_BOLD;
+! 		item->sg_cterm_bold = FALSE;
+  	    }
+  
+  	    if (VIM_ISDIGIT(*arg))
+--- 7764,7837 ----
+  	{
+  	    /* in non-GUI fonts are simply ignored */
+  #ifdef FEAT_GUI
+! 	    if (HL_TABLE()[idx].sg_font_name != NULL
+! 			     && STRCMP(HL_TABLE()[idx].sg_font_name, arg) == 0)
+  	    {
+  		/* Font name didn't change, ignore. */
+  	    }
+  	    else if (!gui.shell_created)
+  	    {
+  		/* GUI not started yet, always accept the name. */
+! 		vim_free(HL_TABLE()[idx].sg_font_name);
+! 		HL_TABLE()[idx].sg_font_name = vim_strsave(arg);
+  	    }
+  	    else
+  	    {
+! 		GuiFont temp_sg_font = HL_TABLE()[idx].sg_font;
+  # ifdef FEAT_XFONTSET
+! 		GuiFontset temp_sg_fontset = HL_TABLE()[idx].sg_fontset;
+  # endif
+  		/* First, save the current font/fontset.
+  		 * Then try to allocate the font/fontset.
+! 		 * If the allocation fails, HL_TABLE()[idx].sg_font OR
+  		 * sg_fontset will be set to NOFONT or NOFONTSET respectively.
+  		 */
+  
+! 		HL_TABLE()[idx].sg_font = NOFONT;
+  # ifdef FEAT_XFONTSET
+! 		HL_TABLE()[idx].sg_fontset = NOFONTSET;
+  # endif
+  		hl_do_font(idx, arg, is_normal_group, is_menu_group,
+  						     is_tooltip_group, FALSE);
+  
+  # ifdef FEAT_XFONTSET
+! 		if (HL_TABLE()[idx].sg_fontset != NOFONTSET)
+  		{
+  		    /* New fontset was accepted. Free the old one, if there
+  		     * was one. */
+  		    gui_mch_free_fontset(temp_sg_fontset);
+! 		    vim_free(HL_TABLE()[idx].sg_font_name);
+! 		    HL_TABLE()[idx].sg_font_name = vim_strsave(arg);
+  		}
+  		else
+! 		    HL_TABLE()[idx].sg_fontset = temp_sg_fontset;
+  # endif
+! 		if (HL_TABLE()[idx].sg_font != NOFONT)
+  		{
+  		    /* New font was accepted. Free the old one, if there was
+  		     * one. */
+  		    gui_mch_free_font(temp_sg_font);
+! 		    vim_free(HL_TABLE()[idx].sg_font_name);
+! 		    HL_TABLE()[idx].sg_font_name = vim_strsave(arg);
+  		}
+  		else
+! 		    HL_TABLE()[idx].sg_font = temp_sg_font;
+  	    }
+  #endif
+  	}
+  	else if (STRCMP(key, "CTERMFG") == 0 || STRCMP(key, "CTERMBG") == 0)
+  	{
+! 	  if (!init || !(HL_TABLE()[idx].sg_set & SG_CTERM))
+  	  {
+  	    if (!init)
+! 		HL_TABLE()[idx].sg_set |= SG_CTERM;
+  
+  	    /* When setting the foreground color, and previously the "bold"
+  	     * flag was set for a light color, reset it now */
+! 	    if (key[5] == 'F' && HL_TABLE()[idx].sg_cterm_bold)
+  	    {
+! 		HL_TABLE()[idx].sg_cterm &= ~HL_BOLD;
+! 		HL_TABLE()[idx].sg_cterm_bold = FALSE;
+  	    }
+  
+  	    if (VIM_ISDIGIT(*arg))
+***************
+*** 7891,7912 ****
+  		 * colors (on some terminals, e.g. "linux") */
+  		if (bold == TRUE)
+  		{
+! 		    item->sg_cterm |= HL_BOLD;
+! 		    item->sg_cterm_bold = TRUE;
+  		}
+  		else if (bold == FALSE)
+! 		    item->sg_cterm &= ~HL_BOLD;
+  	    }
+  
+  	    /* Add one to the argument, to avoid zero.  Zero is used for
+  	     * "NONE", then "color" is -1. */
+  	    if (key[5] == 'F')
+  	    {
+! 		item->sg_cterm_fg = color + 1;
+  		if (is_normal_group)
+  		{
+  		    cterm_normal_fg_color = color + 1;
+! 		    cterm_normal_fg_bold = (item->sg_cterm & HL_BOLD);
+  #ifdef FEAT_GUI
+  		    /* Don't do this if the GUI is used. */
+  		    if (!gui.in_use && !gui.starting)
+--- 7888,7909 ----
+  		 * colors (on some terminals, e.g. "linux") */
+  		if (bold == TRUE)
+  		{
+! 		    HL_TABLE()[idx].sg_cterm |= HL_BOLD;
+! 		    HL_TABLE()[idx].sg_cterm_bold = TRUE;
+  		}
+  		else if (bold == FALSE)
+! 		    HL_TABLE()[idx].sg_cterm &= ~HL_BOLD;
+  	    }
+  
+  	    /* Add one to the argument, to avoid zero.  Zero is used for
+  	     * "NONE", then "color" is -1. */
+  	    if (key[5] == 'F')
+  	    {
+! 		HL_TABLE()[idx].sg_cterm_fg = color + 1;
+  		if (is_normal_group)
+  		{
+  		    cterm_normal_fg_color = color + 1;
+! 		    cterm_normal_fg_bold = (HL_TABLE()[idx].sg_cterm & HL_BOLD);
+  #ifdef FEAT_GUI
+  		    /* Don't do this if the GUI is used. */
+  		    if (!gui.in_use && !gui.starting)
+***************
+*** 7920,7926 ****
+  	    }
+  	    else
+  	    {
+! 		item->sg_cterm_bg = color + 1;
+  		if (is_normal_group)
+  		{
+  		    cterm_normal_bg_color = color + 1;
+--- 7917,7923 ----
+  	    }
+  	    else
+  	    {
+! 		HL_TABLE()[idx].sg_cterm_bg = color + 1;
+  		if (is_normal_group)
+  		{
+  		    cterm_normal_bg_color = color + 1;
+***************
+*** 7960,7982 ****
+  	else if (STRCMP(key, "GUIFG") == 0)
+  	{
+  #if defined(FEAT_GUI) || defined(FEAT_EVAL)
+! 	    if (!init || !(item->sg_set & SG_GUI))
+  	    {
+  		if (!init)
+! 		    item->sg_set |= SG_GUI;
+  
+  # if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  		/* In GUI guifg colors are only used when recognized */
+  		i = color_name2handle(arg);
+  		if (i != INVALCOLOR || STRCMP(arg, "NONE") == 0 || !USE_24BIT)
+  		{
+! 		    item->sg_gui_fg = i;
+  # endif
+! 		    vim_free(item->sg_gui_fg_name);
+  		    if (STRCMP(arg, "NONE") != 0)
+! 			item->sg_gui_fg_name = vim_strsave(arg);
+  		    else
+! 			item->sg_gui_fg_name = NULL;
+  # if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  #  ifdef FEAT_GUI_X11
+  		    if (is_menu_group)
+--- 7957,7979 ----
+  	else if (STRCMP(key, "GUIFG") == 0)
+  	{
+  #if defined(FEAT_GUI) || defined(FEAT_EVAL)
+! 	    if (!init || !(HL_TABLE()[idx].sg_set & SG_GUI))
+  	    {
+  		if (!init)
+! 		    HL_TABLE()[idx].sg_set |= SG_GUI;
+  
+  # if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  		/* In GUI guifg colors are only used when recognized */
+  		i = color_name2handle(arg);
+  		if (i != INVALCOLOR || STRCMP(arg, "NONE") == 0 || !USE_24BIT)
+  		{
+! 		    HL_TABLE()[idx].sg_gui_fg = i;
+  # endif
+! 		    vim_free(HL_TABLE()[idx].sg_gui_fg_name);
+  		    if (STRCMP(arg, "NONE") != 0)
+! 			HL_TABLE()[idx].sg_gui_fg_name = vim_strsave(arg);
+  		    else
+! 			HL_TABLE()[idx].sg_gui_fg_name = NULL;
+  # if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  #  ifdef FEAT_GUI_X11
+  		    if (is_menu_group)
+***************
+*** 7997,8019 ****
+  	else if (STRCMP(key, "GUIBG") == 0)
+  	{
+  #if defined(FEAT_GUI) || defined(FEAT_EVAL)
+! 	    if (!init || !(item->sg_set & SG_GUI))
+  	    {
+  		if (!init)
+! 		    item->sg_set |= SG_GUI;
+  
+  # if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  		/* In GUI guifg colors are only used when recognized */
+  		i = color_name2handle(arg);
+  		if (i != INVALCOLOR || STRCMP(arg, "NONE") == 0 || !USE_24BIT)
+  		{
+! 		    item->sg_gui_bg = i;
+  # endif
+! 		    vim_free(item->sg_gui_bg_name);
+  		    if (STRCMP(arg, "NONE") != 0)
+! 			item->sg_gui_bg_name = vim_strsave(arg);
+  		    else
+! 			item->sg_gui_bg_name = NULL;
+  # if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  #  ifdef FEAT_GUI_X11
+  		    if (is_menu_group)
+--- 7994,8016 ----
+  	else if (STRCMP(key, "GUIBG") == 0)
+  	{
+  #if defined(FEAT_GUI) || defined(FEAT_EVAL)
+! 	    if (!init || !(HL_TABLE()[idx].sg_set & SG_GUI))
+  	    {
+  		if (!init)
+! 		    HL_TABLE()[idx].sg_set |= SG_GUI;
+  
+  # if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  		/* In GUI guifg colors are only used when recognized */
+  		i = color_name2handle(arg);
+  		if (i != INVALCOLOR || STRCMP(arg, "NONE") == 0 || !USE_24BIT)
+  		{
+! 		    HL_TABLE()[idx].sg_gui_bg = i;
+  # endif
+! 		    vim_free(HL_TABLE()[idx].sg_gui_bg_name);
+  		    if (STRCMP(arg, "NONE") != 0)
+! 			HL_TABLE()[idx].sg_gui_bg_name = vim_strsave(arg);
+  		    else
+! 			HL_TABLE()[idx].sg_gui_bg_name = NULL;
+  # if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  #  ifdef FEAT_GUI_X11
+  		    if (is_menu_group)
+***************
+*** 8034,8055 ****
+  	else if (STRCMP(key, "GUISP") == 0)
+  	{
+  #if defined(FEAT_GUI) || defined(FEAT_EVAL)
+! 	    if (!init || !(item->sg_set & SG_GUI))
+  	    {
+  		if (!init)
+! 		    item->sg_set |= SG_GUI;
+  
+  # ifdef FEAT_GUI
+  		i = color_name2handle(arg);
+  		if (i != INVALCOLOR || STRCMP(arg, "NONE") == 0 || !gui.in_use)
+  		{
+! 		    item->sg_gui_sp = i;
+  # endif
+! 		    vim_free(item->sg_gui_sp_name);
+  		    if (STRCMP(arg, "NONE") != 0)
+! 			item->sg_gui_sp_name = vim_strsave(arg);
+  		    else
+! 			item->sg_gui_sp_name = NULL;
+  # ifdef FEAT_GUI
+  		}
+  # endif
+--- 8031,8052 ----
+  	else if (STRCMP(key, "GUISP") == 0)
+  	{
+  #if defined(FEAT_GUI) || defined(FEAT_EVAL)
+! 	    if (!init || !(HL_TABLE()[idx].sg_set & SG_GUI))
+  	    {
+  		if (!init)
+! 		    HL_TABLE()[idx].sg_set |= SG_GUI;
+  
+  # ifdef FEAT_GUI
+  		i = color_name2handle(arg);
+  		if (i != INVALCOLOR || STRCMP(arg, "NONE") == 0 || !gui.in_use)
+  		{
+! 		    HL_TABLE()[idx].sg_gui_sp = i;
+  # endif
+! 		    vim_free(HL_TABLE()[idx].sg_gui_sp_name);
+  		    if (STRCMP(arg, "NONE") != 0)
+! 			HL_TABLE()[idx].sg_gui_sp_name = vim_strsave(arg);
+  		    else
+! 			HL_TABLE()[idx].sg_gui_sp_name = NULL;
+  # ifdef FEAT_GUI
+  		}
+  # endif
+***************
+*** 8062,8068 ****
+  	    char_u	*tname;
+  
+  	    if (!init)
+! 		item->sg_set |= SG_TERM;
+  
+  	    /*
+  	     * The "start" and "stop"  arguments can be a literal escape
+--- 8059,8065 ----
+  	    char_u	*tname;
+  
+  	    if (!init)
+! 		HL_TABLE()[idx].sg_set |= SG_TERM;
+  
+  	    /*
+  	     * The "start" and "stop"  arguments can be a literal escape
+***************
+*** 8129,8141 ****
+  		p = vim_strsave(buf);
+  	    if (key[2] == 'A')
+  	    {
+! 		vim_free(item->sg_start);
+! 		item->sg_start = p;
+  	    }
+  	    else
+  	    {
+! 		vim_free(item->sg_stop);
+! 		item->sg_stop = p;
+  	    }
+  	}
+  	else
+--- 8126,8138 ----
+  		p = vim_strsave(buf);
+  	    if (key[2] == 'A')
+  	    {
+! 		vim_free(HL_TABLE()[idx].sg_start);
+! 		HL_TABLE()[idx].sg_start = p;
+  	    }
+  	    else
+  	    {
+! 		vim_free(HL_TABLE()[idx].sg_stop);
+! 		HL_TABLE()[idx].sg_stop = p;
+  	    }
+  	}
+  	else
+***************
+*** 8144,8156 ****
+  	    error = TRUE;
+  	    break;
+  	}
+! 	item->sg_cleared = FALSE;
+  
+  	/*
+  	 * When highlighting has been given for a group, don't link it.
+  	 */
+! 	if (!init || !(item->sg_set & SG_LINK))
+! 	    item->sg_link = 0;
+  
+  	/*
+  	 * Continue with next argument.
+--- 8141,8153 ----
+  	    error = TRUE;
+  	    break;
+  	}
+! 	HL_TABLE()[idx].sg_cleared = FALSE;
+  
+  	/*
+  	 * When highlighting has been given for a group, don't link it.
+  	 */
+! 	if (!init || !(HL_TABLE()[idx].sg_set & SG_LINK))
+! 	    HL_TABLE()[idx].sg_link = 0;
+  
+  	/*
+  	 * Continue with next argument.
+***************
+*** 8167,8176 ****
+      {
+  	if (is_normal_group)
+  	{
+! 	    item->sg_term_attr = 0;
+! 	    item->sg_cterm_attr = 0;
+  #ifdef FEAT_GUI
+! 	    item->sg_gui_attr = 0;
+  	    /*
+  	     * Need to update all groups, because they might be using "bg"
+  	     * and/or "fg", which have been changed now.
+--- 8164,8173 ----
+      {
+  	if (is_normal_group)
+  	{
+! 	    HL_TABLE()[idx].sg_term_attr = 0;
+! 	    HL_TABLE()[idx].sg_cterm_attr = 0;
+  #ifdef FEAT_GUI
+! 	    HL_TABLE()[idx].sg_gui_attr = 0;
+  	    /*
+  	     * Need to update all groups, because they might be using "bg"
+  	     * and/or "fg", which have been changed now.
+***************
+*** 8180,8186 ****
+  	    if (USE_24BIT)
+  	    {
+  		highlight_gui_started();
+- 		item = &HL_TABLE()[idx]; /* table may have changed */
+  		did_highlight_changed = TRUE;
+  		redraw_all_later(NOT_VALID);
+  	    }
+--- 8177,8182 ----
+***************
+*** 8210,8216 ****
+  	else
+  	    set_hl_attr(idx);
+  #ifdef FEAT_EVAL
+! 	item->sg_scriptID = current_SID;
+  #endif
+      }
+  
+--- 8206,8212 ----
+  	else
+  	    set_hl_attr(idx);
+  #ifdef FEAT_EVAL
+! 	HL_TABLE()[idx].sg_scriptID = current_SID;
+  #endif
+      }
+  
+***************
+*** 8219,8225 ****
+  
+      /* Only call highlight_changed() once, after a sequence of highlight
+       * commands, and only if an attribute actually changed. */
+!     if (memcmp(item, &item_before, sizeof(item_before)) != 0
+  #if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  	    && !did_highlight_changed
+  #endif
+--- 8215,8221 ----
+  
+      /* Only call highlight_changed() once, after a sequence of highlight
+       * commands, and only if an attribute actually changed. */
+!     if (memcmp(&HL_TABLE()[idx], &item_before, sizeof(item_before)) != 0
+  #if defined(FEAT_GUI) || defined(FEAT_TERMGUICOLORS)
+  	    && !did_highlight_changed
+  #endif
+*** ../vim-8.0.1087/src/version.c	2017-09-10 14:25:41.737419026 +0200
+--- src/version.c	2017-09-10 15:21:15.139891736 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1088,
+  /**/
+
+-- 
+From "know your smileys":
+ :.-(	Crying
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,70 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0376
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0376
+Problem:    Size computations in spell file reading are not exactly right.
+Solution:   Make "len" a "long" and check with LONG_MAX.
+Files:      src/spellfile.c
+
+
+*** ../vim-8.0.0375/src/spellfile.c	2017-02-09 21:07:07.040797650 +0100
+--- src/spellfile.c	2017-02-26 15:26:20.787791150 +0100
+***************
+*** 1585,1591 ****
+      int		prefixtree,	/* TRUE for the prefix tree */
+      int		prefixcnt)	/* when "prefixtree" is TRUE: prefix count */
+  {
+!     int		len;
+      int		idx;
+      char_u	*bp;
+      idx_T	*ip;
+--- 1585,1591 ----
+      int		prefixtree,	/* TRUE for the prefix tree */
+      int		prefixcnt)	/* when "prefixtree" is TRUE: prefix count */
+  {
+!     long	len;
+      int		idx;
+      char_u	*bp;
+      idx_T	*ip;
+***************
+*** 1595,1601 ****
+      len = get4c(fd);
+      if (len < 0)
+  	return SP_TRUNCERROR;
+!     if (len >= 0x3ffffff)
+  	/* Invalid length, multiply with sizeof(int) would overflow. */
+  	return SP_FORMERROR;
+      if (len > 0)
+--- 1595,1601 ----
+      len = get4c(fd);
+      if (len < 0)
+  	return SP_TRUNCERROR;
+!     if (len >= LONG_MAX / (long)sizeof(int))
+  	/* Invalid length, multiply with sizeof(int) would overflow. */
+  	return SP_FORMERROR;
+      if (len > 0)
+*** ../vim-8.0.0375/src/version.c	2017-02-26 15:08:17.578786550 +0100
+--- src/version.c	2017-02-26 15:24:16.984560380 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     376,
+  /**/
+
+-- 
+How To Keep A Healthy Level Of Insanity:
+3. Every time someone asks you to do something, ask if they want fries
+   with that.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

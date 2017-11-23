@@ -1,0 +1,305 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0882
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0882
+Problem:    term_scrape() and term_getline() require two arguments but it is
+            not enforced.
+Solution:   Correct minimal number of arguments. (Hirohito Higashi)  Update
+            documentation. (Ken Takata)
+Files:      src/evalfunc.c, runtime/doc/eval.txt
+
+
+*** ../vim-8.0.0881/src/evalfunc.c	2017-08-03 13:51:02.388784785 +0200
+--- src/evalfunc.c	2017-08-06 17:48:44.305350573 +0200
+***************
+*** 834,846 ****
+      {"term_getattr",	2, 2, f_term_getattr},
+      {"term_getcursor",	1, 1, f_term_getcursor},
+      {"term_getjob",	1, 1, f_term_getjob},
+!     {"term_getline",	1, 2, f_term_getline},
+      {"term_getsize",	1, 1, f_term_getsize},
+      {"term_getstatus",	1, 1, f_term_getstatus},
+      {"term_gettitle",	1, 1, f_term_gettitle},
+      {"term_gettty",	1, 1, f_term_gettty},
+      {"term_list",	0, 0, f_term_list},
+!     {"term_scrape",	1, 2, f_term_scrape},
+      {"term_sendkeys",	2, 2, f_term_sendkeys},
+      {"term_start",	1, 2, f_term_start},
+      {"term_wait",	1, 1, f_term_wait},
+--- 834,846 ----
+      {"term_getattr",	2, 2, f_term_getattr},
+      {"term_getcursor",	1, 1, f_term_getcursor},
+      {"term_getjob",	1, 1, f_term_getjob},
+!     {"term_getline",	2, 2, f_term_getline},
+      {"term_getsize",	1, 1, f_term_getsize},
+      {"term_getstatus",	1, 1, f_term_getstatus},
+      {"term_gettitle",	1, 1, f_term_gettitle},
+      {"term_gettty",	1, 1, f_term_gettty},
+      {"term_list",	0, 0, f_term_list},
+!     {"term_scrape",	2, 2, f_term_scrape},
+      {"term_sendkeys",	2, 2, f_term_sendkeys},
+      {"term_start",	1, 2, f_term_start},
+      {"term_wait",	1, 1, f_term_wait},
+*** ../vim-8.0.0881/runtime/doc/eval.txt	2017-08-06 15:22:10.297211999 +0200
+--- runtime/doc/eval.txt	2017-08-06 17:51:25.540180879 +0200
+***************
+*** 2369,2375 ****
+  tan({expr})			Float	tangent of {expr}
+  tanh({expr})			Float	hyperbolic tangent of {expr}
+  tempname()			String	name for a temporary file
+! term_getattr({attr}, {what}	Number	get the value of attribute {what}
+  term_getcursor({buf})		List	get the cursor position of a terminal
+  term_getjob({buf})		Job	get the job associated with a terminal
+  term_getline({buf}, {row})	String	get a line of text from a terminal
+--- 2369,2375 ----
+  tan({expr})			Float	tangent of {expr}
+  tanh({expr})			Float	hyperbolic tangent of {expr}
+  tempname()			String	name for a temporary file
+! term_getattr({attr}, {what})	Number	get the value of attribute {what}
+  term_getcursor({buf})		List	get the cursor position of a terminal
+  term_getjob({buf})		Job	get the job associated with a terminal
+  term_getline({buf}, {row})	String	get a line of text from a terminal
+***************
+*** 7908,7939 ****
+  			underline
+  			strike
+  			reverse
+  
+  term_getcursor({buf})					*term_getcursor()*
+! 		Get the cusor position of terminal {buf}. Returns a list with
+  		three numbers: [rows, cols, visible].  "rows" and "cols" are
+! 		one based, the first sceen cell is row 1, column 1.
+  		"visible" is one when the cursor is visible, zero when it is
+  		hidden.
+! 		
+  		This is the cursor position of the terminal itself, not of the
+  		Vim window.
+  
+  		{buf} must be the buffer number of a terminal window. If the
+  		buffer does not exist or is not a terminal window, an empty
+  		list is returned.
+  
+  term_getjob({buf})					*term_getjob()*
+  		Get the Job associated with terminal window {buf}.
+  		{buf} is used as with |term_getsize()|.
+  		Returns |v:null| when there is no job.
+  
+  term_getline({buf}, {row})				*term_getline()*
+  		Get a line of text from the terminal window of {buf}.
+  		{buf} is used as with |term_getsize()|.
+  
+! 		The first line has {row} one.  When {row} "." the cursor line
+! 		is used.  When {row} is invalid an empty string is returned.
+  
+  term_getsize({buf})					*term_getsize()*
+  		Get the size of terminal {buf}. Returns a list with two
+--- 7916,7952 ----
+  			underline
+  			strike
+  			reverse
++ 		{only available when compiled with the |+terminal| feature}
+  
+  term_getcursor({buf})					*term_getcursor()*
+! 		Get the cursor position of terminal {buf}. Returns a list with
+  		three numbers: [rows, cols, visible].  "rows" and "cols" are
+! 		one based, the first screen cell is row 1, column 1.
+  		"visible" is one when the cursor is visible, zero when it is
+  		hidden.
+! 
+  		This is the cursor position of the terminal itself, not of the
+  		Vim window.
+  
+  		{buf} must be the buffer number of a terminal window. If the
+  		buffer does not exist or is not a terminal window, an empty
+  		list is returned.
++ 		{only available when compiled with the |+terminal| feature}
+  
+  term_getjob({buf})					*term_getjob()*
+  		Get the Job associated with terminal window {buf}.
+  		{buf} is used as with |term_getsize()|.
+  		Returns |v:null| when there is no job.
++ 		{only available when compiled with the |+terminal| feature}
+  
+  term_getline({buf}, {row})				*term_getline()*
+  		Get a line of text from the terminal window of {buf}.
+  		{buf} is used as with |term_getsize()|.
+  
+! 		The first line has {row} one.  When {row} is "." the cursor
+! 		line is used.  When {row} is invalid an empty string is
+! 		returned.
+! 		{only available when compiled with the |+terminal| feature}
+  
+  term_getsize({buf})					*term_getsize()*
+  		Get the size of terminal {buf}. Returns a list with two
+***************
+*** 7943,7960 ****
+  		{buf} must be the buffer number of a terminal window.  Use an
+  		empty string for the current buffer.  If the buffer does not
+  		exist or is not a terminal window, an empty list is returned.
+  
+  term_getstatus({buf})					*term_getstatus()*
+  		Get the status of terminal {buf}. This returns a comma
+  		separated list of these items:
+  			running		job is running
+  			finished	job has finished
+! 			terminal	in Terminal-Normal mode
+  		One of "running" or "finished" is always present.
+  
+  		{buf} must be the buffer number of a terminal window. If the
+  		buffer does not exist or is not a terminal window, an empty
+  		string is returned.
+  
+  term_gettitle({buf})					*term_gettitle()*
+  		Get the title of terminal {buf}. This is the title that the
+--- 7956,7975 ----
+  		{buf} must be the buffer number of a terminal window.  Use an
+  		empty string for the current buffer.  If the buffer does not
+  		exist or is not a terminal window, an empty list is returned.
++ 		{only available when compiled with the |+terminal| feature}
+  
+  term_getstatus({buf})					*term_getstatus()*
+  		Get the status of terminal {buf}. This returns a comma
+  		separated list of these items:
+  			running		job is running
+  			finished	job has finished
+! 			normal		in Terminal-Normal mode
+  		One of "running" or "finished" is always present.
+  
+  		{buf} must be the buffer number of a terminal window. If the
+  		buffer does not exist or is not a terminal window, an empty
+  		string is returned.
++ 		{only available when compiled with the |+terminal| feature}
+  
+  term_gettitle({buf})					*term_gettitle()*
+  		Get the title of terminal {buf}. This is the title that the
+***************
+*** 7963,7984 ****
+  		{buf} must be the buffer number of a terminal window. If the
+  		buffer does not exist or is not a terminal window, an empty
+  		string is returned.
+  
+  term_gettty({buf})					*term_gettty()*
+  		Get the name of the controlling terminal associated with
+  		terminal window {buf}.
+  		{buf} is used as with |term_getsize()|.
+  
+  term_list()						*term_list()*
+  		Return a list with the buffer numbers of all buffers for
+  		terminal windows.
+  
+  term_scrape({buf}, {row})				*term_scrape()*
+  		Get the contents of {row} of terminal screen of {buf}.
+  		For {buf} see |term_getsize()|.
+  
+! 		The first line has {row} one.  When {row} "." the cursor line
+! 		is used.  When {row} is invalid an empty string is returned.
+  
+  		Return a List containing a Dict for each screen cell: 
+  		    "chars"	character(s) at the cell
+--- 7978,8003 ----
+  		{buf} must be the buffer number of a terminal window. If the
+  		buffer does not exist or is not a terminal window, an empty
+  		string is returned.
++ 		{only available when compiled with the |+terminal| feature}
+  
+  term_gettty({buf})					*term_gettty()*
+  		Get the name of the controlling terminal associated with
+  		terminal window {buf}.
+  		{buf} is used as with |term_getsize()|.
++ 		{only available when compiled with the |+terminal| feature}
+  
+  term_list()						*term_list()*
+  		Return a list with the buffer numbers of all buffers for
+  		terminal windows.
++ 		{only available when compiled with the |+terminal| feature}
+  
+  term_scrape({buf}, {row})				*term_scrape()*
+  		Get the contents of {row} of terminal screen of {buf}.
+  		For {buf} see |term_getsize()|.
+  
+! 		The first line has {row} one.  When {row} is "." the cursor
+! 		line is used.  When {row} is invalid an empty string is
+! 		returned.
+  
+  		Return a List containing a Dict for each screen cell: 
+  		    "chars"	character(s) at the cell
+***************
+*** 7987,7992 ****
+--- 8006,8012 ----
+  		    "attr"	attributes of the cell, use |term_getattr()|
+  		    		to get the individual flags
+  		    "width"	cell width: 1 or 2
++ 		{only available when compiled with the |+terminal| feature}
+  
+  term_sendkeys({buf}, {keys})				*term_sendkeys()*
+  		Send keystrokes {keys} to terminal {buf}.
+***************
+*** 7994,7999 ****
+--- 8014,8020 ----
+  
+  		{keys} are translated as key sequences. For example, "\<c-x>"
+  		means the character CTRL-X.
++ 		{only available when compiled with the |+terminal| feature}
+  
+  term_start({cmd}, {options})				*term_start()*
+  		Open a terminal window and run {cmd} in it.
+***************
+*** 8018,8027 ****
+--- 8039,8050 ----
+  		There is one extra option:
+  		   "term_name"   name to use for the buffer name, instead of
+  				 the command name.
++ 		{only available when compiled with the |+terminal| feature}
+  
+  term_wait({buf})						*term_wait()*
+  		Wait for pending updates of {buf} to be handled.
+  		{buf} is used as with |term_getsize()|.
++ 		{only available when compiled with the |+terminal| feature}
+  
+  test_alloc_fail({id}, {countdown}, {repeat})		*test_alloc_fail()*
+  		This is for testing: If the memory allocation with {id} is
+***************
+*** 8515,8522 ****
+    :if winwidth(0) <= 50
+    :  exe "normal 50\<C-W>|"
+    :endif
+! <               For getting the terminal or screen size, see the 'columns'
+!                option.
+  
+  
+  wordcount()						*wordcount()*
+--- 8538,8545 ----
+    :if winwidth(0) <= 50
+    :  exe "normal 50\<C-W>|"
+    :endif
+! <		For getting the terminal or screen size, see the 'columns'
+! 		option.
+  
+  
+  wordcount()						*wordcount()*
+*** ../vim-8.0.0881/src/version.c	2017-08-06 17:38:02.214007926 +0200
+--- src/version.c	2017-08-06 17:50:10.188727531 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     882,
+  /**/
+
+-- 
+TIM:   That is not an ordinary rabbit ... 'tis the most foul cruel and
+       bad-tempered thing you ever set eyes on.
+ROBIN: You tit.  I soiled my armour I was so scared!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

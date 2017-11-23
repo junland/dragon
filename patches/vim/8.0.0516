@@ -1,0 +1,124 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0516
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0516
+Problem:    A large count on a normal command causes trouble. (Dominique
+            Pelle)
+Solution:   Make "opcount" long.
+Files:      src/globals.h, src/testdir/test_normal.vim
+
+
+*** ../vim-8.0.0515/src/globals.h	2017-03-09 18:19:58.161107848 +0100
+--- src/globals.h	2017-03-29 13:07:30.300236242 +0200
+***************
+*** 932,941 ****
+  					 * command interpreter. */
+  
+  EXTERN int	finish_op INIT(= FALSE);/* TRUE while an operator is pending */
+! EXTERN int	opcount INIT(= 0);	/* count for pending operator */
+  
+  /*
+!  * ex mode (Q) state
+   */
+  EXTERN int exmode_active INIT(= 0);	/* zero, EXMODE_NORMAL or EXMODE_VIM */
+  EXTERN int ex_no_reprint INIT(= FALSE); /* no need to print after z or p */
+--- 932,941 ----
+  					 * command interpreter. */
+  
+  EXTERN int	finish_op INIT(= FALSE);/* TRUE while an operator is pending */
+! EXTERN long	opcount INIT(= 0);	/* count for pending operator */
+  
+  /*
+!  * Ex mode (Q) state
+   */
+  EXTERN int exmode_active INIT(= 0);	/* zero, EXMODE_NORMAL or EXMODE_VIM */
+  EXTERN int ex_no_reprint INIT(= FALSE); /* no need to print after z or p */
+*** ../vim-8.0.0515/src/testdir/test_normal.vim	2017-03-08 22:55:14.914181221 +0100
+--- src/testdir/test_normal.vim	2017-03-29 13:05:45.400865091 +0200
+***************
+*** 2259,2284 ****
+    bw!
+  endfunc
+  
+! func! Test_normal54_Ctrl_bsl()
+! 	new
+! 	call setline(1, 'abcdefghijklmn')
+! 	exe "norm! df\<c-\>\<c-n>"
+! 	call assert_equal(['abcdefghijklmn'], getline(1,'$'))
+! 	exe "norm! df\<c-\>\<c-g>"
+! 	call assert_equal(['abcdefghijklmn'], getline(1,'$'))
+! 	exe "norm! df\<c-\>m"
+! 	call assert_equal(['abcdefghijklmn'], getline(1,'$'))
+    if !has("multi_byte")
+      return
+    endif
+! 	call setline(2, 'abcdefghijklmnāf')
+! 	norm! 2gg0
+! 	exe "norm! df\<Char-0x101>"
+! 	call assert_equal(['abcdefghijklmn', 'f'], getline(1,'$'))
+! 	norm! 1gg0
+! 	exe "norm! df\<esc>"
+! 	call assert_equal(['abcdefghijklmn', 'f'], getline(1,'$'))
+  
+! 	" clean up
+! 	bw!
+  endfunc
+--- 2259,2292 ----
+    bw!
+  endfunc
+  
+! func Test_normal54_Ctrl_bsl()
+!   new
+!   call setline(1, 'abcdefghijklmn')
+!   exe "norm! df\<c-\>\<c-n>"
+!   call assert_equal(['abcdefghijklmn'], getline(1,'$'))
+!   exe "norm! df\<c-\>\<c-g>"
+!   call assert_equal(['abcdefghijklmn'], getline(1,'$'))
+!   exe "norm! df\<c-\>m"
+!   call assert_equal(['abcdefghijklmn'], getline(1,'$'))
+    if !has("multi_byte")
+      return
+    endif
+!   call setline(2, 'abcdefghijklmnāf')
+!   norm! 2gg0
+!   exe "norm! df\<Char-0x101>"
+!   call assert_equal(['abcdefghijklmn', 'f'], getline(1,'$'))
+!   norm! 1gg0
+!   exe "norm! df\<esc>"
+!   call assert_equal(['abcdefghijklmn', 'f'], getline(1,'$'))
+  
+!   " clean up
+!   bw!
+! endfunc
+! 
+! func Test_normal_large_count()
+!   " This may fail with 32bit long, how do we detect that?
+!   new
+!   normal o
+!   normal 6666666666dL
+!   bwipe!
+  endfunc
+*** ../vim-8.0.0515/src/version.c	2017-03-27 23:02:03.396337294 +0200
+--- src/version.c	2017-03-29 13:03:49.977557036 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     516,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+225. You sign up for free subscriptions for all the computer magazines
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

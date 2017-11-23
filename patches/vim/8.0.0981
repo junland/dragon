@@ -1,0 +1,80 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0981
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0981
+Problem:    Cursor in terminal window blinks by default, while in a real xterm
+            it does not blink, unless the -bc argument is used.
+Solution:   Do not use a blinking cursor by default.
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0980/src/terminal.c	2017-08-20 19:22:51.063988066 +0200
+--- src/terminal.c	2017-08-21 21:31:59.825455319 +0200
+***************
+*** 38,44 ****
+   * in tl_scrollback are no longer used.
+   *
+   * TODO:
+!  * - test writing lines to terminal job when implemented for MS-Windows
+   * - implement term_setsize()
+   * - add test for giving error for invalid 'termsize' value.
+   * - support minimal size when 'termsize' is "rows*cols".
+--- 38,44 ----
+   * in tl_scrollback are no longer used.
+   *
+   * TODO:
+!  * - test for writing lines to terminal job does not work on MS-Windows
+   * - implement term_setsize()
+   * - add test for giving error for invalid 'termsize' value.
+   * - support minimal size when 'termsize' is "rows*cols".
+***************
+*** 2186,2191 ****
+--- 2186,2192 ----
+  {
+      VTerm	    *vterm;
+      VTermScreen	    *screen;
++     VTermValue	    value;
+  
+      vterm = vterm_new(rows, cols);
+      term->tl_vterm = vterm;
+***************
+*** 2210,2215 ****
+--- 2211,2221 ----
+  
+      /* Allow using alternate screen. */
+      vterm_screen_enable_altscreen(screen, 1);
++ 
++     /* We do not want a blinking cursor by default. */
++     value.boolean = 0;
++     vterm_state_set_termprop(vterm_obtain_state(vterm),
++ 					       VTERM_PROP_CURSORBLINK, &value);
+  }
+  
+  /*
+*** ../vim-8.0.0980/src/version.c	2017-08-21 21:07:24.478671491 +0200
+--- src/version.c	2017-08-21 21:34:54.048370982 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     981,
+  /**/
+
+-- 
+While it's true that many normal people whould prefer not to _date_ an
+engineer, most normal people harbor an intense desire to _mate_ with them,
+thus producing engineerlike children who will have high-paying jobs long
+before losing their virginity.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

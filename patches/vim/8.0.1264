@@ -1,0 +1,141 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1264
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1264
+Problem:    Terminal debugger gets stuck in small window.
+Solution:   Add "-quiet" to the gdb command. (Christian Brabandt, closes #2154)
+Files:      runtime/pack/dist/opt/termdebug/plugin/termdebug.vim
+
+
+*** ../vim-8.0.1263/runtime/pack/dist/opt/termdebug/plugin/termdebug.vim	2017-09-17 23:02:17.180074376 +0200
+--- runtime/pack/dist/opt/termdebug/plugin/termdebug.vim	2017-11-04 21:41:02.538418234 +0100
+***************
+*** 15,20 ****
+--- 15,25 ----
+  " Author: Bram Moolenaar
+  " Copyright: Vim license applies, see ":help license"
+  
++ " In case this gets loaded twice.
++ if exists(':Termdebug')
++   finish
++ endif
++ 
+  " The command that starts debugging, e.g. ":Termdebug vim".
+  " To end type "quit" in the gdb window.
+  command -nargs=* -complete=file Termdebug call s:StartDebug(<q-args>)
+***************
+*** 38,49 ****
+    let s:startwin = win_getid(winnr())
+    let s:startsigncolumn = &signcolumn
+  
+!   if exists('g:termdebug_wide') && &columns < g:termdebug_wide
+!     let s:save_columns = &columns
+!     let &columns = g:termdebug_wide
+      let vertical = 1
+    else
+-     let s:save_columns = 0
+      let vertical = 0
+    endif
+  
+--- 43,56 ----
+    let s:startwin = win_getid(winnr())
+    let s:startsigncolumn = &signcolumn
+  
+!   let s:save_columns = 0
+!   if exists('g:termdebug_wide')
+!     if &columns < g:termdebug_wide
+!       let s:save_columns = &columns
+!       let &columns = g:termdebug_wide
+!     endif
+      let vertical = 1
+    else
+      let vertical = 0
+    endif
+  
+***************
+*** 73,79 ****
+    let commpty = job_info(term_getjob(s:commbuf))['tty_out']
+  
+    " Open a terminal window to run the debugger.
+!   let cmd = [g:termdebugger, '-tty', pty, a:cmd]
+    echomsg 'executing "' . join(cmd) . '"'
+    let gdbbuf = term_start(cmd, {
+  	\ 'exit_cb': function('s:EndDebug'),
+--- 80,87 ----
+    let commpty = job_info(term_getjob(s:commbuf))['tty_out']
+  
+    " Open a terminal window to run the debugger.
+!   " Add -quiet to avoid the intro message causing a hit-enter prompt.
+!   let cmd = [g:termdebugger, '-quiet', '-tty', pty, a:cmd]
+    echomsg 'executing "' . join(cmd) . '"'
+    let gdbbuf = term_start(cmd, {
+  	\ 'exit_cb': function('s:EndDebug'),
+***************
+*** 88,93 ****
+--- 96,102 ----
+    let s:gdbwin = win_getid(winnr())
+  
+    " Connect gdb to the communication pty, using the GDB/MI interface
++   " If you get an error "undefined command" your GDB is too old.
+    call term_sendkeys(gdbbuf, 'new-ui mi ' . commpty . "\r")
+  
+    " Sign used to highlight the line where the program has stopped.
+***************
+*** 170,180 ****
+    nnoremap K :Evaluate<CR>
+  
+    if has('menu')
+!     amenu WinBar.Step :Step<CR>
+!     amenu WinBar.Next :Over<CR>
+!     amenu WinBar.Finish :Finish<CR>
+!     amenu WinBar.Cont :Continue<CR>
+!     amenu WinBar.Eval :Evaluate<CR>
+    endif
+  endfunc
+  
+--- 179,189 ----
+    nnoremap K :Evaluate<CR>
+  
+    if has('menu')
+!     nnoremenu WinBar.Step :Step<CR>
+!     nnoremenu WinBar.Next :Over<CR>
+!     nnoremenu WinBar.Finish :Finish<CR>
+!     nnoremenu WinBar.Cont :Continue<CR>
+!     nnoremenu WinBar.Eval :Evaluate<CR>
+    endif
+  endfunc
+  
+***************
+*** 292,297 ****
+--- 301,307 ----
+  	  endif
+  	endif
+  	exe lnum
++ 	exe 'sign unplace ' . s:pc_id
+  	exe 'sign place ' . s:pc_id . ' line=' . lnum . ' name=debugPC file=' . fname
+  	setlocal signcolumn=yes
+        endif
+*** ../vim-8.0.1263/src/version.c	2017-11-04 21:34:57.016967191 +0100
+--- src/version.c	2017-11-04 21:43:00.005640486 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1264,
+  /**/
+
+-- 
+No children may attend school with their breath smelling of "wild onions."
+		[real standing law in West Virginia, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

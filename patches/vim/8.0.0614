@@ -1,0 +1,421 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0614
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0614
+Problem:    float2nr() is not exactly right.
+Solution:   Make float2nr() more accurate.  Turn test64 into a new style test.
+            (Hirohito Higashi, closes #1688)
+Files:      src/Makefile, src/evalfunc.c, src/testdir/Make_all.mak,
+            src/testdir/Make_vms.mms, src/testdir/test65.in,
+            src/testdir/test65.ok, src/testdir/test_float_func.vim,
+            src/testdir/test_vimscript.vim, src/macros.h
+
+
+*** ../vim-8.0.0613/src/Makefile	2017-06-04 18:59:10.791459095 +0200
+--- src/Makefile	2017-06-04 19:45:13.268243056 +0200
+***************
+*** 2087,2093 ****
+  	test30 test31 test32 test33 test34 test36 test37 test38 test39 \
+  	test40 test41 test42 test43 test44 test45 test48 test49 \
+  	test50 test51 test52 test53 test54 test55 test56 test57 test58 test59 \
+! 	test60 test64 test65 test66 test67 test68 test69 \
+  	test70 test72 test73 test74 test75 test77 test78 test79 \
+  	test80 test82 test83 test84 test85 test86 test87 test88 \
+  	test90 test91 test94 test95 test97 test98 test99 \
+--- 2087,2093 ----
+  	test30 test31 test32 test33 test34 test36 test37 test38 test39 \
+  	test40 test41 test42 test43 test44 test45 test48 test49 \
+  	test50 test51 test52 test53 test54 test55 test56 test57 test58 test59 \
+! 	test60 test64 test66 test67 test68 test69 \
+  	test70 test72 test73 test74 test75 test77 test78 test79 \
+  	test80 test82 test83 test84 test85 test86 test87 test88 \
+  	test90 test91 test94 test95 test97 test98 test99 \
+*** ../vim-8.0.0613/src/evalfunc.c	2017-04-30 20:12:53.374810691 +0200
+--- src/evalfunc.c	2017-06-04 19:45:13.268243056 +0200
+***************
+*** 3352,3360 ****
+  
+      if (get_float_arg(argvars, &f) == OK)
+      {
+! 	if (f < -VARNUM_MAX)
+  	    rettv->vval.v_number = -VARNUM_MAX;
+! 	else if (f > VARNUM_MAX)
+  	    rettv->vval.v_number = VARNUM_MAX;
+  	else
+  	    rettv->vval.v_number = (varnumber_T)f;
+--- 3352,3360 ----
+  
+      if (get_float_arg(argvars, &f) == OK)
+      {
+! 	if (f <= -VARNUM_MAX + DBL_EPSILON)
+  	    rettv->vval.v_number = -VARNUM_MAX;
+! 	else if (f >= VARNUM_MAX - DBL_EPSILON)
+  	    rettv->vval.v_number = VARNUM_MAX;
+  	else
+  	    rettv->vval.v_number = (varnumber_T)f;
+*** ../vim-8.0.0613/src/testdir/Make_all.mak	2017-03-19 20:04:05.534628090 +0100
+--- src/testdir/Make_all.mak	2017-06-04 19:45:13.268243056 +0200
+***************
+*** 50,56 ****
+  	test57.out \
+  	test60.out \
+  	test64.out \
+- 	test65.out \
+  	test66.out \
+  	test67.out \
+  	test68.out \
+--- 50,55 ----
+*** ../vim-8.0.0613/src/testdir/Make_vms.mms	2017-02-23 18:46:24.462288941 +0100
+--- src/testdir/Make_vms.mms	2017-06-04 19:45:13.268243056 +0200
+***************
+*** 87,93 ****
+         test43.out test44.out test45.out \
+         test48.out test49.out test51.out test53.out test54.out \
+         test55.out test56.out test57.out test60.out \
+!        test64.out test65.out \
+         test66.out test67.out test68.out test69.out \
+         test72.out test75.out \
+         test77a.out test78.out test79.out test80.out \
+--- 87,93 ----
+         test43.out test44.out test45.out \
+         test48.out test49.out test51.out test53.out test54.out \
+         test55.out test56.out test57.out test60.out \
+!        test64.out \
+         test66.out test67.out test68.out test69.out \
+         test72.out test75.out \
+         test77a.out test78.out test79.out test80.out \
+*** ../vim-8.0.0613/src/testdir/test65.in	2011-12-11 13:55:06.000000000 +0100
+--- src/testdir/test65.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,95 ****
+- Test for floating point and logical operators.
+- 
+- STARTTEST
+- :so small.vim
+- :if !has("float")
+- :  e! test.ok
+- :  wq! test.out
+- :endif
+- :"
+- :$put =printf('%f', 123.456)
+- :$put =printf('%e', 123.456)
+- :$put =printf('%g', 123.456)
+- :" check we don't crash on division by zero
+- :echo 1.0 / 0.0
+- :$put ='+='
+- :let v = 1.234
+- :let v += 6.543
+- :$put =printf('%g', v)
+- :let v = 1.234
+- :let v += 5
+- :$put =printf('%g', v)
+- :let a = 5
+- :let a += 3.333
+- :$put =string(a)
+- :$put ='=='
+- :let v = 1.234
+- :$put =v == 1.234
+- :$put =v == 1.2341
+- :$put ='add-subtract'
+- :$put =printf('%g', 4 + 1.234)
+- :$put =printf('%g', 1.234 - 8)
+- :$put ='mult-div'
+- :$put =printf('%g', 4 * 1.234)
+- :$put =printf('%g', 4.0 / 1234)
+- :$put ='dict'
+- :$put =string({'x': 1.234, 'y': -2.0e20})
+- :$put ='list'
+- :$put =string([-123.4, 2.0e-20])
+- :$put ='abs'
+- :$put =printf('%d', abs(1456))
+- :$put =printf('%d', abs(-4))
+- :$put =printf('%d', abs([1, 2, 3]))
+- :$put =printf('%g', abs(14.56))
+- :$put =printf('%g', abs(-54.32))
+- :$put ='ceil'
+- :$put =printf('%g', ceil(1.456))
+- :$put =printf('%g', ceil(-5.456))
+- :$put =printf('%g', ceil(-4.000))
+- :$put ='floor'
+- :$put =printf('%g', floor(1.856))
+- :$put =printf('%g', floor(-5.456))
+- :$put =printf('%g', floor(4.0))
+- :$put ='log10'
+- :$put =printf('%g', log10(1000))
+- :$put =printf('%g', log10(0.01000))
+- :$put ='pow'
+- :$put =printf('%g', pow(3, 3.0))
+- :$put =printf('%g', pow(2, 16))
+- :$put ='round'
+- :$put =printf('%g', round(0.456))
+- :$put =printf('%g', round(4.5))
+- :$put =printf('%g', round(-4.50))
+- :$put ='sqrt'
+- :$put =printf('%g', sqrt(100))
+- :echo sqrt(-4.01)
+- :$put ='str2float'
+- :$put =printf('%g', str2float('1e40'))
+- :$put ='trunc'
+- :$put =printf('%g', trunc(1.456))
+- :$put =printf('%g', trunc(-5.456))
+- :$put =printf('%g', trunc(4.000))
+- :$put ='float2nr'
+- :$put =float2nr(123.456)
+- :$put =float2nr(-123.456)
+- :$put ='AND'
+- :$put =and(127, 127)
+- :$put =and(127, 16)
+- :$put =and(127, 128)
+- :$put ='OR'
+- :$put =or(16, 7)
+- :$put =or(8, 7)
+- :$put =or(0, 123)
+- :$put ='XOR'
+- :$put =xor(127, 127)
+- :$put =xor(127, 16)
+- :$put =xor(127, 128)
+- :$put ='invert'
+- :$put =and(invert(127), 65535)
+- :$put =and(invert(16), 65535)
+- :$put =and(invert(128), 65535)
+- :$put =invert(1.0)
+- :/^Results/,$wq! test.out
+- ENDTEST
+- 
+- Results of test65:
+--- 0 ----
+*** ../vim-8.0.0613/src/testdir/test65.ok	2011-12-11 13:55:30.000000000 +0100
+--- src/testdir/test65.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,73 ****
+- Results of test65:
+- 123.456000
+- 1.234560e+02
+- 123.456
+- +=
+- 7.777
+- 6.234
+- 8.333
+- ==
+- 1
+- 0
+- add-subtract
+- 5.234
+- -6.766
+- mult-div
+- 4.936
+- 0.003241
+- dict
+- {'x': 1.234, 'y': -2.0e20}
+- list
+- [-123.4, 2.0e-20]
+- abs
+- 1456
+- 4
+- -1
+- 14.56
+- 54.32
+- ceil
+- 2.0
+- -5.0
+- -4.0
+- floor
+- 1.0
+- -6.0
+- 4.0
+- log10
+- 3.0
+- -2.0
+- pow
+- 27.0
+- 65536.0
+- round
+- 0.0
+- 5.0
+- -5.0
+- sqrt
+- 10.0
+- str2float
+- 1.0e40
+- trunc
+- 1.0
+- -5.0
+- 4.0
+- float2nr
+- 123
+- -123
+- AND
+- 127
+- 16
+- 0
+- OR
+- 23
+- 15
+- 123
+- XOR
+- 0
+- 111
+- 255
+- invert
+- 65408
+- 65519
+- 65407
+- 0
+--- 0 ----
+*** ../vim-8.0.0613/src/testdir/test_float_func.vim	2017-01-10 16:31:17.356192466 +0100
+--- src/testdir/test_float_func.vim	2017-06-04 19:45:13.268243056 +0200
+***************
+*** 224,229 ****
+--- 224,243 ----
+    call assert_fails("call str2float(function('string'))", 'E729:')
+  endfunc
+  
++ func Test_float2nr()
++   call assert_equal(1, float2nr(1.234))
++   call assert_equal(123, float2nr(1.234e2))
++   call assert_equal(12, float2nr(123.4e-1))
++   let max_number = 1/0
++   let min_number = -max_number
++   call assert_equal(max_number/2+1, float2nr(pow(2, 62)))
++   call assert_equal(max_number, float2nr(pow(2, 63)))
++   call assert_equal(max_number, float2nr(pow(2, 64)))
++   call assert_equal(min_number/2-1, float2nr(-pow(2, 62)))
++   call assert_equal(min_number, float2nr(-pow(2, 63)))
++   call assert_equal(min_number, float2nr(-pow(2, 64)))
++ endfunc
++ 
+  func Test_floor()
+    call assert_equal('2.0', string(floor(2.0)))
+    call assert_equal('2.0', string(floor(2.11)))
+***************
+*** 282,284 ****
+--- 296,331 ----
+    call assert_equal(0, isnan([]))
+    call assert_equal(0, isnan({}))
+  endfunc
++ 
++ " This was converted from test65
++ func Test_float_misc()
++   call assert_equal('123.456000', printf('%f', 123.456))
++   call assert_equal('1.234560e+02', printf('%e', 123.456))
++   call assert_equal('123.456', printf('%g', 123.456))
++   " +=
++   let v = 1.234
++   let v += 6.543
++   call assert_equal('7.777', printf('%g', v))
++   let v = 1.234
++   let v += 5
++   call assert_equal('6.234', printf('%g', v))
++   let v = 5
++   let v += 3.333
++   call assert_equal('8.333', string(v))
++   " ==
++   let v = 1.234
++   call assert_true(v == 1.234)
++   call assert_false(v == 1.2341)
++   " add-subtract
++   call assert_equal('5.234', printf('%g', 4 + 1.234))
++   call assert_equal('-6.766', printf('%g', 1.234 - 8))
++   " mult-div
++   call assert_equal('4.936', printf('%g', 4 * 1.234))
++   call assert_equal('0.003241', printf('%g', 4.0 / 1234))
++   " dict
++   call assert_equal("{'x': 1.234, 'y': -2.0e20}", string({'x': 1.234, 'y': -2.0e20}))
++   " list
++   call assert_equal('[-123.4, 2.0e-20]', string([-123.4, 2.0e-20]))
++ endfunc
++ 
++ " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.0613/src/testdir/test_vimscript.vim	2017-04-10 22:22:38.545160122 +0200
+--- src/testdir/test_vimscript.vim	2017-06-04 19:45:13.272243029 +0200
+***************
+*** 1321,1326 ****
+--- 1321,1369 ----
+  endfunc
+  
+  "-------------------------------------------------------------------------------
++ " Test 97:  bitwise functions						    {{{1
++ "-------------------------------------------------------------------------------
++ func Test_bitwise_functions()
++     " and
++     call assert_equal(127, and(127, 127))
++     call assert_equal(16, and(127, 16))
++     call assert_equal(0, and(127, 128))
++     call assert_fails("call and(1.0, 1)", 'E805:')
++     call assert_fails("call and([], 1)", 'E745:')
++     call assert_fails("call and({}, 1)", 'E728:')
++     call assert_fails("call and(1, 1.0)", 'E805:')
++     call assert_fails("call and(1, [])", 'E745:')
++     call assert_fails("call and(1, {})", 'E728:')
++     " or
++     call assert_equal(23, or(16, 7))
++     call assert_equal(15, or(8, 7))
++     call assert_equal(123, or(0, 123))
++     call assert_fails("call or(1.0, 1)", 'E805:')
++     call assert_fails("call or([], 1)", 'E745:')
++     call assert_fails("call or({}, 1)", 'E728:')
++     call assert_fails("call or(1, 1.0)", 'E805:')
++     call assert_fails("call or(1, [])", 'E745:')
++     call assert_fails("call or(1, {})", 'E728:')
++     " xor
++     call assert_equal(0, xor(127, 127))
++     call assert_equal(111, xor(127, 16))
++     call assert_equal(255, xor(127, 128))
++     call assert_fails("call xor(1.0, 1)", 'E805:')
++     call assert_fails("call xor([], 1)", 'E745:')
++     call assert_fails("call xor({}, 1)", 'E728:')
++     call assert_fails("call xor(1, 1.0)", 'E805:')
++     call assert_fails("call xor(1, [])", 'E745:')
++     call assert_fails("call xor(1, {})", 'E728:')
++     " invert
++     call assert_equal(65408, and(invert(127), 65535))
++     call assert_equal(65519, and(invert(16), 65535))
++     call assert_equal(65407, and(invert(128), 65535))
++     call assert_fails("call invert(1.0)", 'E805:')
++     call assert_fails("call invert([])", 'E745:')
++     call assert_fails("call invert({})", 'E728:')
++ endfunc
++ 
++ "-------------------------------------------------------------------------------
+  " Modelines								    {{{1
+  " vim: ts=8 sw=4 tw=80 fdm=marker
+  " vim: fdt=substitute(substitute(foldtext(),\ '\\%(^+--\\)\\@<=\\(\\s*\\)\\(.\\{-}\\)\:\ \\%(\"\ \\)\\=\\(Test\ \\d*\\)\:\\s*',\ '\\3\ (\\2)\:\ \\1',\ \"\"),\ '\\(Test\\s*\\)\\(\\d\\)\\D\\@=',\ '\\1\ \\2',\ "")
+*** ../vim-8.0.0613/src/macros.h	2017-03-12 20:09:59.456468461 +0100
+--- src/macros.h	2017-06-04 20:17:29.910895442 +0200
+***************
+*** 364,369 ****
+--- 364,372 ----
+  #  if !defined(NAN)
+  #   define NAN (INFINITY-INFINITY)
+  #  endif
++ #  if !defined(DBL_EPSILON)
++ #   define DBL_EPSILON 2.2204460492503131e-16
++ #  endif
+  # endif
+  #endif
+  
+*** ../vim-8.0.0613/src/version.c	2017-06-04 18:59:10.791459095 +0200
+--- src/version.c	2017-06-04 19:45:40.784051490 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     614,
+  /**/
+
+-- 
+Contrary to popular belief, it's often your clothing that gets promoted, not
+you.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

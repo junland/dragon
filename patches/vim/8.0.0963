@@ -1,0 +1,76 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0963
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0963
+Problem:    Terminal test fails on MacOS. (chdiza)
+Solution:   Wait for the shell to echo the characters. (closes #1991)
+Files:      src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0962/src/testdir/test_terminal.vim	2017-08-18 21:07:06.847085322 +0200
+--- src/testdir/test_terminal.vim	2017-08-19 15:32:26.005999639 +0200
+***************
+*** 452,465 ****
+  endfunction
+  
+  func Test_terminal_noblock()
+!   let buf = term_start(&shell)
+  
+    for c in ['a','b','c','d','e','f','g','h','i','j','k']
+!     call term_sendkeys(buf, 'echo ' . repeat(c, 5000) . "\<cr>")
+    endfor
+  
+!   let g:job = term_getjob(buf)
+!   call Stop_shell_in_terminal(buf)
+!   call term_wait(buf)
+    bwipe
+  endfunc
+--- 452,472 ----
+  endfunction
+  
+  func Test_terminal_noblock()
+!   let g:buf = term_start(&shell)
+  
+    for c in ['a','b','c','d','e','f','g','h','i','j','k']
+!     call term_sendkeys(g:buf, 'echo ' . repeat(c, 5000) . "\<cr>")
+    endfor
++   call term_sendkeys(g:buf, "echo done\<cr>")
++   let g:lnum = term_getsize(g:buf)[0] - 1
++   call WaitFor('term_getline(g:buf, g:lnum) =~ "done"', 3000)
++   call assert_match('done', term_getline(g:buf, g:lnum))
+  
+!   let g:job = term_getjob(g:buf)
+!   call Stop_shell_in_terminal(g:buf)
+!   call term_wait(g:buf)
+!   unlet g:buf
+!   unlet g:job
+!   unlet g:lnum
+    bwipe
+  endfunc
+*** ../vim-8.0.0962/src/version.c	2017-08-19 15:05:16.048003367 +0200
+--- src/version.c	2017-08-19 15:37:24.680154856 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     963,
+  /**/
+
+-- 
+BEDEVERE:        Why do you think she is a witch?
+SECOND VILLAGER: She turned me into a newt.
+BEDEVERE:        A newt?
+SECOND VILLAGER: (After looking at himself for some time) I got better.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

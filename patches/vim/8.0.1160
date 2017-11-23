@@ -1,0 +1,135 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1160
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1160
+Problem:    Getting tab-local variable fails after closing window.
+Solution:   set tp_firstwin and tp_lastwin. (Jason Franklin, closes #2170)
+Files:      src/window.c, src/evalfunc.c, src/testdir/test_getvar.vim
+
+
+*** ../vim-8.0.1159/src/window.c	2017-09-22 15:20:27.748148568 +0200
+--- src/window.c	2017-09-29 21:18:47.873860834 +0200
+***************
+*** 4775,4787 ****
+      if (wp->w_prev != NULL)
+  	wp->w_prev->w_next = wp->w_next;
+      else if (tp == NULL)
+! 	firstwin = wp->w_next;
+      else
+  	tp->tp_firstwin = wp->w_next;
+      if (wp->w_next != NULL)
+  	wp->w_next->w_prev = wp->w_prev;
+      else if (tp == NULL)
+! 	lastwin = wp->w_prev;
+      else
+  	tp->tp_lastwin = wp->w_prev;
+  }
+--- 4775,4788 ----
+      if (wp->w_prev != NULL)
+  	wp->w_prev->w_next = wp->w_next;
+      else if (tp == NULL)
+! 	firstwin = curtab->tp_firstwin = wp->w_next;
+      else
+  	tp->tp_firstwin = wp->w_next;
++ 
+      if (wp->w_next != NULL)
+  	wp->w_next->w_prev = wp->w_prev;
+      else if (tp == NULL)
+! 	lastwin = curtab->tp_lastwin = wp->w_prev;
+      else
+  	tp->tp_lastwin = wp->w_prev;
+  }
+***************
+*** 6597,6607 ****
+   */
+      int
+  switch_win(
+!     win_T	**save_curwin UNUSED,
+!     tabpage_T	**save_curtab UNUSED,
+!     win_T	*win UNUSED,
+!     tabpage_T	*tp UNUSED,
+!     int		no_display UNUSED)
+  {
+  # ifdef FEAT_AUTOCMD
+      block_autocmds();
+--- 6598,6608 ----
+   */
+      int
+  switch_win(
+!     win_T	**save_curwin,
+!     tabpage_T	**save_curtab,
+!     win_T	*win,
+!     tabpage_T	*tp,
+!     int		no_display)
+  {
+  # ifdef FEAT_AUTOCMD
+      block_autocmds();
+*** ../vim-8.0.1159/src/evalfunc.c	2017-09-22 15:20:27.728148690 +0200
+--- src/evalfunc.c	2017-09-29 21:17:07.222497150 +0200
+***************
+*** 5183,5190 ****
+  	/* Set tp to be our tabpage, temporarily.  Also set the window to the
+  	 * first window in the tabpage, otherwise the window is not valid. */
+  	if (switch_win(&oldcurwin, &oldtabpage,
+! 		    tp->tp_firstwin == NULL ? firstwin : tp->tp_firstwin, tp, TRUE)
+! 									== OK)
+  	{
+  	    /* look up the variable */
+  	    /* Let gettabvar({nr}, "") return the "t:" dictionary. */
+--- 5183,5190 ----
+  	/* Set tp to be our tabpage, temporarily.  Also set the window to the
+  	 * first window in the tabpage, otherwise the window is not valid. */
+  	if (switch_win(&oldcurwin, &oldtabpage,
+! 		tp == curtab || tp->tp_firstwin == NULL ? firstwin
+! 					    : tp->tp_firstwin, tp, TRUE) == OK)
+  	{
+  	    /* look up the variable */
+  	    /* Let gettabvar({nr}, "") return the "t:" dictionary. */
+*** ../vim-8.0.1159/src/testdir/test_getvar.vim	2017-08-07 22:02:09.319624624 +0200
+--- src/testdir/test_getvar.vim	2017-09-29 21:08:40.769704980 +0200
+***************
+*** 86,88 ****
+--- 86,104 ----
+    call assert_equal(1, gettabwinvar(2, 3, '&nux', 1))
+    tabonly
+  endfunc
++ 
++ " It was discovered that "gettabvar()" would fail if called from within the
++ " tabline when the user closed a window.  This test confirms the fix.
++ func Test_gettabvar_in_tabline()
++   let t:var_str = 'value'
++ 
++   set tabline=%{assert_equal('value',gettabvar(1,'var_str'))}
++   set showtabline=2
++ 
++   " Simulate the user opening a split (which becomes window #1) and then
++   " closing the split, which triggers the redrawing of the tabline.
++   leftabove split
++   redrawstatus!
++   close
++   redrawstatus!
++ endfunc
+*** ../vim-8.0.1159/src/version.c	2017-09-28 22:35:21.398447803 +0200
+--- src/version.c	2017-09-29 21:28:09.382317644 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1160,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+223. You set up a web-cam as your home's security system.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

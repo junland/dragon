@@ -1,0 +1,549 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0896
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0896
+Problem:    Cannot automaticlaly close a terminal window when the job ends.
+Solution:   Add the ++close argument to :term.  Add the term_finish option to
+            term_start(). (Yasuhiro  Matsumoto, closes #1950)  Also add
+            ++open.
+Files:      runtime/doc/eval.txt, runtime/doc/terminal.txt, src/channel.c,
+            src/structs.h, src/terminal.c, src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0895/runtime/doc/eval.txt	2017-08-08 23:06:40.858032209 +0200
+--- runtime/doc/eval.txt	2017-08-10 22:20:51.202290800 +0200
+***************
+*** 8046,8054 ****
+  		connected to the terminal.  When I/O is connected to the
+  		terminal then the callback function for that part is not used.
+  
+! 		There is one extra option:
+! 		   "term_name"   name to use for the buffer name, instead of
+! 				 the command name.
+  		{only available when compiled with the |+terminal| feature}
+  
+  term_wait({buf} [, {time}])					*term_wait()*
+--- 8054,8067 ----
+  		connected to the terminal.  When I/O is connected to the
+  		terminal then the callback function for that part is not used.
+  
+! 		There are two extra options:
+! 		   "term_name"	     name to use for the buffer name, instead
+! 				     of the command name.
+! 		   "term_finish"     What todo when the job is finished:
+! 					"close": close any windows
+! 					"open": open window if needed
+! 				     Note that "open" can be interruptive.
+! 				     See |term++close| and |term++open|.
+  		{only available when compiled with the |+terminal| feature}
+  
+  term_wait({buf} [, {time}])					*term_wait()*
+*** ../vim-8.0.0895/runtime/doc/terminal.txt	2017-08-05 14:10:44.750107642 +0200
+--- runtime/doc/terminal.txt	2017-08-10 22:20:12.894560232 +0200
+***************
+*** 1,4 ****
+! *terminal.txt*	For Vim version 8.0.  Last change: 2017 Aug 05
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+--- 1,4 ----
+! *terminal.txt*	For Vim version 8.0.  Last change: 2017 Aug 10
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+***************
+*** 36,42 ****
+  
+  Typing ~
+  
+! When the keyboard focus is in the terminal window, typed keys will be send to
+  the job.  This uses a pty when possible.  You can click outside of the
+  terminal window to move keyboard focus elsewhere.
+  
+--- 36,42 ----
+  
+  Typing ~
+  
+! When the keyboard focus is in the terminal window, typed keys will be sent to
+  the job.  This uses a pty when possible.  You can click outside of the
+  terminal window to move keyboard focus elsewhere.
+  
+***************
+*** 47,53 ****
+  
+  Special in the terminal window:			*CTRL-W_.*  *CTRL-W_N* 
+  	CTRL-W .	send a CTRL-W to the job in the terminal
+! 	CTRL-W N	go to Terminal Normal mode, see |Terminal-mode|
+  	CTRL-W " {reg}  paste register {reg}		*CTRL-W_quote*
+  			Also works with the = register to insert the result of
+  			evaluating an expression.
+--- 47,54 ----
+  
+  Special in the terminal window:			*CTRL-W_.*  *CTRL-W_N* 
+  	CTRL-W .	send a CTRL-W to the job in the terminal
+! 	CTRL-W N	go to Terminal-Normal mode, see |Terminal-mode|
+! 	CTRL-\ CTRL-N   go to Terminal-Normal mode, see |Terminal-mode|
+  	CTRL-W " {reg}  paste register {reg}		*CTRL-W_quote*
+  			Also works with the = register to insert the result of
+  			evaluating an expression.
+***************
+*** 62,71 ****
+  	'termkey' N  	    go to terminal Normal mode, see below
+  	'termkey' CTRL-N    same as CTRL-W N
+  							*t_CTRL-\_CTRL-N*
+! The special key combination CTRL-\ CTRL-N can be used to prefix one Normal
+! mode command.  This is especially useful for remote commands, when you don't
+! know whether Vim currently has focus in a terminal window.  Note that only one
+! Normal mode command can be used.
+  
+  
+  Size ~
+--- 63,70 ----
+  	'termkey' N  	    go to terminal Normal mode, see below
+  	'termkey' CTRL-N    same as CTRL-W N
+  							*t_CTRL-\_CTRL-N*
+! The special key combination CTRL-\ CTRL-N can be used to switch to Normal
+! mode, just like this works in any other mode.
+  
+  
+  Size ~
+***************
+*** 76,82 ****
+  
+  Syntax ~
+  
+! :ter[minal] [command]				*:ter* *:terminal*
+  			Open a new terminal window.
+  
+  			If [command] is provided run it as a job and connect
+--- 75,81 ----
+  
+  Syntax ~
+  
+! :[range]ter[minal] [options] [command]			*:ter* *:terminal*
+  			Open a new terminal window.
+  
+  			If [command] is provided run it as a job and connect
+***************
+*** 86,94 ****
+  			A new buffer will be created, using [command] or
+  			'shell' as the name, prefixed with a "!".  If a buffer
+  			by this name already exists a number is added in
+! 			parenthesis.  E.g. if "gdb" exists the second terminal
+  			buffer will use "!gdb (1)".
+  
+  When the buffer associated with the terminal is wiped out the job is killed,
+  similar to calling `job_stop(job, "kill")`
+  
+--- 85,111 ----
+  			A new buffer will be created, using [command] or
+  			'shell' as the name, prefixed with a "!".  If a buffer
+  			by this name already exists a number is added in
+! 			parentheses.  E.g. if "gdb" exists the second terminal
+  			buffer will use "!gdb (1)".
+  
++ 			If [range] is given it is used for the terminal size.
++ 			One number specifies the number of rows.  Unless the
++ 			"vertical" modifier is used, then it is the number of
++ 			columns.
++ 
++ 			Two comma separated numbers are used as "rows,cols".
++ 			E.g. `:24,80gdb` opens a terminal with 24 rows and 80
++ 			columns.  However, if the terminal window spans the
++ 			Vim window with, there is no vertical split, the Vim
++ 			window width is used.
++ 						*term++close* *term++open*
++ 			Supported [options] are:
++ 			++close		The terminal window will close
++ 					automatically when the job terminates.
++ 			++open		When the job terminates and no window
++ 					show it, a window will be opened.
++ 					Note that this can be interruptive.
++ 
+  When the buffer associated with the terminal is wiped out the job is killed,
+  similar to calling `job_stop(job, "kill")`
+  
+***************
+*** 133,155 ****
+  not when 'termsize' is "rowsXcols".
+  
+  
+! Terminal Normal mode ~
+  							*Terminal-mode*
+  When the job is running the contents of the terminal is under control of the
+! job.  That includes the cursor position.  The terminal contents can change at
+! any time.
+! 
+! Use CTRL-W N (or 'termkey' N) to go to Terminal Normal mode.  Now the contents
+! of the terminal window is under control of Vim, the job output is suspended.
+  							*E946*
+! In this mode you can move the cursor around with the usual Vim commands,
+! Visually mark text, yank text, etc.  But you cannot change the contents of the
+! buffer.  The commands that would start insert mode, such as 'i' and 'a',
+! return control of the window to the job.  Any pending output will now be
+! displayed.
+! 
+! In Terminal mode the statusline and window title show "(Terminal)".  If the
+! job ends while in Terminal mode this changes to "(Terminal-finished)".
+  
+  
+  Unix ~
+--- 150,175 ----
+  not when 'termsize' is "rowsXcols".
+  
+  
+! Terminal-Job and Terminal-Normal mode ~
+  							*Terminal-mode*
+  When the job is running the contents of the terminal is under control of the
+! job.  That includes the cursor position.  Typed keys are sent to the job.
+! The terminal contents can change at any time.  This is called Terminal-Job
+! mode.
+! 
+! Use CTRL-W N (or 'termkey' N) to switch to Terminal-Normal mode.  Now the
+! contents of the terminal window is under control of Vim, the job output is
+! suspended.  CTRL-\ CTRL-N does the same.
+  							*E946*
+! In Terminal-Normal mode you can move the cursor around with the usual Vim
+! commands, Visually mark text, yank text, etc.  But you cannot change the
+! contents of the buffer.  The commands that would start insert mode, such as
+! 'i' and 'a', return to Terminal-Job mode.  The window will be updated to show
+! the contents of the terminal.
+! 
+! In Terminal-Normal mode the statusline and window title show "(Terminal)".  If
+! the job ends while in Terminal-Normal mode this changes to
+! "(Terminal-finished)".
+  
+  
+  Unix ~
+*** ../vim-8.0.0895/src/channel.c	2017-08-05 17:40:34.212173943 +0200
+--- src/channel.c	2017-08-10 23:04:27.151530840 +0200
+***************
+*** 4419,4424 ****
+--- 4419,4437 ----
+  		    return FAIL;
+  		}
+  	    }
++ 	    else if (STRCMP(hi->hi_key, "term_finish") == 0)
++ 	    {
++ 		if (!(supported & JO2_TERM_FINISH))
++ 		    break;
++ 		val = get_tv_string(item);
++ 		if (STRCMP(val, "open") != 0 && STRCMP(val, "close") != 0)
++ 		{
++ 		    EMSG2(_(e_invarg2), "drop");
++ 		    return FAIL;
++ 		}
++ 		opt->jo_set2 |= JO2_TERM_FINISH;
++ 		opt->jo_term_finish = *val;
++ 	    }
+  #endif
+  	    else if (STRCMP(hi->hi_key, "waittime") == 0)
+  	    {
+*** ../vim-8.0.0895/src/structs.h	2017-08-05 14:49:37.405044311 +0200
+--- src/structs.h	2017-08-10 22:23:05.821343901 +0200
+***************
+*** 1685,1691 ****
+  #define JO2_OUT_MSG	    0x0001	/* "out_msg" */
+  #define JO2_ERR_MSG	    0x0002	/* "err_msg" (JO_OUT_ << 1) */
+  #define JO2_TERM_NAME	    0x0004	/* "term_name" */
+! #define JO2_ALL		    0x0007
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+  #define JO_CB_ALL \
+--- 1685,1692 ----
+  #define JO2_OUT_MSG	    0x0001	/* "out_msg" */
+  #define JO2_ERR_MSG	    0x0002	/* "err_msg" (JO_OUT_ << 1) */
+  #define JO2_TERM_NAME	    0x0004	/* "term_name" */
+! #define JO2_TERM_FINISH	    0x0008	/* "term_finish" */
+! #define JO2_ALL		    0x000F
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+  #define JO_CB_ALL \
+***************
+*** 1743,1748 ****
+--- 1744,1750 ----
+      int		jo_term_rows;
+      int		jo_term_cols;
+      char_u	*jo_term_name;
++     int		jo_term_finish;
+  #endif
+  } jobopt_T;
+  
+*** ../vim-8.0.0895/src/terminal.c	2017-08-08 23:06:40.850032268 +0200
+--- src/terminal.c	2017-08-10 23:04:46.275393259 +0200
+***************
+*** 36,53 ****
+   * that buffer, attributes come from the scrollback buffer tl_scrollback.
+   *
+   * TODO:
+-  * - When the job ends:
+-  *   - Need an option or argument to drop the window+buffer right away, to be
+-  *     used for a shell or Vim. 'termfinish'; "close", "open" (open window when
+-  *     job finishes).
+-  *     patch by Yasuhiro: #1950
+   * - add option values to the command:
+-  *      :term <24x80> <close> vim notes.txt
+-  *   or use:
+   *      :term ++24x80 ++close vim notes.txt
+   * - support different cursor shapes, colors and attributes
+   * - make term_getcursor() return type (none/block/bar/underline) and
+   *   attributes (color, blink, etc.)
+   * - MS-Windows: no redraw for 'updatetime'  #1915
+   * - To set BS correctly, check get_stty(); Pass the fd of the pty.
+   *   For the GUI fill termios with default values, perhaps like pangoterm:
+--- 36,49 ----
+   * that buffer, attributes come from the scrollback buffer tl_scrollback.
+   *
+   * TODO:
+   * - add option values to the command:
+   *      :term ++24x80 ++close vim notes.txt
++  * - When using term_finish "open" have a way to specify how the window is to
++  *   be opened.  E.g. term_opencmd "10split buffer %d".
+   * - support different cursor shapes, colors and attributes
+   * - make term_getcursor() return type (none/block/bar/underline) and
+   *   attributes (color, blink, etc.)
++  * - Make argument list work on MS-Windows. #1954
+   * - MS-Windows: no redraw for 'updatetime'  #1915
+   * - To set BS correctly, check get_stty(); Pass the fd of the pty.
+   *   For the GUI fill termios with default values, perhaps like pangoterm:
+***************
+*** 124,129 ****
+--- 120,126 ----
+  
+      int		tl_normal_mode; /* TRUE: Terminal-Normal mode */
+      int		tl_channel_closed;
++     int		tl_finish;	/* 'c' for ++close, 'o' for ++open */
+  
+  #ifdef WIN3264
+      void	*tl_winpty_config;
+***************
+*** 257,262 ****
+--- 254,260 ----
+  	return;
+      term->tl_dirty_row_end = MAX_ROW;
+      term->tl_cursor_visible = TRUE;
++     term->tl_finish = opt->jo_term_finish;
+      ga_init2(&term->tl_scrollback, sizeof(sb_line_T), 300);
+  
+      /* Open a new window or tab. */
+***************
+*** 360,369 ****
+      void
+  ex_terminal(exarg_T *eap)
+  {
+!     jobopt_T opt;
+  
+      init_job_options(&opt);
+  
+      if (eap->addr_count == 2)
+      {
+  	opt.jo_term_rows = eap->line1;
+--- 358,389 ----
+      void
+  ex_terminal(exarg_T *eap)
+  {
+!     jobopt_T	opt;
+!     char_u	*cmd;
+  
+      init_job_options(&opt);
+  
++     cmd = eap->arg;
++     while (*cmd && *cmd == '+' && *(cmd + 1) == '+')
++     {
++ 	char_u  *p;
++ 
++ 	cmd += 2;
++ 	p = skiptowhite(cmd);
++ 	if ((int)(p - cmd) == 5 && STRNICMP(cmd, "close", 5) == 0)
++ 	    opt.jo_term_finish = 'c';
++ 	else if ((int)(p - cmd) == 4 && STRNICMP(cmd, "open", 4) == 0)
++ 	    opt.jo_term_finish = 'o';
++ 	else
++ 	{
++ 	    if (*p)
++ 		*p = NUL;
++ 	    EMSG2(_("E181: Invalid attribute: %s"), cmd);
++ 	    return;
++ 	}
++ 	cmd = skipwhite(p);
++     }
++ 
+      if (eap->addr_count == 2)
+      {
+  	opt.jo_term_rows = eap->line1;
+***************
+*** 378,384 ****
+      }
+      /* TODO: get more options from before the command */
+  
+!     term_start(eap->arg, &opt);
+  }
+  
+  /*
+--- 398,404 ----
+      }
+      /* TODO: get more options from before the command */
+  
+!     term_start(cmd, &opt);
+  }
+  
+  /*
+***************
+*** 846,852 ****
+      static void
+  cleanup_vterm(term_T *term)
+  {
+!     move_terminal_to_buffer(term);
+      term_free_vterm(term);
+      set_terminal_mode(term, FALSE);
+  }
+--- 866,873 ----
+      static void
+  cleanup_vterm(term_T *term)
+  {
+!     if (term->tl_finish == 0)
+! 	move_terminal_to_buffer(term);
+      term_free_vterm(term);
+      set_terminal_mode(term, FALSE);
+  }
+***************
+*** 1415,1420 ****
+--- 1436,1442 ----
+  	if (term->tl_job == ch->ch_job)
+  	{
+  	    term->tl_channel_closed = TRUE;
++ 	    did_one = TRUE;
+  
+  	    vim_free(term->tl_title);
+  	    term->tl_title = NULL;
+***************
+*** 1423,1432 ****
+  
+  	    /* Unless in Terminal-Normal mode: clear the vterm. */
+  	    if (!term->tl_normal_mode)
+  		cleanup_vterm(term);
+  
+  	    redraw_buf_and_status_later(term->tl_buffer, NOT_VALID);
+- 	    did_one = TRUE;
+  	}
+      if (did_one)
+      {
+--- 1445,1473 ----
+  
+  	    /* Unless in Terminal-Normal mode: clear the vterm. */
+  	    if (!term->tl_normal_mode)
++ 	    {
++ 		int	fnum = term->tl_buffer->b_fnum;
++ 
+  		cleanup_vterm(term);
+  
++ 		if (term->tl_finish == 'c')
++ 		{
++ 		    /* ++close or term_finish == "close" */
++ 		    curbuf = term->tl_buffer;
++ 		    do_bufdel(DOBUF_WIPE, (char_u *)"", 1, fnum, fnum, FALSE);
++ 		    break;
++ 		}
++ 		if (term->tl_finish == 'o' && term->tl_buffer->b_nwindows == 0)
++ 		{
++ 		    char buf[50];
++ 
++ 		    /* TODO: use term_opencmd */
++ 		    vim_snprintf(buf, sizeof(buf), "botright sbuf %d", fnum);
++ 		    do_cmdline_cmd((char_u *)buf);
++ 		}
++ 	    }
++ 
+  	    redraw_buf_and_status_later(term->tl_buffer, NOT_VALID);
+  	}
+      if (did_one)
+      {
+***************
+*** 2298,2304 ****
+  	    && get_job_options(&argvars[1], &opt,
+  		JO_TIMEOUT_ALL + JO_STOPONEXIT
+  		+ JO_EXIT_CB + JO_CLOSE_CALLBACK
+! 		+ JO2_TERM_NAME) == FAIL)
+  	return;
+  
+      term_start(cmd, &opt);
+--- 2339,2345 ----
+  	    && get_job_options(&argvars[1], &opt,
+  		JO_TIMEOUT_ALL + JO_STOPONEXIT
+  		+ JO_EXIT_CB + JO_CLOSE_CALLBACK
+! 		+ JO2_TERM_NAME + JO2_TERM_FINISH) == FAIL)
+  	return;
+  
+      term_start(cmd, &opt);
+*** ../vim-8.0.0895/src/testdir/test_terminal.vim	2017-08-08 23:06:40.858032209 +0200
+--- src/testdir/test_terminal.vim	2017-08-10 23:11:43.276380114 +0200
+***************
+*** 264,266 ****
+--- 264,306 ----
+    bwipe!
+    call assert_equal([6, 20], size)
+  endfunc
++ 
++ func Test_finish_close()
++   call assert_equal(1, winnr('$'))
++ 
++   " TODO: use something that takes much less than a whole second
++   if has('win32')
++     let cmd = $windir . '\system32\timeout.exe 1'
++   else
++     let cmd = 'sleep 1'
++   endif
++   exe 'terminal ++close ' . cmd
++   let buf = bufnr('')
++   call assert_equal(2, winnr('$'))
++ 
++   wincmd p
++   sleep 1200 msec
++   call assert_equal(1, winnr('$'))
++ 
++   call term_start(cmd, {'term_finish': 'close'})
++   call assert_equal(2, winnr('$'))
++   let buf = bufnr('')
++   wincmd p
++   sleep 1200 msec
++   call assert_equal(1, winnr('$'))
++ 
++   exe 'terminal ++open ' . cmd
++   let buf = bufnr('')
++   close
++   sleep 1200 msec
++   call assert_equal(2, winnr('$'))
++   bwipe
++ 
++   call term_start(cmd, {'term_finish': 'open'})
++   let buf = bufnr('')
++   close
++   sleep 1200 msec
++   call assert_equal(2, winnr('$'))
++ 
++   bwipe
++ endfunc
+*** ../vim-8.0.0895/src/version.c	2017-08-09 22:24:48.306504337 +0200
+--- src/version.c	2017-08-10 22:14:35.004936327 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     896,
+  /**/
+
+-- 
+It is illegal for a driver to be blindfolded while operating a vehicle.
+		[real standing law in Alabama, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

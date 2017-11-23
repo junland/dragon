@@ -1,0 +1,60 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0244
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0244
+Problem:    When the user sets t_BE empty after startup to disable bracketed
+            paste, this has no direct effect.
+Solution:   When t_BE is made empty write t_BD.  When t_BE is made non-empty
+            write the new value.
+Files:      src/option.c
+
+
+*** ../vim-8.0.0243/src/option.c	2017-01-21 20:04:17.558757844 +0100
+--- src/option.c	2017-01-27 19:43:08.258454798 +0100
+***************
+*** 6619,6624 ****
+--- 6619,6633 ----
+  	    mch_set_normal_colors();
+  #endif
+  	}
++ 	if (varp == &T_BE && termcap_active)
++ 	{
++ 	    if (*T_BE == NUL)
++ 		/* When clearing t_BE we assume the user no longer wants
++ 		 * bracketed paste, thus disable it by writing t_BD. */
++ 		out_str(T_BD);
++ 	    else
++ 		out_str(T_BE);
++ 	}
+      }
+  
+  #ifdef FEAT_LINEBREAK
+*** ../vim-8.0.0243/src/version.c	2017-01-26 22:51:51.997875762 +0100
+--- src/version.c	2017-01-27 19:43:46.798201572 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     244,
+  /**/
+
+-- 
+ARTHUR:  Be quiet!
+DENNIS:  Well you can't expect to wield supreme executive power just 'cause
+         some watery tart threw a sword at you!
+ARTHUR:  Shut up!
+DENNIS:  I mean, if I went around sayin' I was an empereror just because some
+         moistened bint had lobbed a scimitar at me they'd put me away!
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

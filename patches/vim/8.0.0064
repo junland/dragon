@@ -1,0 +1,61 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0064
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0064 (after 8.0.0060)
+Problem:    Normal test fails on MS-Windows.
+Solution:   Don't try using an illegal file name.
+Files:      src/testdir/test_normal.vim
+
+
+*** ../vim-8.0.0063/src/testdir/test_normal.vim	2016-11-04 21:22:33.323268841 +0100
+--- src/testdir/test_normal.vim	2016-11-05 19:51:32.362651582 +0100
+***************
+*** 1248,1257 ****
+    norm! K
+    call assert_equal('aa%bb', fnamemodify(bufname('%'), ':t'))
+    bwipe!
+!   4
+!   norm! K
+!   call assert_equal('cc|dd', fnamemodify(bufname('%'), ':t'))
+!   bwipe!
+    set iskeyword-=%
+    set iskeyword-=\|
+  
+--- 1248,1259 ----
+    norm! K
+    call assert_equal('aa%bb', fnamemodify(bufname('%'), ':t'))
+    bwipe!
+!   if !has('win32')
+!     4
+!     norm! K
+!     call assert_equal('cc|dd', fnamemodify(bufname('%'), ':t'))
+!     bwipe!
+!   endif
+    set iskeyword-=%
+    set iskeyword-=\|
+  
+*** ../vim-8.0.0063/src/version.c	2016-11-05 14:58:30.767225798 +0100
+--- src/version.c	2016-11-05 19:53:43.165839035 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     64,
+  /**/
+
+-- 
+The budget process was invented by an alien race of sadistic beings who
+resemble large cats.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

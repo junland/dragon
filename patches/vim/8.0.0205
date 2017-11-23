@@ -1,0 +1,91 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0205
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0205
+Problem:    After :undojoin some commands don't work properly, such as :redo.
+            (Matthew Malcomson)
+Solution:   Don't set curbuf->b_u_curhead. (closes #1390)
+Files:      src/undo.c, src/testdir/test_undo.vim
+
+
+*** ../vim-8.0.0204/src/undo.c	2017-01-07 16:14:53.894018391 +0100
+--- src/undo.c	2017-01-17 22:03:50.468649795 +0100
+***************
+*** 3136,3146 ****
+      if (get_undolevel() < 0)
+  	return;		    /* no entries, nothing to do */
+      else
+!     {
+! 	/* Go back to the last entry */
+! 	curbuf->b_u_curhead = curbuf->b_u_newhead;
+! 	curbuf->b_u_synced = FALSE;  /* no entries, nothing to do */
+!     }
+  }
+  
+  /*
+--- 3136,3143 ----
+      if (get_undolevel() < 0)
+  	return;		    /* no entries, nothing to do */
+      else
+! 	/* Append next change to the last entry */
+! 	curbuf->b_u_synced = FALSE;
+  }
+  
+  /*
+*** ../vim-8.0.0204/src/testdir/test_undo.vim	2017-01-07 16:14:53.894018391 +0100
+--- src/testdir/test_undo.vim	2017-01-17 22:02:50.441060228 +0100
+***************
+*** 176,182 ****
+    call assert_equal(['aaaa', 'bbbb', 'cccc'], getline(2, '$'))
+    call feedkeys("u", 'xt')
+    call assert_equal(['aaaa'], getline(2, '$'))
+!   close!
+  endfunc
+  
+  func Test_undo_write()
+--- 176,192 ----
+    call assert_equal(['aaaa', 'bbbb', 'cccc'], getline(2, '$'))
+    call feedkeys("u", 'xt')
+    call assert_equal(['aaaa'], getline(2, '$'))
+!   bwipe!
+! endfunc
+! 
+! func Test_undojoin_redo()
+!   new
+!   call setline(1, ['first line', 'second line'])
+!   call feedkeys("ixx\<Esc>", 'xt')
+!   call feedkeys(":undojoin | redo\<CR>", 'xt')
+!   call assert_equal('xxfirst line', getline(1))
+!   call assert_equal('second line', getline(2))
+!   bwipe!
+  endfunc
+  
+  func Test_undo_write()
+*** ../vim-8.0.0204/src/version.c	2017-01-17 19:48:48.132511120 +0100
+--- src/version.c	2017-01-17 22:07:32.251134690 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     205,
+  /**/
+
+-- 
+DINGO:   You must spank her well and after you have spanked her you
+         may deal with her as you like and then ... spank me.
+AMAZING: And spank me!
+STUNNER: And me.
+LOVELY:  And me.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

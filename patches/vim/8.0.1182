@@ -1,0 +1,175 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1182
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1182
+Problem:    Cannot see or change mzscheme dll name.
+Solution:   Add 'mzschemedll' and 'mzschemegcdll'.
+Files:      src/if_mzsch.c, src/option.h, src/option.c,
+            runtime/doc/if_mzsch.txt, runtime/doc/options.txt
+
+
+*** ../vim-8.0.1181/src/if_mzsch.c	2017-09-22 15:20:27.736148641 +0200
+--- src/if_mzsch.c	2017-10-08 17:29:02.224657101 +0200
+***************
+*** 757,763 ****
+  mzscheme_enabled(int verbose)
+  {
+      return mzscheme_runtime_link_init(
+! 	    DYNAMIC_MZSCH_DLL, DYNAMIC_MZGC_DLL, verbose) == OK;
+  }
+  
+      static void
+--- 757,763 ----
+  mzscheme_enabled(int verbose)
+  {
+      return mzscheme_runtime_link_init(
+! 	    (char *)p_mzschemedll, (char *)p_mzschemegcdll, verbose) == OK;
+  }
+  
+      static void
+*** ../vim-8.0.1181/src/option.h	2017-09-16 20:54:47.082560506 +0200
+--- src/option.h	2017-10-08 17:32:13.211588010 +0200
+***************
+*** 662,667 ****
+--- 662,671 ----
+  EXTERN int	p_more;		/* 'more' */
+  #ifdef FEAT_MZSCHEME
+  EXTERN long	p_mzq;		/* 'mzquantum */
++ # if defined(DYNAMIC_MZSCHEME)
++ EXTERN char_u	*p_mzschemedll;	/* 'mzschemedll' */
++ EXTERN char_u	*p_mzschemegcdll; /* 'mzschemegcdll' */
++ # endif
+  #endif
+  #if defined(MSWIN)
+  EXTERN int	p_odev;		/* 'opendevice' */
+*** ../vim-8.0.1181/src/option.c	2017-09-16 20:54:47.114560316 +0200
+--- src/option.c	2017-10-08 17:31:02.527983594 +0200
+***************
+*** 2008,2013 ****
+--- 2008,2031 ----
+      {"mousetime",   "mouset",	P_NUM|P_VI_DEF,
+  			    (char_u *)&p_mouset, PV_NONE,
+  			    {(char_u *)500L, (char_u *)0L} SCRIPTID_INIT},
++     {"mzschemedll", NULL,   P_STRING|P_EXPAND|P_VI_DEF|P_SECURE,
++ #if defined(DYNAMIC_MZSCHEME)
++ 			    (char_u *)&p_mzschemedll, PV_NONE,
++ 			    {(char_u *)DYNAMIC_MZSCH_DLL, (char_u *)0L}
++ #else
++ 			    (char_u *)NULL, PV_NONE,
++ 			    {(char_u *)"", (char_u *)0L}
++ #endif
++ 			    SCRIPTID_INIT},
++     {"mzschemegcdll", NULL, P_STRING|P_EXPAND|P_VI_DEF|P_SECURE,
++ #if defined(DYNAMIC_MZSCHEME)
++ 			    (char_u *)&p_mzschemegcdll, PV_NONE,
++ 			    {(char_u *)DYNAMIC_MZGC_DLL, (char_u *)0L}
++ #else
++ 			    (char_u *)NULL, PV_NONE,
++ 			    {(char_u *)"", (char_u *)0L}
++ #endif
++ 			    SCRIPTID_INIT},
+      {"mzquantum",  "mzq",   P_NUM,
+  #ifdef FEAT_MZSCHEME
+  			    (char_u *)&p_mzq, PV_NONE,
+*** ../vim-8.0.1181/runtime/doc/if_mzsch.txt	2017-02-23 19:00:28.500904278 +0100
+--- runtime/doc/if_mzsch.txt	2017-10-08 17:40:19.704857993 +0200
+***************
+*** 1,4 ****
+! *if_mzsch.txt*  For Vim version 8.0.  Last change: 2016 Jan 24
+  
+  
+  		  VIM REFERENCE MANUAL    by Sergey Khorev
+--- 1,4 ----
+! *if_mzsch.txt*  For Vim version 8.0.  Last change: 2017 Oct 08
+  
+  
+  		  VIM REFERENCE MANUAL    by Sergey Khorev
+***************
+*** 278,289 ****
+  use Vim without these DLL files.
+  NOTE: Newer version of MzScheme (Racket) require earlier (trampolined)
+  initialisation via scheme_main_setup.  So Vim always loads the MzScheme DLL at
+! startup if possible.
+  
+  To use the MzScheme interface the MzScheme DLLs must be in your search path.
+  In a console window type "path" to see what directories are used.
+  
+! The names of the DLLs must match the MzScheme version Vim was compiled with.
+  For MzScheme version 209 they will be "libmzsch209_000.dll" and
+  "libmzgc209_000.dll". To know for sure look at the output of the ":version"
+  command, look for -DDYNAMIC_MZSCH_DLL="something" and
+--- 278,292 ----
+  use Vim without these DLL files.
+  NOTE: Newer version of MzScheme (Racket) require earlier (trampolined)
+  initialisation via scheme_main_setup.  So Vim always loads the MzScheme DLL at
+! startup if possible.  This may make Vim startup slower.
+  
+  To use the MzScheme interface the MzScheme DLLs must be in your search path.
+  In a console window type "path" to see what directories are used.
+  
+! On MS-Windows the options 'mzschemedll' and 'mzschemegcdll' are used for the
+! name of the library to load.  The initial value is specified at build time.
+! 
+! The version of the DLL must match the MzScheme version Vim was compiled with.
+  For MzScheme version 209 they will be "libmzsch209_000.dll" and
+  "libmzgc209_000.dll". To know for sure look at the output of the ":version"
+  command, look for -DDYNAMIC_MZSCH_DLL="something" and
+*** ../vim-8.0.1181/runtime/doc/options.txt	2017-09-16 15:50:25.587054089 +0200
+--- runtime/doc/options.txt	2017-10-08 17:35:18.854549501 +0200
+***************
+*** 5370,5375 ****
+--- 5468,5498 ----
+  	time in msec between two mouse clicks for the second click to be
+  	recognized as a multi click.
+  
++ 						*'mzschemedll'*
++ 'mzschemedll'		string	(default depends on the build)
++ 			global
++ 			{not in Vi}
++ 			{only available when compiled with the |+mzscheme/dyn|
++ 			feature}
++ 	Specifies the name of the MzScheme shared library. The default is
++ 	DYNAMIC_MZSCH_DLL which was specified at compile time.
++ 	Environment variables are expanded |:set_env|.
++ 	This option cannot be set from a |modeline| or in the |sandbox|, for
++ 	security reasons.
++ 
++ 						*'mzschemegcdll'*
++ 'mzschemegcdll'		string	(default depends on the build)
++ 			global
++ 			{not in Vi}
++ 			{only available when compiled with the |+mzscheme/dyn|
++ 			feature}
++ 	Specifies the name of the MzScheme GC shared library. The default is
++ 	DYNAMIC_MZGC_DLL which was specified at compile time.
++ 	The value can be equal to 'mzschemedll' if it includes the GC code.
++ 	Environment variables are expanded |:set_env|.
++ 	This option cannot be set from a |modeline| or in the |sandbox|, for
++ 	security reasons.
++ 
+  						    *'mzquantum'* *'mzq'*
+  'mzquantum' 'mzq'	number	(default 100)
+  			global
+*** ../vim-8.0.1181/src/version.c	2017-10-07 21:05:14.375150950 +0200
+--- src/version.c	2017-10-08 17:35:39.274435308 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1182,
+  /**/
+
+-- 
+This is an airconditioned room, do not open Windows.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

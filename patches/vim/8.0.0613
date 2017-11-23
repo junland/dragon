@@ -1,0 +1,178 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0613
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0613
+Problem:    The conf filetype detection is done before ftdetect scripts from
+            packages that are added later.
+Solution:   Add the FALLBACK argument to :setfiletype. (closes #1679,
+            closes #1693)
+Files:      src/ex_docmd.c, runtime/filetype.vim, src/Makefile,
+            src/testdir/test_filetype.vim, src/testdir/test_alot.vim
+
+
+*** ../vim-8.0.0612/src/ex_docmd.c	2017-05-16 09:36:48.281905608 +0200
+--- src/ex_docmd.c	2017-06-04 18:33:32.798249247 +0200
+***************
+*** 12172,12184 ****
+  }
+  
+  /*
+!  * ":setfiletype {name}"
+   */
+      static void
+  ex_setfiletype(exarg_T *eap)
+  {
+      if (!did_filetype)
+! 	set_option_value((char_u *)"filetype", 0L, eap->arg, OPT_LOCAL);
+  }
+  #endif
+  
+--- 12172,12193 ----
+  }
+  
+  /*
+!  * ":setfiletype [FALLBACK] {name}"
+   */
+      static void
+  ex_setfiletype(exarg_T *eap)
+  {
+      if (!did_filetype)
+!     {
+! 	char_u *arg = eap->arg;
+! 
+! 	if (STRNCMP(arg, "FALLBACK ", 9) == 0)
+! 	    arg += 9;
+! 
+! 	set_option_value((char_u *)"filetype", 0L, arg, OPT_LOCAL);
+! 	if (arg != eap->arg)
+! 	    did_filetype = FALSE;
+!     }
+  }
+  #endif
+  
+*** ../vim-8.0.0612/runtime/filetype.vim	2017-04-15 14:35:25.642199904 +0200
+--- runtime/filetype.vim	2017-06-04 18:24:01.130250652 +0200
+***************
+*** 2745,2756 ****
+  " state.
+  augroup END
+  
+! " Generic configuration file (check this last, it's just guessing!)
+  au filetypedetect BufNewFile,BufRead,StdinReadPost *
+  	\ if !did_filetype() && expand("<amatch>") !~ g:ft_ignore_pat
+  	\    && (getline(1) =~ '^#' || getline(2) =~ '^#' || getline(3) =~ '^#'
+  	\	|| getline(4) =~ '^#' || getline(5) =~ '^#') |
+! 	\   setf conf |
+  	\ endif
+  
+  
+--- 2796,2807 ----
+  " state.
+  augroup END
+  
+! " Generic configuration file. Use FALLBACK, it's just guessing!
+  au filetypedetect BufNewFile,BufRead,StdinReadPost *
+  	\ if !did_filetype() && expand("<amatch>") !~ g:ft_ignore_pat
+  	\    && (getline(1) =~ '^#' || getline(2) =~ '^#' || getline(3) =~ '^#'
+  	\	|| getline(4) =~ '^#' || getline(5) =~ '^#') |
+! 	\   setf FALLBACK conf |
+  	\ endif
+  
+  
+*** ../vim-8.0.0612/src/Makefile	2017-04-21 22:59:58.381385448 +0200
+--- src/Makefile	2017-06-04 18:32:00.202899967 +0200
+***************
+*** 2133,2138 ****
+--- 2133,2139 ----
+  	test_feedkeys \
+  	test_file_perm \
+  	test_fileformat \
++ 	test_filetype \
+  	test_filter_cmd \
+  	test_filter_map \
+  	test_findfile \
+*** ../vim-8.0.0612/src/testdir/test_filetype.vim	2017-06-04 18:57:35.484122042 +0200
+--- src/testdir/test_filetype.vim	2017-06-04 18:47:55.252186370 +0200
+***************
+*** 0 ****
+--- 1,43 ----
++ " Test :setfiletype
++ 
++ func Test_detection()
++   filetype on
++   augroup filetypedetect
++     au BufNewFile,BufRead *	call assert_equal(1, did_filetype())
++   augroup END
++   new something.vim
++   call assert_equal('vim', &filetype)
++ 
++   bwipe!
++   filetype off
++ endfunc
++ 
++ func Test_conf_type()
++   filetype on
++   call writefile(['# some comment', 'must be conf'], 'Xfile')
++   augroup filetypedetect
++     au BufNewFile,BufRead *	call assert_equal(0, did_filetype())
++   augroup END
++   split Xfile
++   call assert_equal('conf', &filetype)
++ 
++   bwipe!
++   call delete('Xfile')
++   filetype off
++ endfunc
++ 
++ func Test_other_type()
++   filetype on
++   augroup filetypedetect
++     au BufNewFile,BufRead *	call assert_equal(0, did_filetype())
++     au BufNewFile,BufRead Xfile	setf testfile
++     au BufNewFile,BufRead *	call assert_equal(1, did_filetype())
++   augroup END
++   call writefile(['# some comment', 'must be conf'], 'Xfile')
++   split Xfile
++   call assert_equal('testfile', &filetype)
++ 
++   bwipe!
++   call delete('Xfile')
++   filetype off
++ endfunc
+*** ../vim-8.0.0612/src/testdir/test_alot.vim	2017-04-02 15:45:00.377877206 +0200
+--- src/testdir/test_alot.vim	2017-06-04 18:31:27.287131275 +0200
+***************
+*** 16,21 ****
+--- 16,22 ----
+  source test_feedkeys.vim
+  source test_file_perm.vim
+  source test_fileformat.vim
++ source test_filetype.vim
+  source test_filter_cmd.vim
+  source test_filter_map.vim
+  source test_findfile.vim
+*** ../vim-8.0.0612/src/version.c	2017-06-04 17:47:38.229528087 +0200
+--- src/version.c	2017-06-04 18:55:57.832801081 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     613,
+  /**/
+
+-- 
+An operatingsystem is just a name you give to the rest of bloating
+idiosyncratic machine-based-features you left out of your editor.
+			(author unknown)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

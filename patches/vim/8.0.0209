@@ -1,0 +1,51 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0209
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0209
+Problem:    When using :substitute with the "c" flag and 'cursorbind' is set
+            the cursor is not updated in other windows.
+Solution:   Call do_check_cursorbind(). (Masanori Misono)
+Files:      src/ex_cmds.c
+
+
+*** ../vim-8.0.0208/src/ex_cmds.c	2017-01-13 21:59:59.323172116 +0100
+--- src/ex_cmds.c	2017-01-21 14:35:23.935159658 +0100
+***************
+*** 5263,5268 ****
+--- 5263,5272 ----
+  		    setmouse();		/* disable mouse in xterm */
+  #endif
+  		    curwin->w_cursor.col = regmatch.startpos[0].col;
++ #ifdef FEAT_CURSORBIND
++ 		    if (curwin->w_p_crb)
++ 			do_check_cursorbind();
++ #endif
+  
+  		    /* When 'cpoptions' contains "u" don't sync undo when
+  		     * asking for confirmation. */
+*** ../vim-8.0.0208/src/version.c	2017-01-20 21:51:46.130731009 +0100
+--- src/version.c	2017-01-21 14:43:22.419970962 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     209,
+  /**/
+
+-- 
+TALL KNIGHT: We shall say Ni! again to you if you do not appease us.
+ARTHUR:      All right!  What do you want?
+TALL KNIGHT: We want ... a shrubbery!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

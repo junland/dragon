@@ -1,0 +1,122 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0746
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0746
+Problem:    When :term fails the job is not properly cleaned up.
+Solution:   Free the terminal. Handle a job that failed to start. (closes
+            #1858)
+Files:      src/os_unix.c, src/channel.c, src/terminal.c
+
+
+*** ../vim-8.0.0745/src/os_unix.c	2017-07-22 18:04:04.309865751 +0200
+--- src/os_unix.c	2017-07-22 18:32:08.025703515 +0200
+***************
+*** 5475,5481 ****
+  	job_pid = -job_pid;
+  #endif
+  
+!     kill(job_pid, sig);
+  
+      return OK;
+  }
+--- 5475,5483 ----
+  	job_pid = -job_pid;
+  #endif
+  
+!     /* Never kill ourselves! */
+!     if (job_pid != 0)
+! 	kill(job_pid, sig);
+  
+      return OK;
+  }
+*** ../vim-8.0.0745/src/channel.c	2017-07-22 18:04:04.309865751 +0200
+--- src/channel.c	2017-07-22 18:32:54.281369972 +0200
+***************
+*** 5189,5194 ****
+--- 5189,5199 ----
+  	    return 0;
+  	}
+      }
++     if (job->jv_status == JOB_FAILED)
++     {
++ 	ch_log(job->jv_channel, "Job failed to start, job_stop() skipped");
++ 	return 0;
++     }
+      if (job->jv_status == JOB_ENDED)
+      {
+  	ch_log(job->jv_channel, "Job has already ended, job_stop() skipped");
+*** ../vim-8.0.0745/src/terminal.c	2017-07-22 18:14:13.581459484 +0200
+--- src/terminal.c	2017-07-22 18:34:16.044780457 +0200
+***************
+*** 203,208 ****
+--- 203,211 ----
+      }
+      else
+      {
++ 	free_terminal(term);
++ 	curbuf->b_term = NULL;
++ 
+  	/* Wiping out the buffer will also close the window and call
+  	 * free_terminal(). */
+  	do_buffer(DOBUF_WIPE, DOBUF_CURRENT, FORWARD, 0, TRUE);
+***************
+*** 235,241 ****
+  
+      if (term->tl_job != NULL)
+      {
+! 	if (term->tl_job->jv_status != JOB_ENDED)
+  	    job_stop(term->tl_job, NULL, "kill");
+  	job_unref(term->tl_job);
+      }
+--- 238,245 ----
+  
+      if (term->tl_job != NULL)
+      {
+! 	if (term->tl_job->jv_status != JOB_ENDED
+! 				      && term->tl_job->jv_status != JOB_FAILED)
+  	    job_stop(term->tl_job, NULL, "kill");
+  	job_unref(term->tl_job);
+      }
+***************
+*** 941,947 ****
+      setup_job_options(&opt, rows, cols);
+      term->tl_job = job_start(argvars, &opt);
+  
+!     return term->tl_job != NULL ? OK : FAIL;
+  }
+  
+  /*
+--- 945,953 ----
+      setup_job_options(&opt, rows, cols);
+      term->tl_job = job_start(argvars, &opt);
+  
+!     return term->tl_job != NULL
+! 	&& term->tl_job->jv_channel != NULL
+! 	&& term->tl_job->jv_status != JOB_FAILED ? OK : FAIL;
+  }
+  
+  /*
+*** ../vim-8.0.0745/src/version.c	2017-07-22 18:14:13.585459454 +0200
+--- src/version.c	2017-07-22 18:35:50.296098565 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     746,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+207. You're given one phone call in prison and you ask them for a laptop.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

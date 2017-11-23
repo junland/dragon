@@ -1,0 +1,281 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0179
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0179
+Problem:    'formatprg' is a global option but the value may depend on the
+            type of buffer. (Sung Pae)
+Solution:   Make 'formatprg' global-local. (closes #1380)
+Files:      src/structs.h, src/option.h, src/option.c, src/normal.c,
+            runtime/doc/options.txt, src/testdir/test_normal.vim
+
+
+*** ../vim-8.0.0178/src/structs.h	2016-12-01 15:34:04.083413947 +0100
+--- src/structs.h	2017-01-14 13:17:26.843045672 +0100
+***************
+*** 2097,2102 ****
+--- 2097,2103 ----
+      long_u	b_p_inde_flags;	/* flags for 'indentexpr' */
+      char_u	*b_p_indk;	/* 'indentkeys' */
+  #endif
++     char_u	*b_p_fp;	/* 'formatprg' */
+  #if defined(FEAT_EVAL)
+      char_u	*b_p_fex;	/* 'formatexpr' */
+      long_u	b_p_fex_flags;	/* flags for 'formatexpr' */
+*** ../vim-8.0.0178/src/option.h	2016-08-29 22:42:20.000000000 +0200
+--- src/option.h	2017-01-14 13:24:42.368328907 +0100
+***************
+*** 1029,1034 ****
+--- 1029,1035 ----
+      , BV_EP
+      , BV_ET
+      , BV_FENC
++     , BV_FP
+  #ifdef FEAT_EVAL
+      , BV_BEXPR
+      , BV_FEX
+*** ../vim-8.0.0178/src/option.c	2016-12-03 15:13:16.415147422 +0100
+--- src/option.c	2017-01-14 13:46:43.788096973 +0100
+***************
+*** 107,112 ****
+--- 107,113 ----
+  #if defined(FEAT_BEVAL) && defined(FEAT_EVAL)
+  # define PV_BEXPR	OPT_BOTH(OPT_BUF(BV_BEXPR))
+  #endif
++ #define PV_FP		OPT_BOTH(OPT_BUF(BV_FP))
+  #ifdef FEAT_EVAL
+  # define PV_FEX		OPT_BUF(BV_FEX)
+  #endif
+***************
+*** 1258,1264 ****
+  			    {(char_u *)"^\\s*\\d\\+[\\]:.)}\\t ]\\s*",
+  						 (char_u *)0L} SCRIPTID_INIT},
+      {"formatprg",   "fp",   P_STRING|P_EXPAND|P_VI_DEF|P_SECURE,
+! 			    (char_u *)&p_fp, PV_NONE,
+  			    {(char_u *)"", (char_u *)0L} SCRIPTID_INIT},
+      {"fsync",       "fs",   P_BOOL|P_SECURE|P_VI_DEF,
+  #ifdef HAVE_FSYNC
+--- 1259,1265 ----
+  			    {(char_u *)"^\\s*\\d\\+[\\]:.)}\\t ]\\s*",
+  						 (char_u *)0L} SCRIPTID_INIT},
+      {"formatprg",   "fp",   P_STRING|P_EXPAND|P_VI_DEF|P_SECURE,
+! 			    (char_u *)&p_fp, PV_FP,
+  			    {(char_u *)"", (char_u *)0L} SCRIPTID_INIT},
+      {"fsync",       "fs",   P_BOOL|P_SECURE|P_VI_DEF,
+  #ifdef HAVE_FSYNC
+***************
+*** 5481,5486 ****
+--- 5482,5488 ----
+  #if defined(FEAT_CRYPT)
+      check_string_option(&buf->b_p_cm);
+  #endif
++     check_string_option(&buf->b_p_fp);
+  #if defined(FEAT_EVAL)
+      check_string_option(&buf->b_p_fex);
+  #endif
+***************
+*** 10175,10180 ****
+--- 10177,10185 ----
+  	    clear_string_option(&buf->b_p_tsr);
+  	    break;
+  #endif
++ 	case PV_FP:
++ 	    clear_string_option(&buf->b_p_fp);
++ 	    break;
+  #ifdef FEAT_QUICKFIX
+  	case PV_EFM:
+  	    clear_string_option(&buf->b_p_efm);
+***************
+*** 10228,10233 ****
+--- 10233,10239 ----
+      {
+  	switch ((int)p->indir)
+  	{
++ 	    case PV_FP:   return (char_u *)&(curbuf->b_p_fp);
+  #ifdef FEAT_QUICKFIX
+  	    case PV_EFM:  return (char_u *)&(curbuf->b_p_efm);
+  	    case PV_GP:   return (char_u *)&(curbuf->b_p_gp);
+***************
+*** 10308,10313 ****
+--- 10314,10321 ----
+  	case PV_TSR:	return *curbuf->b_p_tsr != NUL
+  				    ? (char_u *)&(curbuf->b_p_tsr) : p->var;
+  #endif
++ 	case PV_FP:	return *curbuf->b_p_fp != NUL
++ 				    ? (char_u *)&(curbuf->b_p_fp) : p->var;
+  #ifdef FEAT_QUICKFIX
+  	case PV_EFM:	return *curbuf->b_p_efm != NUL
+  				    ? (char_u *)&(curbuf->b_p_efm) : p->var;
+***************
+*** 10873,10878 ****
+--- 10881,10887 ----
+  	    buf->b_p_inde = vim_strsave(p_inde);
+  	    buf->b_p_indk = vim_strsave(p_indk);
+  #endif
++ 	    buf->b_p_fp = empty_option;
+  #if defined(FEAT_EVAL)
+  	    buf->b_p_fex = vim_strsave(p_fex);
+  #endif
+*** ../vim-8.0.0178/src/normal.c	2016-11-05 21:55:09.840208445 +0100
+--- src/normal.c	2017-01-14 14:20:29.951540624 +0100
+***************
+*** 1984,1990 ****
+  		op_formatexpr(oap);	/* use expression */
+  	    else
+  #endif
+! 		if (*p_fp != NUL)
+  		op_colon(oap);		/* use external command */
+  	    else
+  		op_format(oap, FALSE);	/* use internal function */
+--- 1984,1990 ----
+  		op_formatexpr(oap);	/* use expression */
+  	    else
+  #endif
+! 		if (*p_fp != NUL || *curbuf->b_p_fp != NUL)
+  		op_colon(oap);		/* use external command */
+  	    else
+  		op_format(oap, FALSE);	/* use internal function */
+***************
+*** 2197,2206 ****
+      }
+      else if (oap->op_type == OP_FORMAT)
+      {
+! 	if (*p_fp == NUL)
+! 	    stuffReadbuff((char_u *)"fmt");
+! 	else
+  	    stuffReadbuff(p_fp);
+  	stuffReadbuff((char_u *)"\n']");
+      }
+  
+--- 2197,2208 ----
+      }
+      else if (oap->op_type == OP_FORMAT)
+      {
+! 	if (*curbuf->b_p_fp != NUL)
+! 	    stuffReadbuff(curbuf->b_p_fp);
+! 	else if (*p_fp != NUL)
+  	    stuffReadbuff(p_fp);
++ 	else
++ 	    stuffReadbuff((char_u *)"fmt");
+  	stuffReadbuff((char_u *)"\n']");
+      }
+  
+*** ../vim-8.0.0178/runtime/doc/options.txt	2016-09-12 12:45:26.000000000 +0200
+--- runtime/doc/options.txt	2017-01-14 13:18:53.102507432 +0100
+***************
+*** 3416,3422 ****
+  
+  						*'formatprg'* *'fp'*
+  'formatprg' 'fp'	string (default "")
+! 			global
+  			{not in Vi}
+  	The name of an external program that will be used to format the lines
+  	selected with the |gq| operator.  The program must take the input on
+--- 3417,3423 ----
+  
+  						*'formatprg'* *'fp'*
+  'formatprg' 'fp'	string (default "")
+! 			global or local to buffer |global-local|
+  			{not in Vi}
+  	The name of an external program that will be used to format the lines
+  	selected with the |gq| operator.  The program must take the input on
+*** ../vim-8.0.0178/src/testdir/test_normal.vim	2016-11-05 21:55:09.844208420 +0100
+--- src/testdir/test_normal.vim	2017-01-14 14:19:36.127874117 +0100
+***************
+*** 224,244 ****
+    " only test on non windows platform
+    if has('win32')
+      return
+-   else
+-     " uses sed to number non-empty lines
+-     call writefile(['#!/bin/sh', 'sed ''/./=''|sed ''/./{', 'N', 's/\n/    /', '}'''], 'Xsed_format.sh')
+-     call system('chmod +x ./Xsed_format.sh')
+    endif
+!   call Setup_NewWindow()
+!   %d
+!   call setline(1, ['a', '', 'c', '', ' ', 'd', 'e'])
+    set formatprg=./Xsed_format.sh
+    norm! gggqG
+!   call assert_equal(['1    a', '', '3    c', '', '5     ', '6    d', '7    e'], getline(1, '$'))
+    " clean up
+    set formatprg=
+    call delete('Xsed_format.sh')
+-   bw!
+  endfunc
+  
+  func! Test_normal07_internalfmt()
+--- 224,256 ----
+    " only test on non windows platform
+    if has('win32')
+      return
+    endif
+! 
+!   " uses sed to number non-empty lines
+!   call writefile(['#!/bin/sh', 'sed ''/./=''|sed ''/./{', 'N', 's/\n/    /', '}'''], 'Xsed_format.sh')
+!   call system('chmod +x ./Xsed_format.sh')
+!   let text = ['a', '', 'c', '', ' ', 'd', 'e']
+!   let expected = ['1    a', '', '3    c', '', '5     ', '6    d', '7    e']
+! 
+!   10new
+!   call setline(1, text)
+    set formatprg=./Xsed_format.sh
+    norm! gggqG
+!   call assert_equal(expected, getline(1, '$'))
+!   bw!
+! 
+!   10new
+!   call setline(1, text)
+!   set formatprg=donothing
+!   setlocal formatprg=./Xsed_format.sh
+!   norm! gggqG
+!   call assert_equal(expected, getline(1, '$'))
+!   bw!
+! 
+    " clean up
+    set formatprg=
++   setlocal formatprg=
+    call delete('Xsed_format.sh')
+  endfunc
+  
+  func! Test_normal07_internalfmt()
+***************
+*** 251,257 ****
+    norm! gggqG
+    call assert_equal(['1    2    3', '4    5    6', '7    8    9', '10    11    '], getline(1, '$'))
+    " clean up
+!   set formatprg= tw=0
+    bw!
+  endfunc
+  
+--- 263,269 ----
+    norm! gggqG
+    call assert_equal(['1    2    3', '4    5    6', '7    8    9', '10    11    '], getline(1, '$'))
+    " clean up
+!   set tw=0
+    bw!
+  endfunc
+  
+*** ../vim-8.0.0178/src/version.c	2017-01-13 22:30:03.761030349 +0100
+--- src/version.c	2017-01-14 14:24:26.326077820 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     179,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+270. You are subscribed to a mailing list for every piece of software
+     you use.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

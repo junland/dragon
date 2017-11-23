@@ -1,0 +1,1486 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0311
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0311
+Problem:    Linebreak tests are old style.
+Solution:   Turn the tests into new style. Share utility functions. (Ozaki
+            Kiichi, closes #1444)
+Files:      src/Makefile, src/testdir/Make_all.mak,
+            src/testdir/test_breakindent.vim, src/testdir/test_listlbr.in,
+            src/testdir/test_listlbr.ok, src/testdir/test_listlbr.vim,
+            src/testdir/test_listlbr_utf8.in,
+            src/testdir/test_listlbr_utf8.ok,
+            src/testdir/test_listlbr_utf8.vim, src/testdir/view_util.vim
+
+
+*** ../vim-8.0.0310/src/Makefile	2017-02-01 20:53:18.659092738 +0100
+--- src/Makefile	2017-02-05 20:59:31.158395013 +0100
+***************
+*** 2072,2079 ****
+  	test_getcwd \
+  	test_insertcount \
+  	test_listchars \
+- 	test_listlbr \
+- 	test_listlbr_utf8 \
+  	test_search_mbyte \
+  	test_wordcount \
+  	test3 test4 test5 test6 test7 test8 test9 \
+--- 2072,2077 ----
+***************
+*** 2148,2153 ****
+--- 2146,2153 ----
+  	test_langmap \
+  	test_largefile \
+  	test_lispwords \
++ 	test_listlbr \
++ 	test_listlbr_utf8 \
+  	test_lua \
+  	test_man \
+  	test_mapping \
+*** ../vim-8.0.0310/src/testdir/Make_all.mak	2017-01-29 23:26:12.926595799 +0100
+--- src/testdir/Make_all.mak	2017-02-05 20:59:31.158395013 +0100
+***************
+*** 82,88 ****
+  	test_getcwd.out \
+  	test_insertcount.out \
+  	test_listchars.out \
+- 	test_listlbr.out \
+  	test_search_mbyte.out \
+  	test_wordcount.out
+  
+--- 82,87 ----
+***************
+*** 101,108 ****
+  	test12.out \
+  	test25.out \
+  	test49.out \
+! 	test97.out \
+! 	test_listlbr_utf8.out
+  
+  
+  # Tests that run on most systems, but not MingW and Cygwin.
+--- 100,106 ----
+  	test12.out \
+  	test25.out \
+  	test49.out \
+! 	test97.out
+  
+  
+  # Tests that run on most systems, but not MingW and Cygwin.
+***************
+*** 164,169 ****
+--- 162,169 ----
+  	    test_job_fails.res \
+  	    test_json.res \
+  	    test_langmap.res \
++ 	    test_listlbr.res \
++ 	    test_listlbr_utf8.res \
+  	    test_lua.res \
+  	    test_man.res \
+  	    test_marks.res \
+*** ../vim-8.0.0310/src/testdir/test_breakindent.vim	2016-11-17 19:32:17.897024245 +0100
+--- src/testdir/test_breakindent.vim	2017-02-05 21:10:11.053368573 +0100
+***************
+*** 2,172 ****
+  "
+  " Note: if you get strange failures when adding new tests, it might be that
+  " while the test is run, the breakindent cacheing gets in its way.
+! " It helps to change the tabastop setting and force a redraw (e.g. see
+  " Test_breakindent08())
+  if !exists('+breakindent')
+    finish
+  endif
+  
+  let s:input ="\tabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP"
+  
+! function s:screenline(lnum, width) abort
+!   " always get 4 screen lines
+!   redraw!
+!   let line = []
+!   for j in range(3)
+!     for c in range(1, a:width)
+!   call add(line, nr2char(screenchar(a:lnum+j, c)))
+!     endfor
+!     call add(line, "\n")
+!   endfor
+!   return join(line, '')
+  endfunction
+  
+! function s:testwindows(...)
+!   10new
+!   vsp
+!   vert resize 20
+!   setl ts=4 sw=4 sts=4 breakindent 
+    put =s:input
+!   if a:0
+!     exe a:1
+!   endif
+  endfunction
+  
+  function s:close_windows(...)
+!   bw!
+!   if a:0
+!     exe a:1
+!   endif
+!   unlet! g:line g:expect
+  endfunction
+  
+  function Test_breakindent01()
+    " simple breakindent test
+!   call s:testwindows('setl briopt=min:0')
+!   let g:line=s:screenline(line('.'),8)
+!   let g:expect="    abcd\n    qrst\n    GHIJ\n"
+!   call assert_equal(g:expect, g:line)
+    call s:close_windows()
+  endfunction
+  
+  function Test_breakindent02()
+    " simple breakindent test with showbreak set
+!   call s:testwindows('setl briopt=min:0 sbr=>>')
+!   let g:line=s:screenline(line('.'),8)
+!   let g:expect="    abcd\n    >>qr\n    >>EF\n"
+!   call assert_equal(g:expect, g:line)
+    call s:close_windows('set sbr=')
+  endfunction
+  
+  function Test_breakindent03()
+    " simple breakindent test with showbreak set and briopt including sbr
+!   call s:testwindows('setl briopt=sbr,min:0 sbr=++')
+!   let g:line=s:screenline(line('.'),8)
+!   let g:expect="    abcd\n++  qrst\n++  GHIJ\n"
+!   call assert_equal(g:expect, g:line)
+    " clean up
+    call s:close_windows('set sbr=')
+  endfunction
+  
+  function Test_breakindent04()
+    " breakindent set with min width 18
+!   call s:testwindows('setl sbr= briopt=min:18')
+!   let g:line=s:screenline(line('.'),8)
+!   let g:expect="    abcd\n  qrstuv\n  IJKLMN\n"
+!   call assert_equal(g:expect, g:line)
+    " clean up
+    call s:close_windows('set sbr=')
+  endfunction
+  
+  function Test_breakindent05()
+    " breakindent set and shift by 2
+!   call s:testwindows('setl briopt=shift:2,min:0')
+!   let g:line=s:screenline(line('.'),8)
+!   let g:expect="    abcd\n      qr\n      EF\n"
+!   call assert_equal(g:expect, g:line)
+    call s:close_windows()
+  endfunction
+  
+  function Test_breakindent06()
+    " breakindent set and shift by -1
+!   call s:testwindows('setl briopt=shift:-1,min:0')
+!   let g:line=s:screenline(line('.'),8)
+!   let g:expect="    abcd\n   qrstu\n   HIJKL\n"
+!   call assert_equal(g:expect, g:line)
+    call s:close_windows()
+  endfunction
+  
+  function Test_breakindent07()
+    " breakindent set and shift by 1, Number  set sbr=? and briopt:sbr
+!   call s:testwindows('setl briopt=shift:1,sbr,min:0 nu sbr=? nuw=4 cpo+=n')
+!   let g:line=s:screenline(line('.'),10)
+!   let g:expect="  2     ab\n?        m\n?        x\n"
+!   call assert_equal(g:expect, g:line)
+    " clean up
+    call s:close_windows('set sbr= cpo-=n')
+  endfunction
+  
+  function Test_breakindent07a()
+    " breakindent set and shift by 1, Number  set sbr=? and briopt:sbr
+!   call s:testwindows('setl briopt=shift:1,sbr,min:0 nu sbr=? nuw=4')
+!   let g:line=s:screenline(line('.'),10)
+!   let g:expect="  2     ab\n    ?    m\n    ?    x\n"
+!   call assert_equal(g:expect, g:line)
+    " clean up
+    call s:close_windows('set sbr=')
+  endfunction
+  
+  function Test_breakindent08()
+    " breakindent set and shift by 1, Number and list set sbr=# and briopt:sbr
+!   call s:testwindows('setl briopt=shift:1,sbr,min:0 nu nuw=4 sbr=# list cpo+=n ts=4')
+    " make sure, cache is invalidated!
+    set ts=8
+    redraw!
+    set ts=4
+    redraw!
+!   let g:line=s:screenline(line('.'),10)
+!   let g:expect="  2 ^Iabcd\n#      opq\n#      BCD\n"
+!   call assert_equal(g:expect, g:line)
+    call s:close_windows('set sbr= cpo-=n')
+  endfunction
+  
+  function Test_breakindent08a()
+    " breakindent set and shift by 1, Number and list set sbr=# and briopt:sbr
+!   call s:testwindows('setl briopt=shift:1,sbr,min:0 nu nuw=4 sbr=# list')
+!   let g:line=s:screenline(line('.'),10)
+!   let g:expect="  2 ^Iabcd\n    #  opq\n    #  BCD\n"
+!   call assert_equal(g:expect, g:line)
+    call s:close_windows('set sbr=')
+  endfunction
+  
+  function Test_breakindent09()
+    " breakindent set and shift by 1, Number and list set sbr=#
+!   call s:testwindows('setl briopt=shift:1,min:0 nu nuw=4 sbr=# list')
+!   let g:line=s:screenline(line('.'),10)
+!   let g:expect="  2 ^Iabcd\n       #op\n       #AB\n"
+!   call assert_equal(g:expect, g:line)
+    call s:close_windows('set sbr=')
+  endfunction
+  
+  function Test_breakindent10()
+    " breakindent set, Number set sbr=~
+!   call s:testwindows('setl cpo+=n sbr=~ nu nuw=4 nolist briopt=sbr,min:0')
+    " make sure, cache is invalidated!
+    set ts=8
+    redraw!
+    set ts=4
+    redraw!
+!   let g:line=s:screenline(line('.'),10)
+!   let g:expect="  2     ab\n~       mn\n~       yz\n"
+!   call assert_equal(g:expect, g:line)
+    call s:close_windows('set sbr= cpo-=n')
+  endfunction
+  
+  function Test_breakindent11()
+    " test strdisplaywidth()
+!   call s:testwindows('setl cpo-=n sbr=>> nu nuw=4 nolist briopt= ts=4')
+    let text=getline(2)
+    let width = strlen(text[1:])+indent(2)+strlen(&sbr)*3 " text wraps 3 times
+    call assert_equal(width, strdisplaywidth(text))
+--- 2,210 ----
+  "
+  " Note: if you get strange failures when adding new tests, it might be that
+  " while the test is run, the breakindent cacheing gets in its way.
+! " It helps to change the tabstop setting and force a redraw (e.g. see
+  " Test_breakindent08())
+  if !exists('+breakindent')
+    finish
+  endif
+  
++ source view_util.vim
++ 
+  let s:input ="\tabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP"
+  
+! function s:screen_lines(lnum, width) abort
+!   return ScreenLines([a:lnum, a:lnum + 2], a:width)
+  endfunction
+  
+! function! s:compare_lines(expect, actual)
+!   call assert_equal(join(a:expect, "\n"), join(a:actual, "\n"))
+! endfunction
+! 
+! function s:test_windows(...)
+!   call NewWindow(10, 20)
+!   setl ts=4 sw=4 sts=4 breakindent
+    put =s:input
+!   exe get(a:000, 0, '')
+  endfunction
+  
+  function s:close_windows(...)
+!   call CloseWindow()
+!   exe get(a:000, 0, '')
+  endfunction
+  
+  function Test_breakindent01()
+    " simple breakindent test
+!   call s:test_windows('setl briopt=min:0')
+!   let lines=s:screen_lines(line('.'),8)
+!   let expect=[
+! \ "    abcd",
+! \ "    qrst",
+! \ "    GHIJ",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    call s:close_windows()
+  endfunction
+  
+  function Test_breakindent02()
+    " simple breakindent test with showbreak set
+!   call s:test_windows('setl briopt=min:0 sbr=>>')
+!   let lines=s:screen_lines(line('.'),8)
+!   let expect=[
+! \ "    abcd",
+! \ "    >>qr",
+! \ "    >>EF",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    call s:close_windows('set sbr=')
+  endfunction
+  
+  function Test_breakindent03()
+    " simple breakindent test with showbreak set and briopt including sbr
+!   call s:test_windows('setl briopt=sbr,min:0 sbr=++')
+!   let lines=s:screen_lines(line('.'),8)
+!   let expect=[
+! \ "    abcd",
+! \ "++  qrst",
+! \ "++  GHIJ",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    " clean up
+    call s:close_windows('set sbr=')
+  endfunction
+  
+  function Test_breakindent04()
+    " breakindent set with min width 18
+!   call s:test_windows('setl sbr= briopt=min:18')
+!   let lines=s:screen_lines(line('.'),8)
+!   let expect=[
+! \ "    abcd",
+! \ "  qrstuv",
+! \ "  IJKLMN",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    " clean up
+    call s:close_windows('set sbr=')
+  endfunction
+  
+  function Test_breakindent05()
+    " breakindent set and shift by 2
+!   call s:test_windows('setl briopt=shift:2,min:0')
+!   let lines=s:screen_lines(line('.'),8)
+!   let expect=[
+! \ "    abcd",
+! \ "      qr",
+! \ "      EF",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    call s:close_windows()
+  endfunction
+  
+  function Test_breakindent06()
+    " breakindent set and shift by -1
+!   call s:test_windows('setl briopt=shift:-1,min:0')
+!   let lines=s:screen_lines(line('.'),8)
+!   let expect=[
+! \ "    abcd",
+! \ "   qrstu",
+! \ "   HIJKL",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    call s:close_windows()
+  endfunction
+  
+  function Test_breakindent07()
+    " breakindent set and shift by 1, Number  set sbr=? and briopt:sbr
+!   call s:test_windows('setl briopt=shift:1,sbr,min:0 nu sbr=? nuw=4 cpo+=n')
+!   let lines=s:screen_lines(line('.'),10)
+!   let expect=[
+! \ "  2     ab",
+! \ "?        m",
+! \ "?        x",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    " clean up
+    call s:close_windows('set sbr= cpo-=n')
+  endfunction
+  
+  function Test_breakindent07a()
+    " breakindent set and shift by 1, Number  set sbr=? and briopt:sbr
+!   call s:test_windows('setl briopt=shift:1,sbr,min:0 nu sbr=? nuw=4')
+!   let lines=s:screen_lines(line('.'),10)
+!   let expect=[
+! \ "  2     ab",
+! \ "    ?    m",
+! \ "    ?    x",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    " clean up
+    call s:close_windows('set sbr=')
+  endfunction
+  
+  function Test_breakindent08()
+    " breakindent set and shift by 1, Number and list set sbr=# and briopt:sbr
+!   call s:test_windows('setl briopt=shift:1,sbr,min:0 nu nuw=4 sbr=# list cpo+=n ts=4')
+    " make sure, cache is invalidated!
+    set ts=8
+    redraw!
+    set ts=4
+    redraw!
+!   let lines=s:screen_lines(line('.'),10)
+!   let expect=[
+! \ "  2 ^Iabcd",
+! \ "#      opq",
+! \ "#      BCD",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    call s:close_windows('set sbr= cpo-=n')
+  endfunction
+  
+  function Test_breakindent08a()
+    " breakindent set and shift by 1, Number and list set sbr=# and briopt:sbr
+!   call s:test_windows('setl briopt=shift:1,sbr,min:0 nu nuw=4 sbr=# list')
+!   let lines=s:screen_lines(line('.'),10)
+!   let expect=[
+! \ "  2 ^Iabcd",
+! \ "    #  opq",
+! \ "    #  BCD",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    call s:close_windows('set sbr=')
+  endfunction
+  
+  function Test_breakindent09()
+    " breakindent set and shift by 1, Number and list set sbr=#
+!   call s:test_windows('setl briopt=shift:1,min:0 nu nuw=4 sbr=# list')
+!   let lines=s:screen_lines(line('.'),10)
+!   let expect=[
+! \ "  2 ^Iabcd",
+! \ "       #op",
+! \ "       #AB",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    call s:close_windows('set sbr=')
+  endfunction
+  
+  function Test_breakindent10()
+    " breakindent set, Number set sbr=~
+!   call s:test_windows('setl cpo+=n sbr=~ nu nuw=4 nolist briopt=sbr,min:0')
+    " make sure, cache is invalidated!
+    set ts=8
+    redraw!
+    set ts=4
+    redraw!
+!   let lines=s:screen_lines(line('.'),10)
+!   let expect=[
+! \ "  2     ab",
+! \ "~       mn",
+! \ "~       yz",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    call s:close_windows('set sbr= cpo-=n')
+  endfunction
+  
+  function Test_breakindent11()
+    " test strdisplaywidth()
+!   call s:test_windows('setl cpo-=n sbr=>> nu nuw=4 nolist briopt= ts=4')
+    let text=getline(2)
+    let width = strlen(text[1:])+indent(2)+strlen(&sbr)*3 " text wraps 3 times
+    call assert_equal(width, strdisplaywidth(text))
+***************
+*** 176,191 ****
+  function Test_breakindent12()
+    " test breakindent with long indent
+    let s:input="\t\t\t\t\t{"
+!   call s:testwindows('setl breakindent linebreak briopt=min:10 nu numberwidth=3 ts=4 list listchars=tab:>-')
+!   let g:line=s:screenline(2,16)
+!   let g:expect=" 2 >--->--->--->\n          ---{  \n~               \n"
+!   call assert_equal(g:expect, g:line)
+    call s:close_windows('set nuw=4 listchars=')
+  endfunction
+  
+  function Test_breakindent13()
+    let s:input=""
+!   call s:testwindows('setl breakindent briopt=min:10 ts=8')
+    vert resize 20
+    call setline(1, ["    a\tb\tc\td\te", "    z   y       x       w       v"])
+    1
+--- 214,233 ----
+  function Test_breakindent12()
+    " test breakindent with long indent
+    let s:input="\t\t\t\t\t{"
+!   call s:test_windows('setl breakindent linebreak briopt=min:10 nu numberwidth=3 ts=4 list listchars=tab:>-')
+!   let lines=s:screen_lines(2,16)
+!   let expect=[
+! \ " 2 >--->--->--->",
+! \ "          ---{  ",
+! \ "~               ",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    call s:close_windows('set nuw=4 listchars=')
+  endfunction
+  
+  function Test_breakindent13()
+    let s:input=""
+!   call s:test_windows('setl breakindent briopt=min:10 ts=8')
+    vert resize 20
+    call setline(1, ["    a\tb\tc\td\te", "    z   y       x       w       v"])
+    1
+***************
+*** 199,224 ****
+  
+  function Test_breakindent14()
+    let s:input=""
+!   call s:testwindows('setl breakindent briopt= ts=8')
+    vert resize 30
+    norm! 3a1234567890
+    norm! a    abcde
+    exec "norm! 0\<C-V>tex"
+!   let g:line=s:screenline(line('.'),8)
+!   let g:expect="e       \n~       \n~       \n"
+!   call assert_equal(g:expect, g:line)
+    call s:close_windows()
+  endfunction
+  
+  function Test_breakindent15()
+    let s:input=""
+!   call s:testwindows('setl breakindent briopt= ts=8 sw=8')
+    vert resize 30
+    norm! 4a1234567890
+    exe "normal! >>\<C-V>3f0x"
+!   let g:line=s:screenline(line('.'),20)
+!   let g:expect="        1234567890  \n~                   \n~                   \n"
+!   call assert_equal(g:expect, g:line)
+    call s:close_windows()
+  endfunction
+  
+--- 241,274 ----
+  
+  function Test_breakindent14()
+    let s:input=""
+!   call s:test_windows('setl breakindent briopt= ts=8')
+    vert resize 30
+    norm! 3a1234567890
+    norm! a    abcde
+    exec "norm! 0\<C-V>tex"
+!   let lines=s:screen_lines(line('.'),8)
+!   let expect=[
+! \ "e       ",
+! \ "~       ",
+! \ "~       ",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    call s:close_windows()
+  endfunction
+  
+  function Test_breakindent15()
+    let s:input=""
+!   call s:test_windows('setl breakindent briopt= ts=8 sw=8')
+    vert resize 30
+    norm! 4a1234567890
+    exe "normal! >>\<C-V>3f0x"
+!   let lines=s:screen_lines(line('.'),20)
+!   let expect=[
+! \ "        1234567890  ",
+! \ "~                   ",
+! \ "~                   ",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    call s:close_windows()
+  endfunction
+  
+***************
+*** 226,241 ****
+    " Check that overlong lines are indented correctly.
+    " TODO: currently it does not fail even when the bug is not fixed.
+    let s:input=""
+!   call s:testwindows('setl breakindent briopt=min:0 ts=4')
+    call setline(1, "\t".repeat("1234567890", 10))
+    resize 6
+    norm! 1gg$
+    redraw!
+!   let g:line=s:screenline(1,10)
+!   let g:expect="    123456\n    789012\n    345678\n"
+!   call assert_equal(g:expect, g:line)
+!   let g:line=s:screenline(4,10)
+!   let g:expect="    901234\n    567890\n    123456\n"
+!   call assert_equal(g:expect, g:line)
+    call s:close_windows()
+  endfunction
+--- 276,299 ----
+    " Check that overlong lines are indented correctly.
+    " TODO: currently it does not fail even when the bug is not fixed.
+    let s:input=""
+!   call s:test_windows('setl breakindent briopt=min:0 ts=4')
+    call setline(1, "\t".repeat("1234567890", 10))
+    resize 6
+    norm! 1gg$
+    redraw!
+!   let lines=s:screen_lines(1,10)
+!   let expect=[
+! \ "    123456",
+! \ "    789012",
+! \ "    345678",
+! \ ]
+!   call s:compare_lines(expect, lines)
+!   let lines=s:screen_lines(4,10)
+!   let expect=[
+! \ "    901234",
+! \ "    567890",
+! \ "    123456",
+! \ ]
+!   call s:compare_lines(expect, lines)
+    call s:close_windows()
+  endfunction
+*** ../vim-8.0.0310/src/testdir/test_listlbr.in	2015-12-17 21:04:04.000000000 +0100
+--- src/testdir/test_listlbr.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,119 ****
+- Test for linebreak and list option (non-utf8)
+- 
+- STARTTEST
+- :so small.vim
+- :if !exists("+linebreak") || !has("conceal") | e! test.ok | w! test.out | qa! | endif
+- :10new|:vsp|:vert resize 20
+- :put =\"\tabcdef hijklmn\tpqrstuvwxyz_1060ABCDEFGHIJKLMNOP \"
+- :norm! zt
+- :set ts=4 sw=4 sts=4 linebreak sbr=+ wrap
+- :fu! ScreenChar(width)
+- :	let c=''
+- :	for j in range(1,4)
+- :	    for i in range(1,a:width)
+- :	    	let c.=nr2char(screenchar(j, i))
+- :	    endfor
+- :           let c.="\n"
+- :	endfor
+- :	return c
+- :endfu
+- :fu! DoRecordScreen()
+- :	wincmd l
+- :	$put =printf(\"\n%s\", g:test)
+- :	$put =g:line
+- :	wincmd p
+- :endfu
+- :"
+- :let g:test="Test 1: set linebreak"
+- :redraw!
+- :let line=ScreenChar(winwidth(0))
+- :call DoRecordScreen()
+- :"
+- :let g:test="Test 2: set linebreak + set list"
+- :set linebreak list listchars=
+- :redraw!
+- :let line=ScreenChar(winwidth(0))
+- :call DoRecordScreen()
+- :"
+- :let g:test ="Test 3: set linebreak nolist"
+- :set nolist linebreak
+- :redraw!
+- :let line=ScreenChar(winwidth(0))
+- :call DoRecordScreen()
+- :"
+- :let g:test ="Test 4: set linebreak with tab and 1 line as long as screen: should break!"
+- :set nolist linebreak ts=8
+- :let line="1\t".repeat('a', winwidth(0)-2)
+- :$put =line
+- :$
+- :norm! zt
+- :redraw!
+- :let line=ScreenChar(winwidth(0))
+- :call DoRecordScreen()
+- :let line="_S_\t bla"
+- :$put =line
+- :$
+- :norm! zt
+- :"
+- :let g:test ="Test 5: set linebreak with conceal and set list and tab displayed by different char (line may not be truncated)"
+- :set cpo&vim list linebreak conceallevel=2 concealcursor=nv listchars=tab:ab
+- :syn match ConcealVar contained /_/ conceal
+- :syn match All /.*/ contains=ConcealVar
+- :let line=ScreenChar(winwidth(0))
+- :call DoRecordScreen()
+- :set cpo&vim linebreak
+- :"
+- :let g:test ="Test 6: set linebreak with visual block mode"
+- :let line="REMOVE: this not"
+- :$put =g:test
+- :$put =line
+- :let line="REMOVE: aaaaaaaaaaaaa"
+- :$put =line
+- :1/^REMOVE:
+- 0jf x:$put
+- :set cpo&vim linebreak
+- :"
+- :let g:test ="Test 7: set linebreak with visual block mode and v_b_A"
+- :$put =g:test
+- Golong line: 40afoobar aTARGET at end
+- :exe "norm! $3B\<C-v>eAx\<Esc>"
+- :set cpo&vim linebreak sbr=
+- :"
+- :let g:test ="Test 8: set linebreak with visual char mode and changing block"
+- :$put =g:test
+- Go1111-1111-1111-11-1111-1111-11110f-lv3lc2222bgj.
+- :"
+- :let g:test ="Test 9: using redo after block visual mode"
+- :$put =g:test
+- Go
+- aaa
+- aaa
+- a2k2j~e.
+- :"
+- :let g:test ="Test 10: using normal commands after block-visual"
+- :$put =g:test
+- :set linebreak
+- Go
+- abcd{ef
+- ghijklm
+- no}pqrs2k0f{c%
+- :"
+- :let g:test ="Test 11: using block replace mode after wrapping"
+- :$put =g:test
+- :set linebreak wrap
+- Go150aayypk147|jr0
+- :"
+- :let g:test ="Test 12: set linebreak list listchars=space:_,tab:>-,tail:-,eol:$"
+- :set list listchars=space:_,trail:-,tab:>-,eol:$
+- :$put =g:test
+- :let line="a aaaaaaaaaaaaaaaaaaaaaa\ta "
+- :$put =line
+- :$
+- :norm! zt
+- :redraw!
+- :let line=ScreenChar(winwidth(0))
+- :call DoRecordScreen()
+- :%w! test.out
+- :qa!
+- ENDTEST
+- dummy text
+--- 0 ----
+*** ../vim-8.0.0310/src/testdir/test_listlbr.ok	2015-12-17 21:04:04.000000000 +0100
+--- src/testdir/test_listlbr.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,62 ****
+- 
+- 	abcdef hijklmn	pqrstuvwxyz_1060ABCDEFGHIJKLMNOP 
+- 
+- Test 1: set linebreak
+-     abcdef          
+- +hijklmn            
+- +pqrstuvwxyz_1060ABC
+- +DEFGHIJKLMNOP      
+- 
+- Test 2: set linebreak + set list
+- ^Iabcdef hijklmn^I  
+- +pqrstuvwxyz_1060ABC
+- +DEFGHIJKLMNOP      
+-                     
+- 
+- Test 3: set linebreak nolist
+-     abcdef          
+- +hijklmn            
+- +pqrstuvwxyz_1060ABC
+- +DEFGHIJKLMNOP      
+- 1	aaaaaaaaaaaaaaaaaa
+- 
+- Test 4: set linebreak with tab and 1 line as long as screen: should break!
+- 1                   
+- +aaaaaaaaaaaaaaaaaa 
+- ~                   
+- ~                   
+- _S_	 bla
+- 
+- Test 5: set linebreak with conceal and set list and tab displayed by different char (line may not be truncated)
+- Sabbbbbb bla        
+- ~                   
+- ~                   
+- ~                   
+- Test 6: set linebreak with visual block mode
+- this not
+- aaaaaaaaaaaaa
+- REMOVE: 
+- REMOVE: 
+- Test 7: set linebreak with visual block mode and v_b_A
+- long line: foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar TARGETx at end
+- Test 8: set linebreak with visual char mode and changing block
+- 1111-2222-1111-11-1111-2222-1111
+- Test 9: using redo after block visual mode
+- 
+- AaA
+- AaA
+- A
+- Test 10: using normal commands after block-visual
+- 
+- abcdpqrs
+- Test 11: using block replace mode after wrapping
+- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0aaa
+- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0aaa
+- Test 12: set linebreak list listchars=space:_,tab:>-,tail:-,eol:$
+- a aaaaaaaaaaaaaaaaaaaaaa	a 
+- 
+- Test 12: set linebreak list listchars=space:_,tab:>-,tail:-,eol:$
+- a_                  
+- aaaaaaaaaaaaaaaaaaaa
+- aa>-----a-$         
+- ~                   
+--- 0 ----
+*** ../vim-8.0.0310/src/testdir/test_listlbr.vim	2017-02-05 21:14:00.419562659 +0100
+--- src/testdir/test_listlbr.vim	2017-02-05 20:59:31.158395013 +0100
+***************
+*** 0 ****
+--- 1,219 ----
++ " Test for linebreak and list option (non-utf8)
++ 
++ set encoding=latin1
++ scriptencoding latin1
++ 
++ if !exists("+linebreak") || !has("conceal")
++   finish
++ endif
++ 
++ source view_util.vim
++ 
++ function s:screen_lines(lnum, width) abort
++   return ScreenLines(a:lnum, a:width)
++ endfunction
++ 
++ function! s:compare_lines(expect, actual)
++   call assert_equal(join(a:expect, "\n"), join(a:actual, "\n"))
++ endfunction
++ 
++ function s:test_windows(...)
++   call NewWindow(10, 20)
++   setl ts=8 sw=4 sts=4 linebreak sbr= wrap
++   exe get(a:000, 0, '')
++ endfunction
++ 
++ function s:close_windows(...)
++   call CloseWindow()
++   exe get(a:000, 0, '')
++ endfunction
++ 
++ func Test_set_linebreak()
++   call s:test_windows('setl ts=4 sbr=+')
++   call setline(1, "\tabcdef hijklmn\tpqrstuvwxyz_1060ABCDEFGHIJKLMNOP ")
++   let lines = s:screen_lines([1, 4], winwidth(0))
++   let expect = [
++ \ "    abcdef          ",
++ \ "+hijklmn            ",
++ \ "+pqrstuvwxyz_1060ABC",
++ \ "+DEFGHIJKLMNOP      ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_linebreak_with_list()
++   call s:test_windows('setl ts=4 sbr=+ list listchars=')
++   call setline(1, "\tabcdef hijklmn\tpqrstuvwxyz_1060ABCDEFGHIJKLMNOP ")
++   let lines = s:screen_lines([1, 4], winwidth(0))
++   let expect = [
++ \ "^Iabcdef hijklmn^I  ",
++ \ "+pqrstuvwxyz_1060ABC",
++ \ "+DEFGHIJKLMNOP      ",
++ \ "~                   ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_linebreak_with_nolist()
++   call s:test_windows('setl ts=4 sbr=+ nolist')
++   call setline(1, "\tabcdef hijklmn\tpqrstuvwxyz_1060ABCDEFGHIJKLMNOP ")
++   let lines = s:screen_lines([1, 4], winwidth(0))
++   let expect = [
++ \ "    abcdef          ",
++ \ "+hijklmn            ",
++ \ "+pqrstuvwxyz_1060ABC",
++ \ "+DEFGHIJKLMNOP      ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_should_break()
++   call s:test_windows('setl sbr=+ nolist')
++   call setline(1, "1\t" . repeat('a', winwidth(0)-2))
++   let lines = s:screen_lines([1, 4], winwidth(0))
++   let expect = [
++ \ "1                   ",
++ \ "+aaaaaaaaaaaaaaaaaa ",
++ \ "~                   ",
++ \ "~                   ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_linebreak_with_conceal()
++   call s:test_windows('setl cpo&vim sbr=+ list conceallevel=2 concealcursor=nv listchars=tab:ab')
++   call setline(1, "_S_\t bla")
++   syn match ConcealVar contained /_/ conceal
++   syn match All /.*/ contains=ConcealVar
++   let lines = s:screen_lines([1, 4], winwidth(0))
++   let expect = [
++ \ "Sabbbbbb bla        ",
++ \ "~                   ",
++ \ "~                   ",
++ \ "~                   ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_virtual_block()
++   call s:test_windows('setl sbr=+')
++   call setline(1, [
++ \ "REMOVE: this not",
++ \ "REMOVE: aaaaaaaaaaaaa",
++ \ ])
++   exe "norm! 1/^REMOVE:"
++   exe "norm! 0\<C-V>jf x"
++   $put
++   let lines = s:screen_lines([1, 4], winwidth(0))
++   let expect = [
++ \ "this not            ",
++ \ "aaaaaaaaaaaaa       ",
++ \ "REMOVE:             ",
++ \ "REMOVE:             ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_virtual_block_and_vbA()
++   call s:test_windows()
++   call setline(1, "long line: " . repeat("foobar ", 40) . "TARGET at end")
++   exe "norm! $3B\<C-v>eAx\<Esc>"
++   let lines = s:screen_lines([1, 10], winwidth(0))
++   let expect = [
++ \ "foobar foobar       ",
++ \ "foobar foobar       ",
++ \ "foobar foobar       ",
++ \ "foobar foobar       ",
++ \ "foobar foobar       ",
++ \ "foobar foobar       ",
++ \ "foobar foobar       ",
++ \ "foobar foobar       ",
++ \ "foobar foobar       ",
++ \ "foobar TARGETx at   ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_virtual_char_and_block()
++   call s:test_windows()
++   call setline(1, "1111-1111-1111-11-1111-1111-1111")
++   exe "norm! 0f-lv3lc2222\<Esc>bgj."
++   let lines = s:screen_lines([1, 2], winwidth(0))
++   let expect = [
++ \ "1111-2222-1111-11-  ",
++ \ "1111-2222-1111      ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_undo_after_block_visual()
++   call s:test_windows()
++   call setline(1, ["aaa", "aaa", "a"])
++   exe "norm! gg\<C-V>2j~e."
++   let lines = s:screen_lines([1, 3], winwidth(0))
++   let expect = [
++ \ "AaA                 ",
++ \ "AaA                 ",
++ \ "A                   ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_norm_after_block_visual()
++   call s:test_windows()
++   call setline(1, ["abcd{ef", "ghijklm", "no}pgrs"])
++   exe "norm! ggf{\<C-V>\<C-V>c%"
++   let lines = s:screen_lines([1, 3], winwidth(0))
++   let expect = [
++ \ "abcdpgrs            ",
++ \ "~                   ",
++ \ "~                   ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_block_replace_after_wrapping()
++   call s:test_windows()
++   call setline(1, repeat("a", 150))
++   exe "norm! 0yypk147|\<C-V>jr0"
++   call assert_equal(repeat("a", 146) . "0aaa", getline(1))
++   call assert_equal(repeat("a", 146) . "0aaa", getline(2))
++   let lines = s:screen_lines([1, 10], winwidth(0))
++   let expect = [
++ \ "aaaaaaaaaaaaaaaaaaaa",
++ \ "aaaaaaaaaaaaaaaaaaaa",
++ \ "aaaaaaaaaaaaaaaaaaaa",
++ \ "aaaaaaaaaaaaaaaaaaaa",
++ \ "aaaaaaaaaaaaaaaaaaaa",
++ \ "aaaaaaaaaaaaaaaaaaaa",
++ \ "aaaaaaaaaaaaaaaaaaaa",
++ \ "aaaaaa0aaa          ",
++ \ "@                   ",
++ \ "@                   ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_list_with_listchars()
++   call s:test_windows('setl list listchars=space:_,trail:-,tab:>-,eol:$')
++   call setline(1, "a aaaaaaaaaaaaaaaaaaaaaa\ta ")
++   let lines = s:screen_lines([1, 3], winwidth(0))
++   let expect = [
++ \ "a_                  ",
++ \ "aaaaaaaaaaaaaaaaaaaa",
++ \ "aa>-----a-$         ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
+*** ../vim-8.0.0310/src/testdir/test_listlbr_utf8.in	2015-12-06 14:43:55.000000000 +0100
+--- src/testdir/test_listlbr_utf8.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,134 ****
+- Test for linebreak and list option in utf-8 mode
+- 
+- STARTTEST
+- :so small.vim
+- :if !exists("+linebreak") || !has("conceal") || !has("signs") | e! test.ok | w! test.out | qa! | endif
+- :so mbyte.vim
+- :set encoding=utf8
+- :if &enc !=? 'utf-8'|:e! test.ok|:w! test.out|qa!|endif
+- :10new|:vsp|:vert resize 20
+- :put =\"\tabcdef hijklmn\tpqrstuvwxyz\u00a01060ABCDEFGHIJKLMNOP \"
+- :norm! zt
+- :set ts=4 sw=4 sts=4 linebreak sbr=+ wrap
+- :fu! ScreenChar(width, lines)
+- :	let c=''
+- :	for j in range(1,a:lines)
+- :	    for i in range(1,a:width)
+- :	    	let c.=nr2char(screenchar(j, i))
+- :	    endfor
+- :           let c.="\n"
+- :	endfor
+- :	return c
+- :endfu
+- :fu! DoRecordScreen()
+- :	wincmd l
+- :	$put =printf(\"\n%s\", g:test)
+- :	$put =g:line
+- :	wincmd p
+- :endfu
+- :"
+- :let g:test ="Test 1: set linebreak + set list + fancy listchars"
+- :exe "set linebreak list listchars=nbsp:\u2423,tab:\u2595\u2014,trail:\u02d1,eol:\ub6"
+- :redraw!
+- :let line=ScreenChar(winwidth(0),4)
+- :call DoRecordScreen()
+- :"
+- :let g:test ="Test 2: set nolinebreak list"
+- :set list nolinebreak
+- :redraw!
+- :let line=ScreenChar(winwidth(0),4)
+- :call DoRecordScreen()
+- :"
+- :let g:test ="Test 3: set linebreak nolist"
+- :$put =\"\t*mask = nil;\"
+- :$
+- :norm! zt
+- :set nolist linebreak
+- :redraw!
+- :let line=ScreenChar(winwidth(0),4)
+- :call DoRecordScreen()
+- :"
+- :let g:test ="Test 4: set linebreak list listchars and concealing"
+- :let c_defines=['#define ABCDE		1','#define ABCDEF		1','#define ABCDEFG		1','#define ABCDEFGH	1', '#define MSG_MODE_FILE			1','#define MSG_MODE_CONSOLE		2','#define MSG_MODE_FILE_AND_CONSOLE	3','#define MSG_MODE_FILE_THEN_CONSOLE	4']
+- :call append('$', c_defines)
+- :vert resize 40
+- :$-7
+- :norm! zt
+- :set list linebreak listchars=tab:>- cole=1
+- :syn match Conceal conceal cchar=>'AB\|MSG_MODE'
+- :redraw!
+- :let line=ScreenChar(winwidth(0),7)
+- :call DoRecordScreen()
+- :"
+- :let g:test ="Test 5: set linebreak list listchars and concealing part2"
+- :let c_defines=['bbeeeeee		;	some text']
+- :call append('$', c_defines)
+- :$
+- :norm! zt
+- :set nowrap ts=2 list linebreak listchars=tab:>- cole=2 concealcursor=n
+- :syn clear
+- :syn match meaning    /;\s*\zs.*/
+- :syn match hasword    /^\x\{8}/    contains=word
+- :syn match word       /\<\x\{8}\>/ contains=beginword,endword contained
+- :syn match beginword  /\<\x\x/     contained conceal
+- :syn match endword    /\x\{6}\>/   contained
+- :hi meaning   guibg=blue
+- :hi beginword guibg=green
+- :hi endword   guibg=red
+- :redraw!
+- :let line=ScreenChar(winwidth(0),1)
+- :call DoRecordScreen()
+- :"
+- :let g:test ="Test 6: Screenattributes for comment"
+- :$put =g:test
+- :call append('$', ' /*		 and some more */')
+- :exe "set ft=c ts=7 linebreak list listchars=nbsp:\u2423,tab:\u2595\u2014,trail:\u02d1,eol:\ub6"
+- :syntax on
+- :hi SpecialKey term=underline ctermfg=red guifg=red
+- :let attr=[]
+- :nnoremap <expr> GG ":let attr += ['".screenattr(screenrow(),screencol())."']\n"
+- :$
+- :norm! zt0
+- GGlGGlGGlGGlGGlGGlGGlGGlGGlGGl
+- :call append('$', ['ScreenAttributes for test6:'])
+- :if attr[0] != attr[1] && attr[1] != attr[3] && attr[3] != attr[5]
+- :   call append('$', "Attribut 0 and 1 and 3 and 5 are different!")
+- :else
+- :   call append('$', "Not all attributes are different")
+- :endif
+- :set cpo&vim linebreak selection=exclusive
+- :"
+- :let g:test ="Test 8: set linebreak with visual block mode and v_b_A and selection=exclusive and multibyte char"
+- :$put =g:test
+- Golong line: 40afoobar aTARGETÃ' at end
+- :exe "norm! $3B\<C-v>eAx\<Esc>"
+- :"
+- :let g:test ="Test 9: a multibyte sign and colorcolumn"
+- :let attr=[]
+- :let attr2=[]
+- :$put =''
+- :$put ='a b c'
+- :$put ='a b c'
+- :set list nolinebreak cc=3
+- :sign define foo text=uff0b
+- :sign place 1 name=foo line=50 buffer=2
+- :norm! 2kztj
+- :let line1=line('.')
+- 0GGlGGlGGlGGl
+- :let line2=line('.')
+- :let attr2=attr
+- :let attr=[]
+- 0GGlGGlGGlGGl
+- :redraw!
+- :let line=ScreenChar(winwidth(0),3)
+- :call DoRecordScreen()
+- :" expected: attr[2] is different because of colorcolumn
+- :if attr[0] != attr2[0] || attr[1] != attr2[1] || attr[2] != attr2[2]
+- :   call append('$', "Screen attributes are different!")
+- :else
+- :   call append('$', "Screen attributes are the same!")
+- :endif
+- :%w! test.out
+- :qa!
+- ENDTEST
+- dummy text
+--- 0 ----
+*** ../vim-8.0.0310/src/testdir/test_listlbr_utf8.ok	2015-12-06 14:43:55.000000000 +0100
+--- src/testdir/test_listlbr_utf8.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,57 ****
+- 
+- 	abcdef hijklmn	pqrstuvwxyz 1060ABCDEFGHIJKLMNOP 
+- 
+- Test 1: set linebreak + set list + fancy listchars
+- ▕———abcdef          
+- +hijklmn▕———        
+- +pqrstuvwxyz␣1060ABC
+- +DEFGHIJKLMNOPˑ¶    
+- 
+- Test 2: set nolinebreak list
+- ▕———abcdef hijklmn▕—
+- +pqrstuvwxyz␣1060ABC
+- +DEFGHIJKLMNOPˑ¶    
+- ¶                   
+- 	*mask = nil;
+- 
+- Test 3: set linebreak nolist
+-     *mask = nil;    
+- ~                   
+- ~                   
+- ~                   
+- #define ABCDE		1
+- #define ABCDEF		1
+- #define ABCDEFG		1
+- #define ABCDEFGH	1
+- #define MSG_MODE_FILE			1
+- #define MSG_MODE_CONSOLE		2
+- #define MSG_MODE_FILE_AND_CONSOLE	3
+- #define MSG_MODE_FILE_THEN_CONSOLE	4
+- 
+- Test 4: set linebreak list listchars and concealing
+- #define ABCDE>-->---1                   
+- #define >CDEF>-->---1                   
+- #define >CDEFG>->---1                   
+- #define >CDEFGH>----1                   
+- #define >_FILE>--------->--->---1       
+- #define >_CONSOLE>---------->---2       
+- #define >_FILE_AND_CONSOLE>---------3   
+- bbeeeeee		;	some text
+- 
+- Test 5: set linebreak list listchars and concealing part2
+- eeeeee>--->-;>some text                 
+- Test 6: Screenattributes for comment
+-  /*		 and some more */
+- ScreenAttributes for test6:
+- Attribut 0 and 1 and 3 and 5 are different!
+- Test 8: set linebreak with visual block mode and v_b_A and selection=exclusive and multibyte char
+- long line: foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar foobar TARGETÃx' at end
+- 
+- a b c
+- a b c
+- 
+- Test 9: a multibyte sign and colorcolumn
+-   ¶                                     
+- ＋a b c¶                                
+-   a b c¶                                
+- Screen attributes are the same!
+--- 0 ----
+*** ../vim-8.0.0310/src/testdir/test_listlbr_utf8.vim	2017-02-05 21:14:00.431562566 +0100
+--- src/testdir/test_listlbr_utf8.vim	2017-02-05 20:59:31.158395013 +0100
+***************
+*** 0 ****
+--- 1,195 ----
++ " Test for linebreak and list option in utf-8 mode
++ 
++ set encoding=utf-8
++ scriptencoding utf-8
++ 
++ if !exists("+linebreak") || !has("conceal") || !has("signs")
++   finish
++ endif
++ 
++ source view_util.vim
++ 
++ function s:screen_lines(lnum, width) abort
++   return ScreenLines(a:lnum, a:width)
++ endfunction
++ 
++ function! s:compare_lines(expect, actual)
++   call assert_equal(a:expect, a:actual)
++ endfunction
++ 
++ function s:screen_attr(lnum, chars, ...) abort
++   let line = getline(a:lnum)
++   let attr = []
++   let prefix = get(a:000, 0, 0)
++   for i in range(a:chars[0], a:chars[1])
++     let scol = strdisplaywidth(strcharpart(line, 0, i-1)) + 1
++     let attr += [screenattr(a:lnum, scol + prefix)]
++   endfor
++   return attr
++ endfunction
++ 
++ function s:test_windows(...)
++   call NewWindow(10, 20)
++   setl ts=4 sw=4 sts=4 linebreak sbr=+ wrap
++   exe get(a:000, 0, '')
++ endfunction
++ 
++ function s:close_windows(...)
++   call CloseWindow()
++   exe get(a:000, 0, '')
++ endfunction
++ 
++ func Test_linebreak_with_fancy_listchars()
++   call s:test_windows("setl list listchars=nbsp:\u2423,tab:\u2595\u2014,trail:\u02d1,eol:\ub6")
++   call setline(1, "\tabcdef hijklmn\tpqrstuvwxyz\u00a01060ABCDEFGHIJKLMNOP ")
++   redraw!
++   let lines = s:screen_lines([1, 4], winwidth(0))
++   let expect = [
++ \ "▕———abcdef          ",
++ \ "+hijklmn▕———        ",
++ \ "+pqrstuvwxyz␣1060ABC",
++ \ "+DEFGHIJKLMNOPˑ¶    ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_nolinebreak_with_list()
++   call s:test_windows("setl nolinebreak list listchars=nbsp:\u2423,tab:\u2595\u2014,trail:\u02d1,eol:\ub6")
++   call setline(1, "\tabcdef hijklmn\tpqrstuvwxyz\u00a01060ABCDEFGHIJKLMNOP ")
++   redraw!
++   let lines = s:screen_lines([1, 4], winwidth(0))
++   let expect = [
++ \ "▕———abcdef hijklmn▕—",
++ \ "+pqrstuvwxyz␣1060ABC",
++ \ "+DEFGHIJKLMNOPˑ¶    ",
++ \ "~                   ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_linebreak_with_nolist()
++   call s:test_windows('setl nolist')
++   call setline(1, "\t*mask = nil;")
++   redraw!
++   let lines = s:screen_lines([1, 4], winwidth(0))
++   let expect = [
++ \ "    *mask = nil;    ",
++ \ "~                   ",
++ \ "~                   ",
++ \ "~                   ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_list_and_concealing1()
++   call s:test_windows('setl list listchars=tab:>- cole=1')
++   call setline(1, [
++ \ "#define ABCDE\t\t1",
++ \ "#define ABCDEF\t\t1",
++ \ "#define ABCDEFG\t\t1",
++ \ "#define ABCDEFGH\t1",
++ \ "#define MSG_MODE_FILE\t\t\t1",
++ \ "#define MSG_MODE_CONSOLE\t\t2",
++ \ "#define MSG_MODE_FILE_AND_CONSOLE\t3",
++ \ "#define MSG_MODE_FILE_THEN_CONSOLE\t4",
++ \ ])
++   vert resize 40
++   syn match Conceal conceal cchar=>'AB\|MSG_MODE'
++   redraw!
++   let lines = s:screen_lines([1, 7], winwidth(0))
++   let expect = [
++ \ "#define ABCDE>-->---1                   ",
++ \ "#define >CDEF>-->---1                   ",
++ \ "#define >CDEFG>->---1                   ",
++ \ "#define >CDEFGH>----1                   ",
++ \ "#define >_FILE>--------->--->---1       ",
++ \ "#define >_CONSOLE>---------->---2       ",
++ \ "#define >_FILE_AND_CONSOLE>---------3   ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_list_and_concealing2()
++   call s:test_windows('setl nowrap ts=2 list listchars=tab:>- cole=2 concealcursor=n')
++   call setline(1, "bbeeeeee\t\t;\tsome text")
++   vert resize 40
++   syn clear
++   syn match meaning    /;\s*\zs.*/
++   syn match hasword    /^\x\{8}/    contains=word
++   syn match word       /\<\x\{8}\>/ contains=beginword,endword contained
++   syn match beginword  /\<\x\x/     contained conceal
++   syn match endword    /\x\{6}\>/   contained
++   hi meaning   guibg=blue
++   hi beginword guibg=green
++   hi endword   guibg=red
++   redraw!
++   let lines = s:screen_lines([1, 1], winwidth(0))
++   let expect = [
++ \ "eeeeee>--->-;>some text                 ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_screenattr_for_comment()
++   call s:test_windows("setl ft=c ts=7 list listchars=nbsp:\u2423,tab:\u2595\u2014,trail:\u02d1,eol:\ub6")
++   call setline(1, " /*\t\t and some more */")
++   norm! gg0
++   syntax on
++   hi SpecialKey term=underline ctermfg=red guifg=red
++   redraw!
++   let line = getline(1)
++   let attr = s:screen_attr(1, [1, 6])
++   call assert_notequal(attr[0], attr[1])
++   call assert_notequal(attr[1], attr[3])
++   call assert_notequal(attr[3], attr[5])
++   call s:close_windows()
++ endfunc
++ 
++ func Test_visual_block_and_selection_exclusive()
++   call s:test_windows('setl selection=exclusive')
++   call setline(1, "long line: " . repeat("foobar ", 40) . "TARGETÃ' at end")
++   exe "norm! $3B\<C-v>eAx\<Esc>"
++   let lines = s:screen_lines([1, 10], winwidth(0))
++   let expect = [
++ \ "+foobar foobar      ",
++ \ "+foobar foobar      ",
++ \ "+foobar foobar      ",
++ \ "+foobar foobar      ",
++ \ "+foobar foobar      ",
++ \ "+foobar foobar      ",
++ \ "+foobar foobar      ",
++ \ "+foobar foobar      ",
++ \ "+foobar foobar      ",
++ \ "+foobar TARGETÃx'   ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
++ 
++ func Test_multibyte_sign_and_colorcolumn()
++   call s:test_windows("setl nolinebreak cc=3 list listchars=nbsp:\u2423,tab:\u2595\u2014,trail:\u02d1,eol:\ub6")
++   call setline(1, ["", "a b c", "a b c"])
++   exe "sign define foo text=\uff0b"
++   exe "sign place 1 name=foo line=2 buffer=" . bufnr('%')
++   redraw!
++   norm! ggj0
++   let signwidth = strdisplaywidth("\uff0b")
++   let attr1 = s:screen_attr(2, [1, 3], signwidth)
++   let attr2 = s:screen_attr(3, [1, 3], signwidth)
++   call assert_equal(attr1[0], attr2[0])
++   call assert_equal(attr1[1], attr2[1])
++   call assert_equal(attr1[2], attr2[2])
++   let lines = s:screen_lines([1, 3], winwidth(0))
++   let expect = [
++ \ "  ¶                 ",
++ \ "＋a b c¶            ",
++ \ "  a b c¶            ",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfunc
+*** ../vim-8.0.0310/src/testdir/view_util.vim	2017-02-05 21:14:00.435562534 +0100
+--- src/testdir/view_util.vim	2017-02-05 20:59:31.162394981 +0100
+***************
+*** 0 ****
+--- 1,30 ----
++ " Functions about view shared by several tests
++ 
++ " ScreenLines(lnum, width) or
++ " ScreenLines([start, end], width)
++ function! ScreenLines(lnum, width) abort
++   redraw!
++   if type(a:lnum) == v:t_list
++     let start = a:lnum[0]
++     let end = a:lnum[1]
++   else
++     let start = a:lnum
++     let end = a:lnum
++   endif
++   let lines = []
++   for l in range(start, end)
++     let lines += [join(map(range(1, a:width), 'nr2char(screenchar(l, v:val))'), '')]
++   endfor
++   return lines
++ endfunction
++ 
++ function! NewWindow(height, width) abort
++   exe a:height . 'new'
++   exe a:width . 'vsp'
++   redraw!
++ endfunction
++ 
++ function! CloseWindow() abort
++   bw!
++   redraw!
++ endfunction
+*** ../vim-8.0.0310/src/version.c	2017-02-05 20:54:21.772818426 +0100
+--- src/version.c	2017-02-05 21:01:11.789605766 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     311,
+  /**/
+
+-- 
+A special cleaning ordinance bans housewives from hiding dirt and dust under a
+rug in a dwelling.
+		[real standing law in Pennsylvania, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

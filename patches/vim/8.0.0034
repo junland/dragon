@@ -1,0 +1,157 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0034
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0034
+Problem:    No completion for ":messages".
+Solution:   Complete "clear" argument. (Hirohito Higashi)
+Files:      src/ex_docmd.c, src/ex_getln.c, src/proto/ex_docmd.pro,
+            src/testdir/test_cmdline.vim, src/vim.h,
+            runtime/doc/eval.txt, runtime/doc/map.txt
+
+
+*** ../vim-8.0.0033/src/ex_docmd.c	2016-10-12 14:19:55.742357780 +0200
+--- src/ex_docmd.c	2016-10-15 15:22:09.672808290 +0200
+***************
+*** 4281,4286 ****
+--- 4281,4291 ----
+  	    xp->xp_pattern = arg;
+  	    break;
+  
++ 	case CMD_messages:
++ 	    xp->xp_context = EXPAND_MESSAGES;
++ 	    xp->xp_pattern = arg;
++ 	    break;
++ 
+  #if defined(FEAT_CMDHIST)
+  	case CMD_history:
+  	    xp->xp_context = EXPAND_HISTORY;
+***************
+*** 5893,5898 ****
+--- 5898,5904 ----
+  #endif
+      {EXPAND_MAPPINGS, "mapping"},
+      {EXPAND_MENUS, "menu"},
++     {EXPAND_MESSAGES, "messages"},
+      {EXPAND_OWNSYNTAX, "syntax"},
+  #if defined(FEAT_PROFILE)
+      {EXPAND_SYNTIME, "syntime"},
+***************
+*** 11901,11906 ****
+--- 11907,11924 ----
+  	return (char_u *)"xterm";
+      return NULL;
+  }
++ 
++ /*
++  * Function given to ExpandGeneric() to obtain the possible arguments of the
++  * ":messages {clear}" command.
++  */
++     char_u *
++ get_messages_arg(expand_T *xp UNUSED, int idx)
++ {
++     if (idx == 0)
++ 	return (char_u *)"clear";
++     return NULL;
++ }
+  #endif
+  
+  #ifdef FEAT_AUTOCMD
+*** ../vim-8.0.0033/src/ex_getln.c	2016-09-09 21:35:27.000000000 +0200
+--- src/ex_getln.c	2016-10-15 15:22:09.672808290 +0200
+***************
+*** 4832,4837 ****
+--- 4832,4838 ----
+  	{
+  	    {EXPAND_COMMANDS, get_command_name, FALSE, TRUE},
+  	    {EXPAND_BEHAVE, get_behave_arg, TRUE, TRUE},
++ 	    {EXPAND_MESSAGES, get_messages_arg, TRUE, TRUE},
+  #ifdef FEAT_CMDHIST
+  	    {EXPAND_HISTORY, get_history_arg, TRUE, TRUE},
+  #endif
+*** ../vim-8.0.0033/src/proto/ex_docmd.pro	2016-09-12 13:04:02.000000000 +0200
+--- src/proto/ex_docmd.pro	2016-10-15 15:22:09.672808290 +0200
+***************
+*** 61,64 ****
+--- 61,65 ----
+  int put_line(FILE *fd, char *s);
+  void dialog_msg(char_u *buff, char *format, char_u *fname);
+  char_u *get_behave_arg(expand_T *xp, int idx);
++ char_u *get_messages_arg(expand_T *xp, int idx);
+  /* vim: set ft=c : */
+*** ../vim-8.0.0033/src/testdir/test_cmdline.vim	2016-08-28 13:34:01.000000000 +0200
+--- src/testdir/test_cmdline.vim	2016-10-15 15:22:09.672808290 +0200
+***************
+*** 129,134 ****
+--- 129,139 ----
+    let l = getcompletion('dark', 'highlight')
+    call assert_equal([], l)
+  
++   let l = getcompletion('', 'messages')
++   call assert_true(index(l, 'clear') >= 0)
++   let l = getcompletion('not', 'messages')
++   call assert_equal([], l)
++ 
+    if has('cscope')
+      let l = getcompletion('', 'cscope')
+      let cmds = ['add', 'find', 'help', 'kill', 'reset', 'show']
+*** ../vim-8.0.0033/src/vim.h	2016-09-04 21:27:13.000000000 +0200
+--- src/vim.h	2016-10-15 15:22:09.672808290 +0200
+***************
+*** 793,798 ****
+--- 793,799 ----
+  #define EXPAND_SYNTIME		43
+  #define EXPAND_USER_ADDR_TYPE	44
+  #define EXPAND_PACKADD		45
++ #define EXPAND_MESSAGES		46
+  
+  /* Values for exmode_active (0 is no exmode) */
+  #define EXMODE_NORMAL		1
+*** ../vim-8.0.0033/runtime/doc/eval.txt	2016-10-02 16:51:32.748592858 +0200
+--- runtime/doc/eval.txt	2016-10-15 15:24:39.175697407 +0200
+***************
+*** 4281,4287 ****
+--- 4287,4295 ----
+  		locale		locale names (as output of locale -a)
+  		mapping		mapping name
+  		menu		menus
++ 		messages	|:messages| suboptions
+  		option		options
++ 		packadd		optional package |pack-add| names
+  		shellcmd	Shell command
+  		sign		|:sign| suboptions
+  		syntax		syntax file names |'syntax'|
+*** ../vim-8.0.0033/runtime/doc/map.txt	2016-09-12 12:45:26.000000000 +0200
+--- runtime/doc/map.txt	2016-10-15 15:24:55.571575607 +0200
+***************
+*** 1280,1285 ****
+--- 1280,1286 ----
+  	-complete=locale	locale names (as output of locale -a)
+  	-complete=mapping	mapping name
+  	-complete=menu		menus
++ 	-complete=messages	|:messages| suboptions
+  	-complete=option	options
+  	-complete=packadd	optional package |pack-add| names
+  	-complete=shellcmd	Shell command
+*** ../vim-8.0.0033/src/version.c	2016-10-15 14:56:25.868257421 +0200
+--- src/version.c	2016-10-15 15:23:36.340164248 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     34,
+  /**/
+
+-- 
+SIGFUN -- signature too funny (core dumped)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

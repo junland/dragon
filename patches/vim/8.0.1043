@@ -1,0 +1,70 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1043
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1043
+Problem:    Warning for uninitialized variable. (John Marriott)
+Solution:   Move code to check indent inside "if".
+Files:      src/ops.c
+
+
+*** ../vim-8.0.1042/src/ops.c	2017-09-02 20:30:31.167315016 +0200
+--- src/ops.c	2017-09-02 23:19:28.712240982 +0200
+***************
+*** 2597,2610 ****
+  	    && LT_POS(curbuf->b_op_start_orig, t1))
+  	oap->start = curbuf->b_op_start_orig;
+  
+-     /* if indent kicked in, the firstline might have changed
+-      * but only do that, if the indent actually increased */
+-     ind_post = (colnr_T)getwhitecols_curline();
+-     if (curbuf->b_op_start.col > ind_pre && ind_post > ind_pre)
+-     {
+- 	bd.textcol += ind_post - ind_pre;
+- 	bd.start_vcol += ind_post - ind_pre;
+-     }
+      /* If user has moved off this line, we don't know what to do, so do
+       * nothing.
+       * Also don't repeat the insert when Insert mode ended with CTRL-C. */
+--- 2597,2602 ----
+***************
+*** 2615,2620 ****
+--- 2607,2621 ----
+      {
+  	struct block_def	bd2;
+  
++ 	/* If indent kicked in, the firstline might have changed
++ 	 * but only do that, if the indent actually increased. */
++ 	ind_post = (colnr_T)getwhitecols_curline();
++ 	if (curbuf->b_op_start.col > ind_pre && ind_post > ind_pre)
++ 	{
++ 	    bd.textcol += ind_post - ind_pre;
++ 	    bd.start_vcol += ind_post - ind_pre;
++ 	}
++ 
+  	/* The user may have moved the cursor before inserting something, try
+  	 * to adjust the block for that. */
+  	if (oap->start.lnum == curbuf->b_op_start_orig.lnum && !bd.is_MAX)
+*** ../vim-8.0.1042/src/version.c	2017-09-02 20:40:31.895328987 +0200
+--- src/version.c	2017-09-02 23:20:51.219695277 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1043,
+  /**/
+
+-- 
+"I simultaneously try to keep my head in the clouds and my feet on the
+ground.  Sometimes it's a stretch, though."              -- Larry Wall
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

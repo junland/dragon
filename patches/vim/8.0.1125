@@ -1,0 +1,138 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1125
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1125
+Problem:    Wrong window height when splitting window with window toolbar.
+Solution:   Add or subtract the window toolbar height.
+Files:      src/window.c
+
+
+*** ../vim-8.0.1124/src/window.c	2017-09-17 23:02:17.176074400 +0200
+--- src/window.c	2017-09-18 20:27:19.566268119 +0200
+***************
+*** 1098,1111 ****
+  	{
+  	    /* set height and row of new window to full height */
+  	    wp->w_winrow = tabline_height();
+! 	    win_new_height(wp, curfrp->fr_height - (p_ls > 0));
+  	    wp->w_status_height = (p_ls > 0);
+  	}
+  	else
+  	{
+  	    /* height and row of new window is same as current window */
+  	    wp->w_winrow = oldwin->w_winrow;
+! 	    win_new_height(wp, oldwin->w_height);
+  	    wp->w_status_height = oldwin->w_status_height;
+  	}
+  	frp->fr_height = curfrp->fr_height;
+--- 1098,1119 ----
+  	{
+  	    /* set height and row of new window to full height */
+  	    wp->w_winrow = tabline_height();
+! 	    win_new_height(wp, curfrp->fr_height - (p_ls > 0)
+! #ifdef FEAT_MENU
+! 		    - wp->w_winbar_height
+! #endif
+! 		    );
+  	    wp->w_status_height = (p_ls > 0);
+  	}
+  	else
+  	{
+  	    /* height and row of new window is same as current window */
+  	    wp->w_winrow = oldwin->w_winrow;
+! 	    win_new_height(wp, oldwin->w_height
+! #ifdef FEAT_MENU
+! 		    + oldwin->w_winbar_height
+! #endif
+! 		    );
+  	    wp->w_status_height = oldwin->w_status_height;
+  	}
+  	frp->fr_height = curfrp->fr_height;
+***************
+*** 1163,1169 ****
+  	win_new_height(wp, new_size);
+  	if (flags & (WSP_TOP | WSP_BOT))
+  	{
+! 	    int new_fr_height = curfrp->fr_height - new_size;
+  
+  	    if (!((flags & WSP_BOT) && p_ls == 0))
+  		new_fr_height -= STATUS_HEIGHT;
+--- 1171,1181 ----
+  	win_new_height(wp, new_size);
+  	if (flags & (WSP_TOP | WSP_BOT))
+  	{
+! 	    int new_fr_height = curfrp->fr_height - new_size
+! #ifdef FEAT_MENU
+! 		+ wp->w_winbar_height
+! #endif
+! 		;
+  
+  	    if (!((flags & WSP_BOT) && p_ls == 0))
+  		new_fr_height -= STATUS_HEIGHT;
+***************
+*** 2855,2861 ****
+      {
+  	/* Simple case: just one window. */
+  	win_new_height(topfrp->fr_win,
+! 				    height - topfrp->fr_win->w_status_height);
+      }
+      else if (topfrp->fr_layout == FR_ROW)
+      {
+--- 2867,2877 ----
+      {
+  	/* Simple case: just one window. */
+  	win_new_height(topfrp->fr_win,
+! 				    height - topfrp->fr_win->w_status_height
+! #ifdef FEAT_MENU
+! 				    - topfrp->fr_win->w_winbar_height
+! #endif
+! 				    );
+      }
+      else if (topfrp->fr_layout == FR_ROW)
+      {
+***************
+*** 3201,3207 ****
+      static void
+  frame_fix_height(win_T *wp)
+  {
+!     wp->w_frame->fr_height = wp->w_height + wp->w_status_height;
+  }
+  
+  /*
+--- 3217,3227 ----
+      static void
+  frame_fix_height(win_T *wp)
+  {
+!     wp->w_frame->fr_height = wp->w_height + wp->w_status_height
+! #ifdef FEAT_MENU
+! 	+ wp->w_winbar_height
+! #endif
+! 	;
+  }
+  
+  /*
+*** ../vim-8.0.1124/src/version.c	2017-09-18 20:00:58.495584481 +0200
+--- src/version.c	2017-09-18 20:08:28.484924406 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1125,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+151. You find yourself engaged to someone you've never actually met,
+     except through e-mail.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

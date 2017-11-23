@@ -1,0 +1,222 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0776
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0776
+Problem:    Function prototypes missing without the quickfix feature. (Tony
+            Mechelynck)
+Solution:   Move non-quickfix functions to buffer.c.
+Files:      src/buffer.c, src/proto/buffer.pro, src/quickfix.c,
+            src/proto/quickfix.pro
+
+
+*** ../vim-8.0.0775/src/buffer.c	2017-07-24 21:44:38.768901080 +0200
+--- src/buffer.c	2017-07-25 23:28:09.299790659 +0200
+***************
+*** 5650,5655 ****
+--- 5650,5722 ----
+  }
+  #endif
+  
++ /*
++  * Return TRUE if "buf" is the quickfix buffer.
++  */
++     int
++ bt_quickfix(buf_T *buf)
++ {
++     return buf != NULL && buf->b_p_bt[0] == 'q';
++ }
++ 
++ /*
++  * Return TRUE if "buf" is a terminal buffer.
++  */
++     int
++ bt_terminal(buf_T *buf)
++ {
++     return buf != NULL && buf->b_p_bt[0] == 't';
++ }
++ 
++ /*
++  * Return TRUE if "buf" is a "nofile", "acwrite" or "terminal" buffer.
++  * This means the buffer name is not a file name.
++  */
++     int
++ bt_nofile(buf_T *buf)
++ {
++     return buf != NULL && ((buf->b_p_bt[0] == 'n' && buf->b_p_bt[2] == 'f')
++ 	    || buf->b_p_bt[0] == 'a'
++ 	    || buf->b_p_bt[0] == 't');
++ }
++ 
++ /*
++  * Return TRUE if "buf" is a "nowrite", "nofile" or "terminal" buffer.
++  */
++     int
++ bt_dontwrite(buf_T *buf)
++ {
++     return buf != NULL && (buf->b_p_bt[0] == 'n' || buf->b_p_bt[0] == 't');
++ }
++ 
++     int
++ bt_dontwrite_msg(buf_T *buf)
++ {
++     if (bt_dontwrite(buf))
++     {
++ 	EMSG(_("E382: Cannot write, 'buftype' option is set"));
++ 	return TRUE;
++     }
++     return FALSE;
++ }
++ 
++ /*
++  * Return TRUE if the buffer should be hidden, according to 'hidden', ":hide"
++  * and 'bufhidden'.
++  */
++     int
++ buf_hide(buf_T *buf)
++ {
++     /* 'bufhidden' overrules 'hidden' and ":hide", check it first */
++     switch (buf->b_p_bh[0])
++     {
++ 	case 'u':		    /* "unload" */
++ 	case 'w':		    /* "wipe" */
++ 	case 'd': return FALSE;	    /* "delete" */
++ 	case 'h': return TRUE;	    /* "hide" */
++     }
++     return (p_hid || cmdmod.hide);
++ }
+  
+  /*
+   * Return special buffer name.
+*** ../vim-8.0.0775/src/proto/buffer.pro	2016-09-12 13:03:57.000000000 +0200
+--- src/proto/buffer.pro	2017-07-25 23:29:31.243203583 +0200
+***************
+*** 53,58 ****
+--- 53,64 ----
+  void do_modelines(int flags);
+  int read_viminfo_bufferlist(vir_T *virp, int writing);
+  void write_viminfo_bufferlist(FILE *fp);
++ int bt_quickfix(buf_T *buf);
++ int bt_terminal(buf_T *buf);
++ int bt_nofile(buf_T *buf);
++ int bt_dontwrite(buf_T *buf);
++ int bt_dontwrite_msg(buf_T *buf);
++ int buf_hide(buf_T *buf);
+  char_u *buf_spname(buf_T *buf);
+  int find_win_for_buf(buf_T *buf, win_T **wp, tabpage_T **tp);
+  void buf_addsign(buf_T *buf, int id, linenr_T lnum, int typenr);
+*** ../vim-8.0.0775/src/quickfix.c	2017-07-23 19:50:39.032922776 +0200
+--- src/quickfix.c	2017-07-25 23:27:57.791873116 +0200
+***************
+*** 5526,5597 ****
+  }
+  
+  #endif /* FEAT_QUICKFIX */
+- 
+- /*
+-  * Return TRUE if "buf" is the quickfix buffer.
+-  */
+-     int
+- bt_quickfix(buf_T *buf)
+- {
+-     return buf != NULL && buf->b_p_bt[0] == 'q';
+- }
+- 
+- /*
+-  * Return TRUE if "buf" is a terminal buffer.
+-  */
+-     int
+- bt_terminal(buf_T *buf)
+- {
+-     return buf != NULL && buf->b_p_bt[0] == 't';
+- }
+- 
+- /*
+-  * Return TRUE if "buf" is a "nofile", "acwrite" or "terminal" buffer.
+-  * This means the buffer name is not a file name.
+-  */
+-     int
+- bt_nofile(buf_T *buf)
+- {
+-     return buf != NULL && ((buf->b_p_bt[0] == 'n' && buf->b_p_bt[2] == 'f')
+- 	    || buf->b_p_bt[0] == 'a'
+- 	    || buf->b_p_bt[0] == 't');
+- }
+- 
+- /*
+-  * Return TRUE if "buf" is a "nowrite", "nofile" or "terminal" buffer.
+-  */
+-     int
+- bt_dontwrite(buf_T *buf)
+- {
+-     return buf != NULL && (buf->b_p_bt[0] == 'n' || buf->b_p_bt[0] == 't');
+- }
+- 
+-     int
+- bt_dontwrite_msg(buf_T *buf)
+- {
+-     if (bt_dontwrite(buf))
+-     {
+- 	EMSG(_("E382: Cannot write, 'buftype' option is set"));
+- 	return TRUE;
+-     }
+-     return FALSE;
+- }
+- 
+- /*
+-  * Return TRUE if the buffer should be hidden, according to 'hidden', ":hide"
+-  * and 'bufhidden'.
+-  */
+-     int
+- buf_hide(buf_T *buf)
+- {
+-     /* 'bufhidden' overrules 'hidden' and ":hide", check it first */
+-     switch (buf->b_p_bh[0])
+-     {
+- 	case 'u':		    /* "unload" */
+- 	case 'w':		    /* "wipe" */
+- 	case 'd': return FALSE;	    /* "delete" */
+- 	case 'h': return TRUE;	    /* "hide" */
+-     }
+-     return (p_hid || cmdmod.hide);
+- }
+- 
+--- 5526,5528 ----
+*** ../vim-8.0.0775/src/proto/quickfix.pro	2017-07-23 19:50:39.032922776 +0200
+--- src/proto/quickfix.pro	2017-07-25 23:29:27.851227882 +0200
+***************
+*** 28,37 ****
+  void ex_cbuffer(exarg_T *eap);
+  void ex_cexpr(exarg_T *eap);
+  void ex_helpgrep(exarg_T *eap);
+- int bt_quickfix(buf_T *buf);
+- int bt_terminal(buf_T *buf);
+- int bt_nofile(buf_T *buf);
+- int bt_dontwrite(buf_T *buf);
+- int bt_dontwrite_msg(buf_T *buf);
+- int buf_hide(buf_T *buf);
+  /* vim: set ft=c : */
+--- 28,31 ----
+*** ../vim-8.0.0775/src/version.c	2017-07-25 23:08:43.492170363 +0200
+--- src/version.c	2017-07-25 23:29:24.463252153 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     776,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+252. You vote for foreign officials.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

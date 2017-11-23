@@ -1,0 +1,135 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0900
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0900
+Problem:    :tab options doesn't open a new tab page. (Aviany)
+Solution:   Support the :tab modifier. (closes #1960)
+Files:      src/ex_cmds2.c, runtime/optwin.vim
+
+
+*** ../vim-8.0.0899/src/ex_cmds2.c	2017-08-03 22:44:51.042797694 +0200
+--- src/ex_cmds2.c	2017-08-11 16:58:55.797634249 +0200
+***************
+*** 3749,3754 ****
+--- 3749,3755 ----
+  ex_options(
+      exarg_T	*eap UNUSED)
+  {
++     vim_setenv((char_u *)"OPTWIN_CMD", (char_u *)(cmdmod.tab ? "tab" : ""));
+      cmd_source((char_u *)SYS_OPTWIN_FILE, NULL);
+  }
+  #endif
+*** ../vim-8.0.0899/runtime/optwin.vim	2017-03-06 21:44:47.063429442 +0100
+--- runtime/optwin.vim	2017-08-11 17:09:17.829138005 +0200
+***************
+*** 1,20 ****
+  " These commands create the option window.
+  "
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last Change:	2017 Mar 06
+  
+  " If there already is an option window, jump to that one.
+! if bufwinnr("option-window") > 0
+!   let s:thiswin = winnr()
+!   while 1
+!     if @% == "option-window"
+        finish
+      endif
+!     wincmd w
+!     if s:thiswin == winnr()
+!       break
+!     endif
+!   endwhile
+  endif
+  
+  " Make sure the '<' flag is not included in 'cpoptions', otherwise <CR> would
+--- 1,17 ----
+  " These commands create the option window.
+  "
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last Change:	2017 Aug 11
+  
+  " If there already is an option window, jump to that one.
+! let buf = bufnr('option-window')
+! if buf >= 0
+!   let winids = win_findbuf(buf)
+!   if len(winids) > 0
+!     if win_gotoid(winids[0]) == 1
+        finish
+      endif
+!   endif
+  endif
+  
+  " Make sure the '<' flag is not included in 'cpoptions', otherwise <CR> would
+***************
+*** 141,148 ****
+    endif
+  endwhile
+  
+! " Open the window
+! new option-window
+  setlocal ts=15 tw=0 noro buftype=nofile
+  
+  " Insert help and a "set" command for each option.
+--- 138,145 ----
+    endif
+  endwhile
+  
+! " Open the window.  $OPTWIN_CMD is set to "tab" for ":tab options".
+! exe $OPTWIN_CMD . ' new option-window'
+  setlocal ts=15 tw=0 noro buftype=nofile
+  
+  " Insert help and a "set" command for each option.
+***************
+*** 506,511 ****
+--- 503,516 ----
+    call append("$", "\t(local to window)")
+    call <SID>BinOptionL("crb")
+  endif
++ if has("terminal")
++   call append("$", "termsize\tsize of a terminal window")
++   call append("$", "\t(local to window)")
++   call <SID>OptionL("tms")
++   call append("$", "termkey\tkey that precedes Vim commands in a terminal window")
++   call append("$", "\t(local to window)")
++   call <SID>OptionL("tk")
++ endif
+  
+  
+  call <SID>Header("multiple tab pages")
+***************
+*** 1296,1301 ****
+--- 1301,1308 ----
+  if has("viminfo")
+    call append("$", "viminfo\tlist that specifies what to write in the viminfo file")
+    call <SID>OptionG("vi", &vi)
++   call append("$", "viminfofile\tfile name used for the viminfo file")
++   call <SID>OptionG("vif", &vif)
+  endif
+  if has("quickfix")
+    call append("$", "bufhidden\twhat happens with a buffer when it's no longer in a window")
+*** ../vim-8.0.0899/src/version.c	2017-08-11 16:31:50.329234432 +0200
+--- src/version.c	2017-08-11 17:10:32.500598249 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     900,
+  /**/
+
+
+-- 
+Men may not be seen publicly in any kind of strapless gown.
+		[real standing law in Florida, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

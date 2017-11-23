@@ -1,0 +1,73 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1227
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1227
+Problem:    Undefined left shift in readfile(). (Brian 'geeknik' Carpenter)
+Solution:   Add cast to unsigned. (Dominique Pelle, closes #2253)
+Files:      src/fileio.c
+
+
+*** ../vim-8.0.1226/src/fileio.c	2017-10-19 18:35:46.094557713 +0200
+--- src/fileio.c	2017-10-27 22:13:04.947264450 +0200
+***************
+*** 1956,1972 ****
+  		    {
+  			if (fio_flags & FIO_ENDIAN_L)
+  			{
+! 			    u8c = (*--p << 24);
+! 			    u8c += (*--p << 16);
+! 			    u8c += (*--p << 8);
+  			    u8c += *--p;
+  			}
+  			else	/* big endian */
+  			{
+  			    u8c = *--p;
+! 			    u8c += (*--p << 8);
+! 			    u8c += (*--p << 16);
+! 			    u8c += (*--p << 24);
+  			}
+  		    }
+  		    else    /* UTF-8 */
+--- 1956,1972 ----
+  		    {
+  			if (fio_flags & FIO_ENDIAN_L)
+  			{
+! 			    u8c = (unsigned)*--p << 24;
+! 			    u8c += (unsigned)*--p << 16;
+! 			    u8c += (unsigned)*--p << 8;
+  			    u8c += *--p;
+  			}
+  			else	/* big endian */
+  			{
+  			    u8c = *--p;
+! 			    u8c += (unsigned)*--p << 8;
+! 			    u8c += (unsigned)*--p << 16;
+! 			    u8c += (unsigned)*--p << 24;
+  			}
+  		    }
+  		    else    /* UTF-8 */
+*** ../vim-8.0.1226/src/version.c	2017-10-27 01:34:55.093306847 +0200
+--- src/version.c	2017-10-27 22:14:50.206524087 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1227,
+  /**/
+
+-- 
+TALL KNIGHT: When you have found the shrubbery, then you must cut down the
+             mightiest tree in the forest ... with a herring.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

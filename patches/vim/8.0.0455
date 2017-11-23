@@ -1,0 +1,81 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0455
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0455
+Problem:    The mode test may hang in Test_mode(). (Michael Soyka)
+Solution:   Set 'complete' to only search the current buffer (as suggested by
+            Michael)
+Files:      src/testdir/test_functions.vim
+
+
+*** ../vim-8.0.0454/src/testdir/test_functions.vim	2017-03-09 12:09:27.188601005 +0100
+--- src/testdir/test_functions.vim	2017-03-13 20:32:34.603704490 +0100
+***************
+*** 313,327 ****
+  
+  " Tests for the mode() function
+  let current_modes = ''
+! func! Save_mode()
+    let g:current_modes = mode(0) . '-' . mode(1)
+    return ''
+  endfunc
+  
+! func! Test_mode()
+    new
+    call append(0, ["Blue Ball Black", "Brown Band Bowl", ""])
+  
+    inoremap <F2> <C-R>=Save_mode()<CR>
+  
+    normal! 3G
+--- 313,330 ----
+  
+  " Tests for the mode() function
+  let current_modes = ''
+! func Save_mode()
+    let g:current_modes = mode(0) . '-' . mode(1)
+    return ''
+  endfunc
+  
+! func Test_mode()
+    new
+    call append(0, ["Blue Ball Black", "Brown Band Bowl", ""])
+  
++   " Only complete from the current buffer.
++   set complete=.
++ 
+    inoremap <F2> <C-R>=Save_mode()<CR>
+  
+    normal! 3G
+***************
+*** 430,435 ****
+--- 433,439 ----
+  
+    bwipe!
+    iunmap <F2>
++   set complete&
+  endfunc
+  
+  func Test_getbufvar()
+*** ../vim-8.0.0454/src/version.c	2017-03-12 21:31:54.289925047 +0100
+--- src/version.c	2017-03-13 20:33:43.347225643 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     455,
+  /**/
+
+-- 
+In a world without walls and borders, who needs windows and gates?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

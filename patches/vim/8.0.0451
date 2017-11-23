@@ -1,0 +1,3033 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0451
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0451
+Problem:    Some macros are in lower case.
+Solution:   Make a few more macros upper case. Avoid lower case macros use an
+            argument twice.
+Files:      src/macros.h, src/charset.c, src/misc2.c, src/proto/misc2.pro,
+            src/edit.c, src/eval.c, src/ex_cmds.c, src/ex_cmds2.c,
+            src/ex_docmd.c, src/ex_getln.c, src/fileio.c, src/fold.c,
+            src/gui.c, src/gui_gtk.c, src/mark.c, src/memline.c, src/mbyte.c,
+            src/menu.c, src/message.c, src/misc1.c, src/ops.c, src/option.c,
+            src/os_amiga.c, src/os_mswin.c, src/os_unix.c, src/os_win32.c,
+            src/popupmnu.c, src/regexp.c, src/regexp_nfa.c, src/screen.c,
+            src/search.c, src/spell.c, src/spellfile.c, src/syntax.c,
+            src/tag.c, src/ui.c, src/undo.c, src/window.c
+
+
+*** ../vim-8.0.0450/src/macros.h	2017-03-12 18:23:35.833850172 +0100
+--- src/macros.h	2017-03-12 19:10:15.801792902 +0100
+***************
+*** 8,13 ****
+--- 8,16 ----
+  
+  /*
+   * macros.h: macro definitions for often used code
++  *
++  * Macros should be ALL_CAPS.  An exception is for where a function is
++  * replaced and an argument is not used more than once.
+   */
+  
+  /*
+***************
+*** 161,170 ****
+  #endif
+  
+  /*
+!  * vim_isbreak() is used very often if 'linebreak' is set, use a macro to make
+!  * it work fast.
+   */
+! #define vim_isbreak(c) (breakat_flags[(char_u)(c)])
+  
+  /*
+   * On VMS file names are different and require a translation.
+--- 164,173 ----
+  #endif
+  
+  /*
+!  * VIM_ISBREAK() is used very often if 'linebreak' is set, use a macro to make
+!  * it work fast.  Only works for single byte characters!
+   */
+! #define VIM_ISBREAK(c) ((c) < 256 && breakat_flags[(char_u)(c)])
+  
+  /*
+   * On VMS file names are different and require a translation.
+***************
+*** 190,198 ****
+  #  define mch_stat(n, p)	vim_stat((n), (p))
+  # else
+  #  ifdef STAT_IGNORES_SLASH
+!     /* On Solaris stat() accepts "file/" as if it was "file".  Return -1 if
+!      * the name ends in "/" and it's not a directory. */
+! #   define mch_stat(n, p)	(illegal_slash(n) ? -1 : stat((n), (p)))
+  #  else
+  #   define mch_stat(n, p)	stat((n), (p))
+  #  endif
+--- 193,199 ----
+  #  define mch_stat(n, p)	vim_stat((n), (p))
+  # else
+  #  ifdef STAT_IGNORES_SLASH
+! #   define mch_stat(n, p)	vim_stat((n), (p))
+  #  else
+  #   define mch_stat(n, p)	stat((n), (p))
+  #  endif
+***************
+*** 258,279 ****
+  #endif
+  
+  /*
+!  * mb_ptr_adv(): advance a pointer to the next character, taking care of
+   * multi-byte characters if needed.
+!  * mb_ptr_back(): backup a pointer to the previous character, taking care of
+   * multi-byte characters if needed.
+   * MB_COPY_CHAR(f, t): copy one char from "f" to "t" and advance the pointers.
+   * PTR2CHAR(): get character from pointer.
+   */
+  #ifdef FEAT_MBYTE
+  /* Get the length of the character p points to */
+! # define MB_PTR2LEN(p)		(has_mbyte ? (*mb_ptr2len)(p) : 1)
+  /* Advance multi-byte pointer, skip over composing chars. */
+! # define mb_ptr_adv(p)	    p += has_mbyte ? (*mb_ptr2len)(p) : 1
+  /* Advance multi-byte pointer, do not skip over composing chars. */
+! # define mb_cptr_adv(p)	    p += enc_utf8 ? utf_ptr2len(p) : has_mbyte ? (*mb_ptr2len)(p) : 1
+  /* Backup multi-byte pointer. Only use with "p" > "s" ! */
+! # define mb_ptr_back(s, p)  p -= has_mbyte ? ((*mb_head_off)(s, p - 1) + 1) : 1
+  /* get length of multi-byte char, not including composing chars */
+  # define MB_CPTR2LEN(p)	    (enc_utf8 ? utf_ptr2len(p) : (*mb_ptr2len)(p))
+  
+--- 259,280 ----
+  #endif
+  
+  /*
+!  * MB_PTR_ADV(): advance a pointer to the next character, taking care of
+   * multi-byte characters if needed.
+!  * MB_PTR_BACK(): backup a pointer to the previous character, taking care of
+   * multi-byte characters if needed.
+   * MB_COPY_CHAR(f, t): copy one char from "f" to "t" and advance the pointers.
+   * PTR2CHAR(): get character from pointer.
+   */
+  #ifdef FEAT_MBYTE
+  /* Get the length of the character p points to */
+! # define MB_PTR2LEN(p)	    (has_mbyte ? (*mb_ptr2len)(p) : 1)
+  /* Advance multi-byte pointer, skip over composing chars. */
+! # define MB_PTR_ADV(p)	    p += has_mbyte ? (*mb_ptr2len)(p) : 1
+  /* Advance multi-byte pointer, do not skip over composing chars. */
+! # define MB_CPTR_ADV(p)	    p += enc_utf8 ? utf_ptr2len(p) : has_mbyte ? (*mb_ptr2len)(p) : 1
+  /* Backup multi-byte pointer. Only use with "p" > "s" ! */
+! # define MB_PTR_BACK(s, p)  p -= has_mbyte ? ((*mb_head_off)(s, p - 1) + 1) : 1
+  /* get length of multi-byte char, not including composing chars */
+  # define MB_CPTR2LEN(p)	    (enc_utf8 ? utf_ptr2len(p) : (*mb_ptr2len)(p))
+  
+***************
+*** 284,292 ****
+  #else
+  # define MB_PTR2LEN(p)		1
+  # define MB_CPTR2LEN(p)		1
+! # define mb_ptr_adv(p)		++p
+! # define mb_cptr_adv(p)		++p
+! # define mb_ptr_back(s, p)	--p
+  # define MB_COPY_CHAR(f, t)	*t++ = *f++
+  # define MB_CHARLEN(p)		STRLEN(p)
+  # define MB_CHAR2LEN(c)		1
+--- 285,293 ----
+  #else
+  # define MB_PTR2LEN(p)		1
+  # define MB_CPTR2LEN(p)		1
+! # define MB_PTR_ADV(p)		++p
+! # define MB_CPTR_ADV(p)		++p
+! # define MB_PTR_BACK(s, p)	--p
+  # define MB_COPY_CHAR(f, t)	*t++ = *f++
+  # define MB_CHARLEN(p)		STRLEN(p)
+  # define MB_CHAR2LEN(c)		1
+*** ../vim-8.0.0450/src/charset.c	2017-03-12 18:23:35.833850172 +0100
+--- src/charset.c	2017-03-12 18:58:10.618935449 +0100
+***************
+*** 870,876 ****
+      char_u	*s;
+  
+      for (s = line; *s != NUL && (len == MAXCOL || s < line + len);
+! 								mb_ptr_adv(s))
+  	col += win_lbr_chartabsize(wp, line, s, col, NULL);
+      return (int)col;
+  }
+--- 870,876 ----
+      char_u	*s;
+  
+      for (s = line; *s != NUL && (len == MAXCOL || s < line + len);
+! 								MB_PTR_ADV(s))
+  	col += win_lbr_chartabsize(wp, line, s, col, NULL);
+      return (int)col;
+  }
+***************
+*** 1026,1032 ****
+      int		retval;
+  
+      retval = lbr_chartabsize(line, *s, col);
+!     mb_ptr_adv(*s);
+      return retval;
+  }
+  
+--- 1026,1032 ----
+      int		retval;
+  
+      retval = lbr_chartabsize(line, *s, col);
+!     MB_PTR_ADV(*s);
+      return retval;
+  }
+  
+***************
+*** 1089,1096 ****
+       * needs a break here
+       */
+      if (wp->w_p_lbr
+! 	    && vim_isbreak(c)
+! 	    && !vim_isbreak(s[1])
+  	    && wp->w_p_wrap
+  # ifdef FEAT_WINDOWS
+  	    && wp->w_width != 0
+--- 1089,1096 ----
+       * needs a break here
+       */
+      if (wp->w_p_lbr
+! 	    && VIM_ISBREAK(c)
+! 	    && !VIM_ISBREAK(s[1])
+  	    && wp->w_p_wrap
+  # ifdef FEAT_WINDOWS
+  	    && wp->w_width != 0
+***************
+*** 1115,1126 ****
+  	for (;;)
+  	{
+  	    ps = s;
+! 	    mb_ptr_adv(s);
+  	    c = *s;
+  	    if (!(c != NUL
+! 		    && (vim_isbreak(c)
+! 			|| (!vim_isbreak(c)
+! 			    && (col2 == col || !vim_isbreak(*ps))))))
+  		break;
+  
+  	    col2 += win_chartabsize(wp, s, col2);
+--- 1115,1126 ----
+  	for (;;)
+  	{
+  	    ps = s;
+! 	    MB_PTR_ADV(s);
+  	    c = *s;
+  	    if (!(c != NUL
+! 		    && (VIM_ISBREAK(c)
+! 			|| (!VIM_ISBREAK(c)
+! 			    && (col2 == col || !VIM_ISBREAK(*ps))))))
+  		break;
+  
+  	    col2 += win_chartabsize(wp, s, col2);
+***************
+*** 1369,1375 ****
+  		break;
+  
+  	    vcol += incr;
+! 	    mb_ptr_adv(ptr);
+  	}
+      }
+      else
+--- 1369,1375 ----
+  		break;
+  
+  	    vcol += incr;
+! 	    MB_PTR_ADV(ptr);
+  	}
+      }
+      else
+***************
+*** 1390,1396 ****
+  		break;
+  
+  	    vcol += incr;
+! 	    mb_ptr_adv(ptr);
+  	}
+      }
+      if (start != NULL)
+--- 1390,1396 ----
+  		break;
+  
+  	    vcol += incr;
+! 	    MB_PTR_ADV(ptr);
+  	}
+      }
+      if (start != NULL)
+*** ../vim-8.0.0450/src/misc2.c	2017-03-01 20:40:35.623484230 +0100
+--- src/misc2.c	2017-03-12 19:01:38.041461206 +0100
+***************
+*** 196,202 ****
+  	    /* Count a tab for what it's worth (if list mode not on) */
+  #ifdef FEAT_LINEBREAK
+  	    csize = win_lbr_chartabsize(curwin, line, ptr, col, &head);
+! 	    mb_ptr_adv(ptr);
+  #else
+  	    csize = lbr_chartabsize_adv(line, &ptr, col);
+  #endif
+--- 196,202 ----
+  	    /* Count a tab for what it's worth (if list mode not on) */
+  #ifdef FEAT_LINEBREAK
+  	    csize = win_lbr_chartabsize(curwin, line, ptr, col, &head);
+! 	    MB_PTR_ADV(ptr);
+  #else
+  	    csize = lbr_chartabsize_adv(line, &ptr, col);
+  #endif
+***************
+*** 1418,1424 ****
+  
+      /* First count the number of extra bytes required. */
+      length = (unsigned)STRLEN(string) + 3;  /* two quotes and a trailing NUL */
+!     for (p = string; *p != NUL; mb_ptr_adv(p))
+      {
+  # ifdef WIN32
+  	if (!p_ssl)
+--- 1418,1424 ----
+  
+      /* First count the number of extra bytes required. */
+      length = (unsigned)STRLEN(string) + 3;  /* two quotes and a trailing NUL */
+!     for (p = string; *p != NUL; MB_PTR_ADV(p))
+      {
+  # ifdef WIN32
+  	if (!p_ssl)
+***************
+*** 1950,1956 ****
+      {
+  	if (*p == c)
+  	    retval = p;
+! 	mb_ptr_adv(p);
+      }
+      return retval;
+  }
+--- 1950,1956 ----
+      {
+  	if (*p == c)
+  	    retval = p;
+! 	MB_PTR_ADV(p);
+      }
+      return retval;
+  }
+***************
+*** 1971,1977 ****
+      {
+  	if (vim_strchr(charset, *s) != NULL)
+  	    return s;
+! 	mb_ptr_adv(s);
+      }
+      return NULL;
+  }
+--- 1971,1977 ----
+      {
+  	if (vim_strchr(charset, *s) != NULL)
+  	    return s;
+! 	MB_PTR_ADV(s);
+      }
+      return NULL;
+  }
+***************
+*** 3364,3370 ****
+   * Used for systems where stat() ignores a trailing slash on a file name.
+   * The Vim code assumes a trailing slash is only ignored for a directory.
+   */
+!     int
+  illegal_slash(char *name)
+  {
+      if (name[0] == NUL)
+--- 3364,3370 ----
+   * Used for systems where stat() ignores a trailing slash on a file name.
+   * The Vim code assumes a trailing slash is only ignored for a directory.
+   */
+!     static int
+  illegal_slash(char *name)
+  {
+      if (name[0] == NUL)
+***************
+*** 3375,3380 ****
+--- 3375,3391 ----
+  	return FALSE;	    /* trailing slash for a directory */
+      return TRUE;
+  }
++ 
++ /*
++  * Special implementation of mch_stat() for Solaris.
++  */
++     int
++ vim_stat(const char *name, stat_T *stp)
++ {
++     /* On Solaris stat() accepts "file/" as if it was "file".  Return -1 if
++      * the name ends in "/" and it's not a directory. */
++     return illegal_slash(n) ? -1 : stat(n, p);
++ }
+  #endif
+  
+  #if defined(CURSOR_SHAPE) || defined(PROTO)
+*** ../vim-8.0.0450/src/proto/misc2.pro	2017-01-26 22:51:51.997875762 +0100
+--- src/proto/misc2.pro	2017-03-12 18:55:52.979925860 +0100
+***************
+*** 83,89 ****
+  int after_pathsep(char_u *b, char_u *p);
+  int same_directory(char_u *f1, char_u *f2);
+  int vim_chdirfile(char_u *fname);
+! int illegal_slash(char *name);
+  char_u *parse_shape_opt(int what);
+  int get_shape_idx(int mouse);
+  void update_mouseshape(int shape_idx);
+--- 83,89 ----
+  int after_pathsep(char_u *b, char_u *p);
+  int same_directory(char_u *f1, char_u *f2);
+  int vim_chdirfile(char_u *fname);
+! int vim_stat(const char *name, stat_T *stp);
+  char_u *parse_shape_opt(int what);
+  int get_shape_idx(int mouse);
+  void update_mouseshape(int shape_idx);
+*** ../vim-8.0.0450/src/edit.c	2017-03-12 18:23:35.841850113 +0100
+--- src/edit.c	2017-03-12 19:07:47.134846783 +0100
+***************
+*** 857,863 ****
+  
+  		    if (str != NULL)
+  		    {
+! 			for (p = str; *p != NUL; mb_ptr_adv(p))
+  			    ins_compl_addleader(PTR2CHAR(p));
+  			vim_free(str);
+  		    }
+--- 857,863 ----
+  
+  		    if (str != NULL)
+  		    {
+! 			for (p = str; *p != NUL; MB_PTR_ADV(p))
+  			    ins_compl_addleader(PTR2CHAR(p));
+  			vim_free(str);
+  		    }
+***************
+*** 1492,1498 ****
+  		    if (*str != NUL && stop_arrow() != FAIL)
+  		    {
+  			/* Insert the new value of v:char literally. */
+! 			for (p = str; *p != NUL; mb_ptr_adv(p))
+  			{
+  			    c = PTR2CHAR(p);
+  			    if (c == CAR || c == K_KENTER || c == NL)
+--- 1492,1498 ----
+  		    if (*str != NUL && stop_arrow() != FAIL)
+  		    {
+  			/* Insert the new value of v:char literally. */
+! 			for (p = str; *p != NUL; MB_PTR_ADV(p))
+  			{
+  			    c = PTR2CHAR(p);
+  			    if (c == CAR || c == K_KENTER || c == NL)
+***************
+*** 2403,2409 ****
+  	    actual_len = 0;
+  	    while (*p != NUL)
+  	    {
+! 		mb_ptr_adv(p);
+  		++actual_len;
+  	    }
+  	}
+--- 2403,2409 ----
+  	    actual_len = 0;
+  	    while (*p != NUL)
+  	    {
+! 		MB_PTR_ADV(p);
+  		++actual_len;
+  	    }
+  	}
+***************
+*** 2419,2425 ****
+  	    actual_compl_length = 0;
+  	    while (*p != NUL)
+  	    {
+! 		mb_ptr_adv(p);
+  		++actual_compl_length;
+  	    }
+  	}
+--- 2419,2425 ----
+  	    actual_compl_length = 0;
+  	    while (*p != NUL)
+  	    {
+! 		MB_PTR_ADV(p);
+  		++actual_compl_length;
+  	    }
+  	}
+***************
+*** 2722,2729 ****
+  #ifdef FEAT_MBYTE
+  	    if (has_mbyte)
+  	    {
+! 		mb_ptr_adv(p);
+! 		mb_ptr_adv(s);
+  	    }
+  	    else
+  #endif
+--- 2722,2729 ----
+  #ifdef FEAT_MBYTE
+  	    if (has_mbyte)
+  	    {
+! 		MB_PTR_ADV(p);
+! 		MB_PTR_ADV(s);
+  	    }
+  	    else
+  #endif
+***************
+*** 3474,3480 ****
+  
+      line = ml_get_curline();
+      p = line + curwin->w_cursor.col;
+!     mb_ptr_back(line, p);
+  
+      /* Stop completion when the whole word was deleted.  For Omni completion
+       * allow the word to be deleted, we won't match everything.
+--- 3474,3480 ----
+  
+      line = ml_get_curline();
+      p = line + curwin->w_cursor.col;
+!     MB_PTR_BACK(line, p);
+  
+      /* Stop completion when the whole word was deleted.  For Omni completion
+       * allow the word to be deleted, we won't match everything.
+***************
+*** 4023,4029 ****
+  	if (len > 0)
+  	    len -= (*mb_head_off)(p, p + len);
+  #endif
+! 	for (p += len; *p != NUL; mb_ptr_adv(p))
+  	    AppendCharToRedobuff(K_BS);
+      }
+      else
+--- 4023,4029 ----
+  	if (len > 0)
+  	    len -= (*mb_head_off)(p, p + len);
+  #endif
+! 	for (p += len; *p != NUL; MB_PTR_ADV(p))
+  	    AppendCharToRedobuff(K_BS);
+      }
+      else
+***************
+*** 5336,5344 ****
+  	    {
+  		char_u	*p = line + startcol;
+  
+! 		mb_ptr_back(line, p);
+  		while (p > line && vim_isfilec(PTR2CHAR(p)))
+! 		    mb_ptr_back(line, p);
+  		if (p == line && vim_isfilec(PTR2CHAR(p)))
+  		    startcol = 0;
+  		else
+--- 5336,5344 ----
+  	    {
+  		char_u	*p = line + startcol;
+  
+! 		MB_PTR_BACK(line, p);
+  		while (p > line && vim_isfilec(PTR2CHAR(p)))
+! 		    MB_PTR_BACK(line, p);
+  		if (p == line && vim_isfilec(PTR2CHAR(p)))
+  		    startcol = 0;
+  		else
+*** ../vim-8.0.0450/src/eval.c	2017-02-25 21:39:13.300021243 +0100
+--- src/eval.c	2017-03-12 19:08:01.706743504 +0100
+***************
+*** 2551,2557 ****
+  	    for (p = arg + STRLEN(arg); p >= arg; )
+  	    {
+  		xp->xp_pattern = p;
+! 		mb_ptr_back(arg, p);
+  		if (vim_iswhite(*p))
+  		    break;
+  	    }
+--- 2551,2557 ----
+  	    for (p = arg + STRLEN(arg); p >= arg; )
+  	    {
+  		xp->xp_pattern = p;
+! 		MB_PTR_BACK(arg, p);
+  		if (vim_iswhite(*p))
+  		    break;
+  	    }
+***************
+*** 4814,4820 ****
+      /*
+       * Find the end of the string, skipping backslashed characters.
+       */
+!     for (p = *arg + 1; *p != NUL && *p != '"'; mb_ptr_adv(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	{
+--- 4814,4820 ----
+      /*
+       * Find the end of the string, skipping backslashed characters.
+       */
+!     for (p = *arg + 1; *p != NUL && *p != '"'; MB_PTR_ADV(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	{
+***************
+*** 4952,4958 ****
+      /*
+       * Find the end of the string, skipping ''.
+       */
+!     for (p = *arg + 1; *p != NUL; mb_ptr_adv(p))
+      {
+  	if (*p == '\'')
+  	{
+--- 4952,4958 ----
+      /*
+       * Find the end of the string, skipping ''.
+       */
+!     for (p = *arg + 1; *p != NUL; MB_PTR_ADV(p))
+      {
+  	if (*p == '\'')
+  	{
+***************
+*** 5910,5916 ****
+      if (str != NULL)
+      {
+  	len += (unsigned)STRLEN(str);
+! 	for (p = str; *p != NUL; mb_ptr_adv(p))
+  	    if (*p == '\'')
+  		++len;
+      }
+--- 5910,5916 ----
+      if (str != NULL)
+      {
+  	len += (unsigned)STRLEN(str);
+! 	for (p = str; *p != NUL; MB_PTR_ADV(p))
+  	    if (*p == '\'')
+  		++len;
+      }
+***************
+*** 6369,6380 ****
+  			|| *p == '{'
+  			|| ((flags & FNE_INCL_BR) && (*p == '[' || *p == '.'))
+  			|| mb_nest != 0
+! 			|| br_nest != 0); mb_ptr_adv(p))
+      {
+  	if (*p == '\'')
+  	{
+  	    /* skip over 'string' to avoid counting [ and ] inside it. */
+! 	    for (p = p + 1; *p != NUL && *p != '\''; mb_ptr_adv(p))
+  		;
+  	    if (*p == NUL)
+  		break;
+--- 6369,6380 ----
+  			|| *p == '{'
+  			|| ((flags & FNE_INCL_BR) && (*p == '[' || *p == '.'))
+  			|| mb_nest != 0
+! 			|| br_nest != 0); MB_PTR_ADV(p))
+      {
+  	if (*p == '\'')
+  	{
+  	    /* skip over 'string' to avoid counting [ and ] inside it. */
+! 	    for (p = p + 1; *p != NUL && *p != '\''; MB_PTR_ADV(p))
+  		;
+  	    if (*p == NUL)
+  		break;
+***************
+*** 6382,6388 ****
+  	else if (*p == '"')
+  	{
+  	    /* skip over "str\"ing" to avoid counting [ and ] inside it. */
+! 	    for (p = p + 1; *p != NUL && *p != '"'; mb_ptr_adv(p))
+  		if (*p == '\\' && p[1] != NUL)
+  		    ++p;
+  	    if (*p == NUL)
+--- 6382,6388 ----
+  	else if (*p == '"')
+  	{
+  	    /* skip over "str\"ing" to avoid counting [ and ] inside it. */
+! 	    for (p = p + 1; *p != NUL && *p != '"'; MB_PTR_ADV(p))
+  		if (*p == '\\' && p[1] != NUL)
+  		    ++p;
+  	    if (*p == NUL)
+***************
+*** 9410,9416 ****
+      /* Count up the path separators from the RHS.. so we know which part
+       * of the path to return. */
+      sepcount = 0;
+!     for (p = *fnamep; p < *fnamep + *fnamelen; mb_ptr_adv(p))
+  	if (vim_ispathsep(*p))
+  	    ++sepcount;
+  
+--- 9410,9416 ----
+      /* Count up the path separators from the RHS.. so we know which part
+       * of the path to return. */
+      sepcount = 0;
+!     for (p = *fnamep; p < *fnamep + *fnamelen; MB_PTR_ADV(p))
+  	if (vim_ispathsep(*p))
+  	    ++sepcount;
+  
+***************
+*** 9528,9534 ****
+  	}
+  
+  	/* When "/." or "/.." is used: force expansion to get rid of it. */
+! 	for (p = *fnamep; *p != NUL; mb_ptr_adv(p))
+  	{
+  	    if (vim_ispathsep(*p)
+  		    && p[1] == '.'
+--- 9528,9534 ----
+  	}
+  
+  	/* When "/." or "/.." is used: force expansion to get rid of it. */
+! 	for (p = *fnamep; *p != NUL; MB_PTR_ADV(p))
+  	{
+  	    if (vim_ispathsep(*p)
+  		    && p[1] == '.'
+***************
+*** 9658,9664 ****
+  	*usedlen += 2;
+  	s = get_past_head(*fnamep);
+  	while (tail > s && after_pathsep(s, tail))
+! 	    mb_ptr_back(*fnamep, tail);
+  	*fnamelen = (int)(tail - *fnamep);
+  #ifdef VMS
+  	if (*fnamelen > 0)
+--- 9658,9664 ----
+  	*usedlen += 2;
+  	s = get_past_head(*fnamep);
+  	while (tail > s && after_pathsep(s, tail))
+! 	    MB_PTR_BACK(*fnamep, tail);
+  	*fnamelen = (int)(tail - *fnamep);
+  #ifdef VMS
+  	if (*fnamelen > 0)
+***************
+*** 9677,9683 ****
+  	else
+  	{
+  	    while (tail > s && !after_pathsep(s, tail))
+! 		mb_ptr_back(*fnamep, tail);
+  	}
+      }
+  
+--- 9677,9683 ----
+  	else
+  	{
+  	    while (tail > s && !after_pathsep(s, tail))
+! 		MB_PTR_BACK(*fnamep, tail);
+  	}
+      }
+  
+*** ../vim-8.0.0450/src/ex_cmds.c	2017-03-12 18:32:26.778036451 +0100
+--- src/ex_cmds.c	2017-03-12 18:58:58.438591324 +0100
+***************
+*** 4863,4869 ****
+  	    }
+  	    if (cmd[0] == '\\' && cmd[1] != 0)	/* skip escaped characters */
+  		++cmd;
+! 	    mb_ptr_adv(cmd);
+  	}
+  
+  	if (!eap->skip)
+--- 4863,4869 ----
+  	    }
+  	    if (cmd[0] == '\\' && cmd[1] != 0)	/* skip escaped characters */
+  		++cmd;
+! 	    MB_PTR_ADV(cmd);
+  	}
+  
+  	if (!eap->skip)
+*** ../vim-8.0.0450/src/ex_cmds2.c	2017-03-09 15:58:26.548668478 +0100
+--- src/ex_cmds2.c	2017-03-12 18:59:10.966502141 +0100
+***************
+*** 3526,3532 ****
+      {
+  	/* directory is not yet in 'runtimepath', add it */
+  	p4 = p3 = p2 = p1 = get_past_head(ffname);
+! 	for (p = p1; *p; mb_ptr_adv(p))
+  	    if (vim_ispathsep_nocolon(*p))
+  	    {
+  		p4 = p3; p3 = p2; p2 = p1; p1 = p;
+--- 3526,3532 ----
+      {
+  	/* directory is not yet in 'runtimepath', add it */
+  	p4 = p3 = p2 = p1 = get_past_head(ffname);
+! 	for (p = p1; *p; MB_PTR_ADV(p))
+  	    if (vim_ispathsep_nocolon(*p))
+  	    {
+  		p4 = p3; p3 = p2; p2 = p1; p1 = p;
+*** ../vim-8.0.0450/src/ex_docmd.c	2017-03-01 18:04:01.579277621 +0100
+--- src/ex_docmd.c	2017-03-12 18:59:32.042353006 +0100
+***************
+*** 3696,3702 ****
+  		    return NULL;    /* It's a comment */
+  		}
+  	    }
+! 	    mb_ptr_adv(p);
+  	}
+      }
+  
+--- 3696,3702 ----
+  		    return NULL;    /* It's a comment */
+  		}
+  	    }
+! 	    MB_PTR_ADV(p);
+  	}
+      }
+  
+***************
+*** 3720,3726 ****
+  	{
+  	    if (*p == '\\' && *(p + 1) != NUL)
+  		++p; /* skip over escaped character */
+! 	    mb_ptr_adv(p);
+  	}
+      }
+  
+--- 3720,3726 ----
+  	{
+  	    if (*p == '\\' && *(p + 1) != NUL)
+  		++p; /* skip over escaped character */
+! 	    MB_PTR_ADV(p);
+  	}
+      }
+  
+***************
+*** 3780,3786 ****
+  		    else
+  #endif
+  			len = 1;
+! 		    mb_ptr_adv(p);
+  		}
+  		if (in_quote)
+  		    bow = p;
+--- 3780,3786 ----
+  		    else
+  #endif
+  			len = 1;
+! 		    MB_PTR_ADV(p);
+  		}
+  		if (in_quote)
+  		    bow = p;
+***************
+*** 3788,3794 ****
+  		    xp->xp_pattern = p;
+  		p -= len;
+  	    }
+! 	    mb_ptr_adv(p);
+  	}
+  
+  	/*
+--- 3788,3794 ----
+  		    xp->xp_pattern = p;
+  		p -= len;
+  	    }
+! 	    MB_PTR_ADV(p);
+  	}
+  
+  	/*
+***************
+*** 4204,4210 ****
+  			    arg = p + 1;
+  			else if (*p == '\\' && *(p + 1) != NUL)
+  			    ++p; /* skip over escaped character */
+! 			mb_ptr_adv(p);
+  		    }
+  		    xp->xp_pattern = arg;
+  		}
+--- 4204,4210 ----
+  			    arg = p + 1;
+  			else if (*p == '\\' && *(p + 1) != NUL)
+  			    ++p; /* skip over escaped character */
+! 			MB_PTR_ADV(p);
+  		    }
+  		    xp->xp_pattern = arg;
+  		}
+***************
+*** 5280,5286 ****
+      p = eap->arg;
+  #endif
+  
+!     for ( ; *p; mb_ptr_adv(p))
+      {
+  	if (*p == Ctrl_V)
+  	{
+--- 5280,5286 ----
+      p = eap->arg;
+  #endif
+  
+!     for ( ; *p; MB_PTR_ADV(p))
+      {
+  	if (*p == Ctrl_V)
+  	{
+***************
+*** 5380,5386 ****
+  	    else
+  		++p;
+  	}
+! 	mb_ptr_adv(p);
+      }
+      return p;
+  }
+--- 5380,5386 ----
+  	    else
+  		++p;
+  	}
+! 	MB_PTR_ADV(p);
+      }
+      return p;
+  }
+***************
+*** 11861,11867 ****
+      if (*flagp & SSOP_SLASH)
+      {
+  	/* change all backslashes to forward slashes */
+! 	for (p = sname; *p != NUL; mb_ptr_adv(p))
+  	    if (*p == '\\')
+  		*p = '/';
+      }
+--- 11861,11867 ----
+      if (*flagp & SSOP_SLASH)
+      {
+  	/* change all backslashes to forward slashes */
+! 	for (p = sname; *p != NUL; MB_PTR_ADV(p))
+  	    if (*p == '\\')
+  		*p = '/';
+      }
+*** ../vim-8.0.0450/src/ex_getln.c	2017-03-12 18:23:35.845850084 +0100
+--- src/ex_getln.c	2017-03-12 19:08:06.822707243 +0100
+***************
+*** 4296,4302 ****
+  	    t = p;
+  	    had_sep = FALSE;
+  	}
+! 	mb_ptr_adv(p);
+      }
+      return t;
+  }
+--- 4296,4302 ----
+  	    t = p;
+  	    had_sep = FALSE;
+  	}
+! 	MB_PTR_ADV(p);
+      }
+      return t;
+  }
+***************
+*** 5370,5376 ****
+  	if (e - 4 > s && STRNICMP(e - 4, ".vim", 4) == 0)
+  	{
+  	    e -= 4;
+! 	    for (s = e; s > match; mb_ptr_back(match, s))
+  		if (s < match || vim_ispathsep(*s))
+  		    break;
+  	    ++s;
+--- 5370,5376 ----
+  	if (e - 4 > s && STRNICMP(e - 4, ".vim", 4) == 0)
+  	{
+  	    e -= 4;
+! 	    for (s = e; s > match; MB_PTR_BACK(match, s))
+  		if (s < match || vim_ispathsep(*s))
+  		    break;
+  	    ++s;
+*** ../vim-8.0.0450/src/fileio.c	2017-03-12 18:23:35.849850055 +0100
+--- src/fileio.c	2017-03-12 19:08:17.354632595 +0100
+***************
+*** 6247,6253 ****
+       * Then truncate what is after the '/', '\' or ':' to 8 characters for
+       * MSDOS and 26 characters for AMIGA, a lot more for UNIX.
+       */
+!     for (ptr = retval + fnamelen; ptr > retval; mb_ptr_back(retval, ptr))
+      {
+  	if (*ext == '.'
+  #ifdef USE_LONG_FNAME
+--- 6247,6253 ----
+       * Then truncate what is after the '/', '\' or ':' to 8 characters for
+       * MSDOS and 26 characters for AMIGA, a lot more for UNIX.
+       */
+!     for (ptr = retval + fnamelen; ptr > retval; MB_PTR_BACK(retval, ptr))
+      {
+  	if (*ext == '.'
+  #ifdef USE_LONG_FNAME
+*** ../vim-8.0.0450/src/fold.c	2017-03-12 18:23:35.849850055 +0100
+--- src/fold.c	2017-03-12 18:59:56.658178808 +0100
+***************
+*** 2064,2070 ****
+  	}
+  	else
+  	{
+! 	    mb_ptr_adv(s);
+  	}
+      }
+  }
+--- 2064,2070 ----
+  	}
+  	else
+  	{
+! 	    MB_PTR_ADV(s);
+  	}
+      }
+  }
+***************
+*** 3249,3255 ****
+  		--flp->lvl_next;
+  	}
+  	else
+! 	    mb_ptr_adv(s);
+      }
+  
+      /* The level can't go negative, must be missing a start marker. */
+--- 3249,3255 ----
+  		--flp->lvl_next;
+  	}
+  	else
+! 	    MB_PTR_ADV(s);
+      }
+  
+      /* The level can't go negative, must be missing a start marker. */
+*** ../vim-8.0.0450/src/gui.c	2017-03-12 18:23:35.849850055 +0100
+--- src/gui.c	2017-03-12 19:00:07.706100621 +0100
+***************
+*** 4500,4506 ****
+  	for (;;)
+  	{
+  	    w = chartabsize(p, col);
+! 	    mb_ptr_adv(p);
+  	    if (*p == NUL)		/* don't count the last character */
+  		break;
+  	    col += w;
+--- 4500,4506 ----
+  	for (;;)
+  	{
+  	    w = chartabsize(p, col);
+! 	    MB_PTR_ADV(p);
+  	    if (*p == NUL)		/* don't count the last character */
+  		break;
+  	    col += w;
+*** ../vim-8.0.0450/src/gui_gtk.c	2017-01-09 20:30:23.898717562 +0100
+--- src/gui_gtk.c	2017-03-12 19:00:17.666030132 +0100
+***************
+*** 1522,1528 ****
+  	    else if (*p == DLG_HOTKEY_CHAR)
+  		*p++ = '_';
+  	    else
+! 		mb_ptr_adv(p);
+  	}
+  	array[count] = NULL; /* currently not relied upon, but doesn't hurt */
+      }
+--- 1522,1528 ----
+  	    else if (*p == DLG_HOTKEY_CHAR)
+  		*p++ = '_';
+  	    else
+! 		MB_PTR_ADV(p);
+  	}
+  	array[count] = NULL; /* currently not relied upon, but doesn't hurt */
+      }
+*** ../vim-8.0.0450/src/mark.c	2017-03-12 18:23:35.849850055 +0100
+--- src/mark.c	2017-03-12 19:00:28.253955195 +0100
+***************
+*** 695,701 ****
+  	return NULL;
+      /* Truncate the line to fit it in the window */
+      len = 0;
+!     for (p = s; *p != NUL; mb_ptr_adv(p))
+      {
+  	len += ptr2cells(p);
+  	if (len >= Columns - lead_len)
+--- 695,701 ----
+  	return NULL;
+      /* Truncate the line to fit it in the window */
+      len = 0;
+!     for (p = s; *p != NUL; MB_PTR_ADV(p))
+      {
+  	len += ptr2cells(p);
+  	if (len >= Columns - lead_len)
+*** ../vim-8.0.0450/src/memline.c	2017-02-28 21:26:12.826899315 +0100
+--- src/memline.c	2017-03-12 19:00:40.953865307 +0100
+***************
+*** 2028,2034 ****
+  	if (s != NULL)
+  	{
+  	    STRCPY(s, f);
+! 	    for (d = s; *d != NUL; mb_ptr_adv(d))
+  		if (vim_ispathsep(*d))
+  		    *d = '%';
+  	    d = concat_fnames(dir, s, TRUE);
+--- 2028,2034 ----
+  	if (s != NULL)
+  	{
+  	    STRCPY(s, f);
+! 	    for (d = s; *d != NUL; MB_PTR_ADV(d))
+  		if (vim_ispathsep(*d))
+  		    *d = '%';
+  	    d = concat_fnames(dir, s, TRUE);
+***************
+*** 4015,4021 ****
+  
+  #ifdef WIN3264
+      if (retval != NULL)
+! 	for (t = gettail(retval); *t != NUL; mb_ptr_adv(t))
+  	    if (*t == ':')
+  		*t = '%';
+  #endif
+--- 4015,4021 ----
+  
+  #ifdef WIN3264
+      if (retval != NULL)
+! 	for (t = gettail(retval); *t != NUL; MB_PTR_ADV(t))
+  	    if (*t == ':')
+  		*t = '%';
+  #endif
+***************
+*** 4154,4160 ****
+  	if (buf_fname == NULL)
+  	    buf_fname = buf->b_fname;
+  	else
+! 	    for (t = gettail(buf_fname); *t != NUL; mb_ptr_adv(t))
+  		if (*t == ':')
+  		    *t = '%';
+      }
+--- 4154,4160 ----
+  	if (buf_fname == NULL)
+  	    buf_fname = buf->b_fname;
+  	else
+! 	    for (t = gettail(buf_fname); *t != NUL; MB_PTR_ADV(t))
+  		if (*t == ':')
+  		    *t = '%';
+      }
+*** ../vim-8.0.0450/src/mbyte.c	2017-01-28 16:39:15.876735290 +0100
+--- src/mbyte.c	2017-03-12 19:08:51.382391396 +0100
+***************
+*** 4047,4053 ****
+      char_u *p)
+  {
+      if (p > line)
+! 	mb_ptr_back(line, p);
+      return p;
+  }
+  
+--- 4047,4053 ----
+      char_u *p)
+  {
+      if (p > line)
+! 	MB_PTR_BACK(line, p);
+      return p;
+  }
+  
+***************
+*** 5708,5714 ****
+  
+  
+  #ifdef USE_X11R6_XIM
+- static void xim_instantiate_cb(Display *display, XPointer client_data, XPointer	call_data);
+  static void xim_destroy_cb(XIM im, XPointer client_data, XPointer call_data);
+  
+      static void
+--- 5708,5713 ----
+*** ../vim-8.0.0450/src/menu.c	2017-03-04 20:41:30.776854255 +0100
+--- src/menu.c	2017-03-12 19:00:53.449776860 +0100
+***************
+*** 152,158 ****
+  	{
+  	    if (*arg == '\\')
+  		STRMOVE(arg, arg + 1);
+! 	    mb_ptr_adv(arg);
+  	}
+  	if (*arg != NUL)
+  	{
+--- 152,158 ----
+  	{
+  	    if (*arg == '\\')
+  		STRMOVE(arg, arg + 1);
+! 	    MB_PTR_ADV(arg);
+  	}
+  	if (*arg != NUL)
+  	{
+***************
+*** 661,667 ****
+  
+  		    STRCPY(tearpath, menu_path);
+  		    idx = (int)(next_name - path_name - 1);
+! 		    for (s = tearpath; *s && s < tearpath + idx; mb_ptr_adv(s))
+  		    {
+  			if ((*s == '\\' || *s == Ctrl_V) && s[1])
+  			{
+--- 661,667 ----
+  
+  		    STRCPY(tearpath, menu_path);
+  		    idx = (int)(next_name - path_name - 1);
+! 		    for (s = tearpath; *s && s < tearpath + idx; MB_PTR_ADV(s))
+  		    {
+  			if ((*s == '\\' || *s == Ctrl_V) && s[1])
+  			{
+***************
+*** 1472,1478 ****
+  {
+      char_u  *p;
+  
+!     for (p = name; *p && *p != '.'; mb_ptr_adv(p))
+      {
+  	if (*p == '\\' || *p == Ctrl_V)
+  	{
+--- 1472,1478 ----
+  {
+      char_u  *p;
+  
+!     for (p = name; *p && *p != '.'; MB_PTR_ADV(p))
+      {
+  	if (*p == '\\' || *p == Ctrl_V)
+  	{
+***************
+*** 2485,2491 ****
+  {
+      char_u  *p;
+  
+!     for (p = name; *p && *p != '.'; mb_ptr_adv(p))
+  	if (*p == '\\')
+  	    STRMOVE(p, p + 1);
+  }
+--- 2485,2491 ----
+  {
+      char_u  *p;
+  
+!     for (p = name; *p && *p != '.'; MB_PTR_ADV(p))
+  	if (*p == '\\')
+  	    STRMOVE(p, p + 1);
+  }
+*** ../vim-8.0.0450/src/message.c	2017-03-01 20:40:35.623484230 +0100
+--- src/message.c	2017-03-12 19:01:05.689690221 +0100
+***************
+*** 3746,3752 ****
+  	    }
+  
+  	    /* advance to the next character */
+! 	    mb_ptr_adv(r);
+  	}
+  
+  	if (copy)
+--- 3746,3752 ----
+  	    }
+  
+  	    /* advance to the next character */
+! 	    MB_PTR_ADV(r);
+  	}
+  
+  	if (copy)
+*** ../vim-8.0.0450/src/misc1.c	2017-03-12 18:23:35.853850026 +0100
+--- src/misc1.c	2017-03-12 19:08:58.114343675 +0100
+***************
+*** 1140,1146 ****
+  
+  			    while (old_size < repl_size && p > leader)
+  			    {
+! 				mb_ptr_back(leader, p);
+  				old_size += ptr2cells(p);
+  			    }
+  			    l = lead_repl_len - (int)(endp - p);
+--- 1140,1146 ----
+  
+  			    while (old_size < repl_size && p > leader)
+  			    {
+! 				MB_PTR_BACK(leader, p);
+  				old_size += ptr2cells(p);
+  			    }
+  			    l = lead_repl_len - (int)(endp - p);
+***************
+*** 2070,2076 ****
+      while (*s != NUL && --column >= 0)
+      {
+  	col += win_lbr_chartabsize(wp, line, s, (colnr_T)col, NULL);
+! 	mb_ptr_adv(s);
+      }
+  
+      /*
+--- 2070,2076 ----
+      while (*s != NUL && --column >= 0)
+      {
+  	col += win_lbr_chartabsize(wp, line, s, (colnr_T)col, NULL);
+! 	MB_PTR_ADV(s);
+      }
+  
+      /*
+***************
+*** 4837,4843 ****
+      {
+  	if (vim_ispathsep_nocolon(*p2))
+  	    p1 = p2 + 1;
+! 	mb_ptr_adv(p2);
+      }
+      return p1;
+  }
+--- 4837,4843 ----
+      {
+  	if (vim_ispathsep_nocolon(*p2))
+  	    p1 = p2 + 1;
+! 	MB_PTR_ADV(p2);
+      }
+      return p1;
+  }
+***************
+*** 4875,4881 ****
+  		dir_end = next_dir_end;
+  	    look_for_sep = TRUE;
+  	}
+! 	mb_ptr_adv(p);
+      }
+      return dir_end;
+  }
+--- 4875,4881 ----
+  		dir_end = next_dir_end;
+  	    look_for_sep = TRUE;
+  	}
+! 	MB_PTR_ADV(p);
+      }
+      return dir_end;
+  }
+***************
+*** 4910,4916 ****
+  getnextcomp(char_u *fname)
+  {
+      while (*fname && !vim_ispathsep(*fname))
+! 	mb_ptr_adv(fname);
+      if (*fname)
+  	++fname;
+      return fname;
+--- 4910,4916 ----
+  getnextcomp(char_u *fname)
+  {
+      while (*fname && !vim_ispathsep(*fname))
+! 	MB_PTR_ADV(fname);
+      if (*fname)
+  	++fname;
+      return fname;
+***************
+*** 10378,10384 ****
+      {
+  	if (vim_ispathsep(**psep))
+  	    return OK;
+! 	mb_ptr_back(path, *psep);
+      }
+  
+      return FAIL;
+--- 10378,10384 ----
+      {
+  	if (vim_ispathsep(**psep))
+  	    return OK;
+! 	MB_PTR_BACK(path, *psep);
+      }
+  
+      return FAIL;
+***************
+*** 10533,10539 ****
+      /* skip to the file or directory name */
+      if (cutoff != NULL)
+  	while (vim_ispathsep(*cutoff))
+! 	    mb_ptr_adv(cutoff);
+  
+      return cutoff;
+  }
+--- 10533,10539 ----
+      /* skip to the file or directory name */
+      if (cutoff != NULL)
+  	while (vim_ispathsep(*cutoff))
+! 	    MB_PTR_ADV(cutoff);
+  
+      return cutoff;
+  }
+***************
+*** 10790,10796 ****
+      static int
+  has_env_var(char_u *p)
+  {
+!     for ( ; *p; mb_ptr_adv(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+--- 10790,10796 ----
+      static int
+  has_env_var(char_u *p)
+  {
+!     for ( ; *p; MB_PTR_ADV(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+***************
+*** 10816,10822 ****
+      static int
+  has_special_wildchar(char_u *p)
+  {
+!     for ( ; *p; mb_ptr_adv(p))
+      {
+  	/* Allow for escaping. */
+  	if (*p == '\\' && p[1] != NUL)
+--- 10816,10822 ----
+      static int
+  has_special_wildchar(char_u *p)
+  {
+!     for ( ; *p; MB_PTR_ADV(p))
+      {
+  	/* Allow for escaping. */
+  	if (*p == '\\' && p[1] != NUL)
+***************
+*** 11293,11299 ****
+  
+  	/* Find the last path separator before the space. */
+  	p1 = p_sh;
+! 	for (p2 = p_sh; p2 < p; mb_ptr_adv(p2))
+  	    if (vim_ispathsep(*p2))
+  		p1 = p2 + 1;
+  	p = vim_strnsave(p1, (int)(p - p1));
+--- 11293,11299 ----
+  
+  	/* Find the last path separator before the space. */
+  	p1 = p_sh;
+! 	for (p2 = p_sh; p2 < p; MB_PTR_ADV(p2))
+  	    if (vim_ispathsep(*p2))
+  		p1 = p2 + 1;
+  	p = vim_strnsave(p1, (int)(p - p1));
+*** ../vim-8.0.0450/src/ops.c	2017-03-12 18:23:35.837850143 +0100
+--- src/ops.c	2017-03-12 19:09:08.666268873 +0100
+***************
+*** 486,492 ****
+  	 * the part of which is displayed at the block's beginning. Let's start
+  	 * searching from the next character. */
+  	if (bd.startspaces)
+! 	    mb_ptr_adv(non_white);
+  
+  	/* The character's column is in "bd.start_vcol".  */
+  	non_white_col = bd.start_vcol;
+--- 486,492 ----
+  	 * the part of which is displayed at the block's beginning. Let's start
+  	 * searching from the next character. */
+  	if (bd.startspaces)
+! 	    MB_PTR_ADV(non_white);
+  
+  	/* The character's column is in "bd.start_vcol".  */
+  	non_white_col = bd.start_vcol;
+***************
+*** 526,532 ****
+  	    if (verbatim_copy_width + incr > destination_col)
+  		break;
+  	    verbatim_copy_width += incr;
+! 	    mb_ptr_adv(verbatim_copy_end);
+  	}
+  
+  	/* If "destination_col" is different from the width of the initial
+--- 526,532 ----
+  	    if (verbatim_copy_width + incr > destination_col)
+  		break;
+  	    verbatim_copy_width += incr;
+! 	    MB_PTR_ADV(verbatim_copy_end);
+  	}
+  
+  	/* If "destination_col" is different from the width of the initial
+***************
+*** 3458,3464 ****
+  		goto end;
+  	    p = ml_get_cursor();
+  	    if (dir == FORWARD && *p != NUL)
+! 		mb_ptr_adv(p);
+  	    ptr = vim_strsave(p);
+  	    if (ptr == NULL)
+  		goto end;
+--- 3458,3464 ----
+  		goto end;
+  	    p = ml_get_cursor();
+  	    if (dir == FORWARD && *p != NUL)
+! 		MB_PTR_ADV(p);
+  	    ptr = vim_strsave(p);
+  	    if (ptr == NULL)
+  		goto end;
+***************
+*** 3468,3474 ****
+  	    oldp = ml_get_curline();
+  	    p = oldp + curwin->w_cursor.col;
+  	    if (dir == FORWARD && *p != NUL)
+! 		mb_ptr_adv(p);
+  	    ptr = vim_strnsave(oldp, p - oldp);
+  	    if (ptr == NULL)
+  		goto end;
+--- 3468,3474 ----
+  	    oldp = ml_get_curline();
+  	    p = oldp + curwin->w_cursor.col;
+  	    if (dir == FORWARD && *p != NUL)
+! 		MB_PTR_ADV(p);
+  	    ptr = vim_strnsave(oldp, p - oldp);
+  	    if (ptr == NULL)
+  		goto end;
+***************
+*** 4489,4499 ****
+  	    if (has_mbyte)
+  	    {
+  		cend = curr + currsize;
+! 		mb_ptr_back(curr, cend);
+  		endcurr1 = (*mb_ptr2char)(cend);
+  		if (cend > curr)
+  		{
+! 		    mb_ptr_back(curr, cend);
+  		    endcurr2 = (*mb_ptr2char)(cend);
+  		}
+  	    }
+--- 4489,4499 ----
+  	    if (has_mbyte)
+  	    {
+  		cend = curr + currsize;
+! 		MB_PTR_BACK(curr, cend);
+  		endcurr1 = (*mb_ptr2char)(cend);
+  		if (cend > curr)
+  		{
+! 		    MB_PTR_BACK(curr, cend);
+  		    endcurr2 = (*mb_ptr2char)(cend);
+  		}
+  	    }
+***************
+*** 5262,5268 ****
+  	}
+  #endif
+  	prev_pstart = pstart;
+! 	mb_ptr_adv(pstart);
+      }
+      bdp->start_char_vcols = incr;
+      if (bdp->start_vcol < oap->start_vcol)	/* line too short */
+--- 5262,5268 ----
+  	}
+  #endif
+  	prev_pstart = pstart;
+! 	MB_PTR_ADV(pstart);
+      }
+      bdp->start_char_vcols = incr;
+      if (bdp->start_vcol < oap->start_vcol)	/* line too short */
+*** ../vim-8.0.0450/src/option.c	2017-03-12 18:23:35.857849997 +0100
+--- src/option.c	2017-03-12 19:02:01.857292599 +0100
+***************
+*** 6785,6791 ****
+  	{
+  	    if (ptr2cells(s) != 1)
+  		errmsg = (char_u *)N_("E595: contains unprintable or wide character");
+! 	    mb_ptr_adv(s);
+  	}
+      }
+  #endif
+--- 6785,6791 ----
+  	{
+  	    if (ptr2cells(s) != 1)
+  		errmsg = (char_u *)N_("E595: contains unprintable or wide character");
+! 	    MB_PTR_ADV(s);
+  	}
+      }
+  #endif
+***************
+*** 11666,11672 ****
+  #ifdef BACKSLASH_IN_FILENAME
+      /* For MS-Windows et al. we don't double backslashes at the start and
+       * before a file name character. */
+!     for (var = buf; *var != NUL; mb_ptr_adv(var))
+  	if (var[0] == '\\' && var[1] == '\\'
+  		&& expand_option_idx >= 0
+  		&& (options[expand_option_idx].flags & P_EXPAND)
+--- 11666,11672 ----
+  #ifdef BACKSLASH_IN_FILENAME
+      /* For MS-Windows et al. we don't double backslashes at the start and
+       * before a file name character. */
+!     for (var = buf; *var != NUL; MB_PTR_ADV(var))
+  	if (var[0] == '\\' && var[1] == '\\'
+  		&& expand_option_idx >= 0
+  		&& (options[expand_option_idx].flags & P_EXPAND)
+***************
+*** 11866,11872 ****
+      for (p = p_langmap; p[0] != NUL; )
+      {
+  	for (p2 = p; p2[0] != NUL && p2[0] != ',' && p2[0] != ';';
+! 							       mb_ptr_adv(p2))
+  	{
+  	    if (p2[0] == '\\' && p2[1] != NUL)
+  		++p2;
+--- 11866,11872 ----
+      for (p = p_langmap; p[0] != NUL; )
+      {
+  	for (p2 = p; p2[0] != NUL && p2[0] != ',' && p2[0] != ';';
+! 							       MB_PTR_ADV(p2))
+  	{
+  	    if (p2[0] == '\\' && p2[1] != NUL)
+  		++p2;
+***************
+*** 11892,11898 ****
+  	    to = NUL;
+  	    if (p2 == NULL)
+  	    {
+! 		mb_ptr_adv(p);
+  		if (p[0] != ',')
+  		{
+  		    if (p[0] == '\\')
+--- 11892,11898 ----
+  	    to = NUL;
+  	    if (p2 == NULL)
+  	    {
+! 		MB_PTR_ADV(p);
+  		if (p[0] != ',')
+  		{
+  		    if (p[0] == '\\')
+***************
+*** 11932,11941 ****
+  		langmap_mapchar[from & 255] = to;
+  
+  	    /* Advance to next pair */
+! 	    mb_ptr_adv(p);
+  	    if (p2 != NULL)
+  	    {
+! 		mb_ptr_adv(p2);
+  		if (*p == ';')
+  		{
+  		    p = p2;
+--- 11932,11941 ----
+  		langmap_mapchar[from & 255] = to;
+  
+  	    /* Advance to next pair */
+! 	    MB_PTR_ADV(p);
+  	    if (p2 != NULL)
+  	    {
+! 		MB_PTR_ADV(p2);
+  		if (*p == ';')
+  		{
+  		    p = p2;
+*** ../vim-8.0.0450/src/os_amiga.c	2017-02-05 15:10:47.747484014 +0100
+--- src/os_amiga.c	2017-03-12 19:02:12.409217892 +0100
+***************
+*** 1567,1573 ****
+      int
+  mch_has_exp_wildcard(char_u *p)
+  {
+!     for ( ; *p; mb_ptr_adv(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+--- 1567,1573 ----
+      int
+  mch_has_exp_wildcard(char_u *p)
+  {
+!     for ( ; *p; MB_PTR_ADV(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+***************
+*** 1580,1586 ****
+      int
+  mch_has_wildcard(char_u *p)
+  {
+!     for ( ; *p; mb_ptr_adv(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+--- 1580,1586 ----
+      int
+  mch_has_wildcard(char_u *p)
+  {
+!     for ( ; *p; MB_PTR_ADV(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+*** ../vim-8.0.0450/src/os_mswin.c	2017-02-05 15:10:47.743484042 +0100
+--- src/os_mswin.c	2017-03-12 19:09:16.362214316 +0100
+***************
+*** 454,460 ****
+      {
+  	if (*p == psepcN)
+  	    *p = psepc;
+! 	mb_ptr_adv(p);
+      }
+  }
+  
+--- 454,460 ----
+      {
+  	if (*p == psepcN)
+  	    *p = psepc;
+! 	MB_PTR_ADV(p);
+      }
+  }
+  
+***************
+*** 600,606 ****
+      vim_strncpy((char_u *)buf, (char_u *)name, sizeof(buf) - 1);
+      p = buf + STRLEN(buf);
+      if (p > buf)
+! 	mb_ptr_back(buf, p);
+  
+      /* Remove trailing '\\' except root path. */
+      if (p > buf && (*p == '\\' || *p == '/') && p[-1] != ':')
+--- 600,606 ----
+      vim_strncpy((char_u *)buf, (char_u *)name, sizeof(buf) - 1);
+      p = buf + STRLEN(buf);
+      if (p > buf)
+! 	MB_PTR_BACK(buf, p);
+  
+      /* Remove trailing '\\' except root path. */
+      if (p > buf && (*p == '\\' || *p == '/') && p[-1] != ':')
+***************
+*** 720,726 ****
+      int
+  mch_has_exp_wildcard(char_u *p)
+  {
+!     for ( ; *p; mb_ptr_adv(p))
+      {
+  	if (vim_strchr((char_u *)"?*[", *p) != NULL
+  		|| (*p == '~' && p[1] != NUL))
+--- 720,726 ----
+      int
+  mch_has_exp_wildcard(char_u *p)
+  {
+!     for ( ; *p; MB_PTR_ADV(p))
+      {
+  	if (vim_strchr((char_u *)"?*[", *p) != NULL
+  		|| (*p == '~' && p[1] != NUL))
+***************
+*** 736,742 ****
+      int
+  mch_has_wildcard(char_u *p)
+  {
+!     for ( ; *p; mb_ptr_adv(p))
+      {
+  	if (vim_strchr((char_u *)
+  #  ifdef VIM_BACKTICK
+--- 736,742 ----
+      int
+  mch_has_wildcard(char_u *p)
+  {
+!     for ( ; *p; MB_PTR_ADV(p))
+      {
+  	if (vim_strchr((char_u *)
+  #  ifdef VIM_BACKTICK
+*** ../vim-8.0.0450/src/os_unix.c	2017-03-11 20:03:37.845266804 +0100
+--- src/os_unix.c	2017-03-12 19:02:35.037057679 +0100
+***************
+*** 6522,6528 ****
+      int
+  mch_has_exp_wildcard(char_u *p)
+  {
+!     for ( ; *p; mb_ptr_adv(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+--- 6522,6528 ----
+      int
+  mch_has_exp_wildcard(char_u *p)
+  {
+!     for ( ; *p; MB_PTR_ADV(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+***************
+*** 6546,6552 ****
+      int
+  mch_has_wildcard(char_u *p)
+  {
+!     for ( ; *p; mb_ptr_adv(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+--- 6546,6552 ----
+      int
+  mch_has_wildcard(char_u *p)
+  {
+!     for ( ; *p; MB_PTR_ADV(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+*** ../vim-8.0.0450/src/os_win32.c	2017-03-05 19:49:09.402670667 +0100
+--- src/os_win32.c	2017-03-12 19:06:41.107314695 +0100
+***************
+*** 5741,5747 ****
+  	{
+  	    char_u *p = pchBuf;
+  	    for (n = 0; n < cchwritten; n++)
+! 		mb_cptr_adv(p);
+  	    written = p - pchBuf;
+  	    g_coord.X += (SHORT)mb_string2cells(pchBuf, written);
+  	}
+--- 5741,5747 ----
+  	{
+  	    char_u *p = pchBuf;
+  	    for (n = 0; n < cchwritten; n++)
+! 		MB_CPTR_ADV(p);
+  	    written = p - pchBuf;
+  	    g_coord.X += (SHORT)mb_string2cells(pchBuf, written);
+  	}
+*** ../vim-8.0.0450/src/popupmnu.c	2017-03-12 18:23:35.857849997 +0100
+--- src/popupmnu.c	2017-03-12 19:02:45.172985911 +0100
+***************
+*** 335,341 ****
+  		case 3: p = pum_array[idx].pum_extra; break;
+  	    }
+  	    if (p != NULL)
+! 		for ( ; ; mb_ptr_adv(p))
+  		{
+  		    if (s == NULL)
+  			s = p;
+--- 335,341 ----
+  		case 3: p = pum_array[idx].pum_extra; break;
+  	    }
+  	    if (p != NULL)
+! 		for ( ; ; MB_PTR_ADV(p))
+  		{
+  		    if (s == NULL)
+  			s = p;
+***************
+*** 369,375 ****
+  					{
+  					    size -= has_mbyte
+  						    ? (*mb_ptr2cells)(rt) : 1;
+! 					    mb_ptr_adv(rt);
+  					} while (size > pum_width);
+  
+  					if (size < pum_width)
+--- 369,375 ----
+  					{
+  					    size -= has_mbyte
+  						    ? (*mb_ptr2cells)(rt) : 1;
+! 					    MB_PTR_ADV(rt);
+  					} while (size > pum_width);
+  
+  					if (size < pum_width)
+*** ../vim-8.0.0450/src/regexp.c	2017-03-12 18:23:35.857849997 +0100
+--- src/regexp.c	2017-03-12 19:09:23.086166649 +0100
+***************
+*** 1205,1211 ****
+  	    {
+  		++p;
+  		if (*p != ']' && *p != NUL)
+! 		    mb_ptr_adv(p);
+  	    }
+  	else if (*p == '\\'
+  		&& !reg_cpo_bsl
+--- 1205,1211 ----
+  	    {
+  		++p;
+  		if (*p != ']' && *p != NUL)
+! 		    MB_PTR_ADV(p);
+  	    }
+  	else if (*p == '\\'
+  		&& !reg_cpo_bsl
+***************
+*** 1252,1258 ****
+  	mymagic = MAGIC_OFF;
+      get_cpo_flags();
+  
+!     for (; p[0] != NUL; mb_ptr_adv(p))
+      {
+  	if (p[0] == dirc)	/* found end of regexp */
+  	    break;
+--- 1252,1258 ----
+  	mymagic = MAGIC_OFF;
+      get_cpo_flags();
+  
+!     for (; p[0] != NUL; MB_PTR_ADV(p))
+      {
+  	if (p[0] == dirc)	/* found end of regexp */
+  	    break;
+***************
+*** 3864,3870 ****
+  	    {
+  		if (cstrncmp(s, prog->regmust, &prog->regmlen) == 0)
+  		    break;		/* Found it. */
+! 		mb_ptr_adv(s);
+  	    }
+  #endif
+  	else
+--- 3864,3870 ----
+  	    {
+  		if (cstrncmp(s, prog->regmust, &prog->regmlen) == 0)
+  		    break;		/* Found it. */
+! 		MB_PTR_ADV(s);
+  	    }
+  #endif
+  	else
+***************
+*** 3872,3878 ****
+  	    {
+  		if (cstrncmp(s, prog->regmust, &prog->regmlen) == 0)
+  		    break;		/* Found it. */
+! 		mb_ptr_adv(s);
+  	    }
+  	if (s == NULL)		/* Not present. */
+  	    goto theend;
+--- 3872,3878 ----
+  	    {
+  		if (cstrncmp(s, prog->regmust, &prog->regmlen) == 0)
+  		    break;		/* Found it. */
+! 		MB_PTR_ADV(s);
+  	    }
+  	if (s == NULL)		/* Not present. */
+  	    goto theend;
+***************
+*** 4204,4210 ****
+      return TRUE;
+  }
+  
+! #define ADVANCE_REGINPUT() mb_ptr_adv(reginput)
+  
+  /*
+   * The arguments from BRACE_LIMITS are stored here.  They are actually local
+--- 4204,4210 ----
+      return TRUE;
+  }
+  
+! #define ADVANCE_REGINPUT() MB_PTR_ADV(reginput)
+  
+  /*
+   * The arguments from BRACE_LIMITS are stored here.  They are actually local
+***************
+*** 4775,4781 ****
+  	    {
+  		/* Skip composing characters. */
+  		while (utf_iscomposing(utf_ptr2char(reginput)))
+! 		    mb_cptr_adv(reginput);
+  	    }
+  #endif
+  	    break;
+--- 4775,4781 ----
+  	    {
+  		/* Skip composing characters. */
+  		while (utf_iscomposing(utf_ptr2char(reginput)))
+! 		    MB_CPTR_ADV(reginput);
+  	    }
+  #endif
+  	    break;
+***************
+*** 5557,5563 ****
+  			no = FAIL;
+  		    else
+  		    {
+! 			mb_ptr_back(regline, rp->rs_un.regsave.rs_u.ptr);
+  			if (limit > 0 && (long)(behind_pos.rs_u.ptr
+  				     - rp->rs_un.regsave.rs_u.ptr) > limit)
+  			    no = FAIL;
+--- 5557,5563 ----
+  			no = FAIL;
+  		    else
+  		    {
+! 			MB_PTR_BACK(regline, rp->rs_un.regsave.rs_u.ptr);
+  			if (limit > 0 && (long)(behind_pos.rs_u.ptr
+  				     - rp->rs_un.regsave.rs_u.ptr) > limit)
+  			    no = FAIL;
+***************
+*** 5644,5650 ****
+  				fast_breakcheck();
+  			    }
+  			    else
+! 				mb_ptr_back(regline, reginput);
+  			}
+  			else
+  			{
+--- 5644,5650 ----
+  				fast_breakcheck();
+  			    }
+  			    else
+! 				MB_PTR_BACK(regline, reginput);
+  			}
+  			else
+  			{
+***************
+*** 5788,5794 ****
+  	    while (*scan != NUL && count < maxcount)
+  	    {
+  		++count;
+! 		mb_ptr_adv(scan);
+  	    }
+  	    if (!REG_MULTI || !WITH_NL(OP(p)) || reglnum > rex.reg_maxline
+  				      || rex.reg_line_lbr || count == maxcount)
+--- 5788,5794 ----
+  	    while (*scan != NUL && count < maxcount)
+  	    {
+  		++count;
+! 		MB_PTR_ADV(scan);
+  	    }
+  	    if (!REG_MULTI || !WITH_NL(OP(p)) || reglnum > rex.reg_maxline
+  				      || rex.reg_line_lbr || count == maxcount)
+***************
+*** 5811,5817 ****
+  	{
+  	    if (vim_isIDc(PTR2CHAR(scan)) && (testval || !VIM_ISDIGIT(*scan)))
+  	    {
+! 		mb_ptr_adv(scan);
+  	    }
+  	    else if (*scan == NUL)
+  	    {
+--- 5811,5817 ----
+  	{
+  	    if (vim_isIDc(PTR2CHAR(scan)) && (testval || !VIM_ISDIGIT(*scan)))
+  	    {
+! 		MB_PTR_ADV(scan);
+  	    }
+  	    else if (*scan == NUL)
+  	    {
+***************
+*** 5842,5848 ****
+  	    if (vim_iswordp_buf(scan, rex.reg_buf)
+  					  && (testval || !VIM_ISDIGIT(*scan)))
+  	    {
+! 		mb_ptr_adv(scan);
+  	    }
+  	    else if (*scan == NUL)
+  	    {
+--- 5842,5848 ----
+  	    if (vim_iswordp_buf(scan, rex.reg_buf)
+  					  && (testval || !VIM_ISDIGIT(*scan)))
+  	    {
+! 		MB_PTR_ADV(scan);
+  	    }
+  	    else if (*scan == NUL)
+  	    {
+***************
+*** 5872,5878 ****
+  	{
+  	    if (vim_isfilec(PTR2CHAR(scan)) && (testval || !VIM_ISDIGIT(*scan)))
+  	    {
+! 		mb_ptr_adv(scan);
+  	    }
+  	    else if (*scan == NUL)
+  	    {
+--- 5872,5878 ----
+  	{
+  	    if (vim_isfilec(PTR2CHAR(scan)) && (testval || !VIM_ISDIGIT(*scan)))
+  	    {
+! 		MB_PTR_ADV(scan);
+  	    }
+  	    else if (*scan == NUL)
+  	    {
+***************
+*** 5913,5919 ****
+  	    else if (vim_isprintc(PTR2CHAR(scan)) == 1
+  					  && (testval || !VIM_ISDIGIT(*scan)))
+  	    {
+! 		mb_ptr_adv(scan);
+  	    }
+  	    else if (rex.reg_line_lbr && *scan == '\n' && WITH_NL(OP(p)))
+  		++scan;
+--- 5913,5919 ----
+  	    else if (vim_isprintc(PTR2CHAR(scan)) == 1
+  					  && (testval || !VIM_ISDIGIT(*scan)))
+  	    {
+! 		MB_PTR_ADV(scan);
+  	    }
+  	    else if (rex.reg_line_lbr && *scan == '\n' && WITH_NL(OP(p)))
+  		++scan;
+***************
+*** 7546,7552 ****
+  	    {
+  		int had_backslash = FALSE;
+  
+! 		for (s = eval_result; *s != NUL; mb_ptr_adv(s))
+  		{
+  		    /* Change NL to CR, so that it becomes a line break,
+  		     * unless called from vim_regexec_nl().
+--- 7546,7552 ----
+  	    {
+  		int had_backslash = FALSE;
+  
+! 		for (s = eval_result; *s != NUL; MB_PTR_ADV(s))
+  		{
+  		    /* Change NL to CR, so that it becomes a line break,
+  		     * unless called from vim_regexec_nl().
+*** ../vim-8.0.0450/src/regexp_nfa.c	2017-01-10 13:55:11.373452931 +0100
+--- src/regexp_nfa.c	2017-03-12 19:09:28.994124764 +0100
+***************
+*** 1425,1431 ****
+  		    EMSG(_(e_nopresub));
+  		    return FAIL;
+  		}
+! 		for (lp = reg_prev_sub; *lp != NUL; mb_cptr_adv(lp))
+  		{
+  		    EMIT(PTR2CHAR(lp));
+  		    if (lp != reg_prev_sub)
+--- 1425,1431 ----
+  		    EMSG(_(e_nopresub));
+  		    return FAIL;
+  		}
+! 		for (lp = reg_prev_sub; *lp != NUL; MB_CPTR_ADV(lp))
+  		{
+  		    EMIT(PTR2CHAR(lp));
+  		    if (lp != reg_prev_sub)
+***************
+*** 1672,1678 ****
+  		    else
+  			EMIT(result);
+  		    regparse = endp;
+! 		    mb_ptr_adv(regparse);
+  		    return OK;
+  		}
+  		/*
+--- 1672,1678 ----
+  		    else
+  			EMIT(result);
+  		    regparse = endp;
+! 		    MB_PTR_ADV(regparse);
+  		    return OK;
+  		}
+  		/*
+***************
+*** 1684,1690 ****
+  		if (*regparse == '^')			/* negated range */
+  		{
+  		    negated = TRUE;
+! 		    mb_ptr_adv(regparse);
+  		    EMIT(NFA_START_NEG_COLL);
+  		}
+  		else
+--- 1684,1690 ----
+  		if (*regparse == '^')			/* negated range */
+  		{
+  		    negated = TRUE;
+! 		    MB_PTR_ADV(regparse);
+  		    EMIT(NFA_START_NEG_COLL);
+  		}
+  		else
+***************
+*** 1694,1700 ****
+  		    startc = '-';
+  		    EMIT(startc);
+  		    EMIT(NFA_CONCAT);
+! 		    mb_ptr_adv(regparse);
+  		}
+  		/* Emit the OR branches for each character in the [] */
+  		emit_range = FALSE;
+--- 1694,1700 ----
+  		    startc = '-';
+  		    EMIT(startc);
+  		    EMIT(NFA_CONCAT);
+! 		    MB_PTR_ADV(regparse);
+  		}
+  		/* Emit the OR branches for each character in the [] */
+  		emit_range = FALSE;
+***************
+*** 1797,1803 ****
+  		    {
+  			emit_range = TRUE;
+  			startc = oldstartc;
+! 			mb_ptr_adv(regparse);
+  			continue;	    /* reading the end of the range */
+  		    }
+  
+--- 1797,1803 ----
+  		    {
+  			emit_range = TRUE;
+  			startc = oldstartc;
+! 			MB_PTR_ADV(regparse);
+  			continue;	    /* reading the end of the range */
+  		    }
+  
+***************
+*** 1817,1823 ****
+  			    )
+  			)
+  		    {
+! 			mb_ptr_adv(regparse);
+  
+  			if (*regparse == 'n')
+  			    startc = reg_string ? NL : NFA_NEWL;
+--- 1817,1823 ----
+  			    )
+  			)
+  		    {
+! 			MB_PTR_ADV(regparse);
+  
+  			if (*regparse == 'n')
+  			    startc = reg_string ? NL : NFA_NEWL;
+***************
+*** 1832,1838 ****
+  				/* TODO(RE) This needs more testing */
+  				startc = coll_get_char();
+  				got_coll_char = TRUE;
+! 				mb_ptr_back(old_regparse, regparse);
+  			    }
+  			    else
+  			    {
+--- 1832,1838 ----
+  				/* TODO(RE) This needs more testing */
+  				startc = coll_get_char();
+  				got_coll_char = TRUE;
+! 				MB_PTR_BACK(old_regparse, regparse);
+  			    }
+  			    else
+  			    {
+***************
+*** 1932,1941 ****
+  			}
+  		    }
+  
+! 		    mb_ptr_adv(regparse);
+  		} /* while (p < endp) */
+  
+! 		mb_ptr_back(old_regparse, regparse);
+  		if (*regparse == '-')	    /* if last, '-' is just a char */
+  		{
+  		    EMIT('-');
+--- 1932,1941 ----
+  			}
+  		    }
+  
+! 		    MB_PTR_ADV(regparse);
+  		} /* while (p < endp) */
+  
+! 		MB_PTR_BACK(old_regparse, regparse);
+  		if (*regparse == '-')	    /* if last, '-' is just a char */
+  		{
+  		    EMIT('-');
+***************
+*** 1944,1950 ****
+  
+  		/* skip the trailing ] */
+  		regparse = endp;
+! 		mb_ptr_adv(regparse);
+  
+  		/* Mark end of the collection. */
+  		if (negated == TRUE)
+--- 1944,1950 ----
+  
+  		/* skip the trailing ] */
+  		regparse = endp;
+! 		MB_PTR_ADV(regparse);
+  
+  		/* Mark end of the collection. */
+  		if (negated == TRUE)
+*** ../vim-8.0.0450/src/screen.c	2017-03-12 18:23:35.857849997 +0100
+--- src/screen.c	2017-03-12 19:03:48.628536549 +0100
+***************
+*** 3397,3403 ****
+  #ifdef FEAT_MBYTE
+  	    prev_ptr = ptr;
+  #endif
+! 	    mb_ptr_adv(ptr);
+  	}
+  
+  	/* When:
+--- 3397,3403 ----
+  #ifdef FEAT_MBYTE
+  	    prev_ptr = ptr;
+  #endif
+! 	    MB_PTR_ADV(ptr);
+  	}
+  
+  	/* When:
+***************
+*** 4554,4560 ****
+  		 * Found last space before word: check for line break.
+  		 */
+  		if (wp->w_p_lbr && c0 == c
+! 				      && vim_isbreak(c) && !vim_isbreak(*ptr))
+  		{
+  # ifdef FEAT_MBYTE
+  		    int mb_off = has_mbyte ? (*mb_head_off)(line, ptr - 1) : 0;
+--- 4554,4560 ----
+  		 * Found last space before word: check for line break.
+  		 */
+  		if (wp->w_p_lbr && c0 == c
+! 				      && VIM_ISBREAK(c) && !VIM_ISBREAK(*ptr))
+  		{
+  # ifdef FEAT_MBYTE
+  		    int mb_off = has_mbyte ? (*mb_head_off)(line, ptr - 1) : 0;
+***************
+*** 6408,6414 ****
+      {
+  	s += skip_status_match_char(xp, s);
+  	len += ptr2cells(s);
+! 	mb_ptr_adv(s);
+      }
+  
+      return len;
+--- 6408,6414 ----
+      {
+  	s += skip_status_match_char(xp, s);
+  	len += ptr2cells(s);
+! 	MB_PTR_ADV(s);
+      }
+  
+      return len;
+***************
+*** 10469,10475 ****
+  		    while (len > room)
+  		    {
+  			len -= ptr2cells(p);
+! 			mb_ptr_adv(p);
+  		    }
+  		else
+  #endif
+--- 10469,10475 ----
+  		    while (len > room)
+  		    {
+  			len -= ptr2cells(p);
+! 			MB_PTR_ADV(p);
+  		    }
+  		else
+  #endif
+*** ../vim-8.0.0450/src/search.c	2017-03-12 18:23:35.857849997 +0100
+--- src/search.c	2017-03-12 19:09:36.138074118 +0100
+***************
+*** 3828,3834 ****
+  
+  	/* We search forward until the cursor, because searching backwards is
+  	 * very slow for DBCS encodings. */
+! 	for (p = line; p < line + curwin->w_cursor.col; mb_ptr_adv(p))
+  	    if (*p == '>' || *p == '<')
+  	    {
+  		lc = *p;
+--- 3828,3834 ----
+  
+  	/* We search forward until the cursor, because searching backwards is
+  	 * very slow for DBCS encodings. */
+! 	for (p = line; p < line + curwin->w_cursor.col; MB_PTR_ADV(p))
+  	    if (*p == '>' || *p == '<')
+  	    {
+  		lc = *p;
+***************
+*** 3848,3854 ****
+  	{
+  	    if (*p == '<')	/* find '<' under/before cursor */
+  		break;
+! 	    mb_ptr_back(line, p);
+  	    if (*p == '>')	/* find '>' before cursor */
+  		break;
+  	}
+--- 3848,3854 ----
+  	{
+  	    if (*p == '<')	/* find '<' under/before cursor */
+  		break;
+! 	    MB_PTR_BACK(line, p);
+  	    if (*p == '>')	/* find '>' before cursor */
+  		break;
+  	}
+***************
+*** 3859,3865 ****
+      pos.lnum = curwin->w_cursor.lnum;
+      pos.col = (colnr_T)(p - line);
+  
+!     mb_ptr_adv(p);
+      if (end_tag)
+  	/* check that there is a '/' after the '<' */
+  	return *p == '/';
+--- 3859,3865 ----
+      pos.lnum = curwin->w_cursor.lnum;
+      pos.col = (colnr_T)(p - line);
+  
+!     MB_PTR_ADV(p);
+      if (end_tag)
+  	/* check that there is a '/' after the '<' */
+  	return *p == '/';
+***************
+*** 3974,3980 ****
+       */
+      inc_cursor();
+      p = ml_get_cursor();
+!     for (cp = p; *cp != NUL && *cp != '>' && !vim_iswhite(*cp); mb_ptr_adv(cp))
+  	;
+      len = (int)(cp - p);
+      if (len == 0)
+--- 3974,3980 ----
+       */
+      inc_cursor();
+      p = ml_get_cursor();
+!     for (cp = p; *cp != NUL && *cp != '>' && !vim_iswhite(*cp); MB_PTR_ADV(cp))
+  	;
+      len = (int)(cp - p);
+      if (len == 0)
+*** ../vim-8.0.0450/src/spell.c	2017-03-12 18:23:35.861849968 +0100
+--- src/spell.c	2017-03-12 19:09:51.161967602 +0100
+***************
+*** 468,474 ****
+      {
+  	do
+  	{
+! 	    mb_ptr_adv(mi.mi_fend);
+  	} while (*mi.mi_fend != NUL && spell_iswordp(mi.mi_fend, wp));
+  
+  	if (capcol != NULL && *capcol == 0 && wp->w_s->b_cap_prog != NULL)
+--- 468,474 ----
+      {
+  	do
+  	{
+! 	    MB_PTR_ADV(mi.mi_fend);
+  	} while (*mi.mi_fend != NUL && spell_iswordp(mi.mi_fend, wp));
+  
+  	if (capcol != NULL && *capcol == 0 && wp->w_s->b_cap_prog != NULL)
+***************
+*** 494,500 ****
+      /* case-fold the word with one non-word character, so that we can check
+       * for the word end. */
+      if (*mi.mi_fend != NUL)
+! 	mb_ptr_adv(mi.mi_fend);
+  
+      (void)spell_casefold(ptr, (int)(mi.mi_fend - ptr), mi.mi_fword,
+  							     MAXWLEN + 1);
+--- 494,500 ----
+      /* case-fold the word with one non-word character, so that we can check
+       * for the word end. */
+      if (*mi.mi_fend != NUL)
+! 	MB_PTR_ADV(mi.mi_fend);
+  
+      (void)spell_casefold(ptr, (int)(mi.mi_fend - ptr), mi.mi_fword,
+  							     MAXWLEN + 1);
+***************
+*** 582,588 ****
+  	else if (mi.mi_end == ptr)
+  	    /* Always include at least one character.  Required for when there
+  	     * is a mixup in "midword". */
+! 	    mb_ptr_adv(mi.mi_end);
+  	else if (mi.mi_result == SP_BAD
+  		&& LANGP_ENTRY(wp->w_s->b_langp, 0)->lp_slang->sl_nobreak)
+  	{
+--- 582,588 ----
+  	else if (mi.mi_end == ptr)
+  	    /* Always include at least one character.  Required for when there
+  	     * is a mixup in "midword". */
+! 	    MB_PTR_ADV(mi.mi_end);
+  	else if (mi.mi_result == SP_BAD
+  		&& LANGP_ENTRY(wp->w_s->b_langp, 0)->lp_slang->sl_nobreak)
+  	{
+***************
+*** 598,605 ****
+  		fp = mi.mi_fword;
+  		for (;;)
+  		{
+! 		    mb_ptr_adv(p);
+! 		    mb_ptr_adv(fp);
+  		    if (p >= mi.mi_end)
+  			break;
+  		    mi.mi_compoff = (int)(fp - mi.mi_fword);
+--- 598,605 ----
+  		fp = mi.mi_fword;
+  		for (;;)
+  		{
+! 		    MB_PTR_ADV(p);
+! 		    MB_PTR_ADV(fp);
+  		    if (p >= mi.mi_end)
+  			break;
+  		    mi.mi_compoff = (int)(fp - mi.mi_fword);
+***************
+*** 827,834 ****
+  	    p = mip->mi_word;
+  	    if (STRNCMP(ptr, p, wlen) != 0)
+  	    {
+! 		for (s = ptr; s < ptr + wlen; mb_ptr_adv(s))
+! 		    mb_ptr_adv(p);
+  		wlen = (int)(p - mip->mi_word);
+  	    }
+  	}
+--- 827,834 ----
+  	    p = mip->mi_word;
+  	    if (STRNCMP(ptr, p, wlen) != 0)
+  	    {
+! 		for (s = ptr; s < ptr + wlen; MB_PTR_ADV(s))
+! 		    MB_PTR_ADV(p);
+  		wlen = (int)(p - mip->mi_word);
+  	    }
+  	}
+***************
+*** 952,959 ****
+  		    {
+  			/* case folding may have changed the length */
+  			p = mip->mi_word;
+! 			for (s = ptr; s < ptr + mip->mi_compoff; mb_ptr_adv(s))
+! 			    mb_ptr_adv(p);
+  		    }
+  		    else
+  #endif
+--- 952,959 ----
+  		    {
+  			/* case folding may have changed the length */
+  			p = mip->mi_word;
+! 			for (s = ptr; s < ptr + mip->mi_compoff; MB_PTR_ADV(s))
+! 			    MB_PTR_ADV(p);
+  		    }
+  		    else
+  #endif
+***************
+*** 969,975 ****
+  			 * character we do not accept a Onecap word.  We do
+  			 * accept a no-caps word, even when the dictionary
+  			 * word specifies ONECAP. */
+! 			mb_ptr_back(mip->mi_word, p);
+  			if (spell_iswordp_nmw(p, mip->mi_win)
+  				? capflags == WF_ONECAP
+  				: (flags & WF_ONECAP) != 0
+--- 969,975 ----
+  			 * character we do not accept a Onecap word.  We do
+  			 * accept a no-caps word, even when the dictionary
+  			 * word specifies ONECAP. */
+! 			MB_PTR_BACK(mip->mi_word, p);
+  			if (spell_iswordp_nmw(p, mip->mi_win)
+  				? capflags == WF_ONECAP
+  				: (flags & WF_ONECAP) != 0
+***************
+*** 1038,1045 ****
+  		    p = mip->mi_fword;
+  		    if (STRNCMP(ptr, p, wlen) != 0)
+  		    {
+! 			for (s = ptr; s < ptr + wlen; mb_ptr_adv(s))
+! 			    mb_ptr_adv(p);
+  			mip->mi_compoff = (int)(p - mip->mi_fword);
+  		    }
+  		}
+--- 1038,1045 ----
+  		    p = mip->mi_fword;
+  		    if (STRNCMP(ptr, p, wlen) != 0)
+  		    {
+! 			for (s = ptr; s < ptr + wlen; MB_PTR_ADV(s))
+! 			    MB_PTR_ADV(p);
+  			mip->mi_compoff = (int)(p - mip->mi_fword);
+  		    }
+  		}
+***************
+*** 1506,1517 ****
+      p = mip->mi_fend;
+      do
+      {
+! 	mb_ptr_adv(mip->mi_fend);
+      } while (*mip->mi_fend != NUL && spell_iswordp(mip->mi_fend, mip->mi_win));
+  
+      /* Include the non-word character so that we can check for the word end. */
+      if (*mip->mi_fend != NUL)
+! 	mb_ptr_adv(mip->mi_fend);
+  
+      (void)spell_casefold(p, (int)(mip->mi_fend - p),
+  			     mip->mi_fword + mip->mi_fwordlen,
+--- 1506,1517 ----
+      p = mip->mi_fend;
+      do
+      {
+! 	MB_PTR_ADV(mip->mi_fend);
+      } while (*mip->mi_fend != NUL && spell_iswordp(mip->mi_fend, mip->mi_win));
+  
+      /* Include the non-word character so that we can check for the word end. */
+      if (*mip->mi_fend != NUL)
+! 	MB_PTR_ADV(mip->mi_fend);
+  
+      (void)spell_casefold(p, (int)(mip->mi_fend - p),
+  			     mip->mi_fword + mip->mi_fwordlen,
+***************
+*** 2760,2766 ****
+      int		past_second = FALSE;	/* past second word char */
+  
+      /* find first letter */
+!     for (p = word; !spell_iswordp_nmw(p, curwin); mb_ptr_adv(p))
+  	if (end == NULL ? *p == NUL : p >= end)
+  	    return 0;	    /* only non-word characters, illegal word */
+  #ifdef FEAT_MBYTE
+--- 2760,2766 ----
+      int		past_second = FALSE;	/* past second word char */
+  
+      /* find first letter */
+!     for (p = word; !spell_iswordp_nmw(p, curwin); MB_PTR_ADV(p))
+  	if (end == NULL ? *p == NUL : p >= end)
+  	    return 0;	    /* only non-word characters, illegal word */
+  #ifdef FEAT_MBYTE
+***************
+*** 2775,2781 ****
+       * Need to check all letters to find a word with mixed upper/lower.
+       * But a word with an upper char only at start is a ONECAP.
+       */
+!     for ( ; end == NULL ? *p != NUL : p < end; mb_ptr_adv(p))
+  	if (spell_iswordp_nmw(p, curwin))
+  	{
+  	    c = PTR2CHAR(p);
+--- 2775,2781 ----
+       * Need to check all letters to find a word with mixed upper/lower.
+       * But a word with an upper char only at start is a ONECAP.
+       */
+!     for ( ; end == NULL ? *p != NUL : p < end; MB_PTR_ADV(p))
+  	if (spell_iswordp_nmw(p, curwin))
+  	{
+  	    c = PTR2CHAR(p);
+***************
+*** 2818,2824 ****
+  	/* Count the number of UPPER and lower case letters. */
+  	l = u = 0;
+  	first = FALSE;
+! 	for (p = word; p < end; mb_ptr_adv(p))
+  	{
+  	    c = PTR2CHAR(p);
+  	    if (SPELL_ISUPPER(c))
+--- 2818,2824 ----
+  	/* Count the number of UPPER and lower case letters. */
+  	l = u = 0;
+  	first = FALSE;
+! 	for (p = word; p < end; MB_PTR_ADV(p))
+  	{
+  	    c = PTR2CHAR(p);
+  	    if (SPELL_ISUPPER(c))
+***************
+*** 3385,3394 ****
+  	p = line + curwin->w_cursor.col;
+  	/* Backup to before start of word. */
+  	while (p > line && spell_iswordp_nmw(p, curwin))
+! 	    mb_ptr_back(line, p);
+  	/* Forward to start of word. */
+  	while (*p != NUL && !spell_iswordp_nmw(p, curwin))
+! 	    mb_ptr_adv(p);
+  
+  	if (!spell_iswordp_nmw(p, curwin))		/* No word found. */
+  	{
+--- 3385,3394 ----
+  	p = line + curwin->w_cursor.col;
+  	/* Backup to before start of word. */
+  	while (p > line && spell_iswordp_nmw(p, curwin))
+! 	    MB_PTR_BACK(line, p);
+  	/* Forward to start of word. */
+  	while (*p != NUL && !spell_iswordp_nmw(p, curwin))
+! 	    MB_PTR_ADV(p);
+  
+  	if (!spell_iswordp_nmw(p, curwin))		/* No word found. */
+  	{
+***************
+*** 3624,3630 ****
+  	p = line + endcol;
+  	for (;;)
+  	{
+! 	    mb_ptr_back(line, p);
+  	    if (p == line || spell_iswordp_nmw(p, curwin))
+  		break;
+  	    if (vim_regexec(&regmatch, p, 0)
+--- 3624,3630 ----
+  	p = line + endcol;
+  	for (;;)
+  	{
+! 	    MB_PTR_BACK(line, p);
+  	    if (p == line || spell_iswordp_nmw(p, curwin))
+  		break;
+  	    if (vim_regexec(&regmatch, p, 0)
+***************
+*** 4644,4650 ****
+  
+  		    /* Get pointer to last char of previous word. */
+  		    p = preword + sp->ts_prewordlen;
+! 		    mb_ptr_back(preword, p);
+  		}
+  	    }
+  
+--- 4644,4650 ----
+  
+  		    /* Get pointer to last char of previous word. */
+  		    p = preword + sp->ts_prewordlen;
+! 		    MB_PTR_BACK(preword, p);
+  		}
+  	    }
+  
+***************
+*** 4746,4756 ****
+  		    /* Give a penalty when changing non-word char to word
+  		     * char, e.g., "thes," -> "these". */
+  		    p = fword + sp->ts_fidx;
+! 		    mb_ptr_back(fword, p);
+  		    if (!spell_iswordp(p, curwin))
+  		    {
+  			p = preword + STRLEN(preword);
+! 			mb_ptr_back(preword, p);
+  			if (spell_iswordp(p, curwin))
+  			    newscore += SCORE_NONWORD;
+  		    }
+--- 4746,4756 ----
+  		    /* Give a penalty when changing non-word char to word
+  		     * char, e.g., "thes," -> "these". */
+  		    p = fword + sp->ts_fidx;
+! 		    MB_PTR_BACK(fword, p);
+  		    if (!spell_iswordp(p, curwin))
+  		    {
+  			p = preword + STRLEN(preword);
+! 			MB_PTR_BACK(preword, p);
+  			if (spell_iswordp(p, curwin))
+  			    newscore += SCORE_NONWORD;
+  		    }
+***************
+*** 5157,5163 ****
+  				     * to the score.  Also for the soundfold
+  				     * tree (might seem illogical but does
+  				     * give better scores). */
+! 				    mb_ptr_back(tword, p);
+  				    if (c == mb_ptr2char(p))
+  					sp->ts_score -= SCORE_INS
+  							       - SCORE_INSDUP;
+--- 5157,5163 ----
+  				     * to the score.  Also for the soundfold
+  				     * tree (might seem illogical but does
+  				     * give better scores). */
+! 				    MB_PTR_BACK(tword, p);
+  				    if (c == mb_ptr2char(p))
+  					sp->ts_score -= SCORE_INS
+  							       - SCORE_INSDUP;
+***************
+*** 5867,5875 ****
+      char_u	*p;
+      int		i = 0;
+  
+!     for (p = fword; p < fword + flen; mb_ptr_adv(p))
+  	++i;
+!     for (p = word; i > 0; mb_ptr_adv(p))
+  	--i;
+      return (int)(p - word);
+  }
+--- 5867,5875 ----
+      char_u	*p;
+      int		i = 0;
+  
+!     for (p = fword; p < fword + flen; MB_PTR_ADV(p))
+  	++i;
+!     for (p = word; i > 0; MB_PTR_ADV(p))
+  	--i;
+      return (int)(p - word);
+  }
+***************
+*** 6745,6752 ****
+  	badlen = (int)(pbad - su->su_badptr);
+  	if (goodlen <= 0 || badlen <= 0)
+  	    break;
+! 	mb_ptr_back(goodword, pgood);
+! 	mb_ptr_back(su->su_badptr, pbad);
+  #ifdef FEAT_MBYTE
+  	if (has_mbyte)
+  	{
+--- 6745,6752 ----
+  	badlen = (int)(pbad - su->su_badptr);
+  	if (goodlen <= 0 || badlen <= 0)
+  	    break;
+! 	MB_PTR_BACK(goodword, pgood);
+! 	MB_PTR_BACK(su->su_badptr, pbad);
+  #ifdef FEAT_MBYTE
+  	if (has_mbyte)
+  	{
+***************
+*** 8976,8982 ****
+      char_u  *p = start;
+  
+      while (*p != NUL && spell_iswordp(p, win))
+! 	mb_ptr_adv(p);
+      return p;
+  }
+  
+--- 8976,8982 ----
+      char_u  *p = start;
+  
+      while (*p != NUL && spell_iswordp(p, win))
+! 	MB_PTR_ADV(p);
+      return p;
+  }
+  
+***************
+*** 9002,9008 ****
+      line = ml_get_curline();
+      for (p = line + startcol; p > line; )
+      {
+! 	mb_ptr_back(line, p);
+  	if (spell_iswordp_nmw(p, curwin))
+  	    break;
+      }
+--- 9002,9008 ----
+      line = ml_get_curline();
+      for (p = line + startcol; p > line; )
+      {
+! 	MB_PTR_BACK(line, p);
+  	if (spell_iswordp_nmw(p, curwin))
+  	    break;
+      }
+***************
+*** 9011,9017 ****
+      while (p > line)
+      {
+  	col = (int)(p - line);
+! 	mb_ptr_back(line, p);
+  	if (!spell_iswordp(p, curwin))
+  	    break;
+  	col = 0;
+--- 9011,9017 ----
+      while (p > line)
+      {
+  	col = (int)(p - line);
+! 	MB_PTR_BACK(line, p);
+  	if (!spell_iswordp(p, curwin))
+  	    break;
+  	col = 0;
+*** ../vim-8.0.0450/src/spellfile.c	2017-02-26 15:27:18.463432807 +0100
+--- src/spellfile.c	2017-03-12 19:09:56.837927360 +0100
+***************
+*** 1429,1435 ****
+  	for (p = from, s = to; *p != NUL && *s != NUL; )
+  	{
+  	    c = mb_cptr2char_adv(&p);
+! 	    mb_cptr_adv(s);
+  	    if (c >= 256)
+  		++lp->sl_sal_first[c & 0xff];
+  	}
+--- 1429,1435 ----
+  	for (p = from, s = to; *p != NUL && *s != NUL; )
+  	{
+  	    c = mb_cptr2char_adv(&p);
+! 	    MB_CPTR_ADV(s);
+  	    if (c >= 256)
+  		++lp->sl_sal_first[c & 0xff];
+  	}
+***************
+*** 2802,2808 ****
+  			    {
+  				p = aff_entry->ae_add
+  						  + STRLEN(aff_entry->ae_add);
+! 				mb_ptr_back(aff_entry->ae_add, p);
+  				if (PTR2CHAR(p) == c_up)
+  				{
+  				    upper = TRUE;
+--- 2802,2808 ----
+  			    {
+  				p = aff_entry->ae_add
+  						  + STRLEN(aff_entry->ae_add);
+! 				MB_PTR_BACK(aff_entry->ae_add, p);
+  				if (PTR2CHAR(p) == c_up)
+  				{
+  				    upper = TRUE;
+***************
+*** 2930,2939 ****
+  		{
+  		    /* Replace underscore with space (can't include a space
+  		     * directly). */
+! 		    for (p = items[1]; *p != NUL; mb_ptr_adv(p))
+  			if (*p == '_')
+  			    *p = ' ';
+! 		    for (p = items[2]; *p != NUL; mb_ptr_adv(p))
+  			if (*p == '_')
+  			    *p = ' ';
+  		    add_fromto(spin, items[0][3] == 'S'
+--- 2930,2939 ----
+  		{
+  		    /* Replace underscore with space (can't include a space
+  		     * directly). */
+! 		    for (p = items[1]; *p != NUL; MB_PTR_ADV(p))
+  			if (*p == '_')
+  			    *p = ' ';
+! 		    for (p = items[2]; *p != NUL; MB_PTR_ADV(p))
+  			if (*p == '_')
+  			    *p = ' ';
+  		    add_fromto(spin, items[0][3] == 'S'
+***************
+*** 3624,3630 ****
+  	/* Truncate the word at the "/", set "afflist" to what follows.
+  	 * Replace "\/" by "/" and "\\" by "\". */
+  	afflist = NULL;
+! 	for (p = w; *p != NUL; mb_ptr_adv(p))
+  	{
+  	    if (*p == '\\' && (p[1] == '\\' || p[1] == '/'))
+  		STRMOVE(p, p + 1);
+--- 3624,3630 ----
+  	/* Truncate the word at the "/", set "afflist" to what follows.
+  	 * Replace "\/" by "/" and "\\" by "\". */
+  	afflist = NULL;
+! 	for (p = w; *p != NUL; MB_PTR_ADV(p))
+  	{
+  	    if (*p == '\\' && (p[1] == '\\' || p[1] == '/'))
+  		STRMOVE(p, p + 1);
+***************
+*** 3947,3953 ****
+  				{
+  				    i = mb_charlen(ae->ae_chop);
+  				    for ( ; i > 0; --i)
+! 					mb_ptr_adv(p);
+  				}
+  				else
+  #endif
+--- 3947,3953 ----
+  				{
+  				    i = mb_charlen(ae->ae_chop);
+  				    for ( ; i > 0; --i)
+! 					MB_PTR_ADV(p);
+  				}
+  				else
+  #endif
+***************
+*** 3965,3971 ****
+  				p = newword + STRLEN(newword);
+  				i = (int)MB_CHARLEN(ae->ae_chop);
+  				for ( ; i > 0; --i)
+! 				    mb_ptr_back(newword, p);
+  				*p = NUL;
+  			    }
+  			    if (ae->ae_add != NULL)
+--- 3965,3971 ----
+  				p = newword + STRLEN(newword);
+  				i = (int)MB_CHARLEN(ae->ae_chop);
+  				for ( ; i > 0; --i)
+! 				    MB_PTR_BACK(newword, p);
+  				*p = NUL;
+  			    }
+  			    if (ae->ae_add != NULL)
+*** ../vim-8.0.0450/src/syntax.c	2017-03-12 17:10:14.417925081 +0100
+--- src/syntax.c	2017-03-12 19:10:03.361881106 +0100
+***************
+*** 3211,3222 ****
+  	if (off > 0)
+  	{
+  	    while (off-- > 0 && *p != NUL)
+! 		mb_ptr_adv(p);
+  	}
+  	else if (off < 0)
+  	{
+  	    while (off++ < 0 && base < p)
+! 		mb_ptr_back(base, p);
+  	}
+  	col = (int)(p - base);
+      }
+--- 3211,3222 ----
+  	if (off > 0)
+  	{
+  	    while (off-- > 0 && *p != NUL)
+! 		MB_PTR_ADV(p);
+  	}
+  	else if (off < 0)
+  	{
+  	    while (off++ < 0 && base < p)
+! 		MB_PTR_BACK(base, p);
+  	}
+  	col = (int)(p - base);
+      }
+***************
+*** 3265,3276 ****
+  	if (off > 0)
+  	{
+  	    while (off-- && *p != NUL)
+! 		mb_ptr_adv(p);
+  	}
+  	else if (off < 0)
+  	{
+  	    while (off++ && base < p)
+! 		mb_ptr_back(base, p);
+  	}
+  	col = (int)(p - base);
+      }
+--- 3265,3276 ----
+  	if (off > 0)
+  	{
+  	    while (off-- && *p != NUL)
+! 		MB_PTR_ADV(p);
+  	}
+  	else if (off < 0)
+  	{
+  	    while (off++ && base < p)
+! 		MB_PTR_BACK(base, p);
+  	}
+  	col = (int)(p - base);
+      }
+*** ../vim-8.0.0450/src/tag.c	2017-03-12 18:23:35.861849968 +0100
+--- src/tag.c	2017-03-12 19:10:08.953841457 +0100
+***************
+*** 3544,3550 ****
+  		tail = p + 1;
+  		if (p[1] != NUL)
+  		    while (vim_ispathsep(*tail))
+! 			mb_ptr_adv(tail);
+  		else if (p > start)
+  		    --p;		/* strip preceding path separator */
+  		STRMOVE(p, tail);
+--- 3544,3550 ----
+  		tail = p + 1;
+  		if (p[1] != NUL)
+  		    while (vim_ispathsep(*tail))
+! 			MB_PTR_ADV(tail);
+  		else if (p > start)
+  		    --p;		/* strip preceding path separator */
+  		STRMOVE(p, tail);
+***************
+*** 3556,3562 ****
+  	    /* Skip to after ".." or "../" or "..///". */
+  	    tail = p + 2;
+  	    while (vim_ispathsep(*tail))
+! 		mb_ptr_adv(tail);
+  
+  	    if (components > 0)		/* strip one preceding component */
+  	    {
+--- 3556,3562 ----
+  	    /* Skip to after ".." or "../" or "..///". */
+  	    tail = p + 2;
+  	    while (vim_ispathsep(*tail))
+! 		MB_PTR_ADV(tail);
+  
+  	    if (components > 0)		/* strip one preceding component */
+  	    {
+***************
+*** 3583,3589 ****
+  		    --p;
+  		    /* Skip back to after previous '/'. */
+  		    while (p > start && !after_pathsep(start, p))
+! 			mb_ptr_back(start, p);
+  
+  		    if (!do_strip)
+  		    {
+--- 3583,3589 ----
+  		    --p;
+  		    /* Skip back to after previous '/'. */
+  		    while (p > start && !after_pathsep(start, p))
+! 			MB_PTR_BACK(start, p);
+  
+  		    if (!do_strip)
+  		    {
+*** ../vim-8.0.0450/src/ui.c	2017-03-12 18:23:35.861849968 +0100
+--- src/ui.c	2017-03-12 19:06:03.087584086 +0100
+***************
+*** 3192,3198 ****
+      while (count < vcol && *ptr != NUL)
+      {
+  	count += win_lbr_chartabsize(wp, line, ptr, count, NULL);
+! 	mb_ptr_adv(ptr);
+      }
+      return (int)(ptr - line);
+  }
+--- 3192,3198 ----
+      while (count < vcol && *ptr != NUL)
+      {
+  	count += win_lbr_chartabsize(wp, line, ptr, count, NULL);
+! 	MB_PTR_ADV(ptr);
+      }
+      return (int)(ptr - line);
+  }
+*** ../vim-8.0.0450/src/undo.c	2017-03-12 18:23:35.861849968 +0100
+--- src/undo.c	2017-03-12 19:06:07.271554440 +0100
+***************
+*** 833,839 ****
+  		    munged_name = vim_strsave(ffname);
+  		    if (munged_name == NULL)
+  			return NULL;
+! 		    for (p = munged_name; *p != NUL; mb_ptr_adv(p))
+  			if (vim_ispathsep(*p))
+  			    *p = '%';
+  		}
+--- 833,839 ----
+  		    munged_name = vim_strsave(ffname);
+  		    if (munged_name == NULL)
+  			return NULL;
+! 		    for (p = munged_name; *p != NUL; MB_PTR_ADV(p))
+  			if (vim_ispathsep(*p))
+  			    *p = '%';
+  		}
+*** ../vim-8.0.0450/src/window.c	2017-02-17 12:04:35.843808317 +0100
+--- src/window.c	2017-03-12 19:06:17.495482000 +0100
+***************
+*** 6127,6133 ****
+       */
+      ptr = line + col;
+      while (*ptr != NUL && !vim_isfilec(*ptr))
+! 	mb_ptr_adv(ptr);
+      if (*ptr == NUL)		/* nothing found */
+      {
+  	if (options & FNAME_MESS)
+--- 6127,6133 ----
+       */
+      ptr = line + col;
+      while (*ptr != NUL && !vim_isfilec(*ptr))
+! 	MB_PTR_ADV(ptr);
+      if (*ptr == NUL)		/* nothing found */
+      {
+  	if (options & FNAME_MESS)
+*** ../vim-8.0.0450/src/version.c	2017-03-12 18:37:58.375653719 +0100
+--- src/version.c	2017-03-12 19:19:29.289872708 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     451,
+  /**/
+
+-- 
+To be rich is not the end, but only a change of worries.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

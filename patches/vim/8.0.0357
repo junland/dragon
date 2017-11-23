@@ -1,0 +1,87 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0357
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0357
+Problem:    Crash when setting 'guicursor' to weird value.
+Solution:   Avoid negative size. (Dominique Pelle, closes #1465)
+Files:      src/misc2.c, src/testdir/test_options.vim
+
+
+*** ../vim-8.0.0356/src/misc2.c	2017-01-27 21:54:03.986030660 +0100
+--- src/misc2.c	2017-02-23 17:58:06.424962060 +0100
+***************
+*** 3472,3482 ****
+  	while (*modep != NUL)
+  	{
+  	    colonp = vim_strchr(modep, ':');
+! 	    if (colonp == NULL)
+  		return (char_u *)N_("E545: Missing colon");
+  	    if (colonp == modep)
+  		return (char_u *)N_("E546: Illegal mode");
+- 	    commap = vim_strchr(modep, ',');
+  
+  	    /*
+  	     * Repeat for all mode's before the colon.
+--- 3472,3483 ----
+  	while (*modep != NUL)
+  	{
+  	    colonp = vim_strchr(modep, ':');
+! 	    commap = vim_strchr(modep, ',');
+! 
+! 	    if (colonp == NULL || (commap != NULL && commap < colonp))
+  		return (char_u *)N_("E545: Missing colon");
+  	    if (colonp == modep)
+  		return (char_u *)N_("E546: Illegal mode");
+  
+  	    /*
+  	     * Repeat for all mode's before the colon.
+*** ../vim-8.0.0356/src/testdir/test_options.vim	2017-02-23 17:07:10.308599718 +0100
+--- src/testdir/test_options.vim	2017-02-23 17:58:06.424962060 +0100
+***************
+*** 235,241 ****
+    call assert_fails('set statusline=%{', 'E540:')
+    call assert_fails('set statusline=' . repeat("%p", 81), 'E541:')
+    call assert_fails('set statusline=%(', 'E542:')
+!   call assert_fails('set guicursor=x', 'E545:')
+    call assert_fails('set backupext=~ patchmode=~', 'E589:')
+    call assert_fails('set winminheight=10 winheight=9', 'E591:')
+    call assert_fails('set winminwidth=10 winwidth=9', 'E592:')
+--- 235,248 ----
+    call assert_fails('set statusline=%{', 'E540:')
+    call assert_fails('set statusline=' . repeat("%p", 81), 'E541:')
+    call assert_fails('set statusline=%(', 'E542:')
+!   if has('cursorshape')
+!     " This invalid value for 'guicursor' used to cause Vim to crash.
+!     call assert_fails('set guicursor=i-ci,r-cr:h', 'E545:')
+!     call assert_fails('set guicursor=i-ci', 'E545:')
+!     call assert_fails('set guicursor=x', 'E545:')
+!     call assert_fails('set guicursor=r-cr:horx', 'E548:')
+!     call assert_fails('set guicursor=r-cr:hor0', 'E549:')
+!   endif
+    call assert_fails('set backupext=~ patchmode=~', 'E589:')
+    call assert_fails('set winminheight=10 winheight=9', 'E591:')
+    call assert_fails('set winminwidth=10 winwidth=9', 'E592:')
+*** ../vim-8.0.0356/src/version.c	2017-02-23 17:18:33.340295191 +0100
+--- src/version.c	2017-02-23 17:57:21.025254901 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     357,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+10. And even your night dreams are in HTML.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

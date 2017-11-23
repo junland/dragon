@@ -1,0 +1,97 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0450
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0450
+Problem:    v:progpath is not reliably set.
+Solution:   Read /proc/self/exe if possible. (idea by Michal Grochmal)
+            Also fixes missing #if.
+Files:      src/main.c, src/config.h.in
+
+
+*** ../vim-8.0.0449/src/main.c	2017-03-12 18:23:35.849850055 +0100
+--- src/main.c	2017-03-12 17:58:11.256965313 +0100
+***************
+*** 3539,3554 ****
+  {
+      char_u *val = argv0;
+  
+      /* A relative path containing a "/" will become invalid when using ":cd",
+       * turn it into a full path.
+       * On MS-Windows "vim" should be expanded to "vim.exe", thus always do
+       * this. */
+! # ifdef WIN32
+      char_u *path = NULL;
+  
+      if (mch_can_exe(argv0, &path, FALSE) && path != NULL)
+  	val = path;
+! # else
+      char_u buf[MAXPATHL];
+  
+      if (!mch_isFullName(argv0))
+--- 3539,3565 ----
+  {
+      char_u *val = argv0;
+  
++ # ifdef HAVE_PROC_SELF_EXE
++     char    buf[PATH_MAX + 1];
++     ssize_t len;
++ 
++     len = readlink("/proc/self/exe", buf, PATH_MAX);
++     if (len > 0)
++     {
++ 	buf[len] = NUL;
++ 	val = (char_u *)buf;
++     }
++ # else
+      /* A relative path containing a "/" will become invalid when using ":cd",
+       * turn it into a full path.
+       * On MS-Windows "vim" should be expanded to "vim.exe", thus always do
+       * this. */
+! #  ifdef WIN32
+      char_u *path = NULL;
+  
+      if (mch_can_exe(argv0, &path, FALSE) && path != NULL)
+  	val = path;
+! #  else
+      char_u buf[MAXPATHL];
+  
+      if (!mch_isFullName(argv0))
+*** ../vim-8.0.0449/src/config.h.in	2017-03-11 20:03:37.845266804 +0100
+--- src/config.h.in	2017-03-11 19:47:10.532151827 +0100
+***************
+*** 446,451 ****
+--- 446,454 ----
+  /* Define if fcntl()'s F_SETFD command knows about FD_CLOEXEC */
+  #undef HAVE_FD_CLOEXEC
+  
++ /* Define if /proc/self/exe can be read */
++ #undef HAVE_PROC_SELF_EXE
++ 
+  /* Define if you want Cygwin to use the WIN32 clipboard, not compatible with X11*/
+  #undef FEAT_CYGWIN_WIN32_CLIPBOARD
+  
+*** ../vim-8.0.0449/src/version.c	2017-03-12 18:32:26.782036421 +0100
+--- src/version.c	2017-03-12 18:37:13.351977299 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     450,
+  /**/
+
+-- 
+Contrary to popular belief, Unix is user friendly.
+It just happens to be selective about who it makes friends with.
+                                               -- Dave Parnas
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

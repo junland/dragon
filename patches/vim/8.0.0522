@@ -1,0 +1,190 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0522
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0522
+Problem:    MS-Windows: when 'clipboard' is "unnamed" yyp does not work in a
+            :global command.
+Solution:   When setting the clipboard was postponed, do not clear the
+            register.
+Files:      src/ops.c, src/proto/ui.pro, src/ui.c, src/globals.h,
+            src/testdir/test_global.vim, src/Makefile,
+            src/testdir/test_alot.vim
+
+
+*** ../vim-8.0.0521/src/ops.c	2017-03-16 17:23:26.831815811 +0100
+--- src/ops.c	2017-03-29 18:53:04.746712871 +0200
+***************
+*** 6466,6472 ****
+  	VIsual = old_visual;
+  	VIsual_mode = old_visual_mode;
+      }
+!     else
+      {
+  	clip_free_selection(cbd);
+  
+--- 6466,6472 ----
+  	VIsual = old_visual;
+  	VIsual_mode = old_visual_mode;
+      }
+!     else if (!is_clipboard_needs_update())
+      {
+  	clip_free_selection(cbd);
+  
+*** ../vim-8.0.0521/src/proto/ui.pro	2016-09-29 15:18:51.351768068 +0200
+--- src/proto/ui.pro	2017-03-29 18:55:31.281844107 +0200
+***************
+*** 16,21 ****
+--- 16,22 ----
+  void clip_own_selection(VimClipboard *cbd);
+  void clip_lose_selection(VimClipboard *cbd);
+  void start_global_changes(void);
++ int is_clipboard_needs_update(void);
+  void end_global_changes(void);
+  void clip_auto_select(void);
+  int clip_isautosel_star(void);
+*** ../vim-8.0.0521/src/ui.c	2017-03-16 17:23:26.839815753 +0100
+--- src/ui.c	2017-03-29 19:05:52.598168213 +0200
+***************
+*** 392,399 ****
+  
+  #if defined(FEAT_CLIPBOARD) || defined(PROTO)
+  
+- static void clip_copy_selection(VimClipboard *clip);
+- 
+  /*
+   * Selection stuff using Visual mode, for cutting and pasting text to other
+   * windows.
+--- 392,397 ----
+***************
+*** 569,575 ****
+   * considerably.
+   */
+  static int global_change_count = 0; /* if set, inside a start_global_changes */
+! static int clipboard_needs_update; /* clipboard needs to be updated */
+  
+  /*
+   * Save clip_unnamed and reset it.
+--- 567,574 ----
+   * considerably.
+   */
+  static int global_change_count = 0; /* if set, inside a start_global_changes */
+! static int clipboard_needs_update = FALSE; /* clipboard needs to be updated */
+! static int clip_did_set_selection = TRUE;
+  
+  /*
+   * Save clip_unnamed and reset it.
+***************
+*** 590,595 ****
+--- 589,604 ----
+  }
+  
+  /*
++  * Return TRUE if setting the clipboard was postponed, it already contains the
++  * right text.
++  */
++     int
++ is_clipboard_needs_update()
++ {
++     return clipboard_needs_update;
++ }
++ 
++ /*
+   * Restore clip_unnamed and set the selection when needed.
+   */
+      void
+***************
+*** 619,624 ****
+--- 628,634 ----
+  	    }
+  	}
+      }
++     clipboard_needs_update = FALSE;
+  }
+  
+  /*
+*** ../vim-8.0.0521/src/globals.h	2017-03-29 13:08:31.007872313 +0200
+--- src/globals.h	2017-03-29 19:04:10.566771762 +0200
+***************
+*** 532,538 ****
+  EXTERN int	clip_autoselectml INIT(= FALSE);
+  EXTERN int	clip_html INIT(= FALSE);
+  EXTERN regprog_T *clip_exclude_prog INIT(= NULL);
+- EXTERN int	clip_did_set_selection INIT(= TRUE);
+  EXTERN int	clip_unnamed_saved INIT(= 0);
+  #endif
+  
+--- 532,537 ----
+*** ../vim-8.0.0521/src/testdir/test_global.vim	2017-03-29 19:19:38.709289673 +0200
+--- src/testdir/test_global.vim	2017-03-29 19:16:24.682430659 +0200
+***************
+*** 0 ****
+--- 1,11 ----
++ 
++ func Test_yank_put_clipboard()
++   new
++   call setline(1, ['a', 'b', 'c'])
++   set clipboard=unnamed
++   g/^/normal yyp
++   call assert_equal(['a', 'a', 'b', 'b', 'c', 'c'], getline(1, 6))
++ 
++   set clipboard&
++   bwipe!
++ endfunc
+*** ../vim-8.0.0521/src/Makefile	2017-03-25 14:50:37.921991987 +0100
+--- src/Makefile	2017-03-29 19:16:50.302280042 +0200
+***************
+*** 2145,2150 ****
+--- 2144,2150 ----
+  	test_ga \
+  	test_gf \
+  	test_glob2regpat \
++ 	test_global \
+  	test_gn \
+  	test_goto \
+  	test_gui \
+*** ../vim-8.0.0521/src/testdir/test_alot.vim	2017-03-21 17:08:46.678923883 +0100
+--- src/testdir/test_alot.vim	2017-03-29 19:17:05.730189337 +0200
+***************
+*** 21,28 ****
+  source test_float_func.vim
+  source test_fnamemodify.vim
+  source test_functions.vim
+- source test_glob2regpat.vim
+  source test_ga.vim
+  source test_goto.vim
+  source test_help_tagjump.vim
+  source test_join.vim
+--- 21,29 ----
+  source test_float_func.vim
+  source test_fnamemodify.vim
+  source test_functions.vim
+  source test_ga.vim
++ source test_glob2regpat.vim
++ source test_global.vim
+  source test_goto.vim
+  source test_help_tagjump.vim
+  source test_join.vim
+*** ../vim-8.0.0521/src/version.c	2017-03-29 18:07:36.574886122 +0200
+--- src/version.c	2017-03-29 19:19:22.681383955 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     522,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+233. You start dreaming about web pages...in html.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,70 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0272
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0272
+Problem:    Crash on exit is not detected when running tests.
+Solution:   Remove the dash before the command. (Dominique Pelle, closes
+            #1425)
+Files:      src/testdir/Makefile
+
+
+*** ../vim-8.0.0271/src/testdir/Makefile	2016-09-11 14:36:25.000000000 +0200
+--- src/testdir/Makefile	2017-01-30 21:58:00.162197112 +0100
+***************
+*** 78,84 ****
+  	# 200 msec is sufficient, but only modern sleep supports a fraction of
+  	# a second, fall back to a second if it fails.
+  	@-/bin/sh -c "sleep .2 > /dev/null 2>&1 || sleep 1"
+! 	-$(RUN_VIM) $*.in
+  
+  	# For flaky tests retry one time.  No tests at the moment.
+  	#@/bin/sh -c "if test -f test.out -a $* = test61; then \
+--- 78,84 ----
+  	# 200 msec is sufficient, but only modern sleep supports a fraction of
+  	# a second, fall back to a second if it fails.
+  	@-/bin/sh -c "sleep .2 > /dev/null 2>&1 || sleep 1"
+! 	$(RUN_VIM) $*.in
+  
+  	# For flaky tests retry one time.  No tests at the moment.
+  	#@/bin/sh -c "if test -f test.out -a $* = test61; then \
+***************
+*** 108,114 ****
+  	# 200 msec is sufficient, but only modern sleep supports a fraction of
+  	# a second, fall back to a second if it fails.
+  	@-/bin/sh -c "sleep .2 > /dev/null 2>&1 || sleep 1"
+! 	-$(RUN_VIM) $*.in
+  	@/bin/sh -c "if test -f benchmark.out; then cat benchmark.out; fi"
+  
+  nolog:
+--- 108,114 ----
+  	# 200 msec is sufficient, but only modern sleep supports a fraction of
+  	# a second, fall back to a second if it fails.
+  	@-/bin/sh -c "sleep .2 > /dev/null 2>&1 || sleep 1"
+! 	$(RUN_VIM) $*.in
+  	@/bin/sh -c "if test -f benchmark.out; then cat benchmark.out; fi"
+  
+  nolog:
+*** ../vim-8.0.0271/src/version.c	2017-01-29 23:26:12.926595799 +0100
+--- src/version.c	2017-01-30 21:59:15.401698767 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     272,
+  /**/
+
+-- 
+Vi beats Emacs to death, and then again!
+			http://linuxtoday.com/stories/5764.html
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

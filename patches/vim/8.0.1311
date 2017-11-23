@@ -1,0 +1,105 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1311
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1311
+Problem:    No test for strpart().
+Solution:   Add a test. (Dominique Pelle, closes #2347)
+Files:      src/testdir/test_functions.vim
+
+
+*** ../vim-8.0.1310/src/testdir/test_functions.vim	2017-09-14 14:31:13.424963287 +0200
+--- src/testdir/test_functions.vim	2017-11-18 20:29:30.469320580 +0100
+***************
+*** 1,5 ****
+--- 1,21 ----
+  " Tests for various functions.
+  
++ " Must be done first, since the alternate buffer must be unset.
++ func Test_00_bufexists()
++   call assert_equal(0, bufexists('does_not_exist'))
++   call assert_equal(1, bufexists(bufnr('%')))
++   call assert_equal(0, bufexists(0))
++   new Xfoo
++   let bn = bufnr('%')
++   call assert_equal(1, bufexists(bn))
++   call assert_equal(1, bufexists('Xfoo'))
++   call assert_equal(1, bufexists(getcwd() . '/Xfoo'))
++   call assert_equal(1, bufexists(0))
++   bw
++   call assert_equal(0, bufexists(bn))
++   call assert_equal(0, bufexists('Xfoo'))
++ endfunc
++ 
+  func Test_empty()
+    call assert_equal(1, empty(''))
+    call assert_equal(0, empty('a'))
+***************
+*** 168,173 ****
+--- 184,202 ----
+    call assert_fails('call simplify(1.2)', 'E806:')
+  endfunc
+  
++ func Test_strpart()
++   call assert_equal('de', strpart('abcdefg', 3, 2))
++   call assert_equal('ab', strpart('abcdefg', -2, 4))
++   call assert_equal('abcdefg', strpart('abcdefg', -2))
++   call assert_equal('fg', strpart('abcdefg', 5, 4))
++   call assert_equal('defg', strpart('abcdefg', 3))
++ 
++   if has('multi_byte')
++     call assert_equal('lép', strpart('éléphant', 2, 4))
++     call assert_equal('léphant', strpart('éléphant', 2))
++   endif
++ endfunc
++ 
+  func Test_tolower()
+    call assert_equal("", tolower(""))
+  
+***************
+*** 478,498 ****
+    set fileformats&
+  endfunc
+  
+- func Test_bufexists()
+-   call assert_equal(0, bufexists('does_not_exist'))
+-   call assert_equal(1, bufexists(bufnr('%')))
+-   call assert_equal(0, bufexists(0))
+-   new Xfoo
+-   let bn = bufnr('%')
+-   call assert_equal(1, bufexists(bn))
+-   call assert_equal(1, bufexists('Xfoo'))
+-   call assert_equal(1, bufexists(getcwd() . '/Xfoo'))
+-   call assert_equal(1, bufexists(0))
+-   bw
+-   call assert_equal(0, bufexists(bn))
+-   call assert_equal(0, bufexists('Xfoo'))
+- endfunc
+- 
+  func Test_last_buffer_nr()
+    call assert_equal(bufnr('$'), last_buffer_nr())
+  endfunc
+--- 507,512 ----
+*** ../vim-8.0.1310/src/version.c	2017-11-18 20:22:20.123682143 +0100
+--- src/version.c	2017-11-18 20:31:11.295824706 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1311,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+1. You actually wore a blue ribbon to protest the Communications Decency Act.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

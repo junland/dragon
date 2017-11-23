@@ -1,0 +1,3058 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0466
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0466
+Problem:    There are still a few macros that should be all-caps.
+Solution:   Make a few more macros all-caps.
+Files:      src/buffer.c, src/edit.c, src/ex_cmds.c, src/ex_cmds2.c,
+	    src/ex_docmd.c, src/ex_getln.c, src/farsi.c, src/fileio.c,
+	    src/getchar.c, src/gui_beval.c, src/hardcopy.c, src/if_cscope.c,
+	    src/if_xcmdsrv.c, src/mark.c, src/memline.c, src/menu.c,
+	    src/message.c, src/misc1.c, src/normal.c, src/ops.c, src/option.c,
+	    src/quickfix.c, src/screen.c, src/search.c, src/syntax.c,
+	    src/tag.c, src/term.c, src/term.h, src/ui.c, src/undo.c,
+	    src/userfunc.c, src/version.c, src/vim.h
+
+
+*** ../vim-8.0.0465/src/buffer.c	2017-03-12 18:23:35.833850172 +0100
+--- src/buffer.c	2017-03-16 16:38:46.039311101 +0100
+***************
+*** 6021,6027 ****
+  	if (buf->b_signlist != NULL)
+  	{
+  	    vim_snprintf(lbuf, BUFSIZ, _("Signs for %s:"), buf->b_fname);
+! 	    MSG_PUTS_ATTR(lbuf, hl_attr(HLF_D));
+  	    msg_putchar('\n');
+  	}
+  	for (p = buf->b_signlist; p != NULL && !got_int; p = p->next)
+--- 6021,6027 ----
+  	if (buf->b_signlist != NULL)
+  	{
+  	    vim_snprintf(lbuf, BUFSIZ, _("Signs for %s:"), buf->b_fname);
+! 	    MSG_PUTS_ATTR(lbuf, HL_ATTR(HLF_D));
+  	    msg_putchar('\n');
+  	}
+  	for (p = buf->b_signlist; p != NULL && !got_int; p = p->next)
+*** ../vim-8.0.0465/src/edit.c	2017-03-12 20:09:59.464468404 +0100
+--- src/edit.c	2017-03-16 16:39:17.531082609 +0100
+***************
+*** 1771,1777 ****
+  	update_topline();	/* just in case w_topline isn't valid */
+  	validate_cursor();
+  	if (highlight)
+! 	    attr = hl_attr(HLF_8);
+  	else
+  	    attr = 0;
+  	pc_row = W_WINROW(curwin) + curwin->w_wrow;
+--- 1771,1777 ----
+  	update_topline();	/* just in case w_topline isn't valid */
+  	validate_cursor();
+  	if (highlight)
+! 	    attr = HL_ATTR(HLF_8);
+  	else
+  	    attr = 0;
+  	pc_row = W_WINROW(curwin) + curwin->w_wrow;
+***************
+*** 2256,2262 ****
+  	edit_submode = NULL;
+  	msg_attr(dict_opt ? (char_u *)_("'dictionary' option is empty")
+  			  : (char_u *)_("'thesaurus' option is empty"),
+! 							      hl_attr(HLF_E));
+  	if (emsg_silent == 0)
+  	{
+  	    vim_beep(BO_COMPL);
+--- 2256,2262 ----
+  	edit_submode = NULL;
+  	msg_attr(dict_opt ? (char_u *)_("'dictionary' option is empty")
+  			  : (char_u *)_("'thesaurus' option is empty"),
+! 							      HL_ATTR(HLF_E));
+  	if (emsg_silent == 0)
+  	{
+  	    vim_beep(BO_COMPL);
+***************
+*** 3252,3258 ****
+  	{
+  	    vim_snprintf((char *)IObuff, IOSIZE,
+  			      _("Scanning dictionary: %s"), (char *)files[i]);
+! 	    (void)msg_trunc_attr(IObuff, TRUE, hl_attr(HLF_R));
+  	}
+  
+  	if (fp != NULL)
+--- 3252,3258 ----
+  	{
+  	    vim_snprintf((char *)IObuff, IOSIZE,
+  			      _("Scanning dictionary: %s"), (char *)files[i]);
+! 	    (void)msg_trunc_attr(IObuff, TRUE, HL_ATTR(HLF_R));
+  	}
+  
+  	if (fp != NULL)
+***************
+*** 4344,4350 ****
+  			    : ins_buf->b_sfname == NULL
+  				? ins_buf->b_fname
+  				: ins_buf->b_sfname);
+! 		(void)msg_trunc_attr(IObuff, TRUE, hl_attr(HLF_R));
+  	    }
+  	    else if (*e_cpt == NUL)
+  		break;
+--- 4344,4350 ----
+  			    : ins_buf->b_sfname == NULL
+  				? ins_buf->b_fname
+  				: ins_buf->b_sfname);
+! 		(void)msg_trunc_attr(IObuff, TRUE, HL_ATTR(HLF_R));
+  	    }
+  	    else if (*e_cpt == NUL)
+  		break;
+***************
+*** 4374,4380 ****
+  		{
+  		    type = CTRL_X_TAGS;
+  		    vim_snprintf((char *)IObuff, IOSIZE, _("Scanning tags."));
+! 		    (void)msg_trunc_attr(IObuff, TRUE, hl_attr(HLF_R));
+  		}
+  		else
+  		    type = -1;
+--- 4374,4380 ----
+  		{
+  		    type = CTRL_X_TAGS;
+  		    vim_snprintf((char *)IObuff, IOSIZE, _("Scanning tags."));
+! 		    (void)msg_trunc_attr(IObuff, TRUE, HL_ATTR(HLF_R));
+  		}
+  		else
+  		    type = -1;
+***************
+*** 5693,5699 ****
+  	    if (!p_smd)
+  		msg_attr(edit_submode_extra,
+  			edit_submode_highl < HLF_COUNT
+! 			? hl_attr(edit_submode_highl) : 0);
+  	}
+  	else
+  	    msg_clr_cmdline();	/* necessary for "noshowmode" */
+--- 5693,5699 ----
+  	    if (!p_smd)
+  		msg_attr(edit_submode_extra,
+  			edit_submode_highl < HLF_COUNT
+! 			? HL_ATTR(edit_submode_highl) : 0);
+  	}
+  	else
+  	    msg_clr_cmdline();	/* necessary for "noshowmode" */
+*** ../vim-8.0.0465/src/ex_cmds.c	2017-03-15 20:44:26.727915109 +0100
+--- src/ex_cmds.c	2017-03-16 16:39:33.954963440 +0100
+***************
+*** 2889,2895 ****
+      {
+  	vim_snprintf((char *)numbuf, sizeof(numbuf),
+  				   "%*ld ", number_width(curwin), (long)lnum);
+! 	msg_puts_attr(numbuf, hl_attr(HLF_N));	/* Highlight line nrs */
+      }
+      msg_prt_line(ml_get(lnum), list);
+  }
+--- 2889,2895 ----
+      {
+  	vim_snprintf((char *)numbuf, sizeof(numbuf),
+  				   "%*ld ", number_width(curwin), (long)lnum);
+! 	msg_puts_attr(numbuf, HL_ATTR(HLF_N));	/* Highlight line nrs */
+      }
+      msg_prt_line(ml_get(lnum), list);
+  }
+***************
+*** 5379,5385 ****
+  			    msg_no_more = TRUE;
+  			    /* write message same highlighting as for
+  			     * wait_return */
+! 			    smsg_attr(hl_attr(HLF_R),
+  				    (char_u *)_("replace with %s (y/n/a/q/l/^E/^Y)?"), sub);
+  			    msg_no_more = FALSE;
+  			    msg_scroll = i;
+--- 5379,5385 ----
+  			    msg_no_more = TRUE;
+  			    /* write message same highlighting as for
+  			     * wait_return */
+! 			    smsg_attr(HL_ATTR(HLF_R),
+  				    (char_u *)_("replace with %s (y/n/a/q/l/^E/^Y)?"), sub);
+  			    msg_no_more = FALSE;
+  			    msg_scroll = i;
+***************
+*** 8284,8290 ****
+  	    else
+  		for (n = *p++; n > 0; --n)
+  		    if (*p == 'o' || *p == '$')
+! 			msg_putchar_attr(*p, hl_attr(HLF_L));
+  		    else
+  			msg_putchar(*p);
+      msg_clr_eos();
+--- 8284,8290 ----
+  	    else
+  		for (n = *p++; n > 0; --n)
+  		    if (*p == 'o' || *p == '$')
+! 			msg_putchar_attr(*p, HL_ATTR(HLF_L));
+  		    else
+  			msg_putchar(*p);
+      msg_clr_eos();
+*** ../vim-8.0.0465/src/ex_cmds2.c	2017-03-12 20:09:59.468468376 +0100
+--- src/ex_cmds2.c	2017-03-16 16:39:46.962869057 +0100
+***************
+*** 2230,2236 ****
+  #ifdef FEAT_AUTOCMD
+      if (curbuf != old_curbuf)
+      {
+! 	msg_source(hl_attr(HLF_W));
+  	MSG(_("Warning: Entered other buffer unexpectedly (check autocommands)"));
+      }
+  #endif
+--- 2230,2236 ----
+  #ifdef FEAT_AUTOCMD
+      if (curbuf != old_curbuf)
+      {
+! 	msg_source(HL_ATTR(HLF_W));
+  	MSG(_("Warning: Entered other buffer unexpectedly (check autocommands)"));
+      }
+  #endif
+***************
+*** 4733,4739 ****
+  		{
+  		    if (!sp->error)
+  		    {
+! 			msg_source(hl_attr(HLF_W));
+  			EMSG(_("W15: Warning: Wrong line separator, ^M may be missing"));
+  		    }
+  		    sp->error = TRUE;
+--- 4733,4739 ----
+  		{
+  		    if (!sp->error)
+  		    {
+! 			msg_source(HL_ATTR(HLF_W));
+  			EMSG(_("W15: Warning: Wrong line separator, ^M may be missing"));
+  		    }
+  		    sp->error = TRUE;
+*** ../vim-8.0.0465/src/ex_docmd.c	2017-03-12 20:09:59.468468376 +0100
+--- src/ex_docmd.c	2017-03-16 16:40:05.670733314 +0100
+***************
+*** 6032,6038 ****
+  	    msg_putchar(gap != &ucmds ? 'b' : ' ');
+  	    msg_putchar(' ');
+  
+! 	    msg_outtrans_attr(cmd->uc_name, hl_attr(HLF_D));
+  	    len = (int)STRLEN(cmd->uc_name) + 4;
+  
+  	    do {
+--- 6032,6038 ----
+  	    msg_putchar(gap != &ucmds ? 'b' : ' ');
+  	    msg_putchar(' ');
+  
+! 	    msg_outtrans_attr(cmd->uc_name, HL_ATTR(HLF_D));
+  	    len = (int)STRLEN(cmd->uc_name) + 4;
+  
+  	    do {
+***************
+*** 8480,8486 ****
+      {
+  	msg_putchar('\n');
+  	vim_snprintf((char *)IObuff, IOSIZE, _("Tab page %d"), tabcount++);
+! 	msg_outtrans_attr(IObuff, hl_attr(HLF_T));
+  	out_flush();	    /* output one line at a time */
+  	ui_breakcheck();
+  
+--- 8480,8486 ----
+      {
+  	msg_putchar('\n');
+  	vim_snprintf((char *)IObuff, IOSIZE, _("Tab page %d"), tabcount++);
+! 	msg_outtrans_attr(IObuff, HL_ATTR(HLF_T));
+  	out_flush();	    /* output one line at a time */
+  	ui_breakcheck();
+  
+*** ../vim-8.0.0465/src/ex_getln.c	2017-03-12 20:09:59.472468347 +0100
+--- src/ex_getln.c	2017-03-16 16:40:14.290670768 +0100
+***************
+*** 4178,4191 ****
+  	    lines = (num_files + columns - 1) / columns;
+  	}
+  
+! 	attr = hl_attr(HLF_D);	/* find out highlighting for directories */
+  
+  	if (xp->xp_context == EXPAND_TAGS_LISTFILES)
+  	{
+! 	    MSG_PUTS_ATTR(_("tagname"), hl_attr(HLF_T));
+  	    msg_clr_eos();
+  	    msg_advance(maxlen - 3);
+! 	    MSG_PUTS_ATTR(_(" kind file\n"), hl_attr(HLF_T));
+  	}
+  
+  	/* list the files line by line */
+--- 4178,4191 ----
+  	    lines = (num_files + columns - 1) / columns;
+  	}
+  
+! 	attr = HL_ATTR(HLF_D);	/* find out highlighting for directories */
+  
+  	if (xp->xp_context == EXPAND_TAGS_LISTFILES)
+  	{
+! 	    MSG_PUTS_ATTR(_("tagname"), HL_ATTR(HLF_T));
+  	    msg_clr_eos();
+  	    msg_advance(maxlen - 3);
+! 	    MSG_PUTS_ATTR(_(" kind file\n"), HL_ATTR(HLF_T));
+  	}
+  
+  	/* list the files line by line */
+***************
+*** 4196,4207 ****
+  	    {
+  		if (xp->xp_context == EXPAND_TAGS_LISTFILES)
+  		{
+! 		    msg_outtrans_attr(files_found[k], hl_attr(HLF_D));
+  		    p = files_found[k] + STRLEN(files_found[k]) + 1;
+  		    msg_advance(maxlen + 1);
+  		    msg_puts(p);
+  		    msg_advance(maxlen + 3);
+! 		    msg_puts_long_attr(p + 2, hl_attr(HLF_D));
+  		    break;
+  		}
+  		for (j = maxlen - lastlen; --j >= 0; )
+--- 4196,4207 ----
+  	    {
+  		if (xp->xp_context == EXPAND_TAGS_LISTFILES)
+  		{
+! 		    msg_outtrans_attr(files_found[k], HL_ATTR(HLF_D));
+  		    p = files_found[k] + STRLEN(files_found[k]) + 1;
+  		    msg_advance(maxlen + 1);
+  		    msg_puts(p);
+  		    msg_advance(maxlen + 3);
+! 		    msg_puts_long_attr(p + 2, HL_ATTR(HLF_D));
+  		    break;
+  		}
+  		for (j = maxlen - lastlen; --j >= 0; )
+*** ../vim-8.0.0465/src/farsi.c	2017-01-29 19:59:35.961322877 +0100
+--- src/farsi.c	2017-03-16 16:40:37.406503036 +0100
+***************
+*** 1719,1725 ****
+  
+      /* Assume the screen has been messed up: clear it and redraw. */
+      redraw_later(CLEAR);
+!     MSG_ATTR(farsi_text_1, hl_attr(HLF_S));
+  }
+  
+  /*
+--- 1719,1725 ----
+  
+      /* Assume the screen has been messed up: clear it and redraw. */
+      redraw_later(CLEAR);
+!     MSG_ATTR(farsi_text_1, HL_ATTR(HLF_S));
+  }
+  
+  /*
+***************
+*** 1747,1753 ****
+  
+      /* Assume the screen has been messed up: clear it and redraw. */
+      redraw_later(CLEAR);
+!     MSG_ATTR(farsi_text_2, hl_attr(HLF_S));
+  }
+  
+  /*
+--- 1747,1753 ----
+  
+      /* Assume the screen has been messed up: clear it and redraw. */
+      redraw_later(CLEAR);
+!     MSG_ATTR(farsi_text_2, HL_ATTR(HLF_S));
+  }
+  
+  /*
+*** ../vim-8.0.0465/src/fileio.c	2017-03-12 20:09:59.472468347 +0100
+--- src/fileio.c	2017-03-16 16:40:53.634385282 +0100
+***************
+*** 5044,5050 ****
+      {
+  	int numlen = errnum != NULL ? (int)STRLEN(errnum) : 0;
+  
+! 	attr = hl_attr(HLF_E);	/* set highlight for error messages */
+  	msg_add_fname(buf,
+  #ifndef UNIX
+  		sfname
+--- 5044,5050 ----
+      {
+  	int numlen = errnum != NULL ? (int)STRLEN(errnum) : 0;
+  
+! 	attr = HL_ATTR(HLF_E);	/* set highlight for error messages */
+  	msg_add_fname(buf,
+  #ifndef UNIX
+  		sfname
+***************
+*** 5300,5306 ****
+  	msg_silent = 0;		    /* must give this prompt */
+  	/* don't use emsg() here, don't want to flush the buffers */
+  	MSG_ATTR(_("WARNING: The file has been changed since reading it!!!"),
+! 						       hl_attr(HLF_E));
+  	if (ask_yesno((char_u *)_("Do you really want to write to it"),
+  								 TRUE) == 'n')
+  	    return FAIL;
+--- 5300,5306 ----
+  	msg_silent = 0;		    /* must give this prompt */
+  	/* don't use emsg() here, don't want to flush the buffers */
+  	MSG_ATTR(_("WARNING: The file has been changed since reading it!!!"),
+! 						       HL_ATTR(HLF_E));
+  	if (ask_yesno((char_u *)_("Do you really want to write to it"),
+  								 TRUE) == 'n')
+  	    return FAIL;
+***************
+*** 7011,7020 ****
+  # endif
+  		{
+  		    msg_start();
+! 		    msg_puts_attr(tbuf, hl_attr(HLF_E) + MSG_HIST);
+  		    if (*mesg2 != NUL)
+  			msg_puts_attr((char_u *)mesg2,
+! 						   hl_attr(HLF_W) + MSG_HIST);
+  		    msg_clr_eos();
+  		    (void)msg_end();
+  		    if (emsg_silent == 0)
+--- 7011,7020 ----
+  # endif
+  		{
+  		    msg_start();
+! 		    msg_puts_attr(tbuf, HL_ATTR(HLF_E) + MSG_HIST);
+  		    if (*mesg2 != NUL)
+  			msg_puts_attr((char_u *)mesg2,
+! 						   HL_ATTR(HLF_W) + MSG_HIST);
+  		    msg_clr_eos();
+  		    (void)msg_end();
+  		    if (emsg_silent == 0)
+***************
+*** 7840,7851 ****
+  	if (ap->group != AUGROUP_DEFAULT)
+  	{
+  	    if (AUGROUP_NAME(ap->group) == NULL)
+! 		msg_puts_attr(get_deleted_augroup(), hl_attr(HLF_E));
+  	    else
+! 		msg_puts_attr(AUGROUP_NAME(ap->group), hl_attr(HLF_T));
+  	    msg_puts((char_u *)"  ");
+  	}
+! 	msg_puts_attr(event_nr2name(event), hl_attr(HLF_T));
+  	last_event = event;
+  	last_group = ap->group;
+  	msg_putchar('\n');
+--- 7840,7851 ----
+  	if (ap->group != AUGROUP_DEFAULT)
+  	{
+  	    if (AUGROUP_NAME(ap->group) == NULL)
+! 		msg_puts_attr(get_deleted_augroup(), HL_ATTR(HLF_E));
+  	    else
+! 		msg_puts_attr(AUGROUP_NAME(ap->group), HL_ATTR(HLF_T));
+  	    msg_puts((char_u *)"  ");
+  	}
+! 	msg_puts_attr(event_nr2name(event), HL_ATTR(HLF_T));
+  	last_event = event;
+  	last_group = ap->group;
+  	msg_putchar('\n');
+*** ../vim-8.0.0465/src/getchar.c	2017-03-12 20:09:59.472468347 +0100
+--- src/getchar.c	2017-03-16 16:41:06.294293418 +0100
+***************
+*** 4022,4030 ****
+      } while (len < 12);
+  
+      if (mp->m_noremap == REMAP_NONE)
+! 	msg_puts_attr((char_u *)"*", hl_attr(HLF_8));
+      else if (mp->m_noremap == REMAP_SCRIPT)
+! 	msg_puts_attr((char_u *)"&", hl_attr(HLF_8));
+      else
+  	msg_putchar(' ');
+  
+--- 4022,4030 ----
+      } while (len < 12);
+  
+      if (mp->m_noremap == REMAP_NONE)
+! 	msg_puts_attr((char_u *)"*", HL_ATTR(HLF_8));
+      else if (mp->m_noremap == REMAP_SCRIPT)
+! 	msg_puts_attr((char_u *)"&", HL_ATTR(HLF_8));
+      else
+  	msg_putchar(' ');
+  
+***************
+*** 4036,4042 ****
+      /* Use FALSE below if we only want things like <Up> to show up as such on
+       * the rhs, and not M-x etc, TRUE gets both -- webb */
+      if (*mp->m_str == NUL)
+! 	msg_puts_attr((char_u *)"<Nop>", hl_attr(HLF_8));
+      else
+      {
+  	/* Remove escaping of CSI, because "m_str" is in a format to be used
+--- 4036,4042 ----
+      /* Use FALSE below if we only want things like <Up> to show up as such on
+       * the rhs, and not M-x etc, TRUE gets both -- webb */
+      if (*mp->m_str == NUL)
+! 	msg_puts_attr((char_u *)"<Nop>", HL_ATTR(HLF_8));
+      else
+      {
+  	/* Remove escaping of CSI, because "m_str" is in a format to be used
+*** ../vim-8.0.0465/src/gui_beval.c	2017-03-12 18:23:35.849850055 +0100
+--- src/gui_beval.c	2017-03-16 16:41:16.214221434 +0100
+***************
+*** 1054,1060 ****
+  #endif
+  
+  	/* Look up the RGB values of the SpecialKey foreground color. */
+! 	aep = syn_gui_attr2entry(hl_attr(HLF_8));
+  	pixel = (aep != NULL) ? aep->ae_u.gui.fg_color : INVALCOLOR;
+  	if (pixel != INVALCOLOR)
+  # if GTK_CHECK_VERSION(3,0,0)
+--- 1054,1060 ----
+  #endif
+  
+  	/* Look up the RGB values of the SpecialKey foreground color. */
+! 	aep = syn_gui_attr2entry(HL_ATTR(HLF_8));
+  	pixel = (aep != NULL) ? aep->ae_u.gui.fg_color : INVALCOLOR;
+  	if (pixel != INVALCOLOR)
+  # if GTK_CHECK_VERSION(3,0,0)
+*** ../vim-8.0.0465/src/hardcopy.c	2016-08-29 22:42:20.000000000 +0200
+--- src/hardcopy.c	2017-03-16 16:45:20.596447906 +0100
+***************
+*** 569,575 ****
+  prt_message(char_u *s)
+  {
+      screen_fill((int)Rows - 1, (int)Rows, 0, (int)Columns, ' ', ' ', 0);
+!     screen_puts(s, (int)Rows - 1, 0, hl_attr(HLF_R));
+      out_flush();
+  }
+  
+--- 569,575 ----
+  prt_message(char_u *s)
+  {
+      screen_fill((int)Rows - 1, (int)Rows, 0, (int)Columns, ' ', ' ', 0);
+!     screen_puts(s, (int)Rows - 1, 0, HL_ATTR(HLF_R));
+      out_flush();
+  }
+  
+*** ../vim-8.0.0465/src/if_cscope.c	2017-03-12 20:09:59.476468319 +0100
+--- src/if_cscope.c	2017-03-16 16:45:30.100378927 +0100
+***************
+*** 615,621 ****
+  	if (p_csverbose)
+  	{
+  	    msg_clr_eos();
+! 	    (void)smsg_attr(hl_attr(HLF_R),
+  			    (char_u *)_("Added cscope database %s"),
+  			    csinfo[i].fname);
+  	}
+--- 615,621 ----
+  	if (p_csverbose)
+  	{
+  	    msg_clr_eos();
+! 	    (void)smsg_attr(HL_ATTR(HLF_R),
+  			    (char_u *)_("Added cscope database %s"),
+  			    csinfo[i].fname);
+  	}
+***************
+*** 1612,1618 ****
+      if (p_csverbose)
+      {
+  	msg_clr_eos();
+! 	(void)smsg_attr(hl_attr(HLF_R) | MSG_HIST,
+  		(char_u *)_("cscope connection %s closed"), cname);
+      }
+      cs_release_csp(i, TRUE);
+--- 1612,1618 ----
+      if (p_csverbose)
+      {
+  	msg_clr_eos();
+! 	(void)smsg_attr(HL_ATTR(HLF_R) | MSG_HIST,
+  		(char_u *)_("cscope connection %s closed"), cname);
+      }
+      cs_release_csp(i, TRUE);
+***************
+*** 2020,2033 ****
+      {
+  	bufsize = newsize;
+  	(void)sprintf(buf, cstag_msg, ptag);
+! 	MSG_PUTS_ATTR(buf, hl_attr(HLF_T));
+      }
+  
+      vim_free(tbuf);
+  
+!     MSG_PUTS_ATTR(_("\n   #   line"), hl_attr(HLF_T));    /* strlen is 7 */
+      msg_advance(msg_col + 2);
+!     MSG_PUTS_ATTR(_("filename / context / line\n"), hl_attr(HLF_T));
+  
+      num = 1;
+      for (i = 0; i < num_matches; i++)
+--- 2020,2033 ----
+      {
+  	bufsize = newsize;
+  	(void)sprintf(buf, cstag_msg, ptag);
+! 	MSG_PUTS_ATTR(buf, HL_ATTR(HLF_T));
+      }
+  
+      vim_free(tbuf);
+  
+!     MSG_PUTS_ATTR(_("\n   #   line"), HL_ATTR(HLF_T));    /* strlen is 7 */
+      msg_advance(msg_col + 2);
+!     MSG_PUTS_ATTR(_("filename / context / line\n"), HL_ATTR(HLF_T));
+  
+      num = 1;
+      for (i = 0; i < num_matches; i++)
+***************
+*** 2071,2079 ****
+  	{
+  	    /* csfmt_str = "%4d %6s  "; */
+  	    (void)sprintf(buf, csfmt_str, num, lno);
+! 	    MSG_PUTS_ATTR(buf, hl_attr(HLF_CM));
+  	}
+! 	MSG_PUTS_LONG_ATTR(cs_pathcomponents(fname), hl_attr(HLF_CM));
+  
+  	/* compute the required space for the context */
+  	if (cntxts[idx] != NULL)
+--- 2071,2079 ----
+  	{
+  	    /* csfmt_str = "%4d %6s  "; */
+  	    (void)sprintf(buf, csfmt_str, num, lno);
+! 	    MSG_PUTS_ATTR(buf, HL_ATTR(HLF_CM));
+  	}
+! 	MSG_PUTS_LONG_ATTR(cs_pathcomponents(fname), HL_ATTR(HLF_CM));
+  
+  	/* compute the required space for the context */
+  	if (cntxts[idx] != NULL)
+***************
+*** 2399,2405 ****
+  		 * "Added cscope database..."
+  		 */
+  		sprintf(buf, " (#%d)", i);
+! 		MSG_PUTS_ATTR(buf, hl_attr(HLF_R));
+  	    }
+  	}
+  	vim_free(dblist[i]);
+--- 2399,2405 ----
+  		 * "Added cscope database..."
+  		 */
+  		sprintf(buf, " (#%d)", i);
+! 		MSG_PUTS_ATTR(buf, HL_ATTR(HLF_R));
+  	    }
+  	}
+  	vim_free(dblist[i]);
+***************
+*** 2411,2417 ****
+      vim_free(fllist);
+  
+      if (p_csverbose)
+! 	MSG_ATTR(_("All cscope databases reset"), hl_attr(HLF_R) | MSG_HIST);
+      return CSCOPE_SUCCESS;
+  } /* cs_reset */
+  
+--- 2411,2417 ----
+      vim_free(fllist);
+  
+      if (p_csverbose)
+! 	MSG_ATTR(_("All cscope databases reset"), HL_ATTR(HLF_R) | MSG_HIST);
+      return CSCOPE_SUCCESS;
+  } /* cs_reset */
+  
+***************
+*** 2497,2503 ****
+      {
+  	MSG_PUTS_ATTR(
+  	    _(" # pid    database name                       prepend path\n"),
+! 	    hl_attr(HLF_T));
+  	for (i = 0; i < csinfo_size; i++)
+  	{
+  	    if (csinfo[i].fname == NULL)
+--- 2497,2503 ----
+      {
+  	MSG_PUTS_ATTR(
+  	    _(" # pid    database name                       prepend path\n"),
+! 	    HL_ATTR(HLF_T));
+  	for (i = 0; i < csinfo_size; i++)
+  	{
+  	    if (csinfo[i].fname == NULL)
+*** ../vim-8.0.0465/src/if_xcmdsrv.c	2017-02-23 19:00:28.512904202 +0100
+--- src/if_xcmdsrv.c	2017-03-16 16:45:34.216349054 +0100
+***************
+*** 231,237 ****
+  	    if (res < -1 || i >= 1000)
+  	    {
+  		MSG_ATTR(_("Unable to register a command server name"),
+! 							      hl_attr(HLF_W));
+  		return FAIL;
+  	    }
+  	    if (p == NULL)
+--- 231,237 ----
+  	    if (res < -1 || i >= 1000)
+  	    {
+  		MSG_ATTR(_("Unable to register a command server name"),
+! 							      HL_ATTR(HLF_W));
+  		return FAIL;
+  	    }
+  	    if (p == NULL)
+*** ../vim-8.0.0465/src/mark.c	2017-03-14 21:53:54.114075276 +0100
+--- src/mark.c	2017-03-16 16:45:39.912307712 +0100
+***************
+*** 794,800 ****
+  	    }
+  	    if (name != NULL)
+  	    {
+! 		msg_outtrans_attr(name, current ? hl_attr(HLF_D) : 0);
+  		if (mustfree)
+  		    vim_free(name);
+  	    }
+--- 794,800 ----
+  	    }
+  	    if (name != NULL)
+  	    {
+! 		msg_outtrans_attr(name, current ? HL_ATTR(HLF_D) : 0);
+  		if (mustfree)
+  		    vim_free(name);
+  	    }
+***************
+*** 926,932 ****
+  	    msg_outtrans(IObuff);
+  	    msg_outtrans_attr(name,
+  			    curwin->w_jumplist[i].fmark.fnum == curbuf->b_fnum
+! 							? hl_attr(HLF_D) : 0);
+  	    vim_free(name);
+  	    ui_breakcheck();
+  	}
+--- 926,932 ----
+  	    msg_outtrans(IObuff);
+  	    msg_outtrans_attr(name,
+  			    curwin->w_jumplist[i].fmark.fnum == curbuf->b_fnum
+! 							? HL_ATTR(HLF_D) : 0);
+  	    vim_free(name);
+  	    ui_breakcheck();
+  	}
+***************
+*** 973,979 ****
+  	    name = mark_line(&curbuf->b_changelist[i], 17);
+  	    if (name == NULL)
+  		break;
+! 	    msg_outtrans_attr(name, hl_attr(HLF_D));
+  	    vim_free(name);
+  	    ui_breakcheck();
+  	}
+--- 973,979 ----
+  	    name = mark_line(&curbuf->b_changelist[i], 17);
+  	    if (name == NULL)
+  		break;
+! 	    msg_outtrans_attr(name, HL_ATTR(HLF_D));
+  	    vim_free(name);
+  	    ui_breakcheck();
+  	}
+*** ../vim-8.0.0465/src/memline.c	2017-03-12 19:22:31.756584930 +0100
+--- src/memline.c	2017-03-16 16:45:46.796257749 +0100
+***************
+*** 1136,1142 ****
+  
+      recoverymode = TRUE;
+      called_from_main = (curbuf->b_ml.ml_mfp == NULL);
+!     attr = hl_attr(HLF_E);
+  
+      /*
+       * If the file name ends in ".s[uvw][a-z]" we assume this is the swap file.
+--- 1136,1142 ----
+  
+      recoverymode = TRUE;
+      called_from_main = (curbuf->b_ml.ml_mfp == NULL);
+!     attr = HL_ATTR(HLF_E);
+  
+      /*
+       * If the file name ends in ".s[uvw][a-z]" we assume this is the swap file.
+*** ../vim-8.0.0465/src/menu.c	2017-03-12 20:09:59.476468319 +0100
+--- src/menu.c	2017-03-16 16:45:50.536230603 +0100
+***************
+*** 1132,1138 ****
+  	    MSG_PUTS(" ");
+  	}
+  				/* Same highlighting as for directories!? */
+! 	msg_outtrans_attr(menu->name, hl_attr(HLF_D));
+      }
+  
+      if (menu != NULL && menu->children == NULL)
+--- 1132,1138 ----
+  	    MSG_PUTS(" ");
+  	}
+  				/* Same highlighting as for directories!? */
+! 	msg_outtrans_attr(menu->name, HL_ATTR(HLF_D));
+      }
+  
+      if (menu != NULL && menu->children == NULL)
+***************
+*** 1162,1168 ****
+  		    msg_putchar(' ');
+  		MSG_PUTS(" ");
+  		if (*menu->strings[bit] == NUL)
+! 		    msg_puts_attr((char_u *)"<Nop>", hl_attr(HLF_8));
+  		else
+  		    msg_outtrans_special(menu->strings[bit], FALSE);
+  	    }
+--- 1162,1168 ----
+  		    msg_putchar(' ');
+  		MSG_PUTS(" ");
+  		if (*menu->strings[bit] == NUL)
+! 		    msg_puts_attr((char_u *)"<Nop>", HL_ATTR(HLF_8));
+  		else
+  		    msg_outtrans_special(menu->strings[bit], FALSE);
+  	    }
+*** ../vim-8.0.0465/src/message.c	2017-03-12 20:09:59.476468319 +0100
+--- src/message.c	2017-03-16 16:46:06.848112210 +0100
+***************
+*** 503,509 ****
+      p = get_emsg_lnum();
+      if (p != NULL)
+      {
+! 	msg_attr(p, hl_attr(HLF_N));
+  	vim_free(p);
+  	last_sourcing_lnum = sourcing_lnum;  /* only once for each line */
+      }
+--- 503,509 ----
+      p = get_emsg_lnum();
+      if (p != NULL)
+      {
+! 	msg_attr(p, HL_ATTR(HLF_N));
+  	vim_free(p);
+  	last_sourcing_lnum = sourcing_lnum;  /* only once for each line */
+      }
+***************
+*** 690,696 ****
+  
+      emsg_on_display = TRUE;	/* remember there is an error message */
+      ++msg_scroll;		/* don't overwrite a previous message */
+!     attr = hl_attr(HLF_E);	/* set highlight mode for error messages */
+      if (msg_scrolled != 0)
+  	need_wait_return = TRUE;    /* needed in case emsg() is called after
+  				     * wait_return has reset need_wait_return
+--- 690,696 ----
+  
+      emsg_on_display = TRUE;	/* remember there is an error message */
+      ++msg_scroll;		/* don't overwrite a previous message */
+!     attr = HL_ATTR(HLF_E);	/* set highlight mode for error messages */
+      if (msg_scrolled != 0)
+  	need_wait_return = TRUE;    /* needed in case emsg() is called after
+  				     * wait_return has reset need_wait_return
+***************
+*** 985,991 ****
+  	if (s != NULL && *s != NUL)
+  	    msg_attr((char_u *)
+  		    _("Messages maintainer: Bram Moolenaar <Bram@vim.org>"),
+! 		    hl_attr(HLF_T));
+      }
+  
+      /* Display what was not skipped. */
+--- 985,991 ----
+  	if (s != NULL && *s != NUL)
+  	    msg_attr((char_u *)
+  		    _("Messages maintainer: Bram Moolenaar <Bram@vim.org>"),
+! 		    HL_ATTR(HLF_T));
+      }
+  
+      /* Display what was not skipped. */
+***************
+*** 1280,1286 ****
+      if (got_int)
+  	MSG_PUTS(_("Interrupt: "));
+  
+!     MSG_PUTS_ATTR(_("Press ENTER or type command to continue"), hl_attr(HLF_R));
+      if (!msg_use_printf())
+  	msg_clr_eos();
+      p_more = save_p_more;
+--- 1280,1286 ----
+      if (got_int)
+  	MSG_PUTS(_("Interrupt: "));
+  
+!     MSG_PUTS_ATTR(_("Press ENTER or type command to continue"), HL_ATTR(HLF_R));
+      if (!msg_use_printf())
+  	msg_clr_eos();
+      p_more = save_p_more;
+***************
+*** 1431,1437 ****
+      void
+  msg_home_replace_hl(char_u *fname)
+  {
+!     msg_home_replace_attr(fname, hl_attr(HLF_D));
+  }
+  #endif
+  
+--- 1431,1437 ----
+      void
+  msg_home_replace_hl(char_u *fname)
+  {
+!     msg_home_replace_attr(fname, HL_ATTR(HLF_D));
+  }
+  #endif
+  
+***************
+*** 1544,1550 ****
+  		    msg_puts_attr_len(plain_start, (int)(str - plain_start),
+  									attr);
+  		plain_start = str + mb_l;
+! 		msg_puts_attr(transchar(c), attr == 0 ? hl_attr(HLF_8) : attr);
+  		retval += char2cells(c);
+  	    }
+  	    len -= mb_l - 1;
+--- 1544,1550 ----
+  		    msg_puts_attr_len(plain_start, (int)(str - plain_start),
+  									attr);
+  		plain_start = str + mb_l;
+! 		msg_puts_attr(transchar(c), attr == 0 ? HL_ATTR(HLF_8) : attr);
+  		retval += char2cells(c);
+  	    }
+  	    len -= mb_l - 1;
+***************
+*** 1562,1568 ****
+  		    msg_puts_attr_len(plain_start, (int)(str - plain_start),
+  									attr);
+  		plain_start = str + 1;
+! 		msg_puts_attr(s, attr == 0 ? hl_attr(HLF_8) : attr);
+  		retval += (int)STRLEN(s);
+  	    }
+  	    else
+--- 1562,1568 ----
+  		    msg_puts_attr_len(plain_start, (int)(str - plain_start),
+  									attr);
+  		plain_start = str + 1;
+! 		msg_puts_attr(s, attr == 0 ? HL_ATTR(HLF_8) : attr);
+  		retval += (int)STRLEN(s);
+  	    }
+  	    else
+***************
+*** 1623,1629 ****
+      int		attr;
+      int		len;
+  
+!     attr = hl_attr(HLF_8);
+      while (*str != NUL)
+      {
+  	/* Leading and trailing spaces need to be displayed in <> form. */
+--- 1623,1629 ----
+      int		attr;
+      int		len;
+  
+!     attr = HL_ATTR(HLF_8);
+      while (*str != NUL)
+      {
+  	/* Leading and trailing spaces need to be displayed in <> form. */
+***************
+*** 1846,1858 ****
+  		{
+  		    c = lcs_tab1;
+  		    c_extra = lcs_tab2;
+! 		    attr = hl_attr(HLF_8);
+  		}
+  	    }
+  	    else if (c == 160 && list && lcs_nbsp != NUL)
+  	    {
+  		c = lcs_nbsp;
+! 		attr = hl_attr(HLF_8);
+  	    }
+  	    else if (c == NUL && list && lcs_eol != NUL)
+  	    {
+--- 1846,1858 ----
+  		{
+  		    c = lcs_tab1;
+  		    c_extra = lcs_tab2;
+! 		    attr = HL_ATTR(HLF_8);
+  		}
+  	    }
+  	    else if (c == 160 && list && lcs_nbsp != NUL)
+  	    {
+  		c = lcs_nbsp;
+! 		attr = HL_ATTR(HLF_8);
+  	    }
+  	    else if (c == NUL && list && lcs_eol != NUL)
+  	    {
+***************
+*** 1860,1866 ****
+  		c_extra = NUL;
+  		n_extra = 1;
+  		c = lcs_eol;
+! 		attr = hl_attr(HLF_AT);
+  		--s;
+  	    }
+  	    else if (c != NUL && (n = byte2cells(c)) > 1)
+--- 1860,1866 ----
+  		c_extra = NUL;
+  		n_extra = 1;
+  		c = lcs_eol;
+! 		attr = HL_ATTR(HLF_AT);
+  		--s;
+  	    }
+  	    else if (c != NUL && (n = byte2cells(c)) > 1)
+***************
+*** 1871,1887 ****
+  		c = *p_extra++;
+  		/* Use special coloring to be able to distinguish <hex> from
+  		 * the same in plain text. */
+! 		attr = hl_attr(HLF_8);
+  	    }
+  	    else if (c == ' ' && trail != NULL && s > trail)
+  	    {
+  		c = lcs_trail;
+! 		attr = hl_attr(HLF_8);
+  	    }
+  	    else if (c == ' ' && list && lcs_space != NUL)
+  	    {
+  		c = lcs_space;
+! 		attr = hl_attr(HLF_8);
+  	    }
+  	}
+  
+--- 1871,1887 ----
+  		c = *p_extra++;
+  		/* Use special coloring to be able to distinguish <hex> from
+  		 * the same in plain text. */
+! 		attr = HL_ATTR(HLF_8);
+  	    }
+  	    else if (c == ' ' && trail != NULL && s > trail)
+  	    {
+  		c = lcs_trail;
+! 		attr = HL_ATTR(HLF_8);
+  	    }
+  	    else if (c == ' ' && list && lcs_space != NUL)
+  	    {
+  		c = lcs_space;
+! 		attr = HL_ATTR(HLF_8);
+  	    }
+  	}
+  
+***************
+*** 1913,1919 ****
+  		msg_col == Columns - 1))
+      {
+  	/* Doesn't fit, print a highlighted '>' to fill it up. */
+! 	msg_screen_putchar('>', hl_attr(HLF_AT));
+  	return s;
+      }
+  
+--- 1913,1919 ----
+  		msg_col == Columns - 1))
+      {
+  	/* Doesn't fit, print a highlighted '>' to fill it up. */
+! 	msg_screen_putchar('>', HL_ATTR(HLF_AT));
+  	return s;
+      }
+  
+***************
+*** 1956,1962 ****
+  msg_puts_title(
+      char_u	*s)
+  {
+!     msg_puts_attr(s, hl_attr(HLF_T));
+  }
+  
+  /*
+--- 1956,1962 ----
+  msg_puts_title(
+      char_u	*s)
+  {
+!     msg_puts_attr(s, HL_ATTR(HLF_T));
+  }
+  
+  /*
+***************
+*** 1981,1987 ****
+      {
+  	slen = (room - 3) / 2;
+  	msg_outtrans_len_attr(longstr, slen, attr);
+! 	msg_puts_attr((char_u *)"...", hl_attr(HLF_8));
+      }
+      msg_outtrans_len_attr(longstr + len - slen, slen, attr);
+  }
+--- 1981,1987 ----
+      {
+  	slen = (room - 3) / 2;
+  	msg_outtrans_len_attr(longstr, slen, attr);
+! 	msg_puts_attr((char_u *)"...", HL_ATTR(HLF_8));
+      }
+      msg_outtrans_len_attr(longstr + len - slen, slen, attr);
+  }
+***************
+*** 3067,3073 ****
+      int		attr;
+      char_u	*s = (char_u *)_("-- More --");
+  
+!     attr = hl_attr(HLF_M);
+      screen_puts(s, (int)Rows - 1, 0, attr);
+      if (full)
+  	screen_puts((char_u *)
+--- 3067,3073 ----
+      int		attr;
+      char_u	*s = (char_u *)_("-- More --");
+  
+!     attr = HL_ATTR(HLF_M);
+      screen_puts(s, (int)Rows - 1, 0, attr);
+      if (full)
+  	screen_puts((char_u *)
+***************
+*** 3420,3426 ****
+      vim_free(keep_msg);
+      keep_msg = NULL;
+      if (hl)
+! 	keep_msg_attr = hl_attr(HLF_W);
+      else
+  	keep_msg_attr = 0;
+      if (msg_attr(message, keep_msg_attr) && msg_scrolled == 0)
+--- 3420,3426 ----
+      vim_free(keep_msg);
+      keep_msg = NULL;
+      if (hl)
+! 	keep_msg_attr = HL_ATTR(HLF_W);
+      else
+  	keep_msg_attr = 0;
+      if (msg_attr(message, keep_msg_attr) && msg_scrolled == 0)
+***************
+*** 3812,3818 ****
+      /* avoid that 'q' at the more prompt truncates the message here */
+      ++confirm_msg_used;
+      if (confirm_msg != NULL)
+! 	msg_puts_attr(confirm_msg, hl_attr(HLF_M));
+      --confirm_msg_used;
+  }
+  
+--- 3812,3818 ----
+      /* avoid that 'q' at the more prompt truncates the message here */
+      ++confirm_msg_used;
+      if (confirm_msg != NULL)
+! 	msg_puts_attr(confirm_msg, HL_ATTR(HLF_M));
+      --confirm_msg_used;
+  }
+  
+*** ../vim-8.0.0465/src/misc1.c	2017-03-12 20:09:59.480468291 +0100
+--- src/misc1.c	2017-03-16 16:46:15.392050196 +0100
+***************
+*** 3265,3272 ****
+  	msg_start();
+  	if (msg_row == Rows - 1)
+  	    msg_col = col;
+! 	msg_source(hl_attr(HLF_W));
+! 	MSG_PUTS_ATTR(_(w_readonly), hl_attr(HLF_W) | MSG_HIST);
+  #ifdef FEAT_EVAL
+  	set_vim_var_string(VV_WARNINGMSG, (char_u *)_(w_readonly), -1);
+  #endif
+--- 3265,3272 ----
+  	msg_start();
+  	if (msg_row == Rows - 1)
+  	    msg_col = col;
+! 	msg_source(HL_ATTR(HLF_W));
+! 	MSG_PUTS_ATTR(_(w_readonly), HL_ATTR(HLF_W) | MSG_HIST);
+  #ifdef FEAT_EVAL
+  	set_vim_var_string(VV_WARNINGMSG, (char_u *)_(w_readonly), -1);
+  #endif
+***************
+*** 3319,3325 ****
+      while (r != 'y' && r != 'n')
+      {
+  	/* same highlighting as for wait_return */
+! 	smsg_attr(hl_attr(HLF_R), (char_u *)"%s (y/n)?", str);
+  	if (direct)
+  	    r = get_keystroke();
+  	else
+--- 3319,3325 ----
+      while (r != 'y' && r != 'n')
+      {
+  	/* same highlighting as for wait_return */
+! 	smsg_attr(HL_ATTR(HLF_R), (char_u *)"%s (y/n)?", str);
+  	if (direct)
+  	    r = get_keystroke();
+  	else
+***************
+*** 3701,3708 ****
+  	 * function give the user a hint where the beep comes from. */
+  	if (vim_strchr(p_debug, 'e') != NULL)
+  	{
+! 	    msg_source(hl_attr(HLF_W));
+! 	    msg_attr((char_u *)_("Beep!"), hl_attr(HLF_W));
+  	}
+      }
+  }
+--- 3701,3708 ----
+  	 * function give the user a hint where the beep comes from. */
+  	if (vim_strchr(p_debug, 'e') != NULL)
+  	{
+! 	    msg_source(HL_ATTR(HLF_W));
+! 	    msg_attr((char_u *)_("Beep!"), HL_ATTR(HLF_W));
+  	}
+      }
+  }
+*** ../vim-8.0.0465/src/normal.c	2017-03-12 20:09:59.480468291 +0100
+--- src/normal.c	2017-03-16 16:46:19.356021424 +0100
+***************
+*** 3266,3272 ****
+  
+      if (full_screen)
+      {
+! 	if (!did_check && hl_attr(HLF_V) == 0)
+  	    MSG(_("Warning: terminal cannot highlight"));
+  	did_check = TRUE;
+      }
+--- 3266,3272 ----
+  
+      if (full_screen)
+      {
+! 	if (!did_check && HL_ATTR(HLF_V) == 0)
+  	    MSG(_("Warning: terminal cannot highlight"));
+  	did_check = TRUE;
+      }
+*** ../vim-8.0.0465/src/ops.c	2017-03-12 20:37:16.836943099 +0100
+--- src/ops.c	2017-03-16 16:46:22.939995411 +0100
+***************
+*** 4112,4118 ****
+  
+      if (arg != NULL && *arg == NUL)
+  	arg = NULL;
+!     attr = hl_attr(HLF_8);
+  
+      /* Highlight title */
+      MSG_PUTS_TITLE(_("\n--- Registers ---"));
+--- 4112,4118 ----
+  
+      if (arg != NULL && *arg == NUL)
+  	arg = NULL;
+!     attr = HL_ATTR(HLF_8);
+  
+      /* Highlight title */
+      MSG_PUTS_TITLE(_("\n--- Registers ---"));
+*** ../vim-8.0.0465/src/option.c	2017-03-12 20:09:59.484468262 +0100
+--- src/option.c	2017-03-16 16:46:30.211942629 +0100
+***************
+*** 8556,8563 ****
+  	    {
+  		static char *w_arabic = N_("W17: Arabic requires UTF-8, do ':set encoding=utf-8'");
+  
+! 		msg_source(hl_attr(HLF_W));
+! 		MSG_ATTR(_(w_arabic), hl_attr(HLF_W));
+  #ifdef FEAT_EVAL
+  		set_vim_var_string(VV_WARNINGMSG, (char_u *)_(w_arabic), -1);
+  #endif
+--- 8556,8563 ----
+  	    {
+  		static char *w_arabic = N_("W17: Arabic requires UTF-8, do ':set encoding=utf-8'");
+  
+! 		msg_source(HL_ATTR(HLF_W));
+! 		MSG_ATTR(_(w_arabic), HL_ATTR(HLF_W));
+  #ifdef FEAT_EVAL
+  		set_vim_var_string(VV_WARNINGMSG, (char_u *)_(w_arabic), -1);
+  #endif
+*** ../vim-8.0.0465/src/quickfix.c	2017-03-12 20:09:59.484468262 +0100
+--- src/quickfix.c	2017-03-16 16:46:36.847894464 +0100
+***************
+*** 2555,2561 ****
+  		vim_snprintf((char *)IObuff, IOSIZE, "%2d %s",
+  							    i, (char *)fname);
+  	    msg_outtrans_attr(IObuff, i == qi->qf_lists[qi->qf_curlist].qf_index
+! 					   ? hl_attr(HLF_L) : hl_attr(HLF_D));
+  	    if (qfp->qf_lnum == 0)
+  		IObuff[0] = NUL;
+  	    else if (qfp->qf_col == 0)
+--- 2555,2561 ----
+  		vim_snprintf((char *)IObuff, IOSIZE, "%2d %s",
+  							    i, (char *)fname);
+  	    msg_outtrans_attr(IObuff, i == qi->qf_lists[qi->qf_curlist].qf_index
+! 					   ? HL_ATTR(HLF_L) : HL_ATTR(HLF_D));
+  	    if (qfp->qf_lnum == 0)
+  		IObuff[0] = NUL;
+  	    else if (qfp->qf_col == 0)
+***************
+*** 2565,2571 ****
+  						   qfp->qf_lnum, qfp->qf_col);
+  	    sprintf((char *)IObuff + STRLEN(IObuff), "%s:",
+  				  (char *)qf_types(qfp->qf_type, qfp->qf_nr));
+! 	    msg_puts_attr(IObuff, hl_attr(HLF_N));
+  	    if (qfp->qf_pattern != NULL)
+  	    {
+  		qf_fmt_text(qfp->qf_pattern, IObuff, IOSIZE);
+--- 2565,2571 ----
+  						   qfp->qf_lnum, qfp->qf_col);
+  	    sprintf((char *)IObuff + STRLEN(IObuff), "%s:",
+  				  (char *)qf_types(qfp->qf_type, qfp->qf_nr));
+! 	    msg_puts_attr(IObuff, HL_ATTR(HLF_N));
+  	    if (qfp->qf_pattern != NULL)
+  	    {
+  		qf_fmt_text(qfp->qf_pattern, IObuff, IOSIZE);
+*** ../vim-8.0.0465/src/screen.c	2017-03-12 21:31:54.289925047 +0100
+--- src/screen.c	2017-03-16 16:47:27.155529306 +0100
+***************
+*** 2139,2148 ****
+  	     * Last line isn't finished: Display "@@@" in the last screen line.
+  	     */
+  	    screen_puts_len((char_u *)"@@", 2, scr_row, W_WINCOL(wp),
+! 							      hl_attr(HLF_AT));
+  	    screen_fill(scr_row, scr_row + 1,
+  		    (int)W_WINCOL(wp) + 2, (int)W_ENDCOL(wp),
+! 		    '@', ' ', hl_attr(HLF_AT));
+  	    set_empty_rows(wp, srow);
+  	    wp->w_botline = lnum;
+  	}
+--- 2139,2148 ----
+  	     * Last line isn't finished: Display "@@@" in the last screen line.
+  	     */
+  	    screen_puts_len((char_u *)"@@", 2, scr_row, W_WINCOL(wp),
+! 							      HL_ATTR(HLF_AT));
+  	    screen_fill(scr_row, scr_row + 1,
+  		    (int)W_WINCOL(wp) + 2, (int)W_ENDCOL(wp),
+! 		    '@', ' ', HL_ATTR(HLF_AT));
+  	    set_empty_rows(wp, srow);
+  	    wp->w_botline = lnum;
+  	}
+***************
+*** 2154,2160 ****
+  	    screen_fill(W_WINROW(wp) + wp->w_height - 1,
+  		    W_WINROW(wp) + wp->w_height,
+  		    (int)W_ENDCOL(wp) - 3, (int)W_ENDCOL(wp),
+! 		    '@', '@', hl_attr(HLF_AT));
+  	    set_empty_rows(wp, srow);
+  	    wp->w_botline = lnum;
+  	}
+--- 2154,2160 ----
+  	    screen_fill(W_WINROW(wp) + wp->w_height - 1,
+  		    W_WINROW(wp) + wp->w_height,
+  		    (int)W_ENDCOL(wp) - 3, (int)W_ENDCOL(wp),
+! 		    '@', '@', HL_ATTR(HLF_AT));
+  	    set_empty_rows(wp, srow);
+  	    wp->w_botline = lnum;
+  	}
+***************
+*** 2282,2288 ****
+  		n = W_WIDTH(wp);
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_ENDCOL(wp) - n, (int)W_ENDCOL(wp),
+! 		    ' ', ' ', hl_attr(HLF_FC));
+  	}
+  # endif
+  # ifdef FEAT_SIGNS
+--- 2282,2288 ----
+  		n = W_WIDTH(wp);
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_ENDCOL(wp) - n, (int)W_ENDCOL(wp),
+! 		    ' ', ' ', HL_ATTR(HLF_FC));
+  	}
+  # endif
+  # ifdef FEAT_SIGNS
+***************
+*** 2295,2310 ****
+  		nn = W_WIDTH(wp);
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_ENDCOL(wp) - nn, (int)W_ENDCOL(wp) - n,
+! 		    ' ', ' ', hl_attr(HLF_SC));
+  	    n = nn;
+  	}
+  # endif
+  	screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		W_WINCOL(wp), W_ENDCOL(wp) - 1 - FDC_OFF,
+! 		c2, c2, hl_attr(hl));
+  	screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		W_ENDCOL(wp) - 1 - FDC_OFF, W_ENDCOL(wp) - FDC_OFF,
+! 		c1, c2, hl_attr(hl));
+      }
+      else
+  #endif
+--- 2295,2310 ----
+  		nn = W_WIDTH(wp);
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_ENDCOL(wp) - nn, (int)W_ENDCOL(wp) - n,
+! 		    ' ', ' ', HL_ATTR(HLF_SC));
+  	    n = nn;
+  	}
+  # endif
+  	screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		W_WINCOL(wp), W_ENDCOL(wp) - 1 - FDC_OFF,
+! 		c2, c2, HL_ATTR(hl));
+  	screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		W_ENDCOL(wp) - 1 - FDC_OFF, W_ENDCOL(wp) - FDC_OFF,
+! 		c1, c2, HL_ATTR(hl));
+      }
+      else
+  #endif
+***************
+*** 2318,2324 ****
+  		n = wp->w_width;
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_WINCOL(wp), (int)W_WINCOL(wp) + n,
+! 		    cmdwin_type, ' ', hl_attr(HLF_AT));
+  	}
+  #endif
+  #ifdef FEAT_FOLDING
+--- 2318,2324 ----
+  		n = wp->w_width;
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_WINCOL(wp), (int)W_WINCOL(wp) + n,
+! 		    cmdwin_type, ' ', HL_ATTR(HLF_AT));
+  	}
+  #endif
+  #ifdef FEAT_FOLDING
+***************
+*** 2331,2337 ****
+  		nn = W_WIDTH(wp);
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_WINCOL(wp) + n, (int)W_WINCOL(wp) + nn,
+! 		    ' ', ' ', hl_attr(HLF_FC));
+  	    n = nn;
+  	}
+  #endif
+--- 2331,2337 ----
+  		nn = W_WIDTH(wp);
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_WINCOL(wp) + n, (int)W_WINCOL(wp) + nn,
+! 		    ' ', ' ', HL_ATTR(HLF_FC));
+  	    n = nn;
+  	}
+  #endif
+***************
+*** 2345,2357 ****
+  		nn = W_WIDTH(wp);
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_WINCOL(wp) + n, (int)W_WINCOL(wp) + nn,
+! 		    ' ', ' ', hl_attr(HLF_SC));
+  	    n = nn;
+  	}
+  #endif
+  	screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		W_WINCOL(wp) + FDC_OFF, (int)W_ENDCOL(wp),
+! 		c1, c2, hl_attr(hl));
+      }
+      set_empty_rows(wp, row);
+  }
+--- 2345,2357 ----
+  		nn = W_WIDTH(wp);
+  	    screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		    W_WINCOL(wp) + n, (int)W_WINCOL(wp) + nn,
+! 		    ' ', ' ', HL_ATTR(HLF_SC));
+  	    n = nn;
+  	}
+  #endif
+  	screen_fill(W_WINROW(wp) + row, W_WINROW(wp) + endrow,
+  		W_WINCOL(wp) + FDC_OFF, (int)W_ENDCOL(wp),
+! 		c1, c2, HL_ATTR(hl));
+      }
+      set_empty_rows(wp, row);
+  }
+***************
+*** 2428,2434 ****
+      if (cmdwin_type != 0 && wp == curwin)
+      {
+  	ScreenLines[off] = cmdwin_type;
+! 	ScreenAttrs[off] = hl_attr(HLF_AT);
+  #ifdef FEAT_MBYTE
+  	if (enc_utf8)
+  	    ScreenLinesUC[off] = 0;
+--- 2428,2434 ----
+      if (cmdwin_type != 0 && wp == curwin)
+      {
+  	ScreenLines[off] = cmdwin_type;
+! 	ScreenAttrs[off] = HL_ATTR(HLF_AT);
+  #ifdef FEAT_MBYTE
+  	if (enc_utf8)
+  	    ScreenLinesUC[off] = 0;
+***************
+*** 2451,2464 ****
+  	    int		i;
+  
+  	    copy_text_attr(off + W_WIDTH(wp) - fdc - col, buf, fdc,
+! 							     hl_attr(HLF_FC));
+  	    /* reverse the fold column */
+  	    for (i = 0; i < fdc; ++i)
+  		ScreenLines[off + W_WIDTH(wp) - i - 1 - col] = buf[i];
+  	}
+  	else
+  #endif
+! 	    copy_text_attr(off + col, buf, fdc, hl_attr(HLF_FC));
+  	col += fdc;
+      }
+  
+--- 2451,2464 ----
+  	    int		i;
+  
+  	    copy_text_attr(off + W_WIDTH(wp) - fdc - col, buf, fdc,
+! 							     HL_ATTR(HLF_FC));
+  	    /* reverse the fold column */
+  	    for (i = 0; i < fdc; ++i)
+  		ScreenLines[off + W_WIDTH(wp) - i - 1 - col] = buf[i];
+  	}
+  	else
+  #endif
+! 	    copy_text_attr(off + col, buf, fdc, HL_ATTR(HLF_FC));
+  	col += fdc;
+      }
+  
+***************
+*** 2476,2482 ****
+  
+      /* Set all attributes of the 'number' or 'relativenumber' column and the
+       * text */
+!     RL_MEMSET(col, hl_attr(HLF_FL), W_WIDTH(wp) - col);
+  
+  #ifdef FEAT_SIGNS
+      /* If signs are being displayed, add two spaces. */
+--- 2476,2482 ----
+  
+      /* Set all attributes of the 'number' or 'relativenumber' column and the
+       * text */
+!     RL_MEMSET(col, HL_ATTR(HLF_FL), W_WIDTH(wp) - col);
+  
+  #ifdef FEAT_SIGNS
+      /* If signs are being displayed, add two spaces. */
+***************
+*** 2491,2500 ****
+  	    if (wp->w_p_rl)
+  		/* the line number isn't reversed */
+  		copy_text_attr(off + W_WIDTH(wp) - len - col,
+! 					(char_u *)"  ", len, hl_attr(HLF_FL));
+  	    else
+  # endif
+! 		copy_text_attr(off + col, (char_u *)"  ", len, hl_attr(HLF_FL));
+  	    col += len;
+  	}
+      }
+--- 2491,2500 ----
+  	    if (wp->w_p_rl)
+  		/* the line number isn't reversed */
+  		copy_text_attr(off + W_WIDTH(wp) - len - col,
+! 					(char_u *)"  ", len, HL_ATTR(HLF_FL));
+  	    else
+  # endif
+! 		copy_text_attr(off + col, (char_u *)"  ", len, HL_ATTR(HLF_FL));
+  	    col += len;
+  	}
+      }
+***************
+*** 2536,2545 ****
+  	    if (wp->w_p_rl)
+  		/* the line number isn't reversed */
+  		copy_text_attr(off + W_WIDTH(wp) - len - col, buf, len,
+! 							     hl_attr(HLF_FL));
+  	    else
+  #endif
+! 		copy_text_attr(off + col, buf, len, hl_attr(HLF_FL));
+  	    col += len;
+  	}
+      }
+--- 2536,2545 ----
+  	    if (wp->w_p_rl)
+  		/* the line number isn't reversed */
+  		copy_text_attr(off + W_WIDTH(wp) - len - col, buf, len,
+! 							     HL_ATTR(HLF_FL));
+  	    else
+  #endif
+! 		copy_text_attr(off + col, buf, len, HL_ATTR(HLF_FL));
+  	    col += len;
+  	}
+      }
+***************
+*** 2748,2761 ****
+  			len = wp->w_old_cursor_lcol;
+  		    else
+  			len = W_WIDTH(wp) - txtcol;
+! 		    RL_MEMSET(wp->w_old_cursor_fcol + txtcol, hl_attr(HLF_V),
+  					    len - (int)wp->w_old_cursor_fcol);
+  		}
+  	    }
+  	    else
+  	    {
+  		/* Set all attributes of the text */
+! 		RL_MEMSET(txtcol, hl_attr(HLF_V), W_WIDTH(wp) - txtcol);
+  	    }
+  	}
+      }
+--- 2748,2761 ----
+  			len = wp->w_old_cursor_lcol;
+  		    else
+  			len = W_WIDTH(wp) - txtcol;
+! 		    RL_MEMSET(wp->w_old_cursor_fcol + txtcol, HL_ATTR(HLF_V),
+  					    len - (int)wp->w_old_cursor_fcol);
+  		}
+  	    }
+  	    else
+  	    {
+  		/* Set all attributes of the text */
+! 		RL_MEMSET(txtcol, HL_ATTR(HLF_V), W_WIDTH(wp) - txtcol);
+  	    }
+  	}
+      }
+***************
+*** 2777,2783 ****
+  		txtcol -= wp->w_leftcol;
+  	    if (txtcol >= 0 && txtcol < W_WIDTH(wp))
+  		ScreenAttrs[off + txtcol] = hl_combine_attr(
+! 				    ScreenAttrs[off + txtcol], hl_attr(HLF_MC));
+  	    txtcol = old_txtcol;
+  	    j = wp->w_p_cc_cols[++i];
+  	}
+--- 2777,2783 ----
+  		txtcol -= wp->w_leftcol;
+  	    if (txtcol >= 0 && txtcol < W_WIDTH(wp))
+  		ScreenAttrs[off + txtcol] = hl_combine_attr(
+! 				    ScreenAttrs[off + txtcol], HL_ATTR(HLF_MC));
+  	    txtcol = old_txtcol;
+  	    j = wp->w_p_cc_cols[++i];
+  	}
+***************
+*** 2793,2799 ****
+  	    txtcol -= wp->w_leftcol;
+  	if (txtcol >= 0 && txtcol < W_WIDTH(wp))
+  	    ScreenAttrs[off + txtcol] = hl_combine_attr(
+! 				 ScreenAttrs[off + txtcol], hl_attr(HLF_CUC));
+      }
+  #endif
+  
+--- 2793,2799 ----
+  	    txtcol -= wp->w_leftcol;
+  	if (txtcol >= 0 && txtcol < W_WIDTH(wp))
+  	    ScreenAttrs[off + txtcol] = hl_combine_attr(
+! 				 ScreenAttrs[off + txtcol], HL_ATTR(HLF_CUC));
+      }
+  #endif
+  
+***************
+*** 3063,3069 ****
+      int		syntax_flags	= 0;
+      int		syntax_seqnr	= 0;
+      int		prev_syntax_id	= 0;
+!     int		conceal_attr	= hl_attr(HLF_CONCEAL);
+      int		is_concealing	= FALSE;
+      int		boguscols	= 0;	/* nonexistent columns added to force
+  					   wrapping */
+--- 3063,3069 ----
+      int		syntax_flags	= 0;
+      int		syntax_seqnr	= 0;
+      int		prev_syntax_id	= 0;
+!     int		conceal_attr	= HL_ATTR(HLF_CONCEAL);
+      int		is_concealing	= FALSE;
+      int		boguscols	= 0;	/* nonexistent columns added to force
+  					   wrapping */
+***************
+*** 3243,3255 ****
+  	if (fromcol >= 0)
+  	{
+  	    area_highlighting = TRUE;
+! 	    attr = hl_attr(HLF_V);
+  #if defined(FEAT_CLIPBOARD) && defined(FEAT_X11)
+  	    if ((clip_star.available && !clip_star.owned
+  						     && clip_isautosel_star())
+  		    || (clip_plus.available && !clip_plus.owned
+  						    && clip_isautosel_plus()))
+! 		attr = hl_attr(HLF_VNC);
+  #endif
+  	}
+      }
+--- 3243,3255 ----
+  	if (fromcol >= 0)
+  	{
+  	    area_highlighting = TRUE;
+! 	    attr = HL_ATTR(HLF_V);
+  #if defined(FEAT_CLIPBOARD) && defined(FEAT_X11)
+  	    if ((clip_star.available && !clip_star.owned
+  						     && clip_isautosel_star())
+  		    || (clip_plus.available && !clip_plus.owned
+  						    && clip_isautosel_plus()))
+! 		attr = HL_ATTR(HLF_VNC);
+  #endif
+  	}
+      }
+***************
+*** 3279,3285 ****
+  	if (fromcol == tocol)
+  	    tocol = fromcol + 1;
+  	area_highlighting = TRUE;
+! 	attr = hl_attr(HLF_I);
+      }
+  
+  #ifdef FEAT_DIFF
+--- 3279,3285 ----
+  	if (fromcol == tocol)
+  	    tocol = fromcol + 1;
+  	area_highlighting = TRUE;
+! 	attr = HL_ATTR(HLF_I);
+      }
+  
+  #ifdef FEAT_DIFF
+***************
+*** 3315,3321 ****
+  # if defined(FEAT_QUICKFIX) && defined(FEAT_WINDOWS)
+      /* Highlight the current line in the quickfix window. */
+      if (bt_quickfix(wp->w_buffer) && qf_current_entry(wp) == lnum)
+! 	line_attr = hl_attr(HLF_L);
+  # endif
+      if (line_attr != 0)
+  	area_highlighting = TRUE;
+--- 3315,3321 ----
+  # if defined(FEAT_QUICKFIX) && defined(FEAT_WINDOWS)
+      /* Highlight the current line in the quickfix window. */
+      if (bt_quickfix(wp->w_buffer) && qf_current_entry(wp) == lnum)
+! 	line_attr = HL_ATTR(HLF_L);
+  # endif
+      if (line_attr != 0)
+  	area_highlighting = TRUE;
+***************
+*** 3592,3598 ****
+      if (wp->w_p_cul && lnum == wp->w_cursor.lnum
+  					 && !(wp == curwin && VIsual_active))
+      {
+! 	line_attr = hl_attr(HLF_CUL);
+  	area_highlighting = TRUE;
+      }
+  #endif
+--- 3592,3598 ----
+      if (wp->w_p_cul && lnum == wp->w_cursor.lnum
+  					 && !(wp == curwin && VIsual_active))
+      {
+! 	line_attr = HL_ATTR(HLF_CUL);
+  	area_highlighting = TRUE;
+      }
+  #endif
+***************
+*** 3630,3636 ****
+  		    /* Draw the cmdline character. */
+  		    n_extra = 1;
+  		    c_extra = cmdwin_type;
+! 		    char_attr = hl_attr(HLF_AT);
+  		}
+  	    }
+  #endif
+--- 3630,3636 ----
+  		    /* Draw the cmdline character. */
+  		    n_extra = 1;
+  		    c_extra = cmdwin_type;
+! 		    char_attr = HL_ATTR(HLF_AT);
+  		}
+  	    }
+  #endif
+***************
+*** 3655,3661 ****
+  			p_extra_free[n_extra] = NUL;
+  			p_extra = p_extra_free;
+  			c_extra = NUL;
+! 			char_attr = hl_attr(HLF_FC);
+  		    }
+  		}
+  	    }
+--- 3655,3661 ----
+  			p_extra_free[n_extra] = NUL;
+  			p_extra = p_extra_free;
+  			c_extra = NUL;
+! 			char_attr = HL_ATTR(HLF_FC);
+  		    }
+  		}
+  	    }
+***************
+*** 3676,3682 ****
+  
+  		    /* Draw two cells with the sign value or blank. */
+  		    c_extra = ' ';
+! 		    char_attr = hl_attr(HLF_SC);
+  		    n_extra = 2;
+  
+  		    if (row == startrow
+--- 3676,3682 ----
+  
+  		    /* Draw two cells with the sign value or blank. */
+  		    c_extra = ' ';
+! 		    char_attr = HL_ATTR(HLF_SC);
+  		    n_extra = 2;
+  
+  		    if (row == startrow
+***************
+*** 3769,3775 ****
+  		    else
+  			c_extra = ' ';
+  		    n_extra = number_width(wp) + 1;
+! 		    char_attr = hl_attr(HLF_N);
+  #ifdef FEAT_SYN_HL
+  		    /* When 'cursorline' is set highlight the line number of
+  		     * the current line differently.
+--- 3769,3775 ----
+  		    else
+  			c_extra = ' ';
+  		    n_extra = number_width(wp) + 1;
+! 		    char_attr = HL_ATTR(HLF_N);
+  #ifdef FEAT_SYN_HL
+  		    /* When 'cursorline' is set highlight the line number of
+  		     * the current line differently.
+***************
+*** 3777,3783 ****
+  		     * when CursorLineNr isn't set? */
+  		    if ((wp->w_p_cul || wp->w_p_rnu)
+  						 && lnum == wp->w_cursor.lnum)
+! 			char_attr = hl_attr(HLF_CLN);
+  #endif
+  		}
+  	    }
+--- 3777,3783 ----
+  		     * when CursorLineNr isn't set? */
+  		    if ((wp->w_p_cul || wp->w_p_rnu)
+  						 && lnum == wp->w_cursor.lnum)
+! 			char_attr = HL_ATTR(HLF_CLN);
+  #endif
+  		}
+  	    }
+***************
+*** 3807,3817 ****
+  # ifdef FEAT_DIFF
+  		    if (diff_hlf != (hlf_T)0)
+  		    {
+! 			char_attr = hl_attr(diff_hlf);
+  #  ifdef FEAT_SYN_HL
+  			if (wp->w_p_cul && lnum == wp->w_cursor.lnum)
+  			    char_attr = hl_combine_attr(char_attr,
+! 							    hl_attr(HLF_CUL));
+  #  endif
+  		    }
+  # endif
+--- 3807,3817 ----
+  # ifdef FEAT_DIFF
+  		    if (diff_hlf != (hlf_T)0)
+  		    {
+! 			char_attr = HL_ATTR(diff_hlf);
+  #  ifdef FEAT_SYN_HL
+  			if (wp->w_p_cul && lnum == wp->w_cursor.lnum)
+  			    char_attr = hl_combine_attr(char_attr,
+! 							    HL_ATTR(HLF_CUL));
+  #  endif
+  		    }
+  # endif
+***************
+*** 3845,3851 ****
+  		    else
+  #  endif
+  			n_extra = W_WIDTH(wp) - col;
+! 		    char_attr = hl_attr(HLF_DED);
+  		}
+  # endif
+  # ifdef FEAT_LINEBREAK
+--- 3845,3851 ----
+  		    else
+  #  endif
+  			n_extra = W_WIDTH(wp) - col;
+! 		    char_attr = HL_ATTR(HLF_DED);
+  		}
+  # endif
+  # ifdef FEAT_LINEBREAK
+***************
+*** 3855,3861 ****
+  		    p_extra = p_sbr;
+  		    c_extra = NUL;
+  		    n_extra = (int)STRLEN(p_sbr);
+! 		    char_attr = hl_attr(HLF_AT);
+  		    need_showbreak = FALSE;
+  		    vcol_sbr = vcol + MB_CHARLEN(p_sbr);
+  		    /* Correct end of highlighted area for 'showbreak',
+--- 3855,3861 ----
+  		    p_extra = p_sbr;
+  		    c_extra = NUL;
+  		    n_extra = (int)STRLEN(p_sbr);
+! 		    char_attr = HL_ATTR(HLF_AT);
+  		    need_showbreak = FALSE;
+  		    vcol_sbr = vcol + MB_CHARLEN(p_sbr);
+  		    /* Correct end of highlighted area for 'showbreak',
+***************
+*** 3866,3872 ****
+  		    /* combine 'showbreak' with 'cursorline' */
+  		    if (wp->w_p_cul && lnum == wp->w_cursor.lnum)
+  			char_attr = hl_combine_attr(char_attr,
+! 							    hl_attr(HLF_CUL));
+  #endif
+  		}
+  # endif
+--- 3866,3872 ----
+  		    /* combine 'showbreak' with 'cursorline' */
+  		    if (wp->w_p_cul && lnum == wp->w_cursor.lnum)
+  			char_attr = hl_combine_attr(char_attr,
+! 							    HL_ATTR(HLF_CUL));
+  #endif
+  		}
+  # endif
+***************
+*** 4061,4069 ****
+  		if (diff_hlf == HLF_TXD && ptr - line > change_end
+  							      && n_extra == 0)
+  		    diff_hlf = HLF_CHD;		/* changed line */
+! 		line_attr = hl_attr(diff_hlf);
+  		if (wp->w_p_cul && lnum == wp->w_cursor.lnum)
+! 		    line_attr = hl_combine_attr(line_attr, hl_attr(HLF_CUL));
+  	    }
+  #endif
+  
+--- 4061,4069 ----
+  		if (diff_hlf == HLF_TXD && ptr - line > change_end
+  							      && n_extra == 0)
+  		    diff_hlf = HLF_CHD;		/* changed line */
+! 		line_attr = HL_ATTR(diff_hlf);
+  		if (wp->w_p_cul && lnum == wp->w_cursor.lnum)
+! 		    line_attr = hl_combine_attr(line_attr, HL_ATTR(HLF_CUL));
+  	    }
+  #endif
+  
+***************
+*** 4173,4179 ****
+  			mb_c = c;
+  			mb_l = 1;
+  			mb_utf8 = FALSE;
+! 			multi_attr = hl_attr(HLF_AT);
+  			/* put the pointer back to output the double-width
+  			 * character at the start of the next line. */
+  			++n_extra;
+--- 4173,4179 ----
+  			mb_c = c;
+  			mb_l = 1;
+  			mb_utf8 = FALSE;
+! 			multi_attr = HL_ATTR(HLF_AT);
+  			/* put the pointer back to output the double-width
+  			 * character at the start of the next line. */
+  			++n_extra;
+***************
+*** 4284,4290 ****
+  			if (area_attr == 0 && search_attr == 0)
+  			{
+  			    n_attr = n_extra + 1;
+! 			    extra_attr = hl_attr(HLF_8);
+  			    saved_attr2 = char_attr; /* save current attr */
+  			}
+  		    }
+--- 4284,4290 ----
+  			if (area_attr == 0 && search_attr == 0)
+  			{
+  			    n_attr = n_extra + 1;
+! 			    extra_attr = HL_ATTR(HLF_8);
+  			    saved_attr2 = char_attr; /* save current attr */
+  			}
+  		    }
+***************
+*** 4353,4359 ****
+  			    if (area_attr == 0 && search_attr == 0)
+  			    {
+  				n_attr = n_extra + 1;
+! 				extra_attr = hl_attr(HLF_8);
+  				saved_attr2 = char_attr; /* save current attr */
+  			    }
+  			    mb_c = c;
+--- 4353,4359 ----
+  			    if (area_attr == 0 && search_attr == 0)
+  			    {
+  				n_attr = n_extra + 1;
+! 				extra_attr = HL_ATTR(HLF_8);
+  				saved_attr2 = char_attr; /* save current attr */
+  			    }
+  			    mb_c = c;
+***************
+*** 4374,4380 ****
+  		    mb_c = c;
+  		    mb_utf8 = FALSE;
+  		    mb_l = 1;
+! 		    multi_attr = hl_attr(HLF_AT);
+  		    /* Put pointer back so that the character will be
+  		     * displayed at the start of the next line. */
+  		    --ptr;
+--- 4374,4380 ----
+  		    mb_c = c;
+  		    mb_utf8 = FALSE;
+  		    mb_l = 1;
+! 		    multi_attr = HL_ATTR(HLF_AT);
+  		    /* Put pointer back so that the character will be
+  		     * displayed at the start of the next line. */
+  		    --ptr;
+***************
+*** 4393,4399 ****
+  		    if (area_attr == 0 && search_attr == 0)
+  		    {
+  			n_attr = n_extra + 1;
+! 			extra_attr = hl_attr(HLF_AT);
+  			saved_attr2 = char_attr; /* save current attr */
+  		    }
+  		    mb_c = c;
+--- 4393,4399 ----
+  		    if (area_attr == 0 && search_attr == 0)
+  		    {
+  			n_attr = n_extra + 1;
+! 			extra_attr = HL_ATTR(HLF_AT);
+  			saved_attr2 = char_attr; /* save current attr */
+  		    }
+  		    mb_c = c;
+***************
+*** 4604,4610 ****
+  		    if (area_attr == 0 && search_attr == 0)
+  		    {
+  			n_attr = 1;
+! 			extra_attr = hl_attr(HLF_8);
+  			saved_attr2 = char_attr; /* save current attr */
+  		    }
+  #ifdef FEAT_MBYTE
+--- 4604,4610 ----
+  		    if (area_attr == 0 && search_attr == 0)
+  		    {
+  			n_attr = 1;
+! 			extra_attr = HL_ATTR(HLF_8);
+  			saved_attr2 = char_attr; /* save current attr */
+  		    }
+  #ifdef FEAT_MBYTE
+***************
+*** 4626,4632 ****
+  		    if (!attr_pri)
+  		    {
+  			n_attr = 1;
+! 			extra_attr = hl_attr(HLF_8);
+  			saved_attr2 = char_attr; /* save current attr */
+  		    }
+  #ifdef FEAT_MBYTE
+--- 4626,4632 ----
+  		    if (!attr_pri)
+  		    {
+  			n_attr = 1;
+! 			extra_attr = HL_ATTR(HLF_8);
+  			saved_attr2 = char_attr; /* save current attr */
+  		    }
+  #ifdef FEAT_MBYTE
+***************
+*** 4758,4764 ****
+  #endif
+  			    c_extra = lcs_tab2;
+  			n_attr = tab_len + 1;
+! 			extra_attr = hl_attr(HLF_8);
+  			saved_attr2 = char_attr; /* save current attr */
+  #ifdef FEAT_MBYTE
+  			mb_c = c;
+--- 4758,4764 ----
+  #endif
+  			    c_extra = lcs_tab2;
+  			n_attr = tab_len + 1;
+! 			extra_attr = HL_ATTR(HLF_8);
+  			saved_attr2 = char_attr; /* save current attr */
+  #ifdef FEAT_MBYTE
+  			mb_c = c;
+***************
+*** 4831,4837 ****
+  		    --ptr;	    /* put it back at the NUL */
+  		    if (!attr_pri)
+  		    {
+! 			extra_attr = hl_attr(HLF_AT);
+  			n_attr = 1;
+  		    }
+  #ifdef FEAT_MBYTE
+--- 4831,4837 ----
+  		    --ptr;	    /* put it back at the NUL */
+  		    if (!attr_pri)
+  		    {
+! 			extra_attr = HL_ATTR(HLF_AT);
+  			n_attr = 1;
+  		    }
+  #ifdef FEAT_MBYTE
+***************
+*** 4878,4884 ****
+  		    if (!attr_pri)
+  		    {
+  			n_attr = n_extra + 1;
+! 			extra_attr = hl_attr(HLF_8);
+  			saved_attr2 = char_attr; /* save current attr */
+  		    }
+  #ifdef FEAT_MBYTE
+--- 4878,4884 ----
+  		    if (!attr_pri)
+  		    {
+  			n_attr = n_extra + 1;
+! 			extra_attr = HL_ATTR(HLF_8);
+  			saved_attr2 = char_attr; /* save current attr */
+  		    }
+  #ifdef FEAT_MBYTE
+***************
+*** 4934,4943 ****
+  			diff_hlf = HLF_CHD;
+  			if (attr == 0 || char_attr != attr)
+  			{
+! 			    char_attr = hl_attr(diff_hlf);
+  			    if (wp->w_p_cul && lnum == wp->w_cursor.lnum)
+  				char_attr = hl_combine_attr(char_attr,
+! 							    hl_attr(HLF_CUL));
+  			}
+  		    }
+  # endif
+--- 4934,4943 ----
+  			diff_hlf = HLF_CHD;
+  			if (attr == 0 || char_attr != attr)
+  			{
+! 			    char_attr = HL_ATTR(diff_hlf);
+  			    if (wp->w_p_cul && lnum == wp->w_cursor.lnum)
+  				char_attr = hl_combine_attr(char_attr,
+! 							    HL_ATTR(HLF_CUL));
+  			}
+  		    }
+  # endif
+***************
+*** 5104,5110 ****
+  		c_extra = MB_FILLER_CHAR;
+  		n_extra = 1;
+  		n_attr = 2;
+! 		extra_attr = hl_attr(HLF_AT);
+  	    }
+  	    mb_c = c;
+  	    if (enc_utf8 && (*mb_char2len)(c) > 1)
+--- 5104,5110 ----
+  		c_extra = MB_FILLER_CHAR;
+  		n_extra = 1;
+  		n_attr = 2;
+! 		extra_attr = HL_ATTR(HLF_AT);
+  	    }
+  	    mb_c = c;
+  	    if (enc_utf8 && (*mb_char2len)(c) > 1)
+***************
+*** 5119,5125 ****
+  	    if (!attr_pri)
+  	    {
+  		saved_attr3 = char_attr; /* save current attr */
+! 		char_attr = hl_attr(HLF_AT); /* later copied to char_attr */
+  		n_attr3 = 1;
+  	    }
+  	}
+--- 5119,5125 ----
+  	    if (!attr_pri)
+  	    {
+  		saved_attr3 = char_attr; /* save current attr */
+! 		char_attr = HL_ATTR(HLF_AT); /* later copied to char_attr */
+  		n_attr3 = 1;
+  	    }
+  	}
+***************
+*** 5326,5334 ****
+  								 &color_cols);
+  
+  		    if (wp->w_p_cuc && VCOL_HLC == (long)wp->w_virtcol)
+! 			ScreenAttrs[off++] = hl_attr(HLF_CUC);
+  		    else if (draw_color_col && VCOL_HLC == *color_cols)
+! 			ScreenAttrs[off++] = hl_attr(HLF_MC);
+  		    else
+  			ScreenAttrs[off++] = 0;
+  
+--- 5326,5334 ----
+  								 &color_cols);
+  
+  		    if (wp->w_p_cuc && VCOL_HLC == (long)wp->w_virtcol)
+! 			ScreenAttrs[off++] = HL_ATTR(HLF_CUC);
+  		    else if (draw_color_col && VCOL_HLC == *color_cols)
+! 			ScreenAttrs[off++] = HL_ATTR(HLF_MC);
+  		    else
+  			ScreenAttrs[off++] = 0;
+  
+***************
+*** 5377,5383 ****
+  		    || (n_extra && (c_extra != NUL || *p_extra != NUL))))
+  	{
+  	    c = lcs_ext;
+! 	    char_attr = hl_attr(HLF_AT);
+  #ifdef FEAT_MBYTE
+  	    mb_c = c;
+  	    if (enc_utf8 && (*mb_char2len)(c) > 1)
+--- 5377,5383 ----
+  		    || (n_extra && (c_extra != NUL || *p_extra != NUL))))
+  	{
+  	    c = lcs_ext;
+! 	    char_attr = HL_ATTR(HLF_AT);
+  #ifdef FEAT_MBYTE
+  	    mb_c = c;
+  	    if (enc_utf8 && (*mb_char2len)(c) > 1)
+***************
+*** 5407,5418 ****
+  						 && lnum != wp->w_cursor.lnum)
+  	    {
+  		vcol_save_attr = char_attr;
+! 		char_attr = hl_combine_attr(char_attr, hl_attr(HLF_CUC));
+  	    }
+  	    else if (draw_color_col && VCOL_HLC == *color_cols)
+  	    {
+  		vcol_save_attr = char_attr;
+! 		char_attr = hl_combine_attr(char_attr, hl_attr(HLF_MC));
+  	    }
+  	}
+  #endif
+--- 5407,5418 ----
+  						 && lnum != wp->w_cursor.lnum)
+  	    {
+  		vcol_save_attr = char_attr;
+! 		char_attr = hl_combine_attr(char_attr, HL_ATTR(HLF_CUC));
+  	    }
+  	    else if (draw_color_col && VCOL_HLC == *color_cols)
+  	    {
+  		vcol_save_attr = char_attr;
+! 		char_attr = hl_combine_attr(char_attr, HL_ATTR(HLF_MC));
+  	    }
+  	}
+  #endif
+***************
+*** 6649,6655 ****
+  	if (selstart != NULL && highlight)
+  	{
+  	    *selend = NUL;
+! 	    screen_puts(selstart, row, selstart_col, hl_attr(HLF_WM));
+  	}
+  
+  	screen_fill(row, row + 1, clen, (int)Columns, fillchar, fillchar, attr);
+--- 6649,6655 ----
+  	if (selstart != NULL && highlight)
+  	{
+  	    *selend = NUL;
+! 	    screen_puts(selstart, row, selstart_col, HL_ATTR(HLF_WM));
+  	}
+  
+  	screen_fill(row, row + 1, clen, (int)Columns, fillchar, fillchar, attr);
+***************
+*** 6975,6981 ****
+  	stl = p_tal;
+  	row = 0;
+  	fillchar = ' ';
+! 	attr = hl_attr(HLF_TPF);
+  	maxwidth = Columns;
+  # ifdef FEAT_EVAL
+  	use_sandbox = was_set_insecurely((char_u *)"tabline", 0);
+--- 6975,6981 ----
+  	stl = p_tal;
+  	row = 0;
+  	fillchar = ' ';
+! 	attr = HL_ATTR(HLF_TPF);
+  	maxwidth = Columns;
+  # ifdef FEAT_EVAL
+  	use_sandbox = was_set_insecurely((char_u *)"tabline", 0);
+***************
+*** 7322,7328 ****
+  		{
+  		    u8c = (mbyte_cells == 2) ? 0xff1f : (int)'?';
+  		    if (attr == 0)
+! 			attr = hl_attr(HLF_8);
+  		}
+  # endif
+  # ifdef FEAT_ARABIC
+--- 7322,7328 ----
+  		{
+  		    u8c = (mbyte_cells == 2) ? 0xff1f : (int)'?';
+  		    if (attr == 0)
+! 			attr = HL_ATTR(HLF_8);
+  		}
+  # endif
+  # ifdef FEAT_ARABIC
+***************
+*** 7525,7531 ****
+      if (p_hls && !no_hlsearch)
+      {
+  	last_pat_prog(&search_hl.rm);
+! 	search_hl.attr = hl_attr(HLF_L);
+  # ifdef FEAT_RELTIME
+  	/* Set the time limit to 'redrawtime'. */
+  	profile_setlimit(p_rdt, &search_hl.tm);
+--- 7525,7531 ----
+      if (p_hls && !no_hlsearch)
+      {
+  	last_pat_prog(&search_hl.rm);
+! 	search_hl.attr = HL_ATTR(HLF_L);
+  # ifdef FEAT_RELTIME
+  	/* Set the time limit to 'redrawtime'. */
+  	profile_setlimit(p_rdt, &search_hl.tm);
+***************
+*** 10095,10101 ****
+  	/* Position on the last line in the window, column 0 */
+  	msg_pos_mode();
+  	cursor_off();
+! 	attr = hl_attr(HLF_CM);			/* Highlight mode */
+  	if (do_mode)
+  	{
+  	    MSG_PUTS_ATTR("--", attr);
+--- 10095,10101 ----
+  	/* Position on the last line in the window, column 0 */
+  	msg_pos_mode();
+  	cursor_off();
+! 	attr = HL_ATTR(HLF_CM);			/* Highlight mode */
+  	if (do_mode)
+  	{
+  	    MSG_PUTS_ATTR("--", attr);
+***************
+*** 10149,10155 ****
+  		    {
+  			MSG_PUTS_ATTR(" ", attr);  /* add a space in between */
+  			if ((int)edit_submode_highl < (int)HLF_COUNT)
+! 			    sub_attr = hl_attr(edit_submode_highl);
+  			else
+  			    sub_attr = attr;
+  			msg_puts_attr(edit_submode_extra, sub_attr);
+--- 10149,10155 ----
+  		    {
+  			MSG_PUTS_ATTR(" ", attr);  /* add a space in between */
+  			if ((int)edit_submode_highl < (int)HLF_COUNT)
+! 			    sub_attr = HL_ATTR(edit_submode_highl);
+  			else
+  			    sub_attr = attr;
+  			msg_puts_attr(edit_submode_extra, sub_attr);
+***************
+*** 10306,10312 ****
+  {
+      msg_pos_mode();
+      if (Recording)
+! 	recording_mode(hl_attr(HLF_CM));
+      msg_clr_eos();
+  }
+  
+--- 10306,10312 ----
+  {
+      msg_pos_mode();
+      if (Recording)
+! 	recording_mode(HL_ATTR(HLF_CM));
+      msg_clr_eos();
+  }
+  
+***************
+*** 10341,10349 ****
+      int		modified;
+      int		c;
+      int		len;
+!     int		attr_sel = hl_attr(HLF_TPS);
+!     int		attr_nosel = hl_attr(HLF_TP);
+!     int		attr_fill = hl_attr(HLF_TPF);
+      char_u	*p;
+      int		room;
+      int		use_sep_chars = (t_colors < 8
+--- 10341,10349 ----
+      int		modified;
+      int		c;
+      int		len;
+!     int		attr_sel = HL_ATTR(HLF_TPS);
+!     int		attr_nosel = HL_ATTR(HLF_TP);
+!     int		attr_fill = HL_ATTR(HLF_TPF);
+      char_u	*p;
+      int		room;
+      int		use_sep_chars = (t_colors < 8
+***************
+*** 10444,10450 ****
+  			break;
+  		    screen_puts_len(NameBuff, len, 0, col,
+  #if defined(FEAT_SYN_HL)
+! 					 hl_combine_attr(attr, hl_attr(HLF_T))
+  #else
+  					 attr
+  #endif
+--- 10444,10450 ----
+  			break;
+  		    screen_puts_len(NameBuff, len, 0, col,
+  #if defined(FEAT_SYN_HL)
+! 					 hl_combine_attr(attr, HL_ATTR(HLF_T))
+  #else
+  					 attr
+  #endif
+***************
+*** 10537,10554 ****
+      int fill;
+      if (is_curwin)
+      {
+! 	*attr = hl_attr(HLF_S);
+  	fill = fill_stl;
+      }
+      else
+      {
+! 	*attr = hl_attr(HLF_SNC);
+  	fill = fill_stlnc;
+      }
+      /* Use fill when there is highlighting, and highlighting of current
+       * window differs, or the fillchars differ, or this is not the
+       * current window */
+!     if (*attr != 0 && ((hl_attr(HLF_S) != hl_attr(HLF_SNC)
+  			|| !is_curwin || ONE_WINDOW)
+  		    || (fill_stl != fill_stlnc)))
+  	return fill;
+--- 10537,10554 ----
+      int fill;
+      if (is_curwin)
+      {
+! 	*attr = HL_ATTR(HLF_S);
+  	fill = fill_stl;
+      }
+      else
+      {
+! 	*attr = HL_ATTR(HLF_SNC);
+  	fill = fill_stlnc;
+      }
+      /* Use fill when there is highlighting, and highlighting of current
+       * window differs, or the fillchars differ, or this is not the
+       * current window */
+!     if (*attr != 0 && ((HL_ATTR(HLF_S) != HL_ATTR(HLF_SNC)
+  			|| !is_curwin || ONE_WINDOW)
+  		    || (fill_stl != fill_stlnc)))
+  	return fill;
+***************
+*** 10566,10572 ****
+      static int
+  fillchar_vsep(int *attr)
+  {
+!     *attr = hl_attr(HLF_C);
+      if (*attr == 0 && fill_vert == ' ')
+  	return '|';
+      else
+--- 10566,10572 ----
+      static int
+  fillchar_vsep(int *attr)
+  {
+!     *attr = HL_ATTR(HLF_C);
+      if (*attr == 0 && fill_vert == ' ')
+  	return '|';
+      else
+*** ../vim-8.0.0465/src/search.c	2017-03-12 20:09:59.488468234 +0100
+--- src/search.c	2017-03-16 16:47:34.299477433 +0100
+***************
+*** 5013,5019 ****
+  		    {
+  			/* using "new_fname" is more reliable, e.g., when
+  			 * 'includeexpr' is set. */
+! 			msg_outtrans_attr(new_fname, hl_attr(HLF_D));
+  		    }
+  		    else
+  		    {
+--- 5013,5019 ----
+  		    {
+  			/* using "new_fname" is more reliable, e.g., when
+  			 * 'includeexpr' is set. */
+! 			msg_outtrans_attr(new_fname, HL_ATTR(HLF_D));
+  		    }
+  		    else
+  		    {
+***************
+*** 5059,5065 ****
+  			}
+  			save_char = p[i];
+  			p[i] = NUL;
+! 			msg_outtrans_attr(p, hl_attr(HLF_D));
+  			p[i] = save_char;
+  		    }
+  
+--- 5059,5065 ----
+  			}
+  			save_char = p[i];
+  			p[i] = NUL;
+! 			msg_outtrans_attr(p, HL_ATTR(HLF_D));
+  			p[i] = save_char;
+  		    }
+  
+***************
+*** 5124,5130 ****
+  			vim_snprintf((char*)IObuff, IOSIZE,
+  				_("Scanning included file: %s"),
+  				(char *)new_fname);
+! 			msg_trunc_attr(IObuff, TRUE, hl_attr(HLF_R));
+  		    }
+  		    else
+  #endif
+--- 5124,5130 ----
+  			vim_snprintf((char*)IObuff, IOSIZE,
+  				_("Scanning included file: %s"),
+  				(char *)new_fname);
+! 			msg_trunc_attr(IObuff, TRUE, HL_ATTR(HLF_R));
+  		    }
+  		    else
+  #endif
+***************
+*** 5572,5578 ****
+  	    msg_puts(IObuff);
+  	    sprintf((char *)IObuff, "%4ld", *lnum);	/* show line nr */
+  						/* Highlight line numbers */
+! 	    msg_puts_attr(IObuff, hl_attr(HLF_N));
+  	    MSG_PUTS(" ");
+  	}
+  	msg_prt_line(line, FALSE);
+--- 5572,5578 ----
+  	    msg_puts(IObuff);
+  	    sprintf((char *)IObuff, "%4ld", *lnum);	/* show line nr */
+  						/* Highlight line numbers */
+! 	    msg_puts_attr(IObuff, HL_ATTR(HLF_N));
+  	    MSG_PUTS(" ");
+  	}
+  	msg_prt_line(line, FALSE);
+*** ../vim-8.0.0465/src/syntax.c	2017-03-12 20:09:59.492468205 +0100
+--- src/syntax.c	2017-03-16 16:47:43.919407472 +0100
+***************
+*** 4070,4076 ****
+  		    {0, NULL}
+  		};
+  
+!     attr = hl_attr(HLF_D);		/* highlight like directories */
+  
+      /* list the keywords for "id" */
+      if (!syncing)
+--- 4070,4076 ----
+  		    {0, NULL}
+  		};
+  
+!     attr = HL_ATTR(HLF_D);		/* highlight like directories */
+  
+      /* list the keywords for "id" */
+      if (!syncing)
+***************
+*** 4181,4191 ****
+      if (SYN_CLSTR(curwin->w_s)[id].scl_list != NULL)
+      {
+  	put_id_list((char_u *)"cluster", SYN_CLSTR(curwin->w_s)[id].scl_list,
+! 		    hl_attr(HLF_D));
+      }
+      else
+      {
+! 	msg_puts_attr((char_u *)"cluster", hl_attr(HLF_D));
+  	msg_puts((char_u *)"=NONE");
+      }
+  }
+--- 4181,4191 ----
+      if (SYN_CLSTR(curwin->w_s)[id].scl_list != NULL)
+      {
+  	put_id_list((char_u *)"cluster", SYN_CLSTR(curwin->w_s)[id].scl_list,
+! 		    HL_ATTR(HLF_D));
+      }
+      else
+      {
+! 	msg_puts_attr((char_u *)"cluster", HL_ATTR(HLF_D));
+  	msg_puts((char_u *)"=NONE");
+      }
+  }
+***************
+*** 8999,9005 ****
+      {
+  	(void)syn_list_header(didh, 9999, id);
+  	didh = TRUE;
+! 	msg_puts_attr((char_u *)"links to", hl_attr(HLF_D));
+  	msg_putchar(' ');
+  	msg_outtrans(HL_TABLE()[HL_TABLE()[id - 1].sg_link - 1].sg_name);
+      }
+--- 8999,9005 ----
+      {
+  	(void)syn_list_header(didh, 9999, id);
+  	didh = TRUE;
+! 	msg_puts_attr((char_u *)"links to", HL_ATTR(HLF_D));
+  	msg_putchar(' ');
+  	msg_outtrans(HL_TABLE()[HL_TABLE()[id - 1].sg_link - 1].sg_name);
+      }
+***************
+*** 9056,9063 ****
+  	{
+  	    if (*name != NUL)
+  	    {
+! 		MSG_PUTS_ATTR(name, hl_attr(HLF_D));
+! 		MSG_PUTS_ATTR("=", hl_attr(HLF_D));
+  	    }
+  	    msg_outtrans(ts);
+  	}
+--- 9056,9063 ----
+  	{
+  	    if (*name != NUL)
+  	    {
+! 		MSG_PUTS_ATTR(name, HL_ATTR(HLF_D));
+! 		MSG_PUTS_ATTR("=", HL_ATTR(HLF_D));
+  	    }
+  	    msg_outtrans(ts);
+  	}
+***************
+*** 9457,9463 ****
+  	{
+  	    /* This is an error, but since there previously was no check only
+  	     * give a warning. */
+! 	    msg_source(hl_attr(HLF_W));
+  	    MSG(_("W18: Invalid character in group name"));
+  	    break;
+  	}
+--- 9457,9463 ----
+  	{
+  	    /* This is an error, but since there previously was no check only
+  	     * give a warning. */
+! 	    msg_source(HL_ATTR(HLF_W));
+  	    MSG(_("W18: Invalid character in group name"));
+  	    break;
+  	}
+***************
+*** 9932,9938 ****
+      int		i;
+  
+      for (i = 10; --i >= 0; )
+! 	highlight_list_two(i, hl_attr(HLF_D));
+      for (i = 40; --i >= 0; )
+  	highlight_list_two(99, 0);
+  }
+--- 9932,9938 ----
+      int		i;
+  
+      for (i = 10; --i >= 0; )
+! 	highlight_list_two(i, HL_ATTR(HLF_D));
+      for (i = 40; --i >= 0; )
+  	highlight_list_two(99, 0);
+  }
+*** ../vim-8.0.0465/src/tag.c	2017-03-12 20:09:59.492468205 +0100
+--- src/tag.c	2017-03-16 16:47:51.703350864 +0100
+***************
+*** 605,614 ****
+  		if (msg_col == 0)
+  		    msg_didout = FALSE;	/* overwrite previous message */
+  		msg_start();
+! 		MSG_PUTS_ATTR(_("  # pri kind tag"), hl_attr(HLF_T));
+  		msg_clr_eos();
+  		taglen_advance(taglen);
+! 		MSG_PUTS_ATTR(_("file\n"), hl_attr(HLF_T));
+  
+  		for (i = 0; i < num_matches && !got_int; ++i)
+  		{
+--- 605,614 ----
+  		if (msg_col == 0)
+  		    msg_didout = FALSE;	/* overwrite previous message */
+  		msg_start();
+! 		MSG_PUTS_ATTR(_("  # pri kind tag"), HL_ATTR(HLF_T));
+  		msg_clr_eos();
+  		taglen_advance(taglen);
+! 		MSG_PUTS_ATTR(_("file\n"), HL_ATTR(HLF_T));
+  
+  		for (i = 0; i < num_matches && !got_int; ++i)
+  		{
+***************
+*** 633,639 ****
+  		    msg_advance(13);
+  		    msg_outtrans_len_attr(tagp.tagname,
+  				       (int)(tagp.tagname_end - tagp.tagname),
+! 							      hl_attr(HLF_T));
+  		    msg_putchar(' ');
+  		    taglen_advance(taglen);
+  
+--- 633,639 ----
+  		    msg_advance(13);
+  		    msg_outtrans_len_attr(tagp.tagname,
+  				       (int)(tagp.tagname_end - tagp.tagname),
+! 							      HL_ATTR(HLF_T));
+  		    msg_putchar(' ');
+  		    taglen_advance(taglen);
+  
+***************
+*** 642,648 ****
+  		    p = tag_full_fname(&tagp);
+  		    if (p != NULL)
+  		    {
+! 			msg_puts_long_attr(p, hl_attr(HLF_D));
+  			vim_free(p);
+  		    }
+  		    if (msg_col > 0)
+--- 642,648 ----
+  		    p = tag_full_fname(&tagp);
+  		    if (p != NULL)
+  		    {
+! 			msg_puts_long_attr(p, HL_ATTR(HLF_D));
+  			vim_free(p);
+  		    }
+  		    if (msg_col > 0)
+***************
+*** 677,683 ****
+  				continue;
+  			    }
+  			    /* print all other extra fields */
+! 			    attr = hl_attr(HLF_CM);
+  			    while (*p && *p != '\r' && *p != '\n')
+  			    {
+  				if (msg_col + ptr2cells(p) >= Columns)
+--- 677,683 ----
+  				continue;
+  			    }
+  			    /* print all other extra fields */
+! 			    attr = HL_ATTR(HLF_CM);
+  			    while (*p && *p != '\r' && *p != '\n')
+  			    {
+  				if (msg_col + ptr2cells(p) >= Columns)
+***************
+*** 1003,1009 ****
+  							   && num_matches > 1)
+  		{
+  		    if (ic)
+! 			msg_attr(IObuff, hl_attr(HLF_W));
+  		    else
+  			msg(IObuff);
+  		    msg_scroll = TRUE;	/* don't overwrite this message */
+--- 1003,1009 ----
+  							   && num_matches > 1)
+  		{
+  		    if (ic)
+! 			msg_attr(IObuff, HL_ATTR(HLF_W));
+  		    else
+  			msg(IObuff);
+  		    msg_scroll = TRUE;	/* don't overwrite this message */
+***************
+*** 1140,1146 ****
+  		tagstack[i].fmark.mark.lnum);
+  	    msg_outtrans(IObuff);
+  	    msg_outtrans_attr(name, tagstack[i].fmark.fnum == curbuf->b_fnum
+! 							? hl_attr(HLF_D) : 0);
+  	    vim_free(name);
+  	}
+  	out_flush();		    /* show one line at a time */
+--- 1140,1146 ----
+  		tagstack[i].fmark.mark.lnum);
+  	    msg_outtrans(IObuff);
+  	    msg_outtrans_attr(name, tagstack[i].fmark.fnum == curbuf->b_fnum
+! 							? HL_ATTR(HLF_D) : 0);
+  	    vim_free(name);
+  	}
+  	out_flush();		    /* show one line at a time */
+*** ../vim-8.0.0465/src/term.c	2017-01-24 15:57:51.494922147 +0100
+--- src/term.c	2017-03-16 17:07:41.734694525 +0100
+***************
+*** 1565,1573 ****
+  	    /* get output strings */
+  		for (i = 0; string_names[i].name != NULL; ++i)
+  		{
+! 		    if (term_str(string_names[i].dest) == NULL
+! 			    || term_str(string_names[i].dest) == empty_option)
+! 			term_str(string_names[i].dest) =
+  					   TGETSTR(string_names[i].name, &tp);
+  		}
+  
+--- 1565,1573 ----
+  	    /* get output strings */
+  		for (i = 0; string_names[i].name != NULL; ++i)
+  		{
+! 		    if (TERM_STR(string_names[i].dest) == NULL
+! 			    || TERM_STR(string_names[i].dest) == empty_option)
+! 			TERM_STR(string_names[i].dest) =
+  					   TGETSTR(string_names[i].name, &tp);
+  		}
+  
+***************
+*** 1619,1626 ****
+  		/*
+  		 * Get number of colors (if not done already).
+  		 */
+! 		if (term_str(KS_CCO) == NULL
+! 			|| term_str(KS_CCO) == empty_option)
+  		    set_color_count(tgetnum("Co"));
+  
+  # ifndef hpux
+--- 1619,1626 ----
+  		/*
+  		 * Get number of colors (if not done already).
+  		 */
+! 		if (TERM_STR(KS_CCO) == NULL
+! 			|| TERM_STR(KS_CCO) == empty_option)
+  		    set_color_count(tgetnum("Co"));
+  
+  # ifndef hpux
+*** ../vim-8.0.0465/src/term.h	2017-01-21 20:04:17.558757844 +0100
+--- src/term.h	2017-03-16 17:08:04.474529026 +0100
+***************
+*** 92,99 ****
+      KS_8B,	/* set background color (RGB) */
+      KS_CBE,	/* enable bracketed paste mode */
+      KS_CBD,	/* disable bracketed paste mode */
+!     KS_CPS,	/* start of brackted paste */
+!     KS_CPE	/* end of brackted paste */
+  };
+  
+  #define KS_LAST	    KS_CPE
+--- 92,99 ----
+      KS_8B,	/* set background color (RGB) */
+      KS_CBE,	/* enable bracketed paste mode */
+      KS_CBD,	/* disable bracketed paste mode */
+!     KS_CPS,	/* start of bracketed paste */
+!     KS_CPE	/* end of bracketed paste */
+  };
+  
+  #define KS_LAST	    KS_CPE
+***************
+*** 111,183 ****
+  /*
+   * strings used for terminal
+   */
+! #define T_NAME	(term_str(KS_NAME))	/* terminal name */
+! #define T_CE	(term_str(KS_CE))	/* clear to end of line */
+! #define T_AL	(term_str(KS_AL))	/* add new blank line */
+! #define T_CAL	(term_str(KS_CAL))	/* add number of blank lines */
+! #define T_DL	(term_str(KS_DL))	/* delete line */
+! #define T_CDL	(term_str(KS_CDL))	/* delete number of lines */
+! #define T_CS	(term_str(KS_CS))	/* scroll region */
+! #define T_CSV	(term_str(KS_CSV))	/* scroll region vertical */
+! #define T_CL	(term_str(KS_CL))	/* clear screen */
+! #define T_CD	(term_str(KS_CD))	/* clear to end of display */
+! #define T_UT	(term_str(KS_UT))	/* clearing uses background color */
+! #define T_DA	(term_str(KS_DA))	/* text may be scrolled down from up */
+! #define T_DB	(term_str(KS_DB))	/* text may be scrolled up from down */
+! #define T_VI	(term_str(KS_VI))	/* cursor invisible */
+! #define T_VE	(term_str(KS_VE))	/* cursor visible */
+! #define T_VS	(term_str(KS_VS))	/* cursor very visible */
+! #define T_ME	(term_str(KS_ME))	/* normal mode */
+! #define T_MR	(term_str(KS_MR))	/* reverse mode */
+! #define T_MD	(term_str(KS_MD))	/* bold mode */
+! #define T_SE	(term_str(KS_SE))	/* normal mode */
+! #define T_SO	(term_str(KS_SO))	/* standout mode */
+! #define T_CZH	(term_str(KS_CZH))	/* italic mode start */
+! #define T_CZR	(term_str(KS_CZR))	/* italic mode end */
+! #define T_UE	(term_str(KS_UE))	/* exit underscore (underline) mode */
+! #define T_US	(term_str(KS_US))	/* underscore (underline) mode */
+! #define T_UCE	(term_str(KS_UCE))	/* exit undercurl mode */
+! #define T_UCS	(term_str(KS_UCS))	/* undercurl mode */
+! #define T_MS	(term_str(KS_MS))	/* save to move cur in reverse mode */
+! #define T_CM	(term_str(KS_CM))	/* cursor motion */
+! #define T_SR	(term_str(KS_SR))	/* scroll reverse (backward) */
+! #define T_CRI	(term_str(KS_CRI))	/* cursor number of chars right */
+! #define T_VB	(term_str(KS_VB))	/* visual bell */
+! #define T_KS	(term_str(KS_KS))	/* put term in "keypad transmit" mode */
+! #define T_KE	(term_str(KS_KE))	/* out of "keypad transmit" mode */
+! #define T_TI	(term_str(KS_TI))	/* put terminal in termcap mode */
+! #define T_TE	(term_str(KS_TE))	/* out of termcap mode */
+! #define T_BC	(term_str(KS_BC))	/* backspace character */
+! #define T_CCS	(term_str(KS_CCS))	/* cur is relative to scroll region */
+! #define T_CCO	(term_str(KS_CCO))	/* number of colors */
+! #define T_CSF	(term_str(KS_CSF))	/* set foreground color */
+! #define T_CSB	(term_str(KS_CSB))	/* set background color */
+! #define T_XS	(term_str(KS_XS))	/* standout not erased by overwriting */
+! #define T_XN	(term_str(KS_XN))	/* newline glitch */
+! #define T_MB	(term_str(KS_MB))	/* blink mode */
+! #define T_CAF	(term_str(KS_CAF))	/* set foreground color (ANSI) */
+! #define T_CAB	(term_str(KS_CAB))	/* set background color (ANSI) */
+! #define T_LE	(term_str(KS_LE))	/* cursor left */
+! #define T_ND	(term_str(KS_ND))	/* cursor right */
+! #define T_CIS	(term_str(KS_CIS))	/* set icon text start */
+! #define T_CIE	(term_str(KS_CIE))	/* set icon text end */
+! #define T_TS	(term_str(KS_TS))	/* set window title start */
+! #define T_FS	(term_str(KS_FS))	/* set window title end */
+! #define T_CWP	(term_str(KS_CWP))	/* window position */
+! #define T_CWS	(term_str(KS_CWS))	/* window size */
+! #define T_CSI	(term_str(KS_CSI))	/* start insert mode */
+! #define T_CEI	(term_str(KS_CEI))	/* end insert mode */
+! #define T_CSR	(term_str(KS_CSR))	/* start replace mode */
+! #define T_CRV	(term_str(KS_CRV))	/* request version string */
+! #define T_RBG	(term_str(KS_RBG))	/* request background RGB */
+! #define T_OP	(term_str(KS_OP))	/* original color pair */
+! #define T_U7	(term_str(KS_U7))	/* request cursor position */
+! #define T_8F	(term_str(KS_8F))	/* set foreground color (RGB) */
+! #define T_8B	(term_str(KS_8B))	/* set background color (RGB) */
+! #define T_BE	(term_str(KS_CBE))	/* enable bracketed paste mode */
+! #define T_BD	(term_str(KS_CBD))	/* disable bracketed paste mode */
+! #define T_PS	(term_str(KS_CPS))	/* start of bracketed paste */
+! #define T_PE	(term_str(KS_CPE))	/* end of bracketed paste */
+  
+  #define TMODE_COOK  0	/* terminal mode for external cmds and Ex mode */
+  #define TMODE_SLEEP 1	/* terminal mode for sleeping (cooked but no echo) */
+--- 111,183 ----
+  /*
+   * strings used for terminal
+   */
+! #define T_NAME	(TERM_STR(KS_NAME))	/* terminal name */
+! #define T_CE	(TERM_STR(KS_CE))	/* clear to end of line */
+! #define T_AL	(TERM_STR(KS_AL))	/* add new blank line */
+! #define T_CAL	(TERM_STR(KS_CAL))	/* add number of blank lines */
+! #define T_DL	(TERM_STR(KS_DL))	/* delete line */
+! #define T_CDL	(TERM_STR(KS_CDL))	/* delete number of lines */
+! #define T_CS	(TERM_STR(KS_CS))	/* scroll region */
+! #define T_CSV	(TERM_STR(KS_CSV))	/* scroll region vertical */
+! #define T_CL	(TERM_STR(KS_CL))	/* clear screen */
+! #define T_CD	(TERM_STR(KS_CD))	/* clear to end of display */
+! #define T_UT	(TERM_STR(KS_UT))	/* clearing uses background color */
+! #define T_DA	(TERM_STR(KS_DA))	/* text may be scrolled down from up */
+! #define T_DB	(TERM_STR(KS_DB))	/* text may be scrolled up from down */
+! #define T_VI	(TERM_STR(KS_VI))	/* cursor invisible */
+! #define T_VE	(TERM_STR(KS_VE))	/* cursor visible */
+! #define T_VS	(TERM_STR(KS_VS))	/* cursor very visible */
+! #define T_ME	(TERM_STR(KS_ME))	/* normal mode */
+! #define T_MR	(TERM_STR(KS_MR))	/* reverse mode */
+! #define T_MD	(TERM_STR(KS_MD))	/* bold mode */
+! #define T_SE	(TERM_STR(KS_SE))	/* normal mode */
+! #define T_SO	(TERM_STR(KS_SO))	/* standout mode */
+! #define T_CZH	(TERM_STR(KS_CZH))	/* italic mode start */
+! #define T_CZR	(TERM_STR(KS_CZR))	/* italic mode end */
+! #define T_UE	(TERM_STR(KS_UE))	/* exit underscore (underline) mode */
+! #define T_US	(TERM_STR(KS_US))	/* underscore (underline) mode */
+! #define T_UCE	(TERM_STR(KS_UCE))	/* exit undercurl mode */
+! #define T_UCS	(TERM_STR(KS_UCS))	/* undercurl mode */
+! #define T_MS	(TERM_STR(KS_MS))	/* save to move cur in reverse mode */
+! #define T_CM	(TERM_STR(KS_CM))	/* cursor motion */
+! #define T_SR	(TERM_STR(KS_SR))	/* scroll reverse (backward) */
+! #define T_CRI	(TERM_STR(KS_CRI))	/* cursor number of chars right */
+! #define T_VB	(TERM_STR(KS_VB))	/* visual bell */
+! #define T_KS	(TERM_STR(KS_KS))	/* put term in "keypad transmit" mode */
+! #define T_KE	(TERM_STR(KS_KE))	/* out of "keypad transmit" mode */
+! #define T_TI	(TERM_STR(KS_TI))	/* put terminal in termcap mode */
+! #define T_TE	(TERM_STR(KS_TE))	/* out of termcap mode */
+! #define T_BC	(TERM_STR(KS_BC))	/* backspace character */
+! #define T_CCS	(TERM_STR(KS_CCS))	/* cur is relative to scroll region */
+! #define T_CCO	(TERM_STR(KS_CCO))	/* number of colors */
+! #define T_CSF	(TERM_STR(KS_CSF))	/* set foreground color */
+! #define T_CSB	(TERM_STR(KS_CSB))	/* set background color */
+! #define T_XS	(TERM_STR(KS_XS))	/* standout not erased by overwriting */
+! #define T_XN	(TERM_STR(KS_XN))	/* newline glitch */
+! #define T_MB	(TERM_STR(KS_MB))	/* blink mode */
+! #define T_CAF	(TERM_STR(KS_CAF))	/* set foreground color (ANSI) */
+! #define T_CAB	(TERM_STR(KS_CAB))	/* set background color (ANSI) */
+! #define T_LE	(TERM_STR(KS_LE))	/* cursor left */
+! #define T_ND	(TERM_STR(KS_ND))	/* cursor right */
+! #define T_CIS	(TERM_STR(KS_CIS))	/* set icon text start */
+! #define T_CIE	(TERM_STR(KS_CIE))	/* set icon text end */
+! #define T_TS	(TERM_STR(KS_TS))	/* set window title start */
+! #define T_FS	(TERM_STR(KS_FS))	/* set window title end */
+! #define T_CWP	(TERM_STR(KS_CWP))	/* window position */
+! #define T_CWS	(TERM_STR(KS_CWS))	/* window size */
+! #define T_CSI	(TERM_STR(KS_CSI))	/* start insert mode */
+! #define T_CEI	(TERM_STR(KS_CEI))	/* end insert mode */
+! #define T_CSR	(TERM_STR(KS_CSR))	/* start replace mode */
+! #define T_CRV	(TERM_STR(KS_CRV))	/* request version string */
+! #define T_RBG	(TERM_STR(KS_RBG))	/* request background RGB */
+! #define T_OP	(TERM_STR(KS_OP))	/* original color pair */
+! #define T_U7	(TERM_STR(KS_U7))	/* request cursor position */
+! #define T_8F	(TERM_STR(KS_8F))	/* set foreground color (RGB) */
+! #define T_8B	(TERM_STR(KS_8B))	/* set background color (RGB) */
+! #define T_BE	(TERM_STR(KS_CBE))	/* enable bracketed paste mode */
+! #define T_BD	(TERM_STR(KS_CBD))	/* disable bracketed paste mode */
+! #define T_PS	(TERM_STR(KS_CPS))	/* start of bracketed paste */
+! #define T_PE	(TERM_STR(KS_CPE))	/* end of bracketed paste */
+  
+  #define TMODE_COOK  0	/* terminal mode for external cmds and Ex mode */
+  #define TMODE_SLEEP 1	/* terminal mode for sleeping (cooked but no echo) */
+*** ../vim-8.0.0465/src/ui.c	2017-03-12 19:22:31.772584816 +0100
+--- src/ui.c	2017-03-16 16:47:57.015312233 +0100
+***************
+*** 496,502 ****
+  					    || get_real_state() == SELECTMODE)
+  		    && (cbd == &clip_star ? clip_isautosel_star()
+  						      : clip_isautosel_plus())
+! 		    && hl_attr(HLF_V) != hl_attr(HLF_VNC))
+  		redraw_curbuf_later(INVERTED_ALL);
+  	}
+      }
+--- 496,502 ----
+  					    || get_real_state() == SELECTMODE)
+  		    && (cbd == &clip_star ? clip_isautosel_star()
+  						      : clip_isautosel_plus())
+! 		    && HL_ATTR(HLF_V) != HL_ATTR(HLF_VNC))
+  		redraw_curbuf_later(INVERTED_ALL);
+  	}
+      }
+***************
+*** 534,540 ****
+  					    || get_real_state() == SELECTMODE)
+  		&& (cbd == &clip_star ?
+  				clip_isautosel_star() : clip_isautosel_plus())
+! 		&& hl_attr(HLF_V) != hl_attr(HLF_VNC))
+  	{
+  	    update_curbuf(INVERTED_ALL);
+  	    setcursor();
+--- 534,540 ----
+  					    || get_real_state() == SELECTMODE)
+  		&& (cbd == &clip_star ?
+  				clip_isautosel_star() : clip_isautosel_plus())
+! 		&& HL_ATTR(HLF_V) != HL_ATTR(HLF_VNC))
+  	{
+  	    update_curbuf(INVERTED_ALL);
+  	    setcursor();
+*** ../vim-8.0.0465/src/undo.c	2017-03-12 19:22:31.772584816 +0100
+--- src/undo.c	2017-03-16 16:48:01.663278431 +0100
+***************
+*** 3079,3085 ****
+  
+  	msg_start();
+  	msg_puts_attr((char_u *)_("number changes  when               saved"),
+! 							      hl_attr(HLF_T));
+  	for (i = 0; i < ga.ga_len && !got_int; ++i)
+  	{
+  	    msg_putchar('\n');
+--- 3079,3085 ----
+  
+  	msg_start();
+  	msg_puts_attr((char_u *)_("number changes  when               saved"),
+! 							      HL_ATTR(HLF_T));
+  	for (i = 0; i < ga.ga_len && !got_int; ++i)
+  	{
+  	    msg_putchar('\n');
+*** ../vim-8.0.0465/src/userfunc.c	2017-03-12 20:09:59.492468205 +0100
+--- src/userfunc.c	2017-03-16 16:48:05.695249108 +0100
+***************
+*** 1494,1500 ****
+      MSG_PUTS("function ");
+      if (fp->uf_name[0] == K_SPECIAL)
+      {
+! 	MSG_PUTS_ATTR("<SNR>", hl_attr(HLF_8));
+  	msg_puts(fp->uf_name + 3);
+      }
+      else
+--- 1494,1500 ----
+      MSG_PUTS("function ");
+      if (fp->uf_name[0] == K_SPECIAL)
+      {
+! 	MSG_PUTS_ATTR("<SNR>", HL_ATTR(HLF_8));
+  	msg_puts(fp->uf_name + 3);
+      }
+      else
+*** ../vim-8.0.0465/src/version.c	2017-03-16 15:59:10.688531362 +0100
+--- src/version.c	2017-03-16 17:22:24.388270315 +0100
+***************
+*** 2321,2327 ****
+  #endif
+  		clen += byte2cells(p[l]);
+  	}
+! 	screen_puts_len(p, l, row, col, *p == '<' ? hl_attr(HLF_8) : attr);
+  	col += clen;
+      }
+  
+--- 2323,2329 ----
+  #endif
+  		clen += byte2cells(p[l]);
+  	}
+! 	screen_puts_len(p, l, row, col, *p == '<' ? HL_ATTR(HLF_8) : attr);
+  	col += clen;
+      }
+  
+*** ../vim-8.0.0465/src/vim.h	2017-03-12 20:09:59.456468461 +0100
+--- src/vim.h	2017-03-16 17:09:43.229810284 +0100
+***************
+*** 1761,1768 ****
+  /*
+   * Enums need a typecast to be used as array index (for Ultrix).
+   */
+! #define hl_attr(n)	highlight_attr[(int)(n)]
+! #define term_str(n)	term_strings[(int)(n)]
+  
+  /*
+   * EXTERN is only defined in main.c.  That's where global variables are
+--- 1761,1768 ----
+  /*
+   * Enums need a typecast to be used as array index (for Ultrix).
+   */
+! #define HL_ATTR(n)	highlight_attr[(int)(n)]
+! #define TERM_STR(n)	term_strings[(int)(n)]
+  
+  /*
+   * EXTERN is only defined in main.c.  That's where global variables are
+***************
+*** 2076,2088 ****
+  typedef int VimClipboard;	/* This is required for the prototypes. */
+  #endif
+  
+- #ifdef __BORLANDC__
+- /* work around a bug in the Borland 'stat' function: */
+- # include <io.h>	    /* for access() */
+- 
+- # define stat(a,b) (access(a,0) ? -1 : stat(a,b))
+- #endif
+- 
+  /* Use 64-bit stat structure if available. */
+  #if (defined(_MSC_VER) && (_MSC_VER >= 1300)) || defined(__MINGW32__)
+  # define HAVE_STAT64
+--- 2076,2081 ----
+***************
+*** 2140,2146 ****
+  #include "globals.h"	    /* global variables and messages */
+  
+  #ifndef FEAT_VIRTUALEDIT
+! # define getvvcol(w, p, s, c, e) getvcol(w, p, s, c, e)
+  # define virtual_active() FALSE
+  # define virtual_op FALSE
+  #endif
+--- 2133,2139 ----
+  #include "globals.h"	    /* global variables and messages */
+  
+  #ifndef FEAT_VIRTUALEDIT
+! # define getvvcol(w, p, s, c, e) getvcol((w), (p), (s), (c), (e))
+  # define virtual_active() FALSE
+  # define virtual_op FALSE
+  #endif
+*** ../vim-8.0.0465/src/version.c	2017-03-16 15:59:10.688531362 +0100
+--- src/version.c	2017-03-16 17:22:24.388270315 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     466,
+  /**/
+
+-- 
+Birthdays are healthy.  The more you have them, the longer you live.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

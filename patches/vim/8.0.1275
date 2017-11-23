@@ -1,0 +1,57 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1275
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1275
+Problem:    CmdlineLeave autocmd prevents fold from opening. (Waivek)
+Solution:   Save and restore KeyTyped. (closes #2305)
+Files:      src/fileio.c
+
+
+*** ../vim-8.0.1274/src/fileio.c	2017-11-04 21:34:57.012967220 +0100
+--- src/fileio.c	2017-11-09 12:21:11.089590475 +0100
+***************
+*** 9362,9367 ****
+--- 9362,9368 ----
+  #endif
+      int		did_save_redobuff = FALSE;
+      save_redo_T	save_redo;
++     int		save_KeyTyped = KeyTyped;
+  
+      /*
+       * Quickly return if there are no autocommands for this event or
+***************
+*** 9658,9663 ****
+--- 9659,9665 ----
+  	prof_child_exit(&wait_time);
+  # endif
+  #endif
++     KeyTyped = save_KeyTyped;
+      vim_free(fname);
+      vim_free(sfname);
+      --nesting;		/* see matching increment above */
+*** ../vim-8.0.1274/src/version.c	2017-11-06 21:32:50.568275699 +0100
+--- src/version.c	2017-11-09 12:23:23.396775980 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1275,
+  /**/
+
+-- 
+There are two ways of constructing a software design. One way is to make
+it so simple that there are obviously no deficiencies. The other way
+is to make it so complicated that there are no obvious deficiencies.
+                                                           -C.A.R. Hoare
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

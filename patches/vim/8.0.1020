@@ -1,0 +1,170 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1020
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1020
+Problem:    When a timer calls getchar(1) input is overwritten.
+Solution:   Increment tb_change_cnt in inchar(). (closes #1940)
+Files:      src/getchar.c
+
+
+*** ../vim-8.0.1019/src/getchar.c	2017-06-24 18:48:55.103858569 +0200
+--- src/getchar.c	2017-08-30 18:43:18.147637569 +0200
+***************
+*** 125,131 ****
+  static void	map_free(mapblock_T **);
+  static void	validate_maphash(void);
+  static void	showmap(mapblock_T *mp, int local);
+! static int	inchar(char_u *buf, int maxlen, long wait_time, int tb_change_cnt);
+  #ifdef FEAT_EVAL
+  static char_u	*eval_map_expr(char_u *str, int c);
+  #endif
+--- 125,131 ----
+  static void	map_free(mapblock_T **);
+  static void	validate_maphash(void);
+  static void	showmap(mapblock_T *mp, int local);
+! static int	inchar(char_u *buf, int maxlen, long wait_time);
+  #ifdef FEAT_EVAL
+  static char_u	*eval_map_expr(char_u *str, int c);
+  #endif
+***************
+*** 462,469 ****
+  	 * of an escape sequence.
+  	 * In an xterm we get one char at a time and we have to get them all.
+  	 */
+! 	while (inchar(typebuf.tb_buf, typebuf.tb_buflen - 1, 10L,
+! 						  typebuf.tb_change_cnt) != 0)
+  	    ;
+  	typebuf.tb_off = MAXMAPLEN;
+  	typebuf.tb_len = 0;
+--- 462,468 ----
+  	 * of an escape sequence.
+  	 * In an xterm we get one char at a time and we have to get them all.
+  	 */
+! 	while (inchar(typebuf.tb_buf, typebuf.tb_buflen - 1, 10L) != 0)
+  	    ;
+  	typebuf.tb_off = MAXMAPLEN;
+  	typebuf.tb_len = 0;
+***************
+*** 2046,2053 ****
+  		if (got_int)
+  		{
+  		    /* flush all input */
+! 		    c = inchar(typebuf.tb_buf, typebuf.tb_buflen - 1, 0L,
+! 						       typebuf.tb_change_cnt);
+  		    /*
+  		     * If inchar() returns TRUE (script file was active) or we
+  		     * are inside a mapping, get out of insert mode.
+--- 2045,2051 ----
+  		if (got_int)
+  		{
+  		    /* flush all input */
+! 		    c = inchar(typebuf.tb_buf, typebuf.tb_buflen - 1, 0L);
+  		    /*
+  		     * If inchar() returns TRUE (script file was active) or we
+  		     * are inside a mapping, get out of insert mode.
+***************
+*** 2610,2617 ****
+  			&& (p_timeout
+  			    || (keylen == KEYLEN_PART_KEY && p_ttimeout))
+  			&& (c = inchar(typebuf.tb_buf + typebuf.tb_off
+! 						     + typebuf.tb_len, 3, 25L,
+! 						 typebuf.tb_change_cnt)) == 0)
+  		{
+  		    colnr_T	col = 0, vcol;
+  		    char_u	*ptr;
+--- 2608,2614 ----
+  			&& (p_timeout
+  			    || (keylen == KEYLEN_PART_KEY && p_ttimeout))
+  			&& (c = inchar(typebuf.tb_buf + typebuf.tb_off
+! 					       + typebuf.tb_len, 3, 25L)) == 0)
+  		{
+  		    colnr_T	col = 0, vcol;
+  		    char_u	*ptr;
+***************
+*** 2848,2854 ****
+  				    ? -1L
+  				    : ((keylen == KEYLEN_PART_KEY && p_ttm >= 0)
+  					    ? p_ttm
+! 					    : p_tm)), typebuf.tb_change_cnt);
+  
+  #ifdef FEAT_CMDL_INFO
+  		if (i != 0)
+--- 2845,2851 ----
+  				    ? -1L
+  				    : ((keylen == KEYLEN_PART_KEY && p_ttm >= 0)
+  					    ? p_ttm
+! 					    : p_tm)));
+  
+  #ifdef FEAT_CMDL_INFO
+  		if (i != 0)
+***************
+*** 2954,2965 ****
+  inchar(
+      char_u	*buf,
+      int		maxlen,
+!     long	wait_time,	    /* milli seconds */
+!     int		tb_change_cnt)
+  {
+      int		len = 0;	    /* init for GCC */
+      int		retesc = FALSE;	    /* return ESC with gotint */
+      int		script_char;
+  
+      if (wait_time == -1L || wait_time > 100L)  /* flush output before waiting */
+      {
+--- 2951,2962 ----
+  inchar(
+      char_u	*buf,
+      int		maxlen,
+!     long	wait_time)	    /* milli seconds */
+  {
+      int		len = 0;	    /* init for GCC */
+      int		retesc = FALSE;	    /* return ESC with gotint */
+      int		script_char;
++     int		tb_change_cnt = typebuf.tb_change_cnt;
+  
+      if (wait_time == -1L || wait_time > 100L)  /* flush output before waiting */
+      {
+***************
+*** 3065,3073 ****
+--- 3062,3078 ----
+  	len = ui_inchar(buf, maxlen / 3, wait_time, tb_change_cnt);
+      }
+  
++     /* If the typebuf was changed further down, it is like nothing was added by
++      * this call. */
+      if (typebuf_changed(tb_change_cnt))
+  	return 0;
+  
++     /* Note the change in the typeahead buffer, this matters for when
++      * vgetorpeek() is called recursively, e.g. using getchar(1) in a timer
++      * function. */
++     if (len > 0 && ++typebuf.tb_change_cnt == 0)
++ 	typebuf.tb_change_cnt = 1;
++ 
+      return fix_input_buffer(buf, len);
+  }
+  
+*** ../vim-8.0.1019/src/version.c	2017-08-30 17:01:31.750483655 +0200
+--- src/version.c	2017-08-30 18:47:14.094038370 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1020,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+35. Your husband tells you he's had the beard for 2 months.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

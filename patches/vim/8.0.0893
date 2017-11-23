@@ -1,0 +1,180 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0893
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0893
+Problem:    Cannot get the scroll count of a terminal window.
+Solution:   Add term_getscrolled().
+Files:      src/terminal.c, src/proto/terminal.pro, src/evalfunc.c,
+            runtime/doc/eval.txt, src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0892/src/terminal.c	2017-08-08 21:52:18.314629597 +0200
+--- src/terminal.c	2017-08-08 23:05:20.738622853 +0200
+***************
+*** 40,53 ****
+   *   - Need an option or argument to drop the window+buffer right away, to be
+   *     used for a shell or Vim. 'termfinish'; "close", "open" (open window when
+   *     job finishes).
+   * - add option values to the command:
+   *      :term <24x80> <close> vim notes.txt
+   * - support different cursor shapes, colors and attributes
+   * - make term_getcursor() return type (none/block/bar/underline) and
+   *   attributes (color, blink, etc.)
+   * - MS-Windows: no redraw for 'updatetime'  #1915
+-  * - term_getline() and term_scrape() don't work once the job exited. Use the
+-  *   buffer and scrollback, remembering the topline from when the job exited.
+   * - To set BS correctly, check get_stty(); Pass the fd of the pty.
+   *   For the GUI fill termios with default values, perhaps like pangoterm:
+   *   http://bazaar.launchpad.net/~leonerd/pangoterm/trunk/view/head:/main.c#L134
+--- 40,54 ----
+   *   - Need an option or argument to drop the window+buffer right away, to be
+   *     used for a shell or Vim. 'termfinish'; "close", "open" (open window when
+   *     job finishes).
++  *     patch by Yasuhiro: #1950
+   * - add option values to the command:
+   *      :term <24x80> <close> vim notes.txt
++  *   or use:
++  *      :term ++24x80 ++close vim notes.txt
+   * - support different cursor shapes, colors and attributes
+   * - make term_getcursor() return type (none/block/bar/underline) and
+   *   attributes (color, blink, etc.)
+   * - MS-Windows: no redraw for 'updatetime'  #1915
+   * - To set BS correctly, check get_stty(); Pass the fd of the pty.
+   *   For the GUI fill termios with default values, perhaps like pangoterm:
+   *   http://bazaar.launchpad.net/~leonerd/pangoterm/trunk/view/head:/main.c#L134
+***************
+*** 2026,2031 ****
+--- 2027,2045 ----
+  }
+  
+  /*
++  * "term_getscrolled(buf)" function
++  */
++     void
++ f_term_getscrolled(typval_T *argvars, typval_T *rettv)
++ {
++     buf_T	*buf = term_get_buf(argvars);
++ 
++     if (buf == NULL)
++ 	return;
++     rettv->vval.v_number = buf->b_term->tl_scrollback_scrolled;
++ }
++ 
++ /*
+   * "term_getsize(buf)" function
+   */
+      void
+*** ../vim-8.0.0892/src/proto/terminal.pro	2017-08-06 14:57:44.939764548 +0200
+--- src/proto/terminal.pro	2017-08-08 22:56:08.898699415 +0200
+***************
+*** 21,26 ****
+--- 21,27 ----
+  void f_term_getcursor(typval_T *argvars, typval_T *rettv);
+  void f_term_getjob(typval_T *argvars, typval_T *rettv);
+  void f_term_getline(typval_T *argvars, typval_T *rettv);
++ void f_term_getscrolled(typval_T *argvars, typval_T *rettv);
+  void f_term_getsize(typval_T *argvars, typval_T *rettv);
+  void f_term_getstatus(typval_T *argvars, typval_T *rettv);
+  void f_term_gettitle(typval_T *argvars, typval_T *rettv);
+*** ../vim-8.0.0892/src/evalfunc.c	2017-08-07 20:51:39.654616269 +0200
+--- src/evalfunc.c	2017-08-08 22:55:36.882936396 +0200
+***************
+*** 835,840 ****
+--- 835,841 ----
+      {"term_getcursor",	1, 1, f_term_getcursor},
+      {"term_getjob",	1, 1, f_term_getjob},
+      {"term_getline",	2, 2, f_term_getline},
++     {"term_getscrolled", 1, 1, f_term_getscrolled},
+      {"term_getsize",	1, 1, f_term_getsize},
+      {"term_getstatus",	1, 1, f_term_getstatus},
+      {"term_gettitle",	1, 1, f_term_gettitle},
+*** ../vim-8.0.0892/runtime/doc/eval.txt	2017-08-06 19:06:59.583629245 +0200
+--- runtime/doc/eval.txt	2017-08-08 22:56:04.594731269 +0200
+***************
+*** 2373,2378 ****
+--- 2373,2379 ----
+  term_getcursor({buf})		List	get the cursor position of a terminal
+  term_getjob({buf})		Job	get the job associated with a terminal
+  term_getline({buf}, {row})	String	get a line of text from a terminal
++ term_getscrolled({buf})		Number	get the scroll count of a terminal
+  term_getsize({buf})		List	get the size of a terminal
+  term_getstatus({buf})		String	get the status of a terminal
+  term_gettitle({buf})		String	get the title of a terminal
+***************
+*** 2984,2989 ****
+--- 2985,2995 ----
+  		The file is flushed after every message, on Unix you can use
+  		"tail -f" to see what is going on in real time.
+  
++ 		This function is not available in the |sandbox|.
++ 		NOTE: the channel communication is stored in the file, be
++ 		aware that this may contain confidential and privacy sensitive
++ 		information, e.g. a password you type in a terminal window.
++ 
+  
+  ch_open({address} [, {options}])				*ch_open()*
+  		Open a channel to {address}.  See |channel|.
+***************
+*** 7940,7945 ****
+--- 7954,7971 ----
+  		returned.
+  		{only available when compiled with the |+terminal| feature}
+  
++ term_getscrolled({buf})					*term_getscrolled()*
++ 		Return the number of lines that scrolled to above the top of
++ 		terminal {buf}.  This is the offset between the row number
++ 		used for |term_getline()| and |getline()|, so that: >
++ 			term_getline(buf, N)
++ <		is equal to: >
++ 			`getline(N + term_getscrolled(buf))
++ <		(if that line exists).
++ 
++ 		{buf} is used as with |term_getsize()|.
++ 		{only available when compiled with the |+terminal| feature}
++ 
+  term_getsize({buf})					*term_getsize()*
+  		Get the size of terminal {buf}. Returns a list with two
+  		numbers: [rows, cols].  This is the size of the terminal, not
+*** ../vim-8.0.0892/src/testdir/test_terminal.vim	2017-08-07 20:38:38.596341530 +0200
+--- src/testdir/test_terminal.vim	2017-08-08 23:03:47.399311328 +0200
+***************
+*** 227,235 ****
+--- 227,239 ----
+      sleep 100m
+    endif
+  
++   let scrolled = term_getscrolled(buf)
+    call assert_equal('1', getline(1))
++   call assert_equal('1', term_getline(buf, 1 - scrolled))
+    call assert_equal('49', getline(49))
++   call assert_equal('49', term_getline(buf, 49 - scrolled))
+    call assert_equal('200', getline(200))
++   call assert_equal('200', term_getline(buf, 200 - scrolled))
+  
+    exe buf . 'bwipe'
+    call delete('Xtext')
+*** ../vim-8.0.0892/src/version.c	2017-08-08 21:52:18.314629597 +0200
+--- src/version.c	2017-08-08 22:54:16.511531549 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     893,
+  /**/
+
+-- 
+To the optimist, the glass is half full.
+To the pessimist, the glass is half empty.
+To the engineer, the glass is twice as big as it needs to be.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

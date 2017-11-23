@@ -1,0 +1,109 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0820
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0820
+Problem:    GUI: cursor in terminal window lags behind.
+Solution:   call gui_update_cursor() under different conditions. (Ozaki
+            Kiichi, closes #1893)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0819/src/terminal.c	2017-07-30 18:47:15.652418666 +0200
+--- src/terminal.c	2017-07-30 18:58:15.895682248 +0200
+***************
+*** 51,56 ****
+--- 51,59 ----
+   *     job finishes).
+   * - add option values to the command:
+   *      :term <24x80> <close> vim notes.txt
++  * - support different cursor shapes, colors and attributes
++  * - make term_getcursor() return type (none/block/bar/underline) and
++  *   attributes (color, blink, etc.)
+   * - To set BS correctly, check get_stty(); Pass the fd of the pty.
+   * - do not store terminal window in viminfo.  Or prefix term:// ?
+   * - add a character in :ls output
+***************
+*** 359,365 ****
+  	    cursor_on();
+  	out_flush();
+  #ifdef FEAT_GUI
+! 	if (gui.in_use && term->tl_cursor_visible)
+  	    gui_update_cursor(FALSE, FALSE);
+  #endif
+      }
+--- 362,368 ----
+  	    cursor_on();
+  	out_flush();
+  #ifdef FEAT_GUI
+! 	if (gui.in_use)
+  	    gui_update_cursor(FALSE, FALSE);
+  #endif
+      }
+***************
+*** 1034,1040 ****
+      if (term->tl_buffer == curbuf)
+      {
+  	may_toggle_cursor(term);
+! 	update_cursor(term, TRUE);
+      }
+  
+      return 1;
+--- 1037,1043 ----
+      if (term->tl_buffer == curbuf)
+      {
+  	may_toggle_cursor(term);
+! 	update_cursor(term, term->tl_cursor_visible);
+      }
+  
+      return 1;
+***************
+*** 1180,1190 ****
+  	/* Need to break out of vgetc(). */
+  	ins_char_typebuf(K_IGNORE);
+  
+! 	if (curbuf->b_term != NULL)
+  	{
+! 	    if (curbuf->b_term->tl_job == ch->ch_job)
+  		maketitle();
+! 	    update_cursor(curbuf->b_term, TRUE);
+  	}
+      }
+  }
+--- 1183,1194 ----
+  	/* Need to break out of vgetc(). */
+  	ins_char_typebuf(K_IGNORE);
+  
+! 	term = curbuf->b_term;
+! 	if (term != NULL)
+  	{
+! 	    if (term->tl_job == ch->ch_job)
+  		maketitle();
+! 	    update_cursor(term, term->tl_cursor_visible);
+  	}
+      }
+  }
+*** ../vim-8.0.0819/src/version.c	2017-07-30 18:47:15.656418637 +0200
+--- src/version.c	2017-07-30 19:01:01.898488516 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     820,
+  /**/
+
+
+-- 
+You had connectors?  Eeee, when I were a lad we 'ad to carry the
+bits between the computer and the terminal with a spoon...
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

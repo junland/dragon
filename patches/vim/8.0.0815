@@ -1,0 +1,74 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0815
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0815
+Problem:    Terminal window not correctly updated when 'statusline' invokes
+            ":sleep". (NIkolay Pavlov)
+Solution:   Clear got_int.  Repeat redrawing when needed.
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0814/src/terminal.c	2017-07-30 16:51:35.622144012 +0200
+--- src/terminal.c	2017-07-30 17:41:43.064530756 +0200
+***************
+*** 54,59 ****
+--- 54,60 ----
+   * - To set BS correctly, check get_stty(); Pass the fd of the pty.
+   * - do not store terminal window in viminfo.  Or prefix term:// ?
+   * - add a character in :ls output
++  * - add 't' to mode()
+   * - when closing window and job has not ended, make terminal hidden?
+   * - when closing window and job has ended, make buffer hidden?
+   * - don't allow exiting Vim when a terminal is still running a job
+***************
+*** 780,785 ****
+--- 781,787 ----
+      ++allow_keys;
+      got_int = FALSE;
+      c = vgetc();
++     got_int = FALSE;
+      --no_mapping;
+      --allow_keys;
+      return c;
+***************
+*** 889,895 ****
+      for (;;)
+      {
+  	/* TODO: skip screen update when handling a sequence of keys. */
+! 	update_screen(0);
+  	update_cursor(curbuf->b_term, FALSE);
+  
+  	c = term_vgetc();
+--- 891,899 ----
+      for (;;)
+      {
+  	/* TODO: skip screen update when handling a sequence of keys. */
+! 	/* Repeat redrawing in case a message is received while redrawing. */
+! 	while (curwin->w_redr_type != 0)
+! 	    update_screen(0);
+  	update_cursor(curbuf->b_term, FALSE);
+  
+  	c = term_vgetc();
+*** ../vim-8.0.0814/src/version.c	2017-07-30 16:58:52.762976876 +0200
+--- src/version.c	2017-07-30 17:43:30.075765389 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     815,
+  /**/
+
+-- 
+I'd like to meet the man who invented sex and see what he's working on now.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

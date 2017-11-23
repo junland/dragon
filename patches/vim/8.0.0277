@@ -1,0 +1,70 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0277
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0277
+Problem:    The GUI test may trigger fontconfig and take a long time.
+Solution:   Set $XDG_CACHE_HOME. (Kazunobu Kuriyama)
+Files:      src/testdir/unix.vim, src/testdir/test_gui.vim
+
+
+*** ../vim-8.0.0276/src/testdir/unix.vim	2016-07-12 22:45:28.000000000 +0200
+--- src/testdir/unix.vim	2017-02-01 12:02:52.397419237 +0100
+***************
+*** 2,5 ****
+--- 2,10 ----
+  " Always use "sh", don't use the value of "$SHELL".
+  set shell=sh
+  
++ " While some tests overwrite $HOME to prevent them from polluting user files,
++ " we need to remember the original value so that we can tell external systems
++ " where to ask about their own user settings.
++ let g:tester_HOME = $HOME
++ 
+  source setup.vim
+*** ../vim-8.0.0276/src/testdir/test_gui.vim	2016-08-09 22:52:49.000000000 +0200
+--- src/testdir/test_gui.vim	2017-02-01 12:02:52.397419237 +0100
+***************
+*** 10,16 ****
+      set guifont=Courier\ 10\ Pitch/8/-1/5/50/0/0/0/0/0
+    endif
+  
+!   " Gnome insists on creating $HOME/.gnome2/..
+    call mkdir('Xhome')
+    let $HOME = fnamemodify('Xhome', ':p')
+  endfunc
+--- 10,20 ----
+      set guifont=Courier\ 10\ Pitch/8/-1/5/50/0/0/0/0/0
+    endif
+  
+!   " Gnome insists on creating $HOME/.gnome2/, and we're going to abide by
+!   " that, taking care to have the font cache work normally.
+!   if $XDG_CACHE_HOME == ''
+!     let $XDG_CACHE_HOME = g:tester_HOME . '/.cache'
+!   endif
+    call mkdir('Xhome')
+    let $HOME = fnamemodify('Xhome', ':p')
+  endfunc
+*** ../vim-8.0.0276/src/version.c	2017-02-01 11:50:04.350267980 +0100
+--- src/version.c	2017-02-01 12:04:28.140815126 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     277,
+  /**/
+
+-- 
+If cars evolved at the same rate as computers have, they'd cost five euro, 
+run for a year on a couple of liters of petrol, and explode once a day.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

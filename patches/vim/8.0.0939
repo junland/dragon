@@ -1,0 +1,65 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0939
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0939
+Problem:    Test_terminal_env is flaky. (James McCoy)
+Solution:   Use WaitFor() instead of term_wait().
+Files:      src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0938/src/testdir/test_terminal.vim	2017-08-13 20:58:29.280457584 +0200
+--- src/testdir/test_terminal.vim	2017-08-14 21:42:44.403753609 +0200
+***************
+*** 410,420 ****
+      return
+    endif
+    let buf = Run_shell_in_terminal({'env': {'TESTENV': 'correct'}})
+!   call term_wait(buf)
+    call term_sendkeys(buf, "echo $TESTENV\r")
+    call term_wait(buf)
+    call Stop_shell_in_terminal(buf)
+!   call term_wait(buf)
+    call assert_equal('correct', getline(2))
+  
+    exe buf . 'bwipe'
+--- 410,421 ----
+      return
+    endif
+    let buf = Run_shell_in_terminal({'env': {'TESTENV': 'correct'}})
+!   " Wait for the shell to display a prompt
+!   call WaitFor('term_getline(1) != ""')
+    call term_sendkeys(buf, "echo $TESTENV\r")
+    call term_wait(buf)
+    call Stop_shell_in_terminal(buf)
+!   call WaitFor('getline(2) == "correct"')
+    call assert_equal('correct', getline(2))
+  
+    exe buf . 'bwipe'
+*** ../vim-8.0.0938/src/version.c	2017-08-13 22:14:13.012428848 +0200
+--- src/version.c	2017-08-14 21:43:41.011396239 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     939,
+  /**/
+
+-- 
+(letter from Mark to Mike, about the film's probable certificate)
+      For an 'A' we would have to: Lose as many shits as possible; Take Jesus
+      Christ out, if possible; Loose "I fart in your general direction"; Lose
+      "the oral sex"; Lose "oh, fuck off"; Lose "We make castanets out of your
+      testicles"
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,239 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0860
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0860
+Problem:    There may be side effects when a channel appends to a buffer that
+            is not the current buffer.
+Solution:   Properly switch to another buffer before appending. (Yasuhiro
+            Matsumoto, closes #1926, closes #1937)
+Files:      src/channel.c, src/buffer.c, src/proto/buffer.pro,
+            src/if_py_both.h
+
+
+*** ../vim-8.0.0859/src/channel.c	2017-08-03 17:06:40.977493439 +0200
+--- src/channel.c	2017-08-04 21:16:26.542841856 +0200
+***************
+*** 2284,2290 ****
+      static void
+  append_to_buffer(buf_T *buffer, char_u *msg, channel_T *channel, ch_part_T part)
+  {
+!     buf_T	*save_curbuf = curbuf;
+      linenr_T    lnum = buffer->b_ml.ml_line_count;
+      int		save_write_to = buffer->b_write_to_channel;
+      chanpart_T  *ch_part = &channel->ch_part[part];
+--- 2284,2292 ----
+      static void
+  append_to_buffer(buf_T *buffer, char_u *msg, channel_T *channel, ch_part_T part)
+  {
+!     bufref_T	save_curbuf = {NULL, 0, 0};
+!     win_T	*save_curwin = NULL;
+!     tabpage_T	*save_curtab = NULL;
+      linenr_T    lnum = buffer->b_ml.ml_line_count;
+      int		save_write_to = buffer->b_write_to_channel;
+      chanpart_T  *ch_part = &channel->ch_part[part];
+***************
+*** 2313,2320 ****
+      ch_log(channel, "appending line %d to buffer", (int)lnum + 1 - empty);
+  
+      buffer->b_p_ma = TRUE;
+!     curbuf = buffer;
+!     curwin->w_buffer = curbuf;
+      u_sync(TRUE);
+      /* ignore undo failure, undo is not very useful here */
+      ignored = u_save(lnum - empty, lnum + 1);
+--- 2315,2324 ----
+      ch_log(channel, "appending line %d to buffer", (int)lnum + 1 - empty);
+  
+      buffer->b_p_ma = TRUE;
+! 
+!     /* Save curbuf/curwin/curtab and make "buffer" the current buffer. */
+!     switch_to_win_for_buf(buffer, &save_curwin, &save_curtab, &save_curbuf);
+! 
+      u_sync(TRUE);
+      /* ignore undo failure, undo is not very useful here */
+      ignored = u_save(lnum - empty, lnum + 1);
+***************
+*** 2328,2335 ****
+      else
+  	ml_append(lnum, msg, 0, FALSE);
+      appended_lines_mark(lnum, 1L);
+!     curbuf = save_curbuf;
+!     curwin->w_buffer = curbuf;
+      if (ch_part->ch_nomodifiable)
+  	buffer->b_p_ma = FALSE;
+      else
+--- 2332,2341 ----
+      else
+  	ml_append(lnum, msg, 0, FALSE);
+      appended_lines_mark(lnum, 1L);
+! 
+!     /* Restore curbuf/curwin/curtab */
+!     restore_win_for_buf(save_curwin, save_curtab, &save_curbuf);
+! 
+      if (ch_part->ch_nomodifiable)
+  	buffer->b_p_ma = FALSE;
+      else
+***************
+*** 2338,2344 ****
+      if (buffer->b_nwindows > 0)
+      {
+  	win_T	*wp;
+- 	win_T	*save_curwin;
+  
+  	FOR_ALL_WINDOWS(wp)
+  	{
+--- 2344,2349 ----
+*** ../vim-8.0.0859/src/buffer.c	2017-08-03 22:44:51.038797722 +0200
+--- src/buffer.c	2017-08-04 21:09:42.361921845 +0200
+***************
+*** 5794,5802 ****
+      return NULL;
+  }
+  
+! #if (defined(FEAT_QUICKFIX) && defined(FEAT_WINDOWS)) \
+  	|| defined(FEAT_PYTHON) || defined(FEAT_PYTHON3) \
+  	|| defined(PROTO)
+  /*
+   * Find a window for buffer "buf".
+   * If found OK is returned and "wp" and "tp" are set to the window and tabpage.
+--- 5794,5845 ----
+      return NULL;
+  }
+  
+! #if defined(FEAT_JOB_CHANNEL) \
+  	|| defined(FEAT_PYTHON) || defined(FEAT_PYTHON3) \
+  	|| defined(PROTO)
++ # define SWITCH_TO_WIN
++ 
++ /*
++  * Find a window that contains "buf" and switch to it.
++  * If there is no such window, use the current window and change "curbuf".
++  * Caller must initialize save_curbuf to NULL.
++  * restore_win_for_buf() MUST be called later!
++  */
++     void
++ switch_to_win_for_buf(
++     buf_T	*buf,
++     win_T	**save_curwinp,
++     tabpage_T	**save_curtabp,
++     bufref_T	*save_curbuf)
++ {
++     win_T	*wp;
++     tabpage_T	*tp;
++ 
++     if (find_win_for_buf(buf, &wp, &tp) == FAIL)
++ 	switch_buffer(save_curbuf, buf);
++     else if (switch_win(save_curwinp, save_curtabp, wp, tp, TRUE) == FAIL)
++     {
++ 	restore_win(*save_curwinp, *save_curtabp, TRUE);
++ 	switch_buffer(save_curbuf, buf);
++     }
++ }
++ 
++     void
++ restore_win_for_buf(
++     win_T	*save_curwin,
++     tabpage_T	*save_curtab,
++     bufref_T	*save_curbuf)
++ {
++     if (save_curbuf->br_buf == NULL)
++ 	restore_win(save_curwin, save_curtab, TRUE);
++     else
++ 	restore_buffer(save_curbuf);
++ }
++ #endif
++ 
++ #if (defined(FEAT_QUICKFIX) && defined(FEAT_WINDOWS)) \
++ 	|| defined(SWITCH_TO_WIN) \
++ 	|| defined(PROTO)
+  /*
+   * Find a window for buffer "buf".
+   * If found OK is returned and "wp" and "tp" are set to the window and tabpage.
+*** ../vim-8.0.0859/src/proto/buffer.pro	2017-07-27 22:03:45.546703088 +0200
+--- src/proto/buffer.pro	2017-08-04 21:15:06.431461122 +0200
+***************
+*** 61,66 ****
+--- 61,68 ----
+  int bt_dontwrite_msg(buf_T *buf);
+  int buf_hide(buf_T *buf);
+  char_u *buf_spname(buf_T *buf);
++ void switch_to_win_for_buf(buf_T *buf, win_T **save_curwinp, tabpage_T **save_curtabp, bufref_T *save_curbuf);
++ void restore_win_for_buf(win_T *save_curwin, tabpage_T *save_curtab, bufref_T *save_curbuf);
+  int find_win_for_buf(buf_T *buf, win_T **wp, tabpage_T **tp);
+  void buf_addsign(buf_T *buf, int id, linenr_T lnum, int typenr);
+  linenr_T buf_change_sign_type(buf_T *buf, int markId, int typenr);
+*** ../vim-8.0.0859/src/if_py_both.h	2017-06-04 14:57:57.312461379 +0200
+--- src/if_py_both.h	2017-08-04 21:09:25.994043970 +0200
+***************
+*** 4263,4305 ****
+  }
+  
+  /*
+-  * Find a window that contains "buf" and switch to it.
+-  * If there is no such window, use the current window and change "curbuf".
+-  * Caller must initialize save_curbuf to NULL.
+-  * restore_win_for_buf() MUST be called later!
+-  */
+-     static void
+- switch_to_win_for_buf(
+-     buf_T	*buf,
+-     win_T	**save_curwinp,
+-     tabpage_T	**save_curtabp,
+-     bufref_T	*save_curbuf)
+- {
+-     win_T	*wp;
+-     tabpage_T	*tp;
+- 
+-     if (find_win_for_buf(buf, &wp, &tp) == FAIL)
+- 	switch_buffer(save_curbuf, buf);
+-     else if (switch_win(save_curwinp, save_curtabp, wp, tp, TRUE) == FAIL)
+-     {
+- 	restore_win(*save_curwinp, *save_curtabp, TRUE);
+- 	switch_buffer(save_curbuf, buf);
+-     }
+- }
+- 
+-     static void
+- restore_win_for_buf(
+-     win_T	*save_curwin,
+-     tabpage_T	*save_curtab,
+-     bufref_T	*save_curbuf)
+- {
+-     if (save_curbuf->br_buf == NULL)
+- 	restore_win(save_curwin, save_curtab, TRUE);
+-     else
+- 	restore_buffer(save_curbuf);
+- }
+- 
+- /*
+   * Replace a line in the specified buffer. The line number is
+   * in Vim format (1-based). The replacement line is given as
+   * a Python string object. The object is checked for validity
+--- 4263,4268 ----
+*** ../vim-8.0.0859/src/version.c	2017-08-04 20:29:49.052411560 +0200
+--- src/version.c	2017-08-04 21:00:20.094336530 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     860,
+  /**/
+
+-- 
+FATHER:    You only killed the bride's father - that's all -
+LAUNCELOT: Oh dear, I didn't really mean to...
+FATHER:    Didn't mean to?  You put your sword right through his head!
+LAUNCELOT: Gosh - Is he all right?
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

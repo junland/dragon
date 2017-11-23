@@ -1,0 +1,109 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0172
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0172 (after 8.0.0159)
+Problem:    The command selected in the command line window is not executed.
+            (Andrey Starodubtsev)
+Solution:   Save and restore the command line at a lower level. (closes #1370)
+Files:      src/ex_getln.c, src/testdir/test_history.vim
+
+
+*** ../vim-8.0.0171/src/ex_getln.c	2017-01-09 12:58:05.639951514 +0100
+--- src/ex_getln.c	2017-01-11 22:38:48.194527083 +0100
+***************
+*** 773,781 ****
+  		/*
+  		 * Open a window to edit the command line (and history).
+  		 */
+- 		save_cmdline(&save_ccline);
+  		c = ex_window();
+- 		restore_cmdline(&save_ccline);
+  		some_key_typed = TRUE;
+  	    }
+  	}
+--- 773,779 ----
+***************
+*** 6904,6912 ****
+      redraw_later(SOME_VALID);
+  
+      /* Save the command line info, can be used recursively. */
+!     save_ccline = ccline;
+!     ccline.cmdbuff = NULL;
+!     ccline.cmdprompt = NULL;
+  
+      /* No Ex mode here! */
+      exmode_active = 0;
+--- 6902,6908 ----
+      redraw_later(SOME_VALID);
+  
+      /* Save the command line info, can be used recursively. */
+!     save_cmdline(&save_ccline);
+  
+      /* No Ex mode here! */
+      exmode_active = 0;
+***************
+*** 6953,6959 ****
+  # endif
+  
+      /* Restore the command line info. */
+!     ccline = save_ccline;
+      cmdwin_type = 0;
+  
+      exmode_active = save_exmode;
+--- 6949,6955 ----
+  # endif
+  
+      /* Restore the command line info. */
+!     restore_cmdline(&save_ccline);
+      cmdwin_type = 0;
+  
+      exmode_active = save_exmode;
+*** ../vim-8.0.0171/src/testdir/test_history.vim	2016-12-01 17:57:40.779167445 +0100
+--- src/testdir/test_history.vim	2017-01-11 22:38:15.042776921 +0100
+***************
+*** 87,89 ****
+--- 87,106 ----
+    call assert_equal(-1, histnr('abc'))
+    call assert_fails('call histnr([])', 'E730:')
+  endfunction
++ 
++ function Test_Search_history_window()
++   new
++   call setline(1, ['a', 'b', 'a', 'b'])
++   1
++   call feedkeys("/a\<CR>", 'xt')
++   call assert_equal('a', getline('.'))
++   1
++   call feedkeys("/b\<CR>", 'xt')
++   call assert_equal('b', getline('.'))
++   1
++   " select the previous /a command
++   call feedkeys("q/kk\<CR>", 'x!')
++   call assert_equal('a', getline('.'))
++   call assert_equal('a', @/)
++   bwipe!
++ endfunc
+*** ../vim-8.0.0171/src/version.c	2017-01-11 21:50:04.888673246 +0100
+--- src/version.c	2017-01-11 22:34:18.800557984 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     172,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+251. You've never seen your closest friends who usually live WAY too far away.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

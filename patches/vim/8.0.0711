@@ -1,0 +1,70 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0711
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0711 (after 8.0.0710)
+Problem:    Cannot build without the wildmenu feature.
+Solution:   Add #ifdef
+Files:      src/screen.c
+
+
+*** ../vim-8.0.0710/src/screen.c	2017-07-12 20:24:37.186538283 +0200
+--- src/screen.c	2017-07-12 21:11:19.040649907 +0200
+***************
+*** 275,284 ****
+--- 275,286 ----
+  {
+      win_T	*wp;
+  
++ #ifdef FEAT_WILDMENU
+      if (wild_menu_showing != 0)
+  	/* Don't redraw while the command line completion is displayed, it
+  	 * would disappear. */
+  	return;
++ #endif
+      FOR_ALL_WINDOWS(wp)
+      {
+  	if (wp->w_buffer == buf)
+***************
+*** 450,456 ****
+      {
+  	/* Redrawing only works when the screen didn't scroll. Don't clear
+  	 * wildmenu entries. */
+! 	if (msg_scrolled == 0 && wild_menu_showing == 0)
+  	    update_screen(0);
+  	/* Redraw in the same position, so that the user can continue
+  	 * editing the command. */
+--- 452,462 ----
+      {
+  	/* Redrawing only works when the screen didn't scroll. Don't clear
+  	 * wildmenu entries. */
+! 	if (msg_scrolled == 0
+! #ifdef FEAT_WILDMENU
+! 		&& wild_menu_showing == 0
+! #endif
+! 		)
+  	    update_screen(0);
+  	/* Redraw in the same position, so that the user can continue
+  	 * editing the command. */
+*** ../vim-8.0.0710/src/version.c	2017-07-12 20:24:37.190538252 +0200
+--- src/version.c	2017-07-12 21:11:57.556347701 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     711,
+  /**/
+
+-- 
+Drink wet cement and get really stoned.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

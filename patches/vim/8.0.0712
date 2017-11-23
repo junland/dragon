@@ -1,0 +1,99 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0712
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0712
+Problem:    The terminal implementation is incomplete.
+Solution:   Add the 'termkey' option.
+Files:      src/option.c, src/option.h, src/structs.h
+
+
+*** ../vim-8.0.0711/src/option.c	2017-07-09 15:41:44.621938811 +0200
+--- src/option.c	2017-07-15 13:42:10.908810545 +0200
+***************
+*** 258,263 ****
+--- 258,264 ----
+  # define PV_COLE	OPT_WIN(WV_COLE)
+  #endif
+  #ifdef FEAT_TERMINAL
++ # define PV_TK		OPT_WIN(WV_TK)
+  # define PV_TMS		OPT_WIN(WV_TMS)
+  #endif
+  #ifdef FEAT_SIGNS
+***************
+*** 2781,2786 ****
+--- 2782,2796 ----
+  			    {(char_u *)FALSE, (char_u *)FALSE}
+  #endif
+  			    SCRIPTID_INIT},
++     {"termkey", "tk",	    P_STRING|P_ALLOCED|P_RWIN|P_VI_DEF,
++ #ifdef FEAT_TERMINAL
++ 			    (char_u *)VAR_WIN, PV_TK,
++ 			    {(char_u *)"\x17", (char_u *)NULL}
++ #else
++ 			    (char_u *)NULL, PV_NONE,
++ 			    {(char_u *)NULL, (char_u *)0L}
++ #endif
++ 			    SCRIPTID_INIT},
+      {"termsize", "tms",	    P_STRING|P_ALLOCED|P_RWIN|P_VI_DEF,
+  #ifdef FEAT_TERMINAL
+  			    (char_u *)VAR_WIN, PV_TMS,
+***************
+*** 10681,10686 ****
+--- 10691,10697 ----
+  	case PV_COLE:   return (char_u *)&(curwin->w_p_cole);
+  #endif
+  #ifdef FEAT_TERMINAL
++ 	case PV_TK:     return (char_u *)&(curwin->w_p_tk);
+  	case PV_TMS:    return (char_u *)&(curwin->w_p_tms);
+  #endif
+  
+*** ../vim-8.0.0711/src/option.h	2017-07-07 11:53:29.511876559 +0200
+--- src/option.h	2017-07-15 13:42:32.776644168 +0200
+***************
+*** 1131,1136 ****
+--- 1131,1137 ----
+      , WV_COLE
+  #endif
+  #ifdef FEAT_TERMINAL
++     , WV_TK
+      , WV_TMS
+  #endif
+  #ifdef FEAT_CURSORBIND
+*** ../vim-8.0.0711/src/structs.h	2017-07-08 22:37:02.019229190 +0200
+--- src/structs.h	2017-07-15 13:43:36.832161248 +0200
+***************
+*** 270,275 ****
+--- 270,277 ----
+  # define w_p_scl w_onebuf_opt.wo_scl	/* 'signcolumn' */
+  #endif
+  #ifdef FEAT_TERMINAL
++     char_u	*wo_tk;
++ #define w_p_tk w_onebuf_opt.wo_tk	/* 'termkey' */
+      char_u	*wo_tms;
+  #define w_p_tms w_onebuf_opt.wo_tms	/* 'termsize' */
+  #endif
+*** ../vim-8.0.0711/src/version.c	2017-07-12 21:12:38.336024915 +0200
+--- src/version.c	2017-07-15 13:54:31.955250652 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     712,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+157. You fum through a magazine, you first check to see if it has a web
+     address.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

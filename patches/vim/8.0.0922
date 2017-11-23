@@ -1,0 +1,459 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0922
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0922
+Problem:    Quickfix list always added after current one.
+Solution:   Make it possible to add a quickfix list after the last one.
+            (Yegappan Lakshmanan)
+Files:      runtime/doc/eval.txt, src/quickfix.c,
+            src/testdir/test_quickfix.vim
+
+
+*** ../vim-8.0.0921/runtime/doc/eval.txt	2017-08-12 19:51:37.811214215 +0200
+--- runtime/doc/eval.txt	2017-08-13 13:20:05.936253368 +0200
+***************
+*** 7023,7029 ****
+  			freed.
+  
+  		If {action} is not present or is set to ' ', then a new list
+! 		is created.
+  
+  		If the optional {what} dictionary argument is supplied, then
+  		only the items listed in {what} are set. The first {list}
+--- 7023,7032 ----
+  			freed.
+  
+  		If {action} is not present or is set to ' ', then a new list
+! 		is created. The new quickfix list is added after the current
+! 		quickfix list in the stack and all the following lists are
+! 		freed. To add a new quickfix list at the end of the stack,
+! 		set "nr" in {what} to '$'.
+  
+  		If the optional {what} dictionary argument is supplied, then
+  		only the items listed in {what} are set. The first {list}
+*** ../vim-8.0.0921/src/quickfix.c	2017-08-11 20:25:22.097565404 +0200
+--- src/quickfix.c	2017-08-13 13:27:53.141464352 +0200
+***************
+*** 1189,1196 ****
+      fields.errmsglen = CMDBUFFSIZE + 1;
+      fields.errmsg = alloc_id(fields.errmsglen, aid_qf_errmsg);
+      fields.pattern = alloc_id(CMDBUFFSIZE + 1, aid_qf_pattern);
+!     if (fields.namebuf == NULL || fields.errmsg == NULL ||
+! 	    fields.pattern == NULL)
+  	goto qf_init_end;
+  
+      if (efile != NULL && (state.fd = mch_fopen((char *)efile, "r")) == NULL)
+--- 1189,1195 ----
+      fields.errmsglen = CMDBUFFSIZE + 1;
+      fields.errmsg = alloc_id(fields.errmsglen, aid_qf_errmsg);
+      fields.pattern = alloc_id(CMDBUFFSIZE + 1, aid_qf_pattern);
+!     if (fields.namebuf == NULL || fields.errmsg == NULL || fields.pattern == NULL)
+  	goto qf_init_end;
+  
+      if (efile != NULL && (state.fd = mch_fopen((char *)efile, "r")) == NULL)
+***************
+*** 1368,1374 ****
+  }
+  
+  /*
+!  * Prepare for adding a new quickfix list.
+   */
+      static void
+  qf_new_list(qf_info_T *qi, char_u *qf_title)
+--- 1367,1375 ----
+  }
+  
+  /*
+!  * Prepare for adding a new quickfix list. If the current list is in the
+!  * middle of the stack, then all the following lists are freed and then
+!  * the new list is added.
+   */
+      static void
+  qf_new_list(qf_info_T *qi, char_u *qf_title)
+***************
+*** 3830,3837 ****
+      /* For cdo and ldo commands, jump to the nth valid error.
+       * For cfdo and lfdo commands, jump to the nth valid file entry.
+       */
+!     if (eap->cmdidx == CMD_cdo || eap->cmdidx == CMD_ldo ||
+! 	    eap->cmdidx == CMD_cfdo || eap->cmdidx == CMD_lfdo)
+  	errornr = qf_get_nth_valid_entry(qi,
+  		eap->addr_count > 0 ? (int)eap->line1 : 1,
+  		eap->cmdidx == CMD_cfdo || eap->cmdidx == CMD_lfdo);
+--- 3831,3838 ----
+      /* For cdo and ldo commands, jump to the nth valid error.
+       * For cfdo and lfdo commands, jump to the nth valid file entry.
+       */
+!     if (eap->cmdidx == CMD_cdo || eap->cmdidx == CMD_ldo
+! 	    || eap->cmdidx == CMD_cfdo || eap->cmdidx == CMD_lfdo)
+  	errornr = qf_get_nth_valid_entry(qi,
+  		eap->addr_count > 0 ? (int)eap->line1 : 1,
+  		eap->cmdidx == CMD_cfdo || eap->cmdidx == CMD_lfdo);
+***************
+*** 3867,3875 ****
+  	}
+      }
+  
+!     if (eap->addr_count > 0 &&
+! 	    (eap->cmdidx != CMD_cdo && eap->cmdidx != CMD_ldo &&
+! 	     eap->cmdidx != CMD_cfdo && eap->cmdidx != CMD_lfdo))
+  	errornr = (int)eap->line2;
+      else
+  	errornr = 1;
+--- 3868,3876 ----
+  	}
+      }
+  
+!     if (eap->addr_count > 0
+! 	    && (eap->cmdidx != CMD_cdo && eap->cmdidx != CMD_ldo
+! 		&& eap->cmdidx != CMD_cfdo && eap->cmdidx != CMD_lfdo))
+  	errornr = (int)eap->line2;
+      else
+  	errornr = 1;
+***************
+*** 4086,4093 ****
+  	goto theend;
+      }
+  
+!     if ((eap->cmdidx != CMD_grepadd && eap->cmdidx != CMD_lgrepadd &&
+! 	 eap->cmdidx != CMD_vimgrepadd && eap->cmdidx != CMD_lvimgrepadd)
+  					|| qi->qf_curlist == qi->qf_listcount)
+  	/* make place for a new list */
+  	qf_new_list(qi, title != NULL ? title : *eap->cmdlinep);
+--- 4087,4094 ----
+  	goto theend;
+      }
+  
+!     if ((eap->cmdidx != CMD_grepadd && eap->cmdidx != CMD_lgrepadd
+! 		&& eap->cmdidx != CMD_vimgrepadd && eap->cmdidx != CMD_lvimgrepadd)
+  					|| qi->qf_curlist == qi->qf_listcount)
+  	/* make place for a new list */
+  	qf_new_list(qi, title != NULL ? title : *eap->cmdlinep);
+***************
+*** 4646,4655 ****
+  	if (qi == NULL)
+  	{
+  	    /* If querying for the size of the location list, return 0 */
+! 	    if (((di = dict_find(what, (char_u *)"nr", -1)) != NULL) &&
+! 		    (di->di_tv.v_type == VAR_STRING) &&
+! 		    (STRCMP(di->di_tv.vval.v_string, "$") == 0))
+! 		    return dict_add_nr_str(retdict, "nr", 0, NULL);
+  	    return FAIL;
+  	}
+      }
+--- 4647,4656 ----
+  	if (qi == NULL)
+  	{
+  	    /* If querying for the size of the location list, return 0 */
+! 	    if (((di = dict_find(what, (char_u *)"nr", -1)) != NULL)
+! 		    && (di->di_tv.v_type == VAR_STRING)
+! 		    && (STRCMP(di->di_tv.vval.v_string, "$") == 0))
+! 		return dict_add_nr_str(retdict, "nr", 0, NULL);
+  	    return FAIL;
+  	}
+      }
+***************
+*** 4666,4676 ****
+  		qf_idx = di->di_tv.vval.v_number - 1;
+  		if (qf_idx < 0 || qf_idx >= qi->qf_listcount)
+  		    return FAIL;
+! 	    } else if (qi->qf_listcount == 0)	    /* stack is empty */
+  		return FAIL;
+  	    flags |= QF_GETLIST_NR;
+! 	} else if ((di->di_tv.v_type == VAR_STRING) &&
+! 		(STRCMP(di->di_tv.vval.v_string, "$") == 0))
+  	{
+  	    /* Get the last quickfix list number */
+  	    if (qi->qf_listcount > 0)
+--- 4667,4679 ----
+  		qf_idx = di->di_tv.vval.v_number - 1;
+  		if (qf_idx < 0 || qf_idx >= qi->qf_listcount)
+  		    return FAIL;
+! 	    }
+! 	    else if (qi->qf_listcount == 0)	    /* stack is empty */
+  		return FAIL;
+  	    flags |= QF_GETLIST_NR;
+! 	}
+! 	else if ((di->di_tv.v_type == VAR_STRING)
+! 		&& (STRCMP(di->di_tv.vval.v_string, "$") == 0))
+  	{
+  	    /* Get the last quickfix list number */
+  	    if (qi->qf_listcount > 0)
+***************
+*** 4905,4927 ****
+  	    if (di->di_tv.vval.v_number != 0)
+  		qf_idx = di->di_tv.vval.v_number - 1;
+  
+! 	    if ((action == ' ' || action == 'a') &&
+! 		    qf_idx == qi->qf_listcount)
+  		/*
+  		 * When creating a new list, accept qf_idx pointing to the next
+! 		 * non-available list
+  		 */
+  		newlist = TRUE;
+  	    else if (qf_idx < 0 || qf_idx >= qi->qf_listcount)
+  		return FAIL;
+! 	    else
+  		newlist = FALSE;	/* use the specified list */
+! 	} else if (di->di_tv.v_type == VAR_STRING &&
+! 		STRCMP(di->di_tv.vval.v_string, "$") == 0 &&
+! 		qi->qf_listcount > 0)
+  	{
+! 	    qf_idx = qi->qf_listcount - 1;
+! 	    newlist = FALSE;
+  	}
+  	else
+  	    return FAIL;
+--- 4908,4937 ----
+  	    if (di->di_tv.vval.v_number != 0)
+  		qf_idx = di->di_tv.vval.v_number - 1;
+  
+! 	    if ((action == ' ' || action == 'a') && qf_idx == qi->qf_listcount)
+! 	    {
+  		/*
+  		 * When creating a new list, accept qf_idx pointing to the next
+! 		 * non-available list and add the new list at the end of the
+! 		 * stack.
+  		 */
+  		newlist = TRUE;
++ 		qf_idx = qi->qf_listcount - 1;
++ 	    }
+  	    else if (qf_idx < 0 || qf_idx >= qi->qf_listcount)
+  		return FAIL;
+! 	    else if (action != ' ')
+  		newlist = FALSE;	/* use the specified list */
+! 	}
+! 	else if (di->di_tv.v_type == VAR_STRING
+! 		&& STRCMP(di->di_tv.vval.v_string, "$") == 0)
+  	{
+! 	    if (qi->qf_listcount > 0)
+! 		qf_idx = qi->qf_listcount - 1;
+! 	    else if (newlist)
+! 		qf_idx = 0;
+! 	    else
+! 		return FAIL;
+  	}
+  	else
+  	    return FAIL;
+***************
+*** 4929,4934 ****
+--- 4939,4945 ----
+  
+      if (newlist)
+      {
++ 	qi->qf_curlist = qf_idx;
+  	qf_new_list(qi, title);
+  	qf_idx = qi->qf_curlist;
+      }
+***************
+*** 5104,5111 ****
+      for (i = 0; i < LISTCOUNT && !abort; ++i)
+      {
+  	ctx = qi->qf_lists[i].qf_ctx;
+! 	if (ctx != NULL && ctx->v_type != VAR_NUMBER &&
+! 		ctx->v_type != VAR_STRING && ctx->v_type != VAR_FLOAT)
+  	    abort = set_ref_in_item(ctx, copyID, NULL, NULL);
+      }
+  
+--- 5115,5122 ----
+      for (i = 0; i < LISTCOUNT && !abort; ++i)
+      {
+  	ctx = qi->qf_lists[i].qf_ctx;
+! 	if (ctx != NULL && ctx->v_type != VAR_NUMBER
+! 		&& ctx->v_type != VAR_STRING && ctx->v_type != VAR_FLOAT)
+  	    abort = set_ref_in_item(ctx, copyID, NULL, NULL);
+      }
+  
+*** ../vim-8.0.0921/src/testdir/test_quickfix.vim	2017-08-11 20:25:22.097565404 +0200
+--- src/testdir/test_quickfix.vim	2017-08-13 13:20:05.940253344 +0200
+***************
+*** 11,17 ****
+      command! -nargs=* -bang Xlist <mods>clist<bang> <args>
+      command! -nargs=* Xgetexpr <mods>cgetexpr <args>
+      command! -nargs=* Xaddexpr <mods>caddexpr <args>
+!     command! -nargs=* Xolder <mods>colder <args>
+      command! -nargs=* Xnewer <mods>cnewer <args>
+      command! -nargs=* Xopen <mods>copen <args>
+      command! -nargs=* Xwindow <mods>cwindow <args>
+--- 11,17 ----
+      command! -nargs=* -bang Xlist <mods>clist<bang> <args>
+      command! -nargs=* Xgetexpr <mods>cgetexpr <args>
+      command! -nargs=* Xaddexpr <mods>caddexpr <args>
+!     command! -nargs=* -count Xolder <mods><count>colder <args>
+      command! -nargs=* Xnewer <mods>cnewer <args>
+      command! -nargs=* Xopen <mods>copen <args>
+      command! -nargs=* Xwindow <mods>cwindow <args>
+***************
+*** 43,49 ****
+      command! -nargs=* -bang Xlist <mods>llist<bang> <args>
+      command! -nargs=* Xgetexpr <mods>lgetexpr <args>
+      command! -nargs=* Xaddexpr <mods>laddexpr <args>
+!     command! -nargs=* Xolder <mods>lolder <args>
+      command! -nargs=* Xnewer <mods>lnewer <args>
+      command! -nargs=* Xopen <mods>lopen <args>
+      command! -nargs=* Xwindow <mods>lwindow <args>
+--- 43,49 ----
+      command! -nargs=* -bang Xlist <mods>llist<bang> <args>
+      command! -nargs=* Xgetexpr <mods>lgetexpr <args>
+      command! -nargs=* Xaddexpr <mods>laddexpr <args>
+!     command! -nargs=* -count Xolder <mods><count>lolder <args>
+      command! -nargs=* Xnewer <mods>lnewer <args>
+      command! -nargs=* Xopen <mods>lopen <args>
+      command! -nargs=* Xwindow <mods>lwindow <args>
+***************
+*** 1745,1751 ****
+      call assert_equal('N2', g:Xgetlist({'nr':2, 'title':1}).title)
+  
+      " Changing the title of an earlier quickfix list
+!     call g:Xsetlist([], ' ', {'title' : 'NewTitle', 'nr' : 2})
+      call assert_equal('NewTitle', g:Xgetlist({'nr':2, 'title':1}).title)
+  
+      " Changing the title of an invalid quickfix list
+--- 1745,1751 ----
+      call assert_equal('N2', g:Xgetlist({'nr':2, 'title':1}).title)
+  
+      " Changing the title of an earlier quickfix list
+!     call g:Xsetlist([], 'r', {'title' : 'NewTitle', 'nr' : 2})
+      call assert_equal('NewTitle', g:Xgetlist({'nr':2, 'title':1}).title)
+  
+      " Changing the title of an invalid quickfix list
+***************
+*** 1812,1821 ****
+      Xexpr "One"
+      Xexpr "Two"
+      Xexpr "Three"
+!     call g:Xsetlist([], ' ', {'context' : [1], 'nr' : 1})
+!     call g:Xsetlist([], ' ', {'context' : [2], 'nr' : 2})
+      " Also, check for setting the context using quickfix list number zero.
+!     call g:Xsetlist([], ' ', {'context' : [3], 'nr' : 0})
+      call test_garbagecollect_now()
+      let l = g:Xgetlist({'nr' : 1, 'context' : 1})
+      call assert_equal([1], l.context)
+--- 1812,1821 ----
+      Xexpr "One"
+      Xexpr "Two"
+      Xexpr "Three"
+!     call g:Xsetlist([], 'r', {'context' : [1], 'nr' : 1})
+!     call g:Xsetlist([], 'a', {'context' : [2], 'nr' : 2})
+      " Also, check for setting the context using quickfix list number zero.
+!     call g:Xsetlist([], 'r', {'context' : [3], 'nr' : 0})
+      call test_garbagecollect_now()
+      let l = g:Xgetlist({'nr' : 1, 'context' : 1})
+      call assert_equal([1], l.context)
+***************
+*** 2433,2435 ****
+--- 2433,2521 ----
+      call assert_true(len(getloclist(2)) != 0)
+      new | only
+  endfunc
++ 
++ " Tests for adding new quickfix lists using setqflist()
++ func XaddQf_tests(cchar)
++   call s:setup_commands(a:cchar)
++ 
++   " Create a new list using ' ' for action
++   call g:Xsetlist([], 'f')
++   call g:Xsetlist([], ' ', {'title' : 'Test1'})
++   let l = g:Xgetlist({'nr' : '$', 'all' : 1})
++   call assert_equal(1, l.nr)
++   call assert_equal('Test1', l.title)
++ 
++   " Create a new list using ' ' for action and '$' for 'nr'
++   call g:Xsetlist([], 'f')
++   call g:Xsetlist([], ' ', {'title' : 'Test2', 'nr' : '$'})
++   let l = g:Xgetlist({'nr' : '$', 'all' : 1})
++   call assert_equal(1, l.nr)
++   call assert_equal('Test2', l.title)
++ 
++   " Create a new list using 'a' for action
++   call g:Xsetlist([], 'f')
++   call g:Xsetlist([], 'a', {'title' : 'Test3'})
++   let l = g:Xgetlist({'nr' : '$', 'all' : 1})
++   call assert_equal(1, l.nr)
++   call assert_equal('Test3', l.title)
++ 
++   " Create a new list using 'a' for action and '$' for 'nr'
++   call g:Xsetlist([], 'f')
++   call g:Xsetlist([], 'a', {'title' : 'Test3', 'nr' : '$'})
++   call g:Xsetlist([], 'a', {'title' : 'Test4'})
++   let l = g:Xgetlist({'nr' : '$', 'all' : 1})
++   call assert_equal(1, l.nr)
++   call assert_equal('Test4', l.title)
++ 
++   " Adding a quickfix list should remove all the lists following the current
++   " list.
++   Xexpr "" | Xexpr "" | Xexpr ""
++   silent! 10Xolder
++   call g:Xsetlist([], ' ', {'title' : 'Test5'})
++   let l = g:Xgetlist({'nr' : '$', 'all' : 1})
++   call assert_equal(2, l.nr)
++   call assert_equal('Test5', l.title)
++ 
++   " Add a quickfix list using '$' as the list number.
++   let lastqf = g:Xgetlist({'nr':'$'}).nr
++   silent! 99Xolder
++   call g:Xsetlist([], ' ', {'nr' : '$', 'title' : 'Test6'})
++   let l = g:Xgetlist({'nr' : '$', 'all' : 1})
++   call assert_equal(lastqf + 1, l.nr)
++   call assert_equal('Test6', l.title)
++ 
++   " Add a quickfix list using 'nr' set to one more than the quickfix
++   " list size.
++   let lastqf = g:Xgetlist({'nr':'$'}).nr
++   silent! 99Xolder
++   call g:Xsetlist([], ' ', {'nr' : lastqf + 1, 'title' : 'Test7'})
++   let l = g:Xgetlist({'nr' : '$', 'all' : 1})
++   call assert_equal(lastqf + 1, l.nr)
++   call assert_equal('Test7', l.title)
++ 
++   " Add a quickfix list to a stack with 10 lists using 'nr' set to '$'
++   exe repeat('Xexpr "" |', 9) . 'Xexpr ""'
++   silent! 99Xolder
++   call g:Xsetlist([], ' ', {'nr' : '$', 'title' : 'Test8'})
++   let l = g:Xgetlist({'nr' : '$', 'all' : 1})
++   call assert_equal(10, l.nr)
++   call assert_equal('Test8', l.title)
++ 
++   " Add a quickfix list using 'nr' set to a value greater than 10
++   call assert_equal(-1, g:Xsetlist([], ' ', {'nr' : 12, 'title' : 'Test9'}))
++ 
++   " Try adding a quickfix list with 'nr' set to a value greater than the
++   " quickfix list size but less than 10.
++   call g:Xsetlist([], 'f')
++   Xexpr "" | Xexpr "" | Xexpr ""
++   silent! 99Xolder
++   call assert_equal(-1, g:Xsetlist([], ' ', {'nr' : 8, 'title' : 'Test10'}))
++ 
++   " Add a quickfix list using 'nr' set to a some string or list
++   call assert_equal(-1, g:Xsetlist([], ' ', {'nr' : [1,2], 'title' : 'Test11'}))
++ endfunc
++ 
++ func Test_add_qf()
++   call XaddQf_tests('c')
++   call XaddQf_tests('l')
++ endfunc
+*** ../vim-8.0.0921/src/version.c	2017-08-12 22:55:54.221280883 +0200
+--- src/version.c	2017-08-13 13:41:02.940737830 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     922,
+  /**/
+
+-- 
+<Beeth> Girls are like internet domain names,
+        the ones I like are already taken.
+<honx>  Well, you can stil get one from a strange country :-P
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

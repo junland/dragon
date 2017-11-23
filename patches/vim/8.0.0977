@@ -1,0 +1,183 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0977
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0977
+Problem:    Cannot send lines to a terminal job on MS-Windows.
+Solution:   Set jv_in_buf.  Command doesn't get EOF yet though.
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0976/src/terminal.c	2017-08-20 18:09:09.763276757 +0200
+--- src/terminal.c	2017-08-20 19:21:11.488613011 +0200
+***************
+*** 2869,2879 ****
+  	typval_T    *argvar,
+  	jobopt_T    *opt)
+  {
+!     WCHAR	    *p = NULL;
+      channel_T	    *channel = NULL;
+      job_T	    *job = NULL;
+      DWORD	    error;
+!     HANDLE	    jo = NULL, child_process_handle, child_thread_handle;
+      void	    *winpty_err;
+      void	    *spawn_config = NULL;
+      char	    buf[MAX_PATH];
+--- 2869,2881 ----
+  	typval_T    *argvar,
+  	jobopt_T    *opt)
+  {
+!     WCHAR	    *cmd_wchar = NULL;
+      channel_T	    *channel = NULL;
+      job_T	    *job = NULL;
+      DWORD	    error;
+!     HANDLE	    jo = NULL;
+!     HANDLE	    child_process_handle;
+!     HANDLE	    child_thread_handle;
+      void	    *winpty_err;
+      void	    *spawn_config = NULL;
+      char	    buf[MAX_PATH];
+***************
+*** 2893,2900 ****
+  	cmd = ga.ga_data;
+      }
+  
+!     p = enc_to_utf16(cmd, NULL);
+!     if (p == NULL)
+  	return FAIL;
+  
+      job = job_alloc();
+--- 2895,2902 ----
+  	cmd = ga.ga_data;
+      }
+  
+!     cmd_wchar = enc_to_utf16(cmd, NULL);
+!     if (cmd_wchar == NULL)
+  	return FAIL;
+  
+      job = job_alloc();
+***************
+*** 2919,2925 ****
+  	    WINPTY_SPAWN_FLAG_AUTO_SHUTDOWN |
+  		WINPTY_SPAWN_FLAG_EXIT_AFTER_SHUTDOWN,
+  	    NULL,
+! 	    p,
+  	    NULL,
+  	    NULL,
+  	    &winpty_err);
+--- 2921,2927 ----
+  	    WINPTY_SPAWN_FLAG_AUTO_SHUTDOWN |
+  		WINPTY_SPAWN_FLAG_EXIT_AFTER_SHUTDOWN,
+  	    NULL,
+! 	    cmd_wchar,
+  	    NULL,
+  	    NULL,
+  	    &winpty_err);
+***************
+*** 2934,2953 ****
+      if (job == NULL)
+  	goto failed;
+  
+      if (!winpty_spawn(term->tl_winpty, spawn_config, &child_process_handle,
+  	    &child_thread_handle, &error, &winpty_err))
+  	goto failed;
+  
+      channel_set_pipes(channel,
+! 	(sock_T) CreateFileW(
+  	    winpty_conin_name(term->tl_winpty),
+  	    GENERIC_WRITE, 0, NULL,
+  	    OPEN_EXISTING, 0, NULL),
+! 	(sock_T) CreateFileW(
+  	    winpty_conout_name(term->tl_winpty),
+  	    GENERIC_READ, 0, NULL,
+  	    OPEN_EXISTING, 0, NULL),
+! 	(sock_T) CreateFileW(
+  	    winpty_conerr_name(term->tl_winpty),
+  	    GENERIC_READ, 0, NULL,
+  	    OPEN_EXISTING, 0, NULL));
+--- 2936,2960 ----
+      if (job == NULL)
+  	goto failed;
+  
++     /* TODO: when all lines are written and the fd is closed, the command
++      * doesn't get EOF and hangs. */
++     if (opt->jo_set & JO_IN_BUF)
++ 	job->jv_in_buf = buflist_findnr(opt->jo_io_buf[PART_IN]);
++ 
+      if (!winpty_spawn(term->tl_winpty, spawn_config, &child_process_handle,
+  	    &child_thread_handle, &error, &winpty_err))
+  	goto failed;
+  
+      channel_set_pipes(channel,
+! 	(sock_T)CreateFileW(
+  	    winpty_conin_name(term->tl_winpty),
+  	    GENERIC_WRITE, 0, NULL,
+  	    OPEN_EXISTING, 0, NULL),
+! 	(sock_T)CreateFileW(
+  	    winpty_conout_name(term->tl_winpty),
+  	    GENERIC_READ, 0, NULL,
+  	    OPEN_EXISTING, 0, NULL),
+! 	(sock_T)CreateFileW(
+  	    winpty_conerr_name(term->tl_winpty),
+  	    GENERIC_READ, 0, NULL,
+  	    OPEN_EXISTING, 0, NULL));
+***************
+*** 2964,2970 ****
+      }
+  
+      winpty_spawn_config_free(spawn_config);
+!     vim_free(p);
+  
+      create_vterm(term, rows, cols);
+  
+--- 2971,2977 ----
+      }
+  
+      winpty_spawn_config_free(spawn_config);
+!     vim_free(cmd_wchar);
+  
+      create_vterm(term, rows, cols);
+  
+***************
+*** 2987,2994 ****
+  failed:
+      if (argvar->v_type == VAR_LIST)
+  	vim_free(ga.ga_data);
+!     if (p != NULL)
+! 	vim_free(p);
+      if (spawn_config != NULL)
+  	winpty_spawn_config_free(spawn_config);
+      if (channel != NULL)
+--- 2994,3001 ----
+  failed:
+      if (argvar->v_type == VAR_LIST)
+  	vim_free(ga.ga_data);
+!     if (cmd_wchar != NULL)
+! 	vim_free(cmd_wchar);
+      if (spawn_config != NULL)
+  	winpty_spawn_config_free(spawn_config);
+      if (channel != NULL)
+*** ../vim-8.0.0976/src/version.c	2017-08-20 18:09:09.767276733 +0200
+--- src/version.c	2017-08-20 19:22:11.748234798 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     977,
+  /**/
+
+-- 
+The only way the average employee can speak to an executive is by taking a
+second job as a golf caddie.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

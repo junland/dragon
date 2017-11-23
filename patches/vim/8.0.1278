@@ -1,0 +1,240 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1278
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1278
+Problem:    GUI window always resizes when adding/removing a scrollbar,
+            toolbar, etc.
+Solution:   Add the 'k' flag in 'guioptions' to keep the GUI window size and
+            change the number of lines/columns instead. (Ychin, closes #703)
+Files:      runtime/doc/options.txt, src/gui.c, src/gui_gtk_x11.c,
+            src/gui_w32.c, src/option.h
+
+
+*** ../vim-8.0.1277/runtime/doc/options.txt	2017-11-02 19:08:39.737514625 +0100
+--- runtime/doc/options.txt	2017-11-09 18:30:08.275255168 +0100
+***************
+*** 3846,3852 ****
+  		removing it after the GUI has started has no effect.
+  								*'go-F'*
+  	  'F'	Add a footer.  Only for Motif.  See |gui-footer|.
+! 
+  
+  						*'guipty'* *'noguipty'*
+  'guipty'		boolean	(default on)
+--- 3939,3951 ----
+  		removing it after the GUI has started has no effect.
+  								*'go-F'*
+  	  'F'	Add a footer.  Only for Motif.  See |gui-footer|.
+! 								*'go-k'*
+! 	  'k'	Keep the GUI window size when adding/removing a scrollbar, or
+! 		toolbar, tabline, etc.  Instead, the behavior is similar to
+! 		when the window is maximized and will adjust 'lines' and
+! 		'columns' to fit to the window.  Without the 'k' flag Vim will
+! 		try to keep 'lines' and 'columns the same when adding and
+! 		removing GUI components.
+  
+  						*'guipty'* *'noguipty'*
+  'guipty'		boolean	(default on)
+*** ../vim-8.0.1277/src/gui.c	2017-10-28 21:08:38.979457009 +0200
+--- src/gui.c	2017-11-09 18:19:04.101061036 +0100
+***************
+*** 693,699 ****
+  #ifndef FEAT_GUI_GTK
+      /* Set the shell size, adjusted for the screen size.  For GTK this only
+       * works after the shell has been opened, thus it is further down. */
+!     gui_set_shellsize(FALSE, TRUE, RESIZE_BOTH);
+  #endif
+  #if defined(FEAT_GUI_MOTIF) && defined(FEAT_MENU)
+      /* Need to set the size of the menubar after all the menus have been
+--- 693,699 ----
+  #ifndef FEAT_GUI_GTK
+      /* Set the shell size, adjusted for the screen size.  For GTK this only
+       * works after the shell has been opened, thus it is further down. */
+!     gui_set_shellsize(TRUE, TRUE, RESIZE_BOTH);
+  #endif
+  #if defined(FEAT_GUI_MOTIF) && defined(FEAT_MENU)
+      /* Need to set the size of the menubar after all the menus have been
+***************
+*** 732,738 ****
+  # endif
+  
+  	/* Now make sure the shell fits on the screen. */
+! 	gui_set_shellsize(FALSE, TRUE, RESIZE_BOTH);
+  #endif
+  	/* When 'lines' was set while starting up the topframe may have to be
+  	 * resized. */
+--- 732,738 ----
+  # endif
+  
+  	/* Now make sure the shell fits on the screen. */
+! 	gui_set_shellsize(TRUE, TRUE, RESIZE_BOTH);
+  #endif
+  	/* When 'lines' was set while starting up the topframe may have to be
+  	 * resized. */
+***************
+*** 909,915 ****
+  # endif
+  	    gui_mch_set_font(gui.norm_font);
+  #endif
+! 	gui_set_shellsize(FALSE, TRUE, RESIZE_BOTH);
+      }
+  
+      return ret;
+--- 909,915 ----
+  # endif
+  	    gui_mch_set_font(gui.norm_font);
+  #endif
+! 	gui_set_shellsize(TRUE, TRUE, RESIZE_BOTH);
+      }
+  
+      return ret;
+***************
+*** 1553,1562 ****
+   * Set the size of the Vim shell according to Rows and Columns.
+   * If "fit_to_display" is TRUE then the size may be reduced to fit the window
+   * on the screen.
+   */
+      void
+  gui_set_shellsize(
+!     int		mustset UNUSED,		/* set by the user */
+      int		fit_to_display,
+      int		direction)		/* RESIZE_HOR, RESIZE_VER */
+  {
+--- 1553,1564 ----
+   * Set the size of the Vim shell according to Rows and Columns.
+   * If "fit_to_display" is TRUE then the size may be reduced to fit the window
+   * on the screen.
++  * When "mustset" is TRUE the size was set by the user. When FALSE a UI
++  * component was added or removed (e.g., a scrollbar).
+   */
+      void
+  gui_set_shellsize(
+!     int		mustset UNUSED,
+      int		fit_to_display,
+      int		direction)		/* RESIZE_HOR, RESIZE_VER */
+  {
+***************
+*** 1580,1586 ****
+  #if defined(MSWIN) || defined(FEAT_GUI_GTK)
+      /* If not setting to a user specified size and maximized, calculate the
+       * number of characters that fit in the maximized window. */
+!     if (!mustset && gui_mch_maximized())
+      {
+  	gui_mch_newfont();
+  	return;
+--- 1582,1589 ----
+  #if defined(MSWIN) || defined(FEAT_GUI_GTK)
+      /* If not setting to a user specified size and maximized, calculate the
+       * number of characters that fit in the maximized window. */
+!     if (!mustset && (vim_strchr(p_go, GO_KEEPWINSIZE) != NULL
+! 						       || gui_mch_maximized()))
+      {
+  	gui_mch_newfont();
+  	return;
+*** ../vim-8.0.1277/src/gui_gtk_x11.c	2017-10-22 15:36:09.910319112 +0200
+--- src/gui_gtk_x11.c	2017-11-09 18:19:08.856991277 +0100
+***************
+*** 2938,2944 ****
+      if (gui.norm_font != NULL)
+      {
+  	gui_mch_init_font(p_guifont, FALSE);
+! 	gui_set_shellsize(FALSE, FALSE, RESIZE_BOTH);
+      }
+  }
+  
+--- 2938,2944 ----
+      if (gui.norm_font != NULL)
+      {
+  	gui_mch_init_font(p_guifont, FALSE);
+! 	gui_set_shellsize(TRUE, FALSE, RESIZE_BOTH);
+      }
+  }
+  
+***************
+*** 4909,4916 ****
+  }
+  
+  /*
+!  * Called when the font changed while the window is maximized.  Compute the
+!  * new Rows and Columns.  This is like resizing the window.
+   */
+      void
+  gui_mch_newfont(void)
+--- 4909,4917 ----
+  }
+  
+  /*
+!  * Called when the font changed while the window is maximized or GO_KEEPWINSIZE
+!  * is set.  Compute the new Rows and Columns.  This is like resizing the
+!  * window.
+   */
+      void
+  gui_mch_newfont(void)
+*** ../vim-8.0.1277/src/gui_w32.c	2017-10-28 19:23:05.715000423 +0200
+--- src/gui_w32.c	2017-11-09 18:19:11.692949675 +0100
+***************
+*** 3385,3392 ****
+  }
+  
+  /*
+!  * Called when the font changed while the window is maximized.  Compute the
+!  * new Rows and Columns.  This is like resizing the window.
+   */
+      void
+  gui_mch_newfont(void)
+--- 3385,3393 ----
+  }
+  
+  /*
+!  * Called when the font changed while the window is maximized or GO_KEEPWINSIZE
+!  * is set.  Compute the new Rows and Columns.  This is like resizing the
+!  * window.
+   */
+      void
+  gui_mch_newfont(void)
+*** ../vim-8.0.1277/src/option.h	2017-10-08 17:41:30.076460643 +0200
+--- src/option.h	2017-11-09 18:30:38.070813327 +0100
+***************
+*** 235,241 ****
+  #define GO_TOOLBAR	'T'		/* add toolbar */
+  #define GO_FOOTER	'F'		/* add footer */
+  #define GO_VERTICAL	'v'		/* arrange dialog buttons vertically */
+! #define GO_ALL		"aAbcefFghilmMprtTv" /* all possible flags for 'go' */
+  
+  /* flags for 'comments' option */
+  #define COM_NEST	'n'		/* comments strings nest */
+--- 235,242 ----
+  #define GO_TOOLBAR	'T'		/* add toolbar */
+  #define GO_FOOTER	'F'		/* add footer */
+  #define GO_VERTICAL	'v'		/* arrange dialog buttons vertically */
+! #define GO_KEEPWINSIZE	'k'		/* keep GUI window size */
+! #define GO_ALL		"aAbcefFghilmMprtTvk" /* all possible flags for 'go' */
+  
+  /* flags for 'comments' option */
+  #define COM_NEST	'n'		/* comments strings nest */
+*** ../vim-8.0.1277/src/version.c	2017-11-09 17:33:06.673311788 +0100
+--- src/version.c	2017-11-09 18:11:49.279383106 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1278,
+  /**/
+
+-- 
+FIRST SOLDIER:  So they wouldn't be able to bring a coconut back anyway.
+SECOND SOLDIER: Wait a minute! Suppose two swallows carried it together?
+FIRST SOLDIER:  No, they'd have to have it on a line.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

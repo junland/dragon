@@ -1,0 +1,89 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0669
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0669
+Problem:    In Insert mode, CTRL-N at start of the buffer does not work
+            correctly. (zuloloxi)
+Solution:   Wrap around the start of the buffer. (Christian Brabandt)
+Files:      src/edit.c, src/testdir/test_popup.vim
+
+
+*** ../vim-8.0.0668/src/edit.c	2017-06-17 18:44:17.002000920 +0200
+--- src/edit.c	2017-06-24 15:38:52.531496396 +0200
+***************
+*** 4308,4316 ****
+  	    {
+  		ins_buf = curbuf;
+  		first_match_pos = *ini;
+! 		/* So that ^N can match word immediately after cursor */
+! 		if (ctrl_x_mode == 0)
+! 		    dec(&first_match_pos);
+  		last_match_pos = first_match_pos;
+  		type = 0;
+  
+--- 4308,4324 ----
+  	    {
+  		ins_buf = curbuf;
+  		first_match_pos = *ini;
+! 		/* Move the cursor back one character so that ^N can match the
+! 		 * word immediately after the cursor. */
+! 		if (ctrl_x_mode == 0 && dec(&first_match_pos) < 0)
+! 		{
+! 		    /* Move the cursor to after the last character in the
+! 		     * buffer, so that word at start of buffer is found
+! 		     * correctly. */
+! 		    first_match_pos.lnum = ins_buf->b_ml.ml_line_count;
+! 		    first_match_pos.col =
+! 				 (colnr_T)STRLEN(ml_get(first_match_pos.lnum));
+! 		}
+  		last_match_pos = first_match_pos;
+  		type = 0;
+  
+*** ../vim-8.0.0668/src/testdir/test_popup.vim	2017-05-01 20:46:47.747526808 +0200
+--- src/testdir/test_popup.vim	2017-06-24 15:26:00.017599835 +0200
+***************
+*** 612,616 ****
+--- 612,630 ----
+    set completefunc=
+  endfunc
+  
++ func Test_complete_CTRLN_startofbuffer()
++   new
++   call setline(1, [ 'organize(cupboard, 3, 2);',
++         \ 'prioritize(bureau, 8, 7);',
++         \ 'realize(bannister, 4, 4);',
++         \ 'moralize(railing, 3,9);'])
++   let expected=['cupboard.organize(3, 2);',
++         \ 'bureau.prioritize(8, 7);',
++         \ 'bannister.realize(4, 4);',
++         \ 'railing.moralize(3,9);']
++   call feedkeys("qai\<c-n>\<c-n>.\<esc>3wdW\<cr>q3@a", 'tx')
++   call assert_equal(expected, getline(1,'$'))
++   bwipe!
++ endfunc
+  
+  " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.0668/src/version.c	2017-06-24 15:10:57.600719482 +0200
+--- src/version.c	2017-06-24 15:31:04.103196648 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     669,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+81. At social functions you introduce your husband as "my domain server."
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

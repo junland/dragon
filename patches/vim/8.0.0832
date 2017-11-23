@@ -1,0 +1,238 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0832
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0832
+Problem:    Terminal function arguments are not consistent.
+Solution:   Use one-based instead of zero-based rows and cols.  Use "." for
+            the current row.
+Files:      src/terminal.c, runtime/doc/eval.txt
+
+
+*** ../vim-8.0.0831/src/terminal.c	2017-08-01 18:03:59.834694208 +0200
+--- src/terminal.c	2017-08-01 18:17:21.640896269 +0200
+***************
+*** 36,43 ****
+   * that buffer, attributes come from the scrollback buffer tl_scrollback.
+   *
+   * TODO:
+-  * - Use "." for current line instead of optional argument.
+-  * - make row and cols one-based instead of zero-based in term_ functions.
+   * - Add StatusLineTerm highlighting
+   * - in bash mouse clicks are inserting characters.
+   * - mouse scroll: when over other window, scroll that window.
+--- 36,41 ----
+***************
+*** 1773,1780 ****
+  	return;
+  
+      l = rettv->vval.v_list;
+!     list_append_number(l, buf->b_term->tl_cursor_pos.row);
+!     list_append_number(l, buf->b_term->tl_cursor_pos.col);
+      list_append_number(l, buf->b_term->tl_cursor_visible);
+  }
+  
+--- 1771,1778 ----
+  	return;
+  
+      l = rettv->vval.v_list;
+!     list_append_number(l, buf->b_term->tl_cursor_pos.row + 1);
+!     list_append_number(l, buf->b_term->tl_cursor_pos.col + 1);
+      list_append_number(l, buf->b_term->tl_cursor_visible);
+  }
+  
+***************
+*** 1796,1801 ****
+--- 1794,1809 ----
+  	++rettv->vval.v_job->jv_refcount;
+  }
+  
++     static int
++ get_row_number(typval_T *tv, term_T *term)
++ {
++     if (tv->v_type == VAR_STRING
++ 	    && tv->vval.v_string != NULL
++ 	    && STRCMP(tv->vval.v_string, ".") == 0)
++ 	return term->tl_cursor_pos.row;
++     return (int)get_tv_number(tv) - 1;
++ }
++ 
+  /*
+   * "term_getline(buf, row)" function
+   */
+***************
+*** 1810,1819 ****
+      if (buf == NULL)
+  	return;
+      term = buf->b_term;
+!     if (argvars[1].v_type == VAR_UNKNOWN)
+! 	row = term->tl_cursor_pos.row;
+!     else
+! 	row = (int)get_tv_number(&argvars[1]);
+  
+      if (term->tl_vterm == NULL)
+      {
+--- 1818,1824 ----
+      if (buf == NULL)
+  	return;
+      term = buf->b_term;
+!     row = get_row_number(&argvars[1], term);
+  
+      if (term->tl_vterm == NULL)
+      {
+***************
+*** 1944,1953 ****
+  	screen = vterm_obtain_screen(term->tl_vterm);
+  
+      l = rettv->vval.v_list;
+!     if (argvars[1].v_type == VAR_UNKNOWN)
+! 	pos.row = term->tl_cursor_pos.row;
+!     else
+! 	pos.row = (int)get_tv_number(&argvars[1]);
+      for (pos.col = 0; pos.col < term->tl_cols; )
+      {
+  	dict_T		*dcell;
+--- 1949,1955 ----
+  	screen = vterm_obtain_screen(term->tl_vterm);
+  
+      l = rettv->vval.v_list;
+!     pos.row = get_row_number(&argvars[1], term);
+      for (pos.col = 0; pos.col < term->tl_cols; )
+      {
+  	dict_T		*dcell;
+*** ../vim-8.0.0831/runtime/doc/eval.txt	2017-07-30 19:38:16.962463378 +0200
+--- runtime/doc/eval.txt	2017-08-01 18:32:38.342277421 +0200
+***************
+*** 2372,2383 ****
+  term_getattr({attr}, {what}	Number	get the value of attribute {what}
+  term_getcursor({buf})		List	get the cursor position of a terminal
+  term_getjob({buf})		Job	get the job associated with a terminal
+! term_getline({buf}[, {row}])	String	get a line of text from a terminal
+  term_getsize({buf})		List	get the size of a terminal
+  term_getstatus({buf})		String	get the status of a terminal
+  term_gettitle({buf})		String	get the title of a terminal
+  term_list()			List	get the list of terminal buffers
+! term_scrape({buf}[, {row}])	List	get row of a terminal screen
+  term_sendkeys({buf}, {keys})	none	send keystrokes to a terminal
+  term_start({cmd}, {options})	Job	open a terminal window and run a job
+  term_wait({buf})		Number  wait for screen to be updated
+--- 2372,2383 ----
+  term_getattr({attr}, {what}	Number	get the value of attribute {what}
+  term_getcursor({buf})		List	get the cursor position of a terminal
+  term_getjob({buf})		Job	get the job associated with a terminal
+! term_getline({buf}, {row})	String	get a line of text from a terminal
+  term_getsize({buf})		List	get the size of a terminal
+  term_getstatus({buf})		String	get the status of a terminal
+  term_gettitle({buf})		String	get the title of a terminal
+  term_list()			List	get the list of terminal buffers
+! term_scrape({buf}, {row})	List	get row of a terminal screen
+  term_sendkeys({buf}, {keys})	none	send keystrokes to a terminal
+  term_start({cmd}, {options})	Job	open a terminal window and run a job
+  term_wait({buf})		Number  wait for screen to be updated
+***************
+*** 7908,7915 ****
+  term_getcursor({buf})					*term_getcursor()*
+  		Get the cusor position of terminal {buf}. Returns a list with
+  		three numbers: [rows, cols, visible].  "rows" and "cols" are
+! 		zero based.  "visible" is one when the cursor is visible, zero
+! 		when it is hidden.
+  		
+  		This is the cursor position of the terminal itself, not of the
+  		Vim window.
+--- 7916,7924 ----
+  term_getcursor({buf})					*term_getcursor()*
+  		Get the cusor position of terminal {buf}. Returns a list with
+  		three numbers: [rows, cols, visible].  "rows" and "cols" are
+! 		one based, the first sceen cell is row 1, column 1.
+! 		"visible" is one when the cursor is visible, zero when it is
+! 		hidden.
+  		
+  		This is the cursor position of the terminal itself, not of the
+  		Vim window.
+***************
+*** 7922,7934 ****
+  		Get the Job associated with terminal window {buf}.
+  		{buf} is used as with |term_getsize()|.
+  
+! term_getline({buf} [, {row}])				*term_getline()*
+  		Get a line of text from the terminal window of {buf}.
+  		{buf} is used as with |term_getsize()|.
+  
+! 		The first line has {row} zero.  When {row} is invalid an empty
+! 		string is returned. When {row} is omitted, the cursor line is
+! 		used.
+  
+  term_getsize({buf})					*term_getsize()*
+  		Get the size of terminal {buf}. Returns a list with two
+--- 7931,7942 ----
+  		Get the Job associated with terminal window {buf}.
+  		{buf} is used as with |term_getsize()|.
+  
+! term_getline({buf}, {row})				*term_getline()*
+  		Get a line of text from the terminal window of {buf}.
+  		{buf} is used as with |term_getsize()|.
+  
+! 		The first line has {row} one.  When {row} "." the cursor line
+! 		is used.  When {row} is invalid an empty string is returned.
+  
+  term_getsize({buf})					*term_getsize()*
+  		Get the size of terminal {buf}. Returns a list with two
+***************
+*** 7963,7974 ****
+  		Return a list with the buffer numbers of all buffers for
+  		terminal windows.
+  
+! term_scrape({buf} [, {row}])				*term_scrape()*
+  		Get the contents of {row} of terminal screen of {buf}.
+  		For {buf} see |term_getsize()|.
+  
+! 		The first {row} is zero.  When {row} is invalid an empty list
+! 		is returned. When {row} is omitted the cursor line is used.
+  
+  		Return a List containing a Dict for each screen cell: 
+  		    "chars"	character(s) at the cell
+--- 7971,7982 ----
+  		Return a list with the buffer numbers of all buffers for
+  		terminal windows.
+  
+! term_scrape({buf}, {row})				*term_scrape()*
+  		Get the contents of {row} of terminal screen of {buf}.
+  		For {buf} see |term_getsize()|.
+  
+! 		The first line has {row} one.  When {row} "." the cursor line
+! 		is used.  When {row} is invalid an empty string is returned.
+  
+  		Return a List containing a Dict for each screen cell: 
+  		    "chars"	character(s) at the cell
+***************
+*** 8720,8725 ****
+--- 8728,8734 ----
+  			files |tag-any-white|.
+  tcl			Compiled with Tcl interface.
+  termguicolors		Compiled with true color in terminal support.
++ terminal		Compiled with |terminal| support.
+  terminfo		Compiled with terminfo instead of termcap.
+  termresponse		Compiled with support for |t_RV| and |v:termresponse|.
+  textobjects		Compiled with support for |text-objects|.
+*** ../vim-8.0.0831/src/version.c	2017-08-01 18:03:59.834694208 +0200
+--- src/version.c	2017-08-01 18:33:00.518117404 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     832,
+  /**/
+
+-- 
+Nothing is impossible for the man who doesn't have to do it.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

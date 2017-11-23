@@ -1,0 +1,80 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0213
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0213
+Problem:    The Netbeans "specialKeys" command does not check if the argument
+            fits in the buffer. (Coverity)
+Solution:   Add a length check.
+Files:      src/netbeans.c
+
+
+*** ../vim-8.0.0212/src/netbeans.c	2016-09-25 21:44:59.441600148 +0200
+--- src/netbeans.c	2017-01-22 15:13:57.392651105 +0100
+***************
+*** 2332,2338 ****
+      char *save_str = nb_unquote(args, NULL);
+      char *tok = strtok(save_str, " ");
+      char *sep;
+!     char keybuf[64];
+      char cmdbuf[256];
+  
+      while (tok != NULL)
+--- 2332,2339 ----
+      char *save_str = nb_unquote(args, NULL);
+      char *tok = strtok(save_str, " ");
+      char *sep;
+! #define KEYBUFLEN 64
+!     char keybuf[KEYBUFLEN];
+      char cmdbuf[256];
+  
+      while (tok != NULL)
+***************
+*** 2359,2368 ****
+  	    tok++;
+  	}
+  
+! 	strcpy(&keybuf[i], tok);
+! 	vim_snprintf(cmdbuf, sizeof(cmdbuf),
+! 				"<silent><%s> :nbkey %s<CR>", keybuf, keybuf);
+! 	do_map(0, (char_u *)cmdbuf, NORMAL, FALSE);
+  	tok = strtok(NULL, " ");
+      }
+      vim_free(save_str);
+--- 2360,2372 ----
+  	    tok++;
+  	}
+  
+! 	if (strlen(tok) + i < KEYBUFLEN)
+! 	{
+! 	    strcpy(&keybuf[i], tok);
+! 	    vim_snprintf(cmdbuf, sizeof(cmdbuf),
+! 				 "<silent><%s> :nbkey %s<CR>", keybuf, keybuf);
+! 	    do_map(0, (char_u *)cmdbuf, NORMAL, FALSE);
+! 	}
+  	tok = strtok(NULL, " ");
+      }
+      vim_free(save_str);
+*** ../vim-8.0.0212/src/version.c	2017-01-22 15:05:08.107998905 +0100
+--- src/version.c	2017-01-22 15:15:21.020120297 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     213,
+  /**/
+
+-- 
+You were lucky to have a LAKE! There were a hundred and sixty of
+us living in a small shoebox in the middle of the road.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

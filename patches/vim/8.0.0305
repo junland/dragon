@@ -1,0 +1,110 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0305
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0305
+Problem:    Invalid memory access when option has duplicate flag.
+Solution:   Correct pointer computation. (Dominique Pelle, closes #1442)
+Files:      src/option.c, src/testdir/test_options.vim
+
+
+*** ../vim-8.0.0304/src/option.c	2017-02-04 19:49:10.940502929 +0100
+--- src/option.c	2017-02-05 14:06:56.098695241 +0100
+***************
+*** 4954,4960 ****
+  			    if (flags & P_FLAGLIST)
+  			    {
+  				/* Remove flags that appear twice. */
+! 				for (s = newval; *s; ++s)
+  				{
+  				    /* if options have P_FLAGLIST and
+  				     * P_ONECOMMA such as 'whichwrap' */
+--- 4954,4960 ----
+  			    if (flags & P_FLAGLIST)
+  			    {
+  				/* Remove flags that appear twice. */
+! 				for (s = newval; *s;)
+  				{
+  				    /* if options have P_FLAGLIST and
+  				     * P_ONECOMMA such as 'whichwrap' */
+***************
+*** 4966,4972 ****
+  					    /* Remove the duplicated value and
+  					     * the next comma. */
+  					    STRMOVE(s, s + 2);
+! 					    s -= 2;
+  					}
+  				    }
+  				    else
+--- 4966,4972 ----
+  					    /* Remove the duplicated value and
+  					     * the next comma. */
+  					    STRMOVE(s, s + 2);
+! 					    continue;
+  					}
+  				    }
+  				    else
+***************
+*** 4975,4983 ****
+  					      && vim_strchr(s + 1, *s) != NULL)
+  					{
+  					    STRMOVE(s, s + 1);
+! 					    --s;
+  					}
+  				    }
+  				}
+  			    }
+  
+--- 4975,4984 ----
+  					      && vim_strchr(s + 1, *s) != NULL)
+  					{
+  					    STRMOVE(s, s + 1);
+! 					    continue;
+  					}
+  				    }
++ 				    ++s;
+  				}
+  			    }
+  
+*** ../vim-8.0.0304/src/testdir/test_options.vim	2017-02-04 15:53:27.755771131 +0100
+--- src/testdir/test_options.vim	2017-02-05 14:06:56.098695241 +0100
+***************
+*** 13,18 ****
+--- 13,24 ----
+    set whichwrap+=h,l
+    call assert_equal('b,s,h,l', &whichwrap)
+  
++   set whichwrap=h,h
++   call assert_equal('h', &whichwrap)
++ 
++   set whichwrap=h,h,h
++   call assert_equal('h', &whichwrap)
++ 
+    set whichwrap&
+  endfunction
+  
+*** ../vim-8.0.0304/src/version.c	2017-02-04 21:50:14.226462278 +0100
+--- src/version.c	2017-02-05 13:36:08.883777002 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     305,
+  /**/
+
+-- 
+Yesterday, all my deadlines seemed so far away
+now it looks as though it's freeze in four days
+oh I believe in cvs..
+    [ CVS log "Beatles style" for FreeBSD ports/INDEX, Satoshi Asami ]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

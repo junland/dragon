@@ -1,0 +1,61 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0232
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0232
+Problem:    Pasting in Insert mode does not work when bracketed paste is used
+            and 'esckeys' is off.
+Solution:   When 'esckeys' is off disable bracketed paste in Insert mode.
+Files:      src/edit.c
+
+
+*** ../vim-8.0.0231/src/edit.c	2017-01-24 18:58:14.910505196 +0100
+--- src/edit.c	2017-01-24 19:03:35.184351267 +0100
+***************
+*** 534,539 ****
+--- 534,543 ----
+      revins_legal = 0;
+      revins_scol = -1;
+  #endif
++     if (!p_ek)
++ 	/* Disable bracketed paste mode, we won't recognize the escape
++ 	 * sequences. */
++ 	out_str(T_BD);
+  
+      /*
+       * Handle restarting Insert mode.
+***************
+*** 8623,8628 ****
+--- 8627,8635 ----
+  #ifdef CURSOR_SHAPE
+      ui_cursor_shape();		/* may show different cursor shape */
+  #endif
++     if (!p_ek)
++ 	/* Re-enable bracketed paste mode. */
++ 	out_str(T_BE);
+  
+      /*
+       * When recording or for CTRL-O, need to display the new mode.
+*** ../vim-8.0.0231/src/version.c	2017-01-24 18:58:14.914505169 +0100
+--- src/version.c	2017-01-24 19:04:54.027821145 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     232,
+  /**/
+
+-- 
+Have you heard about the new Barbie doll?  It's called Divorce
+Barbie.  It comes with all of Ken's stuff.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

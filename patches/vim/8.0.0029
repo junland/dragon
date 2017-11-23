@@ -1,0 +1,4120 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0029
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0029
+Problem:    Code for MS-Windows is complicated because of the exceptions for
+            old systems.
+Solution:   Drop support for MS-Windows older than Windows XP. (Ken Takata)
+Files:      runtime/doc/gui_w32.txt, runtime/doc/os_win32.txt,
+            runtime/doc/todo.txt, src/GvimExt/Makefile, src/Make_mvc.mak,
+            src/evalfunc.c, src/ex_cmds.c, src/ex_docmd.c, src/gui_w32.c,
+            src/if_cscope.c, src/misc1.c, src/misc2.c, src/option.c,
+            src/os_mswin.c, src/os_win32.c, src/os_win32.h,
+            src/proto/os_mswin.pro, src/proto/os_win32.pro, src/version.c
+
+
+*** ../vim-8.0.0028/runtime/doc/gui_w32.txt	2016-09-12 12:45:25.000000000 +0200
+--- runtime/doc/gui_w32.txt	2016-10-12 14:00:10.218811720 +0200
+***************
+*** 49,58 ****
+  vimrc or gvimrc file: >
+  	au GUIEnter * simalt ~x
+  <
+- 								*gui-w32s*
+- There is a specific version of gvim.exe that runs under the Win32s subsystem
+- of Windows 3.1 or 3.11.  See |win32s|.
+- 
+  
+  Using Vim as a plugin					*gui-w32-windowid*
+  
+--- 49,54 ----
+***************
+*** 100,108 ****
+  You can also install Vim in the "Send To" menu:
+  1. Start a Windows Explorer
+  2. Navigate to your sendto directory:
+-    Windows 95: %windir%\sendto (e.g. "c:\windows\sendto")
+     Windows NT: %windir%\profiles\%user%\sendto (e.g.
+! 	       "c:\winnt\profiles\mattha\sendto").
+  3. Right-click in the file pane and select New->Shortcut
+  4. Follow the shortcut wizard, using the full path to VIM/GVIM.
+  
+--- 96,105 ----
+  You can also install Vim in the "Send To" menu:
+  1. Start a Windows Explorer
+  2. Navigate to your sendto directory:
+     Windows NT: %windir%\profiles\%user%\sendto (e.g.
+! 	       "c:\winnt\profiles\mattha\sendto")
+!    Windows XP: C:\Documents and Settings\%user%\SendTo
+!    Windows Vista: C:\Users\%user%\AppData\Roaming\Microsoft\Windows\SendTo .
+  3. Right-click in the file pane and select New->Shortcut
+  4. Follow the shortcut wizard, using the full path to VIM/GVIM.
+  
+***************
+*** 274,308 ****
+  question if you really want to kill the application, Vim may be killed too!
+  (This does not apply to commands run asynchronously with ":!start".)
+  
+! In Windows 95, the window in which the commands are executed is always 25x80
+! characters, to be as DOS compatible as possible (this matters!).  The default
+! system font is used.  On NT, the window will be the default you have set up for
+! "Console" in Control Panel.  On Win32s, the properties of the DOS box are
+! determined by _default.pif in the windows directory.
+! 
+! 							*msdos-mode*
+! If you get a dialog that says "This program is set to run in MS-DOS mode..."
+! when you run an external program, you can solve this by changing the
+! properties of the associated shortcut:
+! - Use a Windows Explorer to find the command.com that is used.  It can be
+!   c:\command.com, c:\dos\command.com, c:\windows\command.com, etc.
+! - With the right mouse button, select properties of this command.com.
+! - In the Program tab select "Advanced".
+! - Unselect "MS-DOS mode".
+! - Click "OK" twice.
+  
+  							*win32-!start*
+  Normally, Vim waits for a command to complete before continuing (this makes
+  sense for most shell commands which produce output for Vim to use).  If you
+  want Vim to start a program and return immediately, you can use the following
+! syntax on W95 & NT: >
+  	:!start [/min] {command}
+  The optional "/min" causes the window to be minimized.
+  
+- On Win32s, you will have to go to another window instead.  Don't forget that
+- you must tell Windows 3.1x to keep executing a DOS command in the background
+- while you switch back to Vim.
+- 
+  ==============================================================================
+  5. Special colors					*win32-colors*
+  
+--- 271,287 ----
+  question if you really want to kill the application, Vim may be killed too!
+  (This does not apply to commands run asynchronously with ":!start".)
+  
+! The window in which the commands are executed will be the default you have set
+! up for "Console" in Control Panel.
+  
+  							*win32-!start*
+  Normally, Vim waits for a command to complete before continuing (this makes
+  sense for most shell commands which produce output for Vim to use).  If you
+  want Vim to start a program and return immediately, you can use the following
+! syntax: >
+  	:!start [/min] {command}
+  The optional "/min" causes the window to be minimized.
+  
+  ==============================================================================
+  5. Special colors					*win32-colors*
+  
+***************
+*** 311,317 ****
+  Additionally the system configured colors can also be used.  These are known
+  by the names Sys_XXX, where XXX is the appropriate system color name, from the
+  following list (see the Win32 documentation for full descriptions).  Case is
+! ignored.  Note: On Win32s not all of these colors are supported.
+  
+  Sys_3DDKShadow		Sys_3DFace			Sys_BTNFace
+  Sys_3DHilight		Sys_3DHighlight			Sys_BTNHilight
+--- 290,296 ----
+  Additionally the system configured colors can also be used.  These are known
+  by the names Sys_XXX, where XXX is the appropriate system color name, from the
+  following list (see the Win32 documentation for full descriptions).  Case is
+! ignored.
+  
+  Sys_3DDKShadow		Sys_3DFace			Sys_BTNFace
+  Sys_3DHilight		Sys_3DHighlight			Sys_BTNHilight
+*** ../vim-8.0.0028/runtime/doc/os_win32.txt	2016-09-12 12:45:26.000000000 +0200
+--- runtime/doc/os_win32.txt	2016-10-12 14:04:26.836987376 +0200
+***************
+*** 1,4 ****
+! *os_win32.txt*  For Vim version 8.0.  Last change: 2016 Aug 28
+  
+  
+  		  VIM REFERENCE MANUAL    by George Reilly
+--- 1,4 ----
+! *os_win32.txt*  For Vim version 8.0.  Last change: 2016 Oct 12
+  
+  
+  		  VIM REFERENCE MANUAL    by George Reilly
+***************
+*** 7,26 ****
+  						*win32* *Win32* *MS-Windows*
+  This file documents the idiosyncrasies of the Win32 version of Vim.
+  
+! The Win32 version of Vim works on Windows NT, 95, 98, ME, XP, Vista and
+! Windows 7.  There are both console and GUI versions.
+  
+  The 32 bit version also runs on 64 bit MS-Windows systems.
+  
+- There is GUI version for use in the Win32s subsystem in Windows 3.1[1].  You
+- can also use the 32-bit DOS version of Vim instead.  See |os_msdos.txt|.
+- 
+  1. Known problems		|win32-problems|
+  2. Startup			|win32-startup|
+  3. Restore screen contents	|win32-restore|
+  4. Using the mouse		|win32-mouse|
+! 5. Running under Windows 3.1	|win32-win3.1|
+! 6. Win32 mini FAQ		|win32-faq|
+  
+  Additionally, there are a number of common Win32 and DOS items:
+  File locations			|dos-locations|
+--- 7,24 ----
+  						*win32* *Win32* *MS-Windows*
+  This file documents the idiosyncrasies of the Win32 version of Vim.
+  
+! The Win32 version of Vim works on Windows XP, Vista, 7, 8 and 10.  There are
+! both console and GUI versions.
+  
+  The 32 bit version also runs on 64 bit MS-Windows systems.
+  
+  1. Known problems		|win32-problems|
+  2. Startup			|win32-startup|
+  3. Restore screen contents	|win32-restore|
+  4. Using the mouse		|win32-mouse|
+! 5. Running under Windows 95	|win32-win95|
+! 6. Running under Windows 3.1	|win32-win3.1|
+! 7. Win32 mini FAQ		|win32-faq|
+  
+  Additionally, there are a number of common Win32 and DOS items:
+  File locations			|dos-locations|
+***************
+*** 43,62 ****
+  For compiling see "src/INSTALLpc.txt".			*win32-compiling*
+  
+  ==============================================================================
+! 1. Known problems				*windows95* *win32-problems*
+! 
+! There are a few known problems with running in a console on Windows 95.  As
+! far as we know, this is the same in Windows 98 and Windows ME.
+! 
+! Comments from somebody working at Microsoft: "Win95 console support has always
+! been and will always be flaky".
+! 1.  Dead key support doesn't work.
+! 2.  Resizing the window with ":set columns=nn lines=nn" works, but executing
+!     external commands MAY CAUSE THE SYSTEM TO HANG OR CRASH.
+! 3.  Screen updating is slow, unless you change 'columns' or 'lines' to a
+!     non-DOS value.  But then the second problem applies!
+! 
+! If this bothers you, use the 32 bit MS-DOS version or the Win32 GUI version.
+  
+  When doing file name completion, Vim also finds matches for the short file
+  name.  But Vim will still find and use the corresponding long file name.  For
+--- 41,47 ----
+  For compiling see "src/INSTALLpc.txt".			*win32-compiling*
+  
+  ==============================================================================
+! 1. Known problems					*win32-problems*
+  
+  When doing file name completion, Vim also finds matches for the short file
+  name.  But Vim will still find and use the corresponding long file name.  For
+***************
+*** 141,200 ****
+  the console.
+  
+  ==============================================================================
+! 5. Running under Windows 3.1				*win32-win3.1*
+  
+! 						*win32s* *windows-3.1*
+  There was a special version of Gvim that runs under Windows 3.1 and 3.11.
+  Support was removed in patch 7.4.1363.
+  
+  ==============================================================================
+! 6. Win32 mini FAQ					*win32-faq*
+! 
+! Q. Why does the Win32 version of Vim update the screen so slowly on Windows 95?
+! A. The support for Win32 console mode applications is very buggy in Win95.
+!    For some unknown reason, the screen updates very slowly when Vim is run at
+!    one of the standard resolutions (80x25, 80x43, or 80x50) and the 16-bit DOS
+!    version updates the screen much more quickly than the Win32 version.
+!    However, if the screen is set to some other resolution, such as by ":set
+!    columns=100" or ":set lines=40", screen updating becomes about as fast as
+!    it is with the 16-bit version.
+! 
+!    WARNING: Changing 'columns' may make Windows 95 crash while updating the
+!    window (complaints --> Microsoft).  Since this mostly works, this has not
+!    been disabled, but be careful with changing 'columns'.
+! 
+!    Changing the screen resolution makes updates faster, but it brings
+!    additional problems.  External commands (e.g., ":!dir") can cause Vim to
+!    freeze when the screen is set to a non-standard resolution, particularly
+!    when 'columns' is not equal to 80.  It is not possible for Vim to reliably
+!    set the screen resolution back to the value it had upon startup before
+!    running external commands, so if you change the number of 'lines' or
+!    'columns', be very, very careful.  In fact, Vim will not allow you to
+!    execute external commands when 'columns' is not equal to 80, because it is
+!    so likely to freeze up afterwards.
+! 
+!    None of the above applies on Windows NT.  Screen updates are fast, no
+!    matter how many 'lines' or 'columns' the window has, and external commands
+!    do not cause Vim to freeze.
+! 
+! Q. So if the Win32 version updates the screen so slowly on Windows 95 and the
+!    16-bit DOS version updates the screen quickly, why would I want to run the
+!    Win32 version?
+! A. Firstly, the Win32 version isn't that slow, especially when the screen is
+!    set to some non-standard number of 'lines' or 'columns'.  Secondly, the
+!    16-bit DOS version has some severe limitations: It can't do big changes and
+!    it doesn't know about long file names.  The Win32 version doesn't have these
+!    limitations and it's faster overall (the same is true for the 32-bit DJGPP
+!    DOS version of Vim).  The Win32 version is smarter about handling the
+!    screen, the mouse, and the keyboard than the DJGPP version is.
+! 
+! Q. And what about the 16-bit DOS version versus the Win32 version on NT?
+! A. There are no good reasons to run the 16-bit DOS version on NT.  The Win32
+!    version updates the screen just as fast as the 16-bit version does when
+!    running on NT.  All of the above disadvantages apply.  Finally, DOS
+!    applications can take a long time to start up and will run more slowly.  On
+!    non-Intel NT platforms, the DOS version is almost unusably slow, because it
+!    runs on top of an 80x86 emulator.
+  
+  Q. How do I change the font?
+  A. In the GUI version, you can use the 'guifont' option.  Example: >
+--- 126,145 ----
+  the console.
+  
+  ==============================================================================
+! 5. Running under Windows 95				*win32-win95*
+! 					*windows95* *windows98* *windowsme*
+! Windows 95/98/ME support was removed in patch 8.0.0029  If you want to use it
+! you will need to get a version older than that.
+  
+! ==============================================================================
+! 6. Running under Windows 3.1				*win32-win3.1*
+! 
+! 					*win32s* *windows-3.1* *gui-w32s*
+  There was a special version of Gvim that runs under Windows 3.1 and 3.11.
+  Support was removed in patch 7.4.1363.
+  
+  ==============================================================================
+! 7. Win32 mini FAQ					*win32-faq*
+  
+  Q. How do I change the font?
+  A. In the GUI version, you can use the 'guifont' option.  Example: >
+***************
+*** 202,248 ****
+  <  In the console version, you need to set the font of the console itself.
+     You cannot do this from within Vim.
+  
+- Q. When I change the size of the console window with ':set lines=xx' or
+-    similar, the font changes! (Win95)
+- A. You have the console font set to 'Auto' in Vim's (or your MS-DOS prompt's)
+-    properties.  This makes W95 guess (badly!) what font is best.  Set an explicit
+-    font instead.
+- 
+- Q. Why can't I paste into Vim when running Windows 95?
+- A. In the properties dialog box for the MS-DOS window, go to "MS-DOS
+-    Prompt/Misc/Fast pasting" and make sure that it is NOT checked.  You should
+-    also do ":set paste" in Vim to avoid unexpected effects.	|'paste'|
+- 
+- Q. How do I type dead keys on Windows 95, in the console version?
+-    (A dead key is an accent key, such as acute, grave, or umlaut, that doesn't
+-    produce a character by itself, but when followed by another key, produces
+-    an accented character, such as a-acute, e-grave, u-umlaut, n-tilde, and so
+-    on.  Very useful for most European languages.  English-language keyboard
+-    layouts don't use dead keys, as far as we know.)
+- A. You don't.  The console mode input routines simply do not work correctly in
+-    Windows 95, and I have not been able to work around them.  In the words
+-    of a senior developer at Microsoft:
+- 	Win95 console support has always been and will always be flaky.
+- 
+- 	The flakiness is unavoidable because we are stuck between the world of
+- 	MS-DOS keyboard TSRs like KEYB (which wants to cook the data;
+- 	important for international) and the world of Win32.
+- 
+- 	So keys that don't "exist" in MS-DOS land (like dead keys) have a
+- 	very tenuous existence in Win32 console land.  Keys that act
+- 	differently between MS-DOS land and Win32 console land (like
+- 	capslock) will act flaky.
+- 
+- 	Don't even _mention_ the problems with multiple language keyboard
+- 	layouts...
+- 
+-    You may be able to fashion some sort of workaround with the digraphs
+-    mechanism.							|digraphs|
+- 
+-    The best solution is to use the Win32 GUI version gvim.exe.  Alternatively,
+-    you can try one of the DOS versions of Vim where dead keys reportedly do
+-    work.
+- 
+  Q. How do I type dead keys on Windows NT?
+  A. Dead keys work on NT 3.51.  Just type them as you would in any other
+     application.
+--- 147,152 ----
+***************
+*** 349,376 ****
+  <  The first command runs notepad minimized and the second one runs it
+     normally.
+  
+- Q. I'm using Win32s, and when I try to run an external command like "make",
+-    Vim doesn't wait for it to finish!  Help!
+- A. The problem is that a 32-bit application (Vim) can't get notification from
+-    Windows that a 16-bit application (your DOS session) has finished.  Vim
+-    includes a work-around for this, but you must set up your DOS commands to
+-    run in a window, not full-screen.  Unfortunately the default when you
+-    install Windows is full-screen.  To change this:
+-    1) Start PIF editor (in the Main program group).
+-    2) Open the file "_DEFAULT.PIF" in your Windows directory.
+-    3) Changes the display option from "Full Screen" to "Windowed".
+-    4) Save and exit.
+- 
+-    To test, start Vim and type >
+- 	:!dir C:\<CR>".
+- <  You should see a DOS box window appear briefly with the directory listing.
+- 
+- Q. I use Vim under Win32s and NT.  In NT, I can define the console to default to
+-    50 lines, so that I get a 80x50 shell when I ':sh'.  Can I do the same in
+-    W3.1x, or am I stuck with 80x25?
+- A. Edit SYSTEM.INI and add 'ScreenLines=50' to the [NonWindowsApp] section.  DOS
+-    prompts and external DOS commands will now run in a 50-line window.
+- 
+  						*windows-icon*
+  Q. I don't like the Vim icon, can I change it?
+  A. Yes, place your favorite icon in bitmaps/vim.ico in a directory of
+--- 253,258 ----
+*** ../vim-8.0.0028/src/GvimExt/Makefile	2016-02-02 18:48:30.000000000 +0100
+--- src/GvimExt/Makefile	2016-10-12 14:00:10.222811692 +0200
+***************
+*** 3,9 ****
+  #   DEBUG=yes		Build debug version (for VC7 and maybe later)
+  #
+  
+! TARGETOS=BOTH
+  !ifndef APPVER
+  APPVER=5.0
+  !endif
+--- 3,9 ----
+  #   DEBUG=yes		Build debug version (for VC7 and maybe later)
+  #
+  
+! TARGETOS=WINNT
+  !ifndef APPVER
+  APPVER=5.0
+  !endif
+*** ../vim-8.0.0028/src/Make_mvc.mak	2016-09-08 20:25:34.000000000 +0200
+--- src/Make_mvc.mak	2016-10-12 14:00:10.222811692 +0200
+***************
+*** 1,7 ****
+! # Makefile for Vim on Win32 (Windows NT/2000/XP/2003 and Windows 95/98/Me)
+! # and Win64, using the Microsoft Visual C++ compilers. Known to work with
+! # VC5, VC6 (VS98), VC7.0 (VS2002), VC7.1 (VS2003), VC8 (VS2005),
+! # VC9 (VS2008), VC10 (VS2010) and VC11 (VS2012)
+  #
+  # To build using other Windows compilers, see INSTALLpc.txt
+  #
+--- 1,7 ----
+! # Makefile for Vim on Win32 (Windows XP/2003/Vista/7/8/10) and Win64,
+! # using the Microsoft Visual C++ compilers. Known to work with VC5, VC6 (VS98),
+! # VC7.0 (VS2002), VC7.1 (VS2003), VC8 (VS2005), VC9 (VS2008), VC10 (VS2010),
+! # VC11 (VS2012), VC12 (VS2013) and VC14 (VS2015)
+  #
+  # To build using other Windows compilers, see INSTALLpc.txt
+  #
+***************
+*** 119,125 ****
+  #	  yes:   Write a normal mapfile.
+  #	  lines: Write a mapfile with line numbers (only for VC6 and later)
+  #
+! #	Static Code Analysis: ANALYZE=yes (works with VS2012 only)
+  #
+  # You can combine any of these interfaces
+  #
+--- 119,125 ----
+  #	  yes:   Write a normal mapfile.
+  #	  lines: Write a mapfile with line numbers (only for VC6 and later)
+  #
+! #	Static Code Analysis: ANALYZE=yes (works with VS2012 or later)
+  #
+  # You can combine any of these interfaces
+  #
+***************
+*** 162,170 ****
+  # you can set DEFINES on the command line, e.g.,
+  #	nmake -f Make_mvc.mvc "DEFINES=-DEMACS_TAGS"
+  
+! # Build on both Windows NT/XP and Windows 9x
+  
+! TARGETOS = BOTH
+  
+  # Select one of eight object code directories, depends on GUI, OLE, DEBUG and
+  # interfaces.
+--- 162,170 ----
+  # you can set DEFINES on the command line, e.g.,
+  #	nmake -f Make_mvc.mvc "DEFINES=-DEMACS_TAGS"
+  
+! # Build on Windows NT/XP
+  
+! TARGETOS = WINNT
+  
+  # Select one of eight object code directories, depends on GUI, OLE, DEBUG and
+  # interfaces.
+***************
+*** 436,448 ****
+  #>>>>> end of choices
+  ###########################################################################
+  
+- !ifdef OS
+- OS_TYPE	= winnt
+  DEL_TREE = rmdir /s /q
+- !else
+- OS_TYPE	= win95
+- DEL_TREE = deltree /y
+- !endif
+  
+  INTDIR=$(OBJDIR)
+  OUTDIR=$(OBJDIR)
+--- 436,442 ----
+*** ../vim-8.0.0028/src/evalfunc.c	2016-09-26 22:36:50.615386371 +0200
+--- src/evalfunc.c	2016-10-12 14:00:10.226811664 +0200
+***************
+*** 6017,6023 ****
+  #endif
+  #if defined(WIN3264)
+  	else if (STRICMP(name, "win95") == 0)
+! 	    n = mch_windows95();
+  #endif
+  #ifdef FEAT_NETBEANS_INTG
+  	else if (STRICMP(name, "netbeans_enabled") == 0)
+--- 6017,6023 ----
+  #endif
+  #if defined(WIN3264)
+  	else if (STRICMP(name, "win95") == 0)
+! 	    n = FALSE;		/* Win9x is no more supported. */
+  #endif
+  #ifdef FEAT_NETBEANS_INTG
+  	else if (STRICMP(name, "netbeans_enabled") == 0)
+*** ../vim-8.0.0028/src/ex_cmds.c	2016-09-04 21:08:45.000000000 +0200
+--- src/ex_cmds.c	2016-10-12 14:00:10.226811664 +0200
+***************
+*** 1175,1188 ****
+      if (*cmd == NUL)	    /* no filter command */
+  	return;
+  
+- #ifdef WIN3264
+-     /*
+-      * Check if external commands are allowed now.
+-      */
+-     if (can_end_termcap_mode(TRUE) == FALSE)
+- 	return;
+- #endif
+- 
+      cursor_save = curwin->w_cursor;
+      linecount = line2 - line1 + 1;
+      curwin->w_cursor.lnum = line1;
+--- 1175,1180 ----
+***************
+*** 1460,1471 ****
+  
+  #ifdef MSWIN
+      /*
+-      * Check if external commands are allowed now.
+-      */
+-     if (can_end_termcap_mode(TRUE) == FALSE)
+- 	return;
+- 
+-     /*
+       * Check if ":!start" is used.
+       */
+      if (cmd != NULL)
+--- 1452,1457 ----
+*** ../vim-8.0.0028/src/ex_docmd.c	2016-09-29 15:18:51.355768041 +0200
+--- src/ex_docmd.c	2016-10-12 14:00:10.230811635 +0200
+***************
+*** 7611,7624 ****
+      /*
+       * Disallow suspending for "rvim".
+       */
+!     if (!check_restricted()
+! #ifdef WIN3264
+! 	/*
+! 	 * Check if external commands are allowed now.
+! 	 */
+! 	&& can_end_termcap_mode(TRUE)
+! #endif
+! 					)
+      {
+  	if (!eap->forceit)
+  	    autowrite_all();
+--- 7611,7617 ----
+      /*
+       * Disallow suspending for "rvim".
+       */
+!     if (!check_restricted())
+      {
+  	if (!eap->forceit)
+  	    autowrite_all();
+*** ../vim-8.0.0028/src/gui_w32.c	2016-08-29 22:42:20.000000000 +0200
+--- src/gui_w32.c	2016-10-12 14:00:10.234811607 +0200
+***************
+*** 319,325 ****
+  #ifdef MSWIN_FIND_REPLACE
+  static UINT		s_findrep_msg = 0;	/* set in gui_w[16/32].c */
+  static FINDREPLACE	s_findrep_struct;
+! # if defined(FEAT_MBYTE) && defined(WIN3264)
+  static FINDREPLACEW	s_findrep_struct_w;
+  # endif
+  static HWND		s_findrep_hwnd = NULL;
+--- 319,325 ----
+  #ifdef MSWIN_FIND_REPLACE
+  static UINT		s_findrep_msg = 0;	/* set in gui_w[16/32].c */
+  static FINDREPLACE	s_findrep_struct;
+! # ifdef FEAT_MBYTE
+  static FINDREPLACEW	s_findrep_struct_w;
+  # endif
+  static HWND		s_findrep_hwnd = NULL;
+***************
+*** 369,375 ****
+  # define MyTranslateMessage(x) TranslateMessage(x)
+  #endif
+  
+! #if (defined(WIN3264) && defined(FEAT_MBYTE)) || defined(GLOBAL_IME)
+    /* use of WindowProc depends on wide_WindowProc */
+  # define MyWindowProc vim_WindowProc
+  #else
+--- 369,375 ----
+  # define MyTranslateMessage(x) TranslateMessage(x)
+  #endif
+  
+! #if defined(FEAT_MBYTE) || defined(GLOBAL_IME)
+    /* use of WindowProc depends on wide_WindowProc */
+  # define MyWindowProc vim_WindowProc
+  #else
+***************
+*** 473,482 ****
+  static int	s_timed_out = FALSE;
+  static int	dead_key = 0;	/* 0: no dead key, 1: dead key pressed */
+  
+- #ifdef WIN3264
+- static OSVERSIONINFO os_version;    /* like it says.  Init in gui_mch_init() */
+- #endif
+- 
+  #ifdef FEAT_BEVAL
+  /* balloon-eval WM_NOTIFY_HANDLER */
+  static void Handle_WM_Notify(HWND hwnd, LPNMHDR pnmh);
+--- 473,478 ----
+***************
+*** 695,755 ****
+      WCHAR	wstring[2];
+      char_u	*ws = NULL;
+  
+!     if (os_version.dwPlatformId != VER_PLATFORM_WIN32_NT)
+!     {
+! 	/* On Windows 95/98 we apparently get the character in the active
+! 	 * codepage, not in UCS-2.  If conversion is needed convert it to
+! 	 * UCS-2 first. */
+! 	if ((int)GetACP() == enc_codepage)
+! 	    len = 0;	    /* no conversion required */
+! 	else
+  	{
+! 	    string[0] = ch;
+! 	    len = MultiByteToWideChar(GetACP(), 0, (LPCSTR)string,
+! 		    1, wstring, 2);
+  	}
+      }
+      else
+      {
+- 	wstring[0] = ch;
+  	len = 1;
+!     }
+! 
+!     if (len > 0)
+!     {
+! 	/* "ch" is a UTF-16 character.  Convert it to a string of bytes.  When
+! 	 * "enc_codepage" is non-zero use the standard Win32 function,
+! 	 * otherwise use our own conversion function (e.g., for UTF-8). */
+! 	if (enc_codepage > 0)
+! 	{
+! 	    len = WideCharToMultiByte(enc_codepage, 0, wstring, len,
+! 					       (LPSTR)string, slen, 0, NULL);
+! 	    /* If we had included the ALT key into the character but now the
+! 	     * upper bit is no longer set, that probably means the conversion
+! 	     * failed.  Convert the original character and set the upper bit
+! 	     * afterwards. */
+! 	    if (had_alt && len == 1 && ch >= 0x80 && string[0] < 0x80)
+! 	    {
+! 		wstring[0] = ch & 0x7f;
+! 		len = WideCharToMultiByte(enc_codepage, 0, wstring, len,
+! 					       (LPSTR)string, slen, 0, NULL);
+! 		if (len == 1) /* safety check */
+! 		    string[0] |= 0x80;
+! 	    }
+! 	}
+  	else
+  	{
+! 	    len = 1;
+! 	    ws = utf16_to_enc(wstring, &len);
+! 	    if (ws == NULL)
+! 		len = 0;
+! 	    else
+! 	    {
+! 		if (len > slen)	/* just in case */
+! 		    len = slen;
+! 		mch_memmove(string, ws, len);
+! 		vim_free(ws);
+! 	    }
+  	}
+      }
+  
+--- 691,731 ----
+      WCHAR	wstring[2];
+      char_u	*ws = NULL;
+  
+!     wstring[0] = ch;
+!     len = 1;
+! 
+!     /* "ch" is a UTF-16 character.  Convert it to a string of bytes.  When
+!      * "enc_codepage" is non-zero use the standard Win32 function,
+!      * otherwise use our own conversion function (e.g., for UTF-8). */
+!     if (enc_codepage > 0)
+!     {
+! 	len = WideCharToMultiByte(enc_codepage, 0, wstring, len,
+! 		(LPSTR)string, slen, 0, NULL);
+! 	/* If we had included the ALT key into the character but now the
+! 	 * upper bit is no longer set, that probably means the conversion
+! 	 * failed.  Convert the original character and set the upper bit
+! 	 * afterwards. */
+! 	if (had_alt && len == 1 && ch >= 0x80 && string[0] < 0x80)
+  	{
+! 	    wstring[0] = ch & 0x7f;
+! 	    len = WideCharToMultiByte(enc_codepage, 0, wstring, len,
+! 		    (LPSTR)string, slen, 0, NULL);
+! 	    if (len == 1) /* safety check */
+! 		string[0] |= 0x80;
+  	}
+      }
+      else
+      {
+  	len = 1;
+! 	ws = utf16_to_enc(wstring, &len);
+! 	if (ws == NULL)
+! 	    len = 0;
+  	else
+  	{
+! 	    if (len > slen)	/* just in case */
+! 		len = slen;
+! 	    mch_memmove(string, ws, len);
+! 	    vim_free(ws);
+  	}
+      }
+  
+***************
+*** 1079,1085 ****
+  #endif
+  
+  #ifdef MSWIN_FIND_REPLACE
+! # if defined(FEAT_MBYTE) && defined(WIN3264)
+  /*
+   * copy useful data from structure LPFINDREPLACE to structure LPFINDREPLACEW
+   */
+--- 1055,1061 ----
+  #endif
+  
+  #ifdef MSWIN_FIND_REPLACE
+! # ifdef FEAT_MBYTE
+  /*
+   * copy useful data from structure LPFINDREPLACE to structure LPFINDREPLACEW
+   */
+***************
+*** 1127,1137 ****
+      int	    flags = 0;
+      int	    down;
+  
+! # if defined(FEAT_MBYTE) && defined(WIN3264)
+      /* If the OS is Windows NT, and 'encoding' differs from active codepage:
+       * convert text from wide string. */
+!     if (os_version.dwPlatformId == VER_PLATFORM_WIN32_NT
+! 			&& enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+  	findrep_wtoa(&s_findrep_struct, &s_findrep_struct_w);
+      }
+--- 1103,1112 ----
+      int	    flags = 0;
+      int	    down;
+  
+! # ifdef FEAT_MBYTE
+      /* If the OS is Windows NT, and 'encoding' differs from active codepage:
+       * convert text from wide string. */
+!     if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+  	findrep_wtoa(&s_findrep_struct, &s_findrep_struct_w);
+      }
+***************
+*** 1279,1285 ****
+      }
+  }
+  
+! #if (defined(WIN3264) && defined(FEAT_MBYTE)) \
+  	|| defined(GLOBAL_IME) \
+  	|| defined(PROTO)
+  # ifdef PROTO
+--- 1254,1260 ----
+      }
+  }
+  
+! #if defined(FEAT_MBYTE) \
+  	|| defined(GLOBAL_IME) \
+  	|| defined(PROTO)
+  # ifdef PROTO
+***************
+*** 1586,1595 ****
+  
+      static SysColorTable sys_table[] =
+      {
+- #ifdef WIN3264
+  	{"SYS_3DDKSHADOW", COLOR_3DDKSHADOW},
+  	{"SYS_3DHILIGHT", COLOR_3DHILIGHT},
+! #ifndef __MINGW32__
+  	{"SYS_3DHIGHLIGHT", COLOR_3DHIGHLIGHT},
+  #endif
+  	{"SYS_BTNHILIGHT", COLOR_BTNHILIGHT},
+--- 1561,1569 ----
+  
+      static SysColorTable sys_table[] =
+      {
+  	{"SYS_3DDKSHADOW", COLOR_3DDKSHADOW},
+  	{"SYS_3DHILIGHT", COLOR_3DHILIGHT},
+! #ifdef COLOR_3DHIGHLIGHT
+  	{"SYS_3DHIGHLIGHT", COLOR_3DHIGHLIGHT},
+  #endif
+  	{"SYS_BTNHILIGHT", COLOR_BTNHILIGHT},
+***************
+*** 1600,1606 ****
+  	{"SYS_INFOBK", COLOR_INFOBK},
+  	{"SYS_INFOTEXT", COLOR_INFOTEXT},
+  	{"SYS_3DFACE", COLOR_3DFACE},
+- #endif
+  	{"SYS_BTNFACE", COLOR_BTNFACE},
+  	{"SYS_BTNSHADOW", COLOR_BTNSHADOW},
+  	{"SYS_ACTIVEBORDER", COLOR_ACTIVEBORDER},
+--- 1574,1579 ----
+***************
+*** 2094,2104 ****
+  
+  	if (s_need_activate)
+  	{
+- #ifdef WIN32
+  	    (void)SetForegroundWindow(s_hwnd);
+- #else
+- 	    (void)SetActiveWindow(s_hwnd);
+- #endif
+  	    s_need_activate = FALSE;
+  	}
+  
+--- 2067,2073 ----
+***************
+*** 2421,2427 ****
+  {
+  #ifdef FEAT_MBYTE
+      WCHAR	*wn = NULL;
+-     int		n;
+  
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+--- 2390,2395 ----
+***************
+*** 2438,2448 ****
+  	    infow.fType = MFT_STRING;
+  	    infow.dwTypeData = wn;
+  	    infow.cch = (UINT)wcslen(wn);
+! 	    n = InsertMenuItemW(pmenu, item_id, FALSE, &infow);
+  	    vim_free(wn);
+- 	    if (n == 0 && GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+- 		/* Failed, try using non-wide function. */
+- 		wn = NULL;
+  	}
+      }
+  
+--- 2406,2413 ----
+  	    infow.fType = MFT_STRING;
+  	    infow.dwTypeData = wn;
+  	    infow.cch = (UINT)wcslen(wn);
+! 	    InsertMenuItemW(pmenu, item_id, FALSE, &infow);
+  	    vim_free(wn);
+  	}
+      }
+  
+***************
+*** 2563,2569 ****
+      if (s_tabhwnd == NULL)
+  	return;
+  
+! #if defined(FEAT_MBYTE)
+  # ifndef CCM_SETUNICODEFORMAT
+      /* For older compilers.  We assume this never changes. */
+  #  define CCM_SETUNICODEFORMAT 0x2005
+--- 2528,2534 ----
+      if (s_tabhwnd == NULL)
+  	return;
+  
+! #ifdef FEAT_MBYTE
+  # ifndef CCM_SETUNICODEFORMAT
+      /* For older compilers.  We assume this never changes. */
+  #  define CCM_SETUNICODEFORMAT 0x2005
+***************
+*** 2708,2725 ****
+      if (title != NULL && enc_codepage >= 0 && enc_codepage != (int)GetACP())
+      {
+  	WCHAR	*wbuf;
+- 	int	n;
+  
+  	/* Convert the title from 'encoding' to UTF-16. */
+  	wbuf = (WCHAR *)enc_to_utf16((char_u *)title, NULL);
+  	if (wbuf != NULL)
+  	{
+! 	    n = SetWindowTextW(hwnd, wbuf);
+  	    vim_free(wbuf);
+- 	    if (n != 0 || GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+- 		return;
+- 	    /* Retry with non-wide function (for Windows 98). */
+  	}
+      }
+  #endif
+      (void)SetWindowText(hwnd, (LPCSTR)title);
+--- 2673,2687 ----
+      if (title != NULL && enc_codepage >= 0 && enc_codepage != (int)GetACP())
+      {
+  	WCHAR	*wbuf;
+  
+  	/* Convert the title from 'encoding' to UTF-16. */
+  	wbuf = (WCHAR *)enc_to_utf16((char_u *)title, NULL);
+  	if (wbuf != NULL)
+  	{
+! 	    SetWindowTextW(hwnd, wbuf);
+  	    vim_free(wbuf);
+  	}
++ 	return;
+      }
+  #endif
+      (void)SetWindowText(hwnd, (LPCSTR)title);
+***************
+*** 2737,2747 ****
+  	if (!IsWindow(s_findrep_hwnd))
+  	{
+  	    initialise_findrep(eap->arg);
+! # if defined(FEAT_MBYTE) && defined(WIN3264)
+  	    /* If the OS is Windows NT, and 'encoding' differs from active
+  	     * codepage: convert text and use wide function. */
+! 	    if (os_version.dwPlatformId == VER_PLATFORM_WIN32_NT
+! 		    && enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+  	    {
+  		findrep_atow(&s_findrep_struct_w, &s_findrep_struct);
+  		s_findrep_hwnd = FindTextW(
+--- 2699,2708 ----
+  	if (!IsWindow(s_findrep_hwnd))
+  	{
+  	    initialise_findrep(eap->arg);
+! # ifdef FEAT_MBYTE
+  	    /* If the OS is Windows NT, and 'encoding' differs from active
+  	     * codepage: convert text and use wide function. */
+! 	    if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+  	    {
+  		findrep_atow(&s_findrep_struct_w, &s_findrep_struct);
+  		s_findrep_hwnd = FindTextW(
+***************
+*** 2774,2782 ****
+  	if (!IsWindow(s_findrep_hwnd))
+  	{
+  	    initialise_findrep(eap->arg);
+! # if defined(FEAT_MBYTE) && defined(WIN3264)
+! 	    if (os_version.dwPlatformId == VER_PLATFORM_WIN32_NT
+! 		    && enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+  	    {
+  		findrep_atow(&s_findrep_struct_w, &s_findrep_struct);
+  		s_findrep_hwnd = ReplaceTextW(
+--- 2735,2742 ----
+  	if (!IsWindow(s_findrep_hwnd))
+  	{
+  	    initialise_findrep(eap->arg);
+! # ifdef FEAT_MBYTE
+! 	    if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+  	    {
+  		findrep_atow(&s_findrep_struct_w, &s_findrep_struct);
+  		s_findrep_hwnd = ReplaceTextW(
+***************
+*** 3466,3476 ****
+      IDC_SIZEWE,			/* leftright */
+      IDC_SIZEWE,			/* lrsizing */
+      IDC_WAIT,			/* busy */
+- #ifdef WIN3264
+      IDC_NO,			/* no */
+- #else
+-     IDC_ICON,			/* no */
+- #endif
+      IDC_ARROW,			/* crosshair */
+      IDC_ARROW,			/* hand1 */
+      IDC_ARROW,			/* hand2 */
+--- 3426,3432 ----
+***************
+*** 3497,3507 ****
+  #ifdef SetClassLongPtr
+  	SetClassLongPtr(s_textArea, GCLP_HCURSOR, (__int3264)(LONG_PTR)LoadCursor(NULL, idc));
+  #else
+- # ifdef WIN32
+  	SetClassLong(s_textArea, GCL_HCURSOR, (long_u)LoadCursor(NULL, idc));
+- # else /* Win16 */
+- 	SetClassWord(s_textArea, GCW_HCURSOR, (WORD)LoadCursor(NULL, idc));
+- # endif
+  #endif
+  	if (!p_mh)
+  	{
+--- 3453,3459 ----
+***************
+*** 3523,3529 ****
+   * Windows NT/2000/XP the "W" functions are used.
+   */
+  
+! # if defined(FEAT_MBYTE) && defined(WIN3264)
+  /*
+   * Wide version of convert_filter().
+   */
+--- 3475,3481 ----
+   * Windows NT/2000/XP the "W" functions are used.
+   */
+  
+! # ifdef FEAT_MBYTE
+  /*
+   * Wide version of convert_filter().
+   */
+***************
+*** 3728,3744 ****
+  	char_u *initdir,
+  	char_u *filter)
+  {
+      OPENFILENAME	fileStruct;
+      char_u		fileBuf[MAXPATHL];
+      char_u		*initdirp = NULL;
+      char_u		*filterp;
+      char_u		*p;
+  
+- # if defined(FEAT_MBYTE) && defined(WIN3264)
+-     if (os_version.dwPlatformId == VER_PLATFORM_WIN32_NT)
+- 	return gui_mch_browseW(saving, title, dflt, ext, initdir, filter);
+- # endif
+- 
+      if (dflt == NULL)
+  	fileBuf[0] = NUL;
+      else
+--- 3680,3694 ----
+  	char_u *initdir,
+  	char_u *filter)
+  {
++ # ifdef FEAT_MBYTE
++     return gui_mch_browseW(saving, title, dflt, ext, initdir, filter);
++ # else
+      OPENFILENAME	fileStruct;
+      char_u		fileBuf[MAXPATHL];
+      char_u		*initdirp = NULL;
+      char_u		*filterp;
+      char_u		*p;
+  
+      if (dflt == NULL)
+  	fileBuf[0] = NUL;
+      else
+***************
+*** 3748,3759 ****
+      filterp = convert_filter(filter);
+  
+      vim_memset(&fileStruct, 0, sizeof(OPENFILENAME));
+! #ifdef OPENFILENAME_SIZE_VERSION_400
+      /* be compatible with Windows NT 4.0 */
+      fileStruct.lStructSize = OPENFILENAME_SIZE_VERSION_400;
+! #else
+      fileStruct.lStructSize = sizeof(fileStruct);
+! #endif
+  
+      fileStruct.lpstrTitle = (LPSTR)title;
+      fileStruct.lpstrDefExt = (LPSTR)ext;
+--- 3698,3709 ----
+      filterp = convert_filter(filter);
+  
+      vim_memset(&fileStruct, 0, sizeof(OPENFILENAME));
+! #  ifdef OPENFILENAME_SIZE_VERSION_400
+      /* be compatible with Windows NT 4.0 */
+      fileStruct.lStructSize = OPENFILENAME_SIZE_VERSION_400;
+! #  else
+      fileStruct.lStructSize = sizeof(fileStruct);
+! #  endif
+  
+      fileStruct.lpstrTitle = (LPSTR)title;
+      fileStruct.lpstrDefExt = (LPSTR)ext;
+***************
+*** 3783,3792 ****
+       * Don't use OFN_OVERWRITEPROMPT, Vim has its own ":confirm" dialog.
+       */
+      fileStruct.Flags = (OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY);
+! #ifdef FEAT_SHORTCUT
+      if (curbuf->b_p_bin)
+  	fileStruct.Flags |= OFN_NODEREFERENCELINKS;
+! #endif
+      if (saving)
+      {
+  	if (!GetSaveFileName(&fileStruct))
+--- 3733,3742 ----
+       * Don't use OFN_OVERWRITEPROMPT, Vim has its own ":confirm" dialog.
+       */
+      fileStruct.Flags = (OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY);
+! #  ifdef FEAT_SHORTCUT
+      if (curbuf->b_p_bin)
+  	fileStruct.Flags |= OFN_NODEREFERENCELINKS;
+! #  endif
+      if (saving)
+      {
+  	if (!GetSaveFileName(&fileStruct))
+***************
+*** 3806,3811 ****
+--- 3756,3762 ----
+  
+      /* Shorten the file name if possible */
+      return vim_strsave(shorten_fname1((char_u *)fileBuf));
++ # endif
+  }
+  #endif /* FEAT_BROWSE */
+  
+***************
+*** 3816,3831 ****
+      HDROP hDrop)
+  {
+  #ifdef FEAT_WINDOWS
+- #ifdef WIN3264
+  # define BUFPATHLEN _MAX_PATH
+  # define DRAGQVAL 0xFFFFFFFF
+! #else
+! # define BUFPATHLEN MAXPATHL
+! # define DRAGQVAL 0xFFFF
+! #endif
+! #ifdef FEAT_MBYTE
+      WCHAR   wszFile[BUFPATHLEN];
+! #endif
+      char    szFile[BUFPATHLEN];
+      UINT    cFiles = DragQueryFile(hDrop, DRAGQVAL, NULL, 0);
+      UINT    i;
+--- 3767,3777 ----
+      HDROP hDrop)
+  {
+  #ifdef FEAT_WINDOWS
+  # define BUFPATHLEN _MAX_PATH
+  # define DRAGQVAL 0xFFFFFFFF
+! # ifdef FEAT_MBYTE
+      WCHAR   wszFile[BUFPATHLEN];
+! # endif
+      char    szFile[BUFPATHLEN];
+      UINT    cFiles = DragQueryFile(hDrop, DRAGQVAL, NULL, 0);
+      UINT    i;
+***************
+*** 3846,3856 ****
+      if (fnames != NULL)
+  	for (i = 0; i < cFiles; ++i)
+  	{
+! #ifdef FEAT_MBYTE
+  	    if (DragQueryFileW(hDrop, i, wszFile, BUFPATHLEN) > 0)
+  		fnames[i] = utf16_to_enc(wszFile, NULL);
+  	    else
+! #endif
+  	    {
+  		DragQueryFile(hDrop, i, szFile, BUFPATHLEN);
+  		fnames[i] = vim_strsave((char_u *)szFile);
+--- 3792,3802 ----
+      if (fnames != NULL)
+  	for (i = 0; i < cFiles; ++i)
+  	{
+! # ifdef FEAT_MBYTE
+  	    if (DragQueryFileW(hDrop, i, wszFile, BUFPATHLEN) > 0)
+  		fnames[i] = utf16_to_enc(wszFile, NULL);
+  	    else
+! # endif
+  	    {
+  		DragQueryFile(hDrop, i, szFile, BUFPATHLEN);
+  		fnames[i] = vim_strsave((char_u *)szFile);
+***************
+*** 3888,3901 ****
+      long	val;
+      int		dragging = FALSE;
+      int		dont_scroll_save = dont_scroll;
+- #ifndef WIN3264
+-     int		nPos;
+- #else
+      SCROLLINFO	si;
+  
+      si.cbSize = sizeof(si);
+      si.fMask = SIF_POS;
+- #endif
+  
+      sb = gui_mswin_find_scrollbar(hwndCtl);
+      if (sb == NULL)
+--- 3834,3843 ----
+***************
+*** 3960,3972 ****
+      }
+      prev_code = code;
+  
+- #ifdef WIN3264
+      si.nPos = (sb->scroll_shift > 0) ? val >> sb->scroll_shift : val;
+      SetScrollInfo(hwndCtl, SB_CTL, &si, TRUE);
+- #else
+-     nPos = (sb->scroll_shift > 0) ? val >> sb->scroll_shift : val;
+-     SetScrollPos(hwndCtl, SB_CTL, nPos, TRUE);
+- #endif
+  
+      /*
+       * When moving a vertical scrollbar, move the other vertical scrollbar too.
+--- 3902,3909 ----
+***************
+*** 3976,3986 ****
+  	scrollbar_T *sba = sb->wp->w_scrollbars;
+  	HWND    id = sba[ (sb == sba + SBAR_LEFT) ? SBAR_RIGHT : SBAR_LEFT].id;
+  
+- #ifdef WIN3264
+  	SetScrollInfo(id, SB_CTL, &si, TRUE);
+- #else
+- 	SetScrollPos(id, SB_CTL, nPos, TRUE);
+- #endif
+      }
+  
+      /* Don't let us be interrupted here by another message. */
+--- 3913,3919 ----
+***************
+*** 4448,4454 ****
+  
+  /* Intellimouse support */
+  static int mouse_scroll_lines = 0;
+- static UINT msh_msgmousewheel = 0;
+  
+  static int	s_usenewlook;	    /* emulate W95/NT4 non-bold dialogs */
+  #ifdef FEAT_TOOLBAR
+--- 4381,4386 ----
+***************
+*** 4505,4538 ****
+  # define pImmSetConversionStatus  ImmSetConversionStatus
+  #endif
+  
+- /* multi monitor support */
+- typedef struct _MONITORINFOstruct
+- {
+-     DWORD cbSize;
+-     RECT rcMonitor;
+-     RECT rcWork;
+-     DWORD dwFlags;
+- } _MONITORINFO;
+- 
+- typedef HANDLE _HMONITOR;
+- typedef _HMONITOR (WINAPI *TMonitorFromWindow)(HWND, DWORD);
+- typedef BOOL (WINAPI *TGetMonitorInfo)(_HMONITOR, _MONITORINFO *);
+- 
+- static TMonitorFromWindow   pMonitorFromWindow = NULL;
+- static TGetMonitorInfo	    pGetMonitorInfo = NULL;
+- static HANDLE		    user32_lib = NULL;
+- /*
+-  * Return TRUE when running under Windows NT 3.x or Win32s, both of which have
+-  * less fancy GUI APIs.
+-  */
+-     static int
+- is_winnt_3(void)
+- {
+-     return ((os_version.dwPlatformId == VER_PLATFORM_WIN32_NT
+- 		&& os_version.dwMajorVersion == 3)
+- 	    || (os_version.dwPlatformId == VER_PLATFORM_WIN32s));
+- }
+- 
+  #ifdef FEAT_MENU
+  /*
+   * Figure out how high the menu bar is at the moment.
+--- 4437,4442 ----
+***************
+*** 4564,4608 ****
+      }
+      else
+      {
+! 	if (is_winnt_3())	/* for NT 3.xx */
+  	{
+! 	    if (gui.starting)
+! 		menu_height = GetSystemMetrics(SM_CYMENU);
+! 	    else
+! 	    {
+! 		RECT r1, r2;
+! 		int frameht = GetSystemMetrics(SM_CYFRAME);
+! 		int capht = GetSystemMetrics(SM_CYCAPTION);
+! 
+! 		/* get window rect of s_hwnd
+! 		 * get client rect of s_hwnd
+! 		 * get cap height
+! 		 * subtract from window rect, the sum of client height,
+! 		 * (if not maximized)frame thickness, and caption height.
+! 		 */
+! 		GetWindowRect(s_hwnd, &r1);
+! 		GetClientRect(s_hwnd, &r2);
+! 		menu_height = r1.bottom - r1.top - (r2.bottom - r2.top
+! 				 + 2 * frameht * (!IsZoomed(s_hwnd)) + capht);
+! 	    }
+! 	}
+! 	else			/* win95 and variants (NT 4.0, I guess) */
+! 	{
+! 	    /*
+! 	     * In case 'lines' is set in _vimrc/_gvimrc window width doesn't
+! 	     * seem to have been set yet, so menu wraps in default window
+! 	     * width which is very narrow.  Instead just return height of a
+! 	     * single menu item.  Will still be wrong when the menu really
+! 	     * should wrap over more than one line.
+! 	     */
+! 	    GetMenuItemRect(s_hwnd, s_menuBar, 0, &rc1);
+! 	    if (gui.starting)
+! 		menu_height = rc1.bottom - rc1.top + 1;
+! 	    else
+! 	    {
+! 		GetMenuItemRect(s_hwnd, s_menuBar, num - 1, &rc2);
+! 		menu_height = rc2.bottom - rc1.top + 1;
+! 	    }
+  	}
+      }
+  
+--- 4468,4487 ----
+      }
+      else
+      {
+! 	/*
+! 	 * In case 'lines' is set in _vimrc/_gvimrc window width doesn't
+! 	 * seem to have been set yet, so menu wraps in default window
+! 	 * width which is very narrow.  Instead just return height of a
+! 	 * single menu item.  Will still be wrong when the menu really
+! 	 * should wrap over more than one line.
+! 	 */
+! 	GetMenuItemRect(s_hwnd, s_menuBar, 0, &rc1);
+! 	if (gui.starting)
+! 	    menu_height = rc1.bottom - rc1.top + 1;
+! 	else
+  	{
+! 	    GetMenuItemRect(s_hwnd, s_menuBar, num - 1, &rc2);
+! 	    menu_height = rc2.bottom - rc1.top + 1;
+  	}
+      }
+  
+***************
+*** 4636,4677 ****
+  #define VMSH_MOUSEWHEEL    "MSWHEEL_ROLLMSG"
+  #define VMSH_SCROLL_LINES  "MSH_SCROLL_LINES_MSG"
+  
+-     HWND hdl_mswheel;
+-     UINT msh_msgscrolllines;
+- 
+-     msh_msgmousewheel = 0;
+      mouse_scroll_lines = 3;	/* reasonable default */
+  
+!     if ((os_version.dwPlatformId == VER_PLATFORM_WIN32_NT
+! 		&& os_version.dwMajorVersion >= 4)
+! 	    || (os_version.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS
+! 		&& ((os_version.dwMajorVersion == 4
+! 			&& os_version.dwMinorVersion >= 10)
+! 		    || os_version.dwMajorVersion >= 5)))
+!     {
+! 	/* if NT 4.0+ (or Win98) get scroll lines directly from system */
+! 	SystemParametersInfo(SPI_GETWHEELSCROLLLINES, 0,
+! 		&mouse_scroll_lines, 0);
+!     }
+!     else if (os_version.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS
+! 	    || (os_version.dwPlatformId == VER_PLATFORM_WIN32_NT
+! 		&& os_version.dwMajorVersion < 4))
+!     {	/*
+! 	 * If Win95 or NT 3.51,
+! 	 * try to find the hidden point32 window.
+! 	 */
+! 	hdl_mswheel = FindWindow(VMOUSEZ_CLASSNAME, VMOUSEZ_TITLE);
+! 	if (hdl_mswheel)
+! 	{
+! 	    msh_msgscrolllines = RegisterWindowMessage(VMSH_SCROLL_LINES);
+! 	    if (msh_msgscrolllines)
+! 	    {
+! 		mouse_scroll_lines = (int)SendMessage(hdl_mswheel,
+! 			msh_msgscrolllines, 0, 0);
+! 		msh_msgmousewheel  = RegisterWindowMessage(VMSH_MOUSEWHEEL);
+! 	    }
+! 	}
+!     }
+  }
+  
+  
+--- 4515,4525 ----
+  #define VMSH_MOUSEWHEEL    "MSWHEEL_ROLLMSG"
+  #define VMSH_SCROLL_LINES  "MSH_SCROLL_LINES_MSG"
+  
+      mouse_scroll_lines = 3;	/* reasonable default */
+  
+!     /* if NT 4.0+ (or Win98) get scroll lines directly from system */
+!     SystemParametersInfo(SPI_GETWHEELSCROLLLINES, 0,
+! 	    &mouse_scroll_lines, 0);
+  }
+  
+  
+***************
+*** 5210,5222 ****
+  #endif
+  
+      default:
+- 	if (uMsg == msh_msgmousewheel && msh_msgmousewheel != 0)
+- 	{   /* handle MSH_MOUSEWHEEL messages for Intellimouse */
+- 	    _OnMouseWheel(hwnd, HIWORD(wParam));
+- 	    return 0L;
+- 	}
+  #ifdef MSWIN_FIND_REPLACE
+! 	else if (uMsg == s_findrep_msg && s_findrep_msg != 0)
+  	{
+  	    _OnFindRepl();
+  	}
+--- 5058,5065 ----
+  #endif
+  
+      default:
+  #ifdef MSWIN_FIND_REPLACE
+! 	if (uMsg == s_findrep_msg && s_findrep_msg != 0)
+  	{
+  	    _OnFindRepl();
+  	}
+***************
+*** 5376,5417 ****
+  	    }
+      }
+  #endif
+- 
+-     /* get the OS version info */
+-     os_version.dwOSVersionInfoSize = sizeof(os_version);
+-     GetVersionEx(&os_version); /* this call works on Win32s, Win95 and WinNT */
+- 
+-     /* try and load the user32.dll library and get the entry points for
+-      * multi-monitor-support. */
+-     if ((user32_lib = vimLoadLib("User32.dll")) != NULL)
+-     {
+- 	pMonitorFromWindow = (TMonitorFromWindow)GetProcAddress(user32_lib,
+- 							 "MonitorFromWindow");
+- 
+- 	/* there are ...A and ...W version of GetMonitorInfo - looking at
+- 	 * winuser.h, they have exactly the same declaration. */
+- 	pGetMonitorInfo = (TGetMonitorInfo)GetProcAddress(user32_lib,
+- 							  "GetMonitorInfoA");
+-     }
+- 
+- #ifdef FEAT_MBYTE
+-     /* If the OS is Windows NT, use wide functions;
+-      * this enables common dialogs input unicode from IME. */
+-     if (os_version.dwPlatformId == VER_PLATFORM_WIN32_NT)
+-     {
+- 	pDispatchMessage = DispatchMessageW;
+- 	pGetMessage = GetMessageW;
+- 	pIsDialogMessage = IsDialogMessageW;
+- 	pPeekMessage = PeekMessageW;
+-     }
+-     else
+-     {
+- 	pDispatchMessage = DispatchMessageA;
+- 	pGetMessage = GetMessageA;
+- 	pIsDialogMessage = IsDialogMessageA;
+- 	pPeekMessage = PeekMessageA;
+-     }
+- #endif
+  }
+  
+  /*
+--- 5219,5224 ----
+***************
+*** 5475,5486 ****
+  		    atom =
+  #endif
+  		    RegisterClassW(&wndclassw)) == 0)
+! 	{
+! 	    if (GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+! 		return FAIL;
+! 
+! 	    /* Must be Windows 98, fall back to non-wide function. */
+! 	}
+  	else
+  	    wide_WindowProc = TRUE;
+      }
+--- 5282,5288 ----
+  		    atom =
+  #endif
+  		    RegisterClassW(&wndclassw)) == 0)
+! 	    return FAIL;
+  	else
+  	    wide_WindowProc = TRUE;
+      }
+***************
+*** 5710,5716 ****
+      s_findrep_struct.lpstrReplaceWith[0] = NUL;
+      s_findrep_struct.wFindWhatLen = MSWIN_FR_BUFSIZE;
+      s_findrep_struct.wReplaceWithLen = MSWIN_FR_BUFSIZE;
+! # if defined(FEAT_MBYTE) && defined(WIN3264)
+      s_findrep_struct_w.lStructSize = sizeof(s_findrep_struct_w);
+      s_findrep_struct_w.lpstrFindWhat =
+  			      (LPWSTR)alloc(MSWIN_FR_BUFSIZE * sizeof(WCHAR));
+--- 5512,5518 ----
+      s_findrep_struct.lpstrReplaceWith[0] = NUL;
+      s_findrep_struct.wFindWhatLen = MSWIN_FR_BUFSIZE;
+      s_findrep_struct.wReplaceWithLen = MSWIN_FR_BUFSIZE;
+! # ifdef FEAT_MBYTE
+      s_findrep_struct_w.lStructSize = sizeof(s_findrep_struct_w);
+      s_findrep_struct_w.lpstrFindWhat =
+  			      (LPWSTR)alloc(MSWIN_FR_BUFSIZE * sizeof(WCHAR));
+***************
+*** 5753,5774 ****
+      static void
+  get_work_area(RECT *spi_rect)
+  {
+!     _HMONITOR	    mon;
+!     _MONITORINFO    moninfo;
+  
+!     /* use these functions only if available */
+!     if (pMonitorFromWindow != NULL && pGetMonitorInfo != NULL)
+      {
+! 	/* work out which monitor the window is on, and get *it's* work area */
+! 	mon = pMonitorFromWindow(s_hwnd, 1 /*MONITOR_DEFAULTTOPRIMARY*/);
+! 	if (mon != NULL)
+  	{
+! 	    moninfo.cbSize = sizeof(_MONITORINFO);
+! 	    if (pGetMonitorInfo(mon, &moninfo))
+! 	    {
+! 		*spi_rect = moninfo.rcWork;
+! 		return;
+! 	    }
+  	}
+      }
+      /* this is the old method... */
+--- 5555,5572 ----
+      static void
+  get_work_area(RECT *spi_rect)
+  {
+!     HMONITOR	    mon;
+!     MONITORINFO	    moninfo;
+  
+!     /* work out which monitor the window is on, and get *it's* work area */
+!     mon = MonitorFromWindow(s_hwnd, 1 /*MONITOR_DEFAULTTOPRIMARY*/);
+!     if (mon != NULL)
+      {
+! 	moninfo.cbSize = sizeof(MONITORINFO);
+! 	if (GetMonitorInfo(mon, &moninfo))
+  	{
+! 	    *spi_rect = moninfo.rcWork;
+! 	    return;
+  	}
+      }
+      /* this is the old method... */
+***************
+*** 6307,6335 ****
+  	CONST INT *padding)
+  {
+      int		ix;
+-     static int	special = -1;
+- 
+-     if (special == -1)
+-     {
+- 	/* Check windows version: special treatment is needed if it is NT 5 or
+- 	 * Win98 or higher. */
+- 	if  ((os_version.dwPlatformId == VER_PLATFORM_WIN32_NT
+- 		    && os_version.dwMajorVersion >= 5)
+- 		|| (os_version.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS
+- 		    && (os_version.dwMajorVersion > 4
+- 			|| (os_version.dwMajorVersion == 4
+- 			    && os_version.dwMinorVersion > 0))))
+- 	    special = 1;
+- 	else
+- 	    special = 0;
+-     }
+  
+!     if (special)
+! 	for (ix = 0; ix < (int)len; ++ix)
+! 	    ExtTextOut(s_hdc, col + TEXT_X(ix), row, foptions,
+! 					    pcliprect, text + ix, 1, padding);
+!     else
+! 	ExtTextOut(s_hdc, col, row, foptions, pcliprect, text, len, padding);
+  }
+  #endif
+  
+--- 6105,6114 ----
+  	CONST INT *padding)
+  {
+      int		ix;
+  
+!     for (ix = 0; ix < (int)len; ++ix)
+! 	ExtTextOut(s_hdc, col + TEXT_X(ix), row, foptions,
+! 					pcliprect, text + ix, 1, padding);
+  }
+  #endif
+  
+***************
+*** 6718,6780 ****
+  
+      if (menu_is_menubar(menu->name))
+      {
+- 	if (is_winnt_3())
+- 	{
+- 	    InsertMenu((parent == NULL) ? s_menuBar : parent->submenu_id,
+- 		    (UINT)pos, MF_POPUP | MF_STRING | MF_BYPOSITION,
+- 		    (long_u)menu->submenu_id, (LPCTSTR) menu->name);
+- 	}
+- 	else
+- 	{
+  #ifdef FEAT_MBYTE
+! 	    WCHAR	*wn = NULL;
+! 	    int		n;
+  
+! 	    if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+  	    {
+! 		/* 'encoding' differs from active codepage: convert menu name
+! 		 * and use wide function */
+! 		wn = enc_to_utf16(menu->name, NULL);
+! 		if (wn != NULL)
+! 		{
+! 		    MENUITEMINFOW	infow;
+  
+! 		    infow.cbSize = sizeof(infow);
+! 		    infow.fMask = MIIM_DATA | MIIM_TYPE | MIIM_ID
+! 							       | MIIM_SUBMENU;
+! 		    infow.dwItemData = (long_u)menu;
+! 		    infow.wID = menu->id;
+! 		    infow.fType = MFT_STRING;
+! 		    infow.dwTypeData = wn;
+! 		    infow.cch = (UINT)wcslen(wn);
+! 		    infow.hSubMenu = menu->submenu_id;
+! 		    n = InsertMenuItemW((parent == NULL)
+! 					    ? s_menuBar : parent->submenu_id,
+! 					    (UINT)pos, TRUE, &infow);
+! 		    vim_free(wn);
+! 		    if (n == 0 && GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+! 			/* Failed, try using non-wide function. */
+! 			wn = NULL;
+! 		}
+  	    }
+  
+! 	    if (wn == NULL)
+  #endif
+! 	    {
+! 		MENUITEMINFO	info;
+  
+! 		info.cbSize = sizeof(info);
+! 		info.fMask = MIIM_DATA | MIIM_TYPE | MIIM_ID | MIIM_SUBMENU;
+! 		info.dwItemData = (long_u)menu;
+! 		info.wID = menu->id;
+! 		info.fType = MFT_STRING;
+! 		info.dwTypeData = (LPTSTR)menu->name;
+! 		info.cch = (UINT)STRLEN(menu->name);
+! 		info.hSubMenu = menu->submenu_id;
+! 		InsertMenuItem((parent == NULL)
+! 					? s_menuBar : parent->submenu_id,
+! 					(UINT)pos, TRUE, &info);
+! 	    }
+  	}
+      }
+  
+--- 6497,6546 ----
+  
+      if (menu_is_menubar(menu->name))
+      {
+  #ifdef FEAT_MBYTE
+! 	WCHAR	*wn = NULL;
+  
+! 	if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+! 	{
+! 	    /* 'encoding' differs from active codepage: convert menu name
+! 	     * and use wide function */
+! 	    wn = enc_to_utf16(menu->name, NULL);
+! 	    if (wn != NULL)
+  	    {
+! 		MENUITEMINFOW	infow;
+  
+! 		infow.cbSize = sizeof(infow);
+! 		infow.fMask = MIIM_DATA | MIIM_TYPE | MIIM_ID
+! 		    | MIIM_SUBMENU;
+! 		infow.dwItemData = (long_u)menu;
+! 		infow.wID = menu->id;
+! 		infow.fType = MFT_STRING;
+! 		infow.dwTypeData = wn;
+! 		infow.cch = (UINT)wcslen(wn);
+! 		infow.hSubMenu = menu->submenu_id;
+! 		InsertMenuItemW((parent == NULL)
+! 			? s_menuBar : parent->submenu_id,
+! 			(UINT)pos, TRUE, &infow);
+! 		vim_free(wn);
+  	    }
++ 	}
+  
+! 	if (wn == NULL)
+  #endif
+! 	{
+! 	    MENUITEMINFO	info;
+  
+! 	    info.cbSize = sizeof(info);
+! 	    info.fMask = MIIM_DATA | MIIM_TYPE | MIIM_ID | MIIM_SUBMENU;
+! 	    info.dwItemData = (long_u)menu;
+! 	    info.wID = menu->id;
+! 	    info.fType = MFT_STRING;
+! 	    info.dwTypeData = (LPTSTR)menu->name;
+! 	    info.cch = (UINT)STRLEN(menu->name);
+! 	    info.hSubMenu = menu->submenu_id;
+! 	    InsertMenuItem((parent == NULL)
+! 		    ? s_menuBar : parent->submenu_id,
+! 		    (UINT)pos, TRUE, &info);
+  	}
+      }
+  
+***************
+*** 6890,6896 ****
+      {
+  #ifdef FEAT_MBYTE
+  	WCHAR	*wn = NULL;
+- 	int	n;
+  
+  	if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+  	{
+--- 6656,6661 ----
+***************
+*** 6899,6912 ****
+  	    wn = enc_to_utf16(menu->name, NULL);
+  	    if (wn != NULL)
+  	    {
+! 		n = InsertMenuW(parent->submenu_id, (UINT)idx,
+  			(menu_is_separator(menu->name)
+  				 ? MF_SEPARATOR : MF_STRING) | MF_BYPOSITION,
+  			(UINT)menu->id, wn);
+  		vim_free(wn);
+- 		if (n == 0 && GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+- 		    /* Failed, try using non-wide function. */
+- 		    wn = NULL;
+  	    }
+  	}
+  	if (wn == NULL)
+--- 6664,6674 ----
+  	    wn = enc_to_utf16(menu->name, NULL);
+  	    if (wn != NULL)
+  	    {
+! 		InsertMenuW(parent->submenu_id, (UINT)idx,
+  			(menu_is_separator(menu->name)
+  				 ? MF_SEPARATOR : MF_STRING) | MF_BYPOSITION,
+  			(UINT)menu->id, wn);
+  		vim_free(wn);
+  	    }
+  	}
+  	if (wn == NULL)
+***************
+*** 7105,7115 ****
+  	/* If the edit box exists, copy the string. */
+  	if (s_textfield != NULL)
+  	{
+! # if defined(FEAT_MBYTE) && defined(WIN3264)
+  	    /* If the OS is Windows NT, and 'encoding' differs from active
+  	     * codepage: use wide function and convert text. */
+! 	    if (os_version.dwPlatformId == VER_PLATFORM_WIN32_NT
+! 		    && enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+  	    {
+  	       WCHAR  *wp = (WCHAR *)alloc(IOSIZE * sizeof(WCHAR));
+  	       char_u *p;
+--- 6867,6876 ----
+  	/* If the edit box exists, copy the string. */
+  	if (s_textfield != NULL)
+  	{
+! # ifdef FEAT_MBYTE
+  	    /* If the OS is Windows NT, and 'encoding' differs from active
+  	     * codepage: use wide function and convert text. */
+! 	    if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+  	    {
+  	       WCHAR  *wp = (WCHAR *)alloc(IOSIZE * sizeof(WCHAR));
+  	       char_u *p;
+***************
+*** 7866,7903 ****
+  
+      s_usenewlook = FALSE;
+  
+-     /*
+-      * For NT3.51 and Win32s, we stick with the old look
+-      * because it matches everything else.
+-      */
+-     if (!is_winnt_3())
+-     {
+  #ifdef USE_SYSMENU_FONT
+! 	if (gui_w32_get_menu_font(&lfSysmenu) == OK)
+! 	    hfontTools = CreateFontIndirect(&lfSysmenu);
+! 	else
+  #endif
+  	hfontTools = CreateFont(-DLG_FONT_POINT_SIZE, 0, 0, 0, 0, 0, 0, 0,
+  				0, 0, 0, 0, VARIABLE_PITCH , DLG_FONT_NAME);
+  
+! 	if (hfontTools)
+! 	{
+! 	    hdc = GetDC(s_hwnd);
+! 	    SelectObject(hdc, hfontTools);
+! 	    /*
+! 	     * GetTextMetrics() doesn't return the right value in
+! 	     * tmAveCharWidth, so we have to figure out the dialog base units
+! 	     * ourselves.
+! 	     */
+! 	    GetTextExtentPoint(hdc,
+! 		    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+! 		    52, &size);
+! 	    ReleaseDC(s_hwnd, hdc);
+! 
+! 	    s_dlgfntwidth = (WORD)((size.cx / 26 + 1) / 2);
+! 	    s_dlgfntheight = (WORD)size.cy;
+! 	    s_usenewlook = TRUE;
+! 	}
+      }
+  
+      if (!s_usenewlook)
+--- 7627,7657 ----
+  
+      s_usenewlook = FALSE;
+  
+  #ifdef USE_SYSMENU_FONT
+!     if (gui_w32_get_menu_font(&lfSysmenu) == OK)
+! 	hfontTools = CreateFontIndirect(&lfSysmenu);
+!     else
+  #endif
+  	hfontTools = CreateFont(-DLG_FONT_POINT_SIZE, 0, 0, 0, 0, 0, 0, 0,
+  				0, 0, 0, 0, VARIABLE_PITCH , DLG_FONT_NAME);
+  
+!     if (hfontTools)
+!     {
+! 	hdc = GetDC(s_hwnd);
+! 	SelectObject(hdc, hfontTools);
+! 	/*
+! 	 * GetTextMetrics() doesn't return the right value in
+! 	 * tmAveCharWidth, so we have to figure out the dialog base units
+! 	 * ourselves.
+! 	 */
+! 	GetTextExtentPoint(hdc,
+! 		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+! 		52, &size);
+! 	ReleaseDC(s_hwnd, hdc);
+! 
+! 	s_dlgfntwidth = (WORD)((size.cx / 26 + 1) / 2);
+! 	s_dlgfntheight = (WORD)size.cy;
+! 	s_usenewlook = TRUE;
+      }
+  
+      if (!s_usenewlook)
+***************
+*** 8044,8053 ****
+  	dlgwidth = textWidth;
+      dlgwidth += 2 * TEAROFF_PADDING_X + TEAROFF_BUTTON_PAD_X;
+  
+-     /* W95 can't do thin dialogs, they look v. weird! */
+-     if (mch_windows95() && dlgwidth < TEAROFF_MIN_WIDTH)
+- 	dlgwidth = TEAROFF_MIN_WIDTH;
+- 
+      /* start to fill in the dlgtemplate information.  addressing by WORDs */
+      if (s_usenewlook)
+  	lStyle = DS_MODALFRAME | WS_CAPTION| WS_SYSMENU |DS_SETFONT| WS_VISIBLE;
+--- 7798,7803 ----
+***************
+*** 8299,8305 ****
+      /*
+       * Check user bitmaps first, unless builtin is specified.
+       */
+!     if (!is_winnt_3() && !menu->icon_builtin)
+      {
+  	char_u fname[MAXPATHL];
+  	HANDLE hbitmap = NULL;
+--- 8049,8055 ----
+      /*
+       * Check user bitmaps first, unless builtin is specified.
+       */
+!     if (!menu->icon_builtin)
+      {
+  	char_u fname[MAXPATHL];
+  	HANDLE hbitmap = NULL;
+***************
+*** 8556,8567 ****
+      signicon_t	sign, *psign;
+      char_u	*ext;
+  
+-     if (is_winnt_3())
+-     {
+- 	EMSG(_(e_signdata));
+- 	return NULL;
+-     }
+- 
+      sign.hImage = NULL;
+      ext = signfile + STRLEN(signfile) - 4; /* get extension */
+      if (ext > signfile)
+--- 8306,8311 ----
+*** ../vim-8.0.0028/src/if_cscope.c	2016-08-29 22:42:20.000000000 +0200
+--- src/if_cscope.c	2016-10-12 14:00:10.234811607 +0200
+***************
+*** 839,852 ****
+      HANDLE	stdin_rd, stdout_rd;
+      HANDLE	stdout_wr, stdin_wr;
+      BOOL	created;
+! # ifdef __BORLANDC__
+! #  define OPEN_OH_ARGTYPE long
+  # else
+! #  if (_MSC_VER >= 1300) || defined(__MINGW32__)
+! #   define OPEN_OH_ARGTYPE intptr_t
+! #  else
+! #   define OPEN_OH_ARGTYPE long
+! #  endif
+  # endif
+  #endif
+  
+--- 839,848 ----
+      HANDLE	stdin_rd, stdout_rd;
+      HANDLE	stdout_wr, stdin_wr;
+      BOOL	created;
+! # if (defined(_MSC_VER) && (_MSC_VER >= 1300)) || defined(__MINGW32__)
+! #  define OPEN_OH_ARGTYPE intptr_t
+  # else
+! #  define OPEN_OH_ARGTYPE long
+  # endif
+  #endif
+  
+***************
+*** 1427,1437 ****
+  #ifndef UNIX
+      BY_HANDLE_FILE_INFORMATION bhfi;
+  
+!     /* On windows 9x GetFileInformationByHandle doesn't work, so skip it */
+!     if (!mch_windows95())
+      {
+- 	switch (win32_fileinfo((char_u *)fname, &bhfi))
+- 	{
+  	case FILEINFO_ENC_FAIL:		/* enc_to_utf16() failed */
+  	case FILEINFO_READ_FAIL:	/* CreateFile() failed */
+  	    if (p_csverbose)
+--- 1423,1430 ----
+  #ifndef UNIX
+      BY_HANDLE_FILE_INFORMATION bhfi;
+  
+!     switch (win32_fileinfo((char_u *)fname, &bhfi))
+      {
+  	case FILEINFO_ENC_FAIL:		/* enc_to_utf16() failed */
+  	case FILEINFO_READ_FAIL:	/* CreateFile() failed */
+  	    if (p_csverbose)
+***************
+*** 1454,1460 ****
+  	    if (p_csverbose)
+  		(void)EMSG(_("E626: cannot get cscope database information"));
+  	    return -1;
+- 	}
+      }
+  #endif
+  
+--- 1447,1452 ----
+***************
+*** 1468,1476 ****
+  	    /* compare pathnames first */
+  	    && ((fullpathcmp((char_u *)csinfo[j].fname,
+  			(char_u *)fname, FALSE) & FPC_SAME)
+! 		/* if not Windows 9x, test index file attributes too */
+! 		|| (!mch_windows95()
+! 		    && csinfo[j].nVolume == bhfi.dwVolumeSerialNumber
+  		    && csinfo[j].nIndexHigh == bhfi.nFileIndexHigh
+  		    && csinfo[j].nIndexLow == bhfi.nFileIndexLow))
+  #endif
+--- 1460,1467 ----
+  	    /* compare pathnames first */
+  	    && ((fullpathcmp((char_u *)csinfo[j].fname,
+  			(char_u *)fname, FALSE) & FPC_SAME)
+! 		/* test index file attributes too */
+! 		|| (csinfo[j].nVolume == bhfi.dwVolumeSerialNumber
+  		    && csinfo[j].nIndexHigh == bhfi.nFileIndexHigh
+  		    && csinfo[j].nIndexLow == bhfi.nFileIndexLow))
+  #endif
+*** ../vim-8.0.0028/src/misc1.c	2016-09-10 15:43:04.000000000 +0200
+--- src/misc1.c	2016-10-12 14:00:10.238811579 +0200
+***************
+*** 9450,9459 ****
+  	 * screen (if there are two screens).
+  	 */
+  	settmode(TMODE_COOK);
+! #ifdef WIN3264
+! 	if (can_end_termcap_mode(FALSE) == TRUE)
+! #endif
+! 	    stoptermcap();
+  	out_flush();
+      }
+  }
+--- 9450,9456 ----
+  	 * screen (if there are two screens).
+  	 */
+  	settmode(TMODE_COOK);
+! 	stoptermcap();
+  	out_flush();
+      }
+  }
+*** ../vim-8.0.0028/src/misc2.c	2016-09-04 20:34:12.000000000 +0200
+--- src/misc2.c	2016-10-12 14:00:10.238811579 +0200
+***************
+*** 1420,1426 ****
+      length = (unsigned)STRLEN(string) + 3;  /* two quotes and a trailing NUL */
+      for (p = string; *p != NUL; mb_ptr_adv(p))
+      {
+! # if defined(WIN32) || defined(DOS)
+  	if (!p_ssl)
+  	{
+  	    if (*p == '"')
+--- 1420,1426 ----
+      length = (unsigned)STRLEN(string) + 3;  /* two quotes and a trailing NUL */
+      for (p = string; *p != NUL; mb_ptr_adv(p))
+      {
+! # ifdef WIN32
+  	if (!p_ssl)
+  	{
+  	    if (*p == '"')
+***************
+*** 1451,1457 ****
+  	d = escaped_string;
+  
+  	/* add opening quote */
+! # if defined(WIN32) || defined(DOS)
+  	if (!p_ssl)
+  	    *d++ = '"';
+  	else
+--- 1451,1457 ----
+  	d = escaped_string;
+  
+  	/* add opening quote */
+! # ifdef WIN32
+  	if (!p_ssl)
+  	    *d++ = '"';
+  	else
+***************
+*** 1460,1466 ****
+  
+  	for (p = string; *p != NUL; )
+  	{
+! # if defined(WIN32) || defined(DOS)
+  	    if (!p_ssl)
+  	    {
+  		if (*p == '"')
+--- 1460,1466 ----
+  
+  	for (p = string; *p != NUL; )
+  	{
+! # ifdef WIN32
+  	    if (!p_ssl)
+  	    {
+  		if (*p == '"')
+***************
+*** 1503,1509 ****
+  	}
+  
+  	/* add terminating quote and finish with a NUL */
+! # if defined(WIN32) || defined(DOS)
+  	if (!p_ssl)
+  	    *d++ = '"';
+  	else
+--- 1503,1509 ----
+  	}
+  
+  	/* add terminating quote and finish with a NUL */
+! # ifdef WIN32
+  	if (!p_ssl)
+  	    *d++ = '"';
+  	else
+*** ../vim-8.0.0028/src/option.c	2016-09-12 19:51:07.685659713 +0200
+--- src/option.c	2016-10-12 14:00:10.238811579 +0200
+***************
+*** 22,28 ****
+   * - If it's a list of flags, add some code in do_set(), search for WW_ALL.
+   * - When adding an option with expansion (P_EXPAND), but with a different
+   *   default for Vi and Vim (no P_VI_DEF), add some code at VIMEXP.
+!  * - Add documentation!  One line in doc/help.txt, full description in
+   *   options.txt, and any other related places.
+   * - Add an entry in runtime/optwin.vim.
+   * When making changes:
+--- 22,28 ----
+   * - If it's a list of flags, add some code in do_set(), search for WW_ALL.
+   * - When adding an option with expansion (P_EXPAND), but with a different
+   *   default for Vi and Vim (no P_VI_DEF), add some code at VIMEXP.
+!  * - Add documentation!  One line in doc/quickref.txt, full description in
+   *   options.txt, and any other related places.
+   * - Add an entry in runtime/optwin.vim.
+   * When making changes:
+***************
+*** 9944,9956 ****
+      if (gui.starting)
+  	clear_xterm_clip();
+  #endif
+! #ifdef WIN3264
+!     /*
+!      * Check if this is allowed now.
+!      */
+!     if (can_end_termcap_mode(FALSE) == TRUE)
+! #endif
+! 	stoptermcap();			/* stop termcap mode */
+  
+      free_termoptions();
+  }
+--- 9944,9950 ----
+      if (gui.starting)
+  	clear_xterm_clip();
+  #endif
+!     stoptermcap();			/* stop termcap mode */
+  
+      free_termoptions();
+  }
+*** ../vim-8.0.0028/src/os_mswin.c	2016-08-29 22:42:20.000000000 +0200
+--- src/os_mswin.c	2016-10-12 14:00:10.238811579 +0200
+***************
+*** 38,48 ****
+  
+  # if defined(FEAT_PRINTER) && !defined(FEAT_POSTSCRIPT)
+  #  include <dlgs.h>
+! #  ifdef WIN3264
+! #   include <winspool.h>
+! #  else
+! #   include <print.h>
+! #  endif
+  #  include <commdlg.h>
+  #endif
+  
+--- 38,44 ----
+  
+  # if defined(FEAT_PRINTER) && !defined(FEAT_POSTSCRIPT)
+  #  include <dlgs.h>
+! #  include <winspool.h>
+  #  include <commdlg.h>
+  #endif
+  
+***************
+*** 130,139 ****
+  FILE* fdDump = NULL;
+  #endif
+  
+- #ifdef WIN3264
+- extern DWORD g_PlatformId;
+- #endif
+- 
+  #ifndef FEAT_GUI_MSWIN
+  extern char g_szOrigTitle[];
+  #endif
+--- 126,131 ----
+***************
+*** 248,267 ****
+  {
+      int		i;
+  
+- #ifdef WIN3264
+      PlatformId();
+- #endif
+  
+      /* Init the tables for toupper() and tolower() */
+      for (i = 0; i < 256; ++i)
+  	toupper_tab[i] = tolower_tab[i] = i;
+- #ifdef WIN3264
+      CharUpperBuff((LPSTR)toupper_tab, 256);
+      CharLowerBuff((LPSTR)tolower_tab, 256);
+- #else
+-     AnsiUpperBuff((LPSTR)toupper_tab, 256);
+-     AnsiLowerBuff((LPSTR)tolower_tab, 256);
+- #endif
+  }
+  
+  
+--- 240,252 ----
+***************
+*** 299,312 ****
+  	{
+  	    /* Convert the title from 'encoding' to the active codepage. */
+  	    WCHAR	*wp = enc_to_utf16(title, NULL);
+- 	    int	n;
+  
+  	    if (wp != NULL)
+  	    {
+! 		n = SetConsoleTitleW(wp);
+  		vim_free(wp);
+! 		if (n != 0 || GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+! 		    return;
+  	    }
+  	}
+  #  endif
+--- 284,295 ----
+  	{
+  	    /* Convert the title from 'encoding' to the active codepage. */
+  	    WCHAR	*wp = enc_to_utf16(title, NULL);
+  
+  	    if (wp != NULL)
+  	    {
+! 		SetConsoleTitleW(wp);
+  		vim_free(wp);
+! 		return;
+  	    }
+  	}
+  #  endif
+***************
+*** 379,390 ****
+  #endif
+      {
+  #ifdef FEAT_MBYTE
+! 	if (enc_codepage >= 0 && (int)GetACP() != enc_codepage
+! # ifdef __BORLANDC__
+! 		/* Wide functions of Borland C 5.5 do not work on Windows 98. */
+! 		&& g_PlatformId == VER_PLATFORM_WIN32_NT
+! # endif
+! 	   )
+  	{
+  	    WCHAR	*wname;
+  	    WCHAR	wbuf[MAX_PATH];
+--- 362,368 ----
+  #endif
+      {
+  #ifdef FEAT_MBYTE
+! 	if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+  	{
+  	    WCHAR	*wname;
+  	    WCHAR	wbuf[MAX_PATH];
+***************
+*** 641,652 ****
+  	}
+      }
+  #ifdef FEAT_MBYTE
+!     if (enc_codepage >= 0 && (int)GetACP() != enc_codepage
+! # ifdef __BORLANDC__
+! 	    /* Wide functions of Borland C 5.5 do not work on Windows 98. */
+! 	    && g_PlatformId == VER_PLATFORM_WIN32_NT
+! # endif
+!        )
+      {
+  	WCHAR	*wp = enc_to_utf16(buf, NULL);
+  	int	n;
+--- 619,625 ----
+  	}
+      }
+  #ifdef FEAT_MBYTE
+!     if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+  	WCHAR	*wp = enc_to_utf16(buf, NULL);
+  	int	n;
+***************
+*** 655,665 ****
+  	{
+  	    n = wstat_symlink_aware(wp, stp);
+  	    vim_free(wp);
+! 	    if (n >= 0 || g_PlatformId == VER_PLATFORM_WIN32_NT)
+! 		return n;
+! 	    /* Retry with non-wide function (for Windows 98). Can't use
+! 	     * GetLastError() here and it's unclear what errno gets set to if
+! 	     * the _wstat() fails for missing wide functions. */
+  	}
+      }
+  #endif
+--- 628,634 ----
+  	{
+  	    n = wstat_symlink_aware(wp, stp);
+  	    vim_free(wp);
+! 	    return n;
+  	}
+      }
+  #endif
+***************
+*** 823,831 ****
+  	{
+  	    n = _wchdir(p);
+  	    vim_free(p);
+! 	    if (n == 0 || g_PlatformId == VER_PLATFORM_WIN32_NT)
+! 		return n;
+! 	    /* Retry with non-wide function (for Windows 98). */
+  	}
+      }
+  #endif
+--- 792,798 ----
+  	{
+  	    n = _wchdir(p);
+  	    vim_free(p);
+! 	    return n;
+  	}
+      }
+  #endif
+***************
+*** 834,860 ****
+  }
+  
+  
+- /*
+-  * Switching off termcap mode is only allowed when Columns is 80, otherwise a
+-  * crash may result.  It's always allowed on NT or when running the GUI.
+-  */
+- /*ARGSUSED*/
+-     int
+- can_end_termcap_mode(
+-     int give_msg)
+- {
+- #ifdef FEAT_GUI_MSWIN
+-     return TRUE;	/* GUI starts a new console anyway */
+- #else
+-     if (g_PlatformId == VER_PLATFORM_WIN32_NT || Columns == 80)
+- 	return TRUE;
+-     if (give_msg)
+- 	msg((char_u *)
+- 		_("'columns' is not 80, cannot execute external commands"));
+-     return FALSE;
+- #endif
+- }
+- 
+  #ifdef FEAT_GUI_MSWIN
+  /*
+   * return non-zero if a character is available
+--- 801,806 ----
+***************
+*** 887,903 ****
+   * and returns an allocated string.
+   * Return OK if it worked, FAIL if not.
+   */
+- # ifdef WIN3264
+  typedef LPTSTR (*MYSTRPROCSTR)(LPTSTR);
+  typedef LPTSTR (*MYINTPROCSTR)(int);
+  typedef int (*MYSTRPROCINT)(LPTSTR);
+  typedef int (*MYINTPROCINT)(int);
+- # else
+- typedef LPSTR (*MYSTRPROCSTR)(LPSTR);
+- typedef LPSTR (*MYINTPROCSTR)(int);
+- typedef int (*MYSTRPROCINT)(LPSTR);
+- typedef int (*MYINTPROCINT)(int);
+- # endif
+  
+  /*
+   * Check if a pointer points to a valid NUL terminated string.
+--- 833,842 ----
+***************
+*** 1093,1099 ****
+  #endif //_DEBUG
+  
+  #if !defined(FEAT_GUI) || defined(PROTO)
+! # if defined(FEAT_TITLE) && defined(WIN3264)
+  extern HWND g_hWnd;	/* This is in os_win32.c. */
+  # endif
+  
+--- 1032,1038 ----
+  #endif //_DEBUG
+  
+  #if !defined(FEAT_GUI) || defined(PROTO)
+! # ifdef FEAT_TITLE
+  extern HWND g_hWnd;	/* This is in os_win32.c. */
+  # endif
+  
+***************
+*** 1114,1120 ****
+      if (s_hwnd != 0)
+  	return;
+  
+! # if defined(FEAT_TITLE) && defined(WIN3264)
+      /* Window handle may have been found by init code (Windows NT only) */
+      if (g_hWnd != 0)
+      {
+--- 1053,1059 ----
+      if (s_hwnd != 0)
+  	return;
+  
+! # ifdef FEAT_TITLE
+      /* Window handle may have been found by init code (Windows NT only) */
+      if (g_hWnd != 0)
+      {
+***************
+*** 1539,1545 ****
+  	    )
+      {
+  	prt_dlg.Flags |= PD_RETURNDEFAULT;
+- #ifdef WIN3264
+  	/*
+  	 * MSDN suggests setting the first parameter to WINSPOOL for
+  	 * NT, but NULL appears to work just as well.
+--- 1478,1483 ----
+***************
+*** 1547,1553 ****
+  	if (*p_pdev != NUL)
+  	    prt_dlg.hDC = CreateDC(NULL, (LPCSTR)p_pdev, NULL, NULL);
+  	else
+- #endif
+  	{
+  	    prt_dlg.Flags |= PD_RETURNDEFAULT;
+  	    if (PrintDlg(&prt_dlg) == 0)
+--- 1485,1490 ----
+***************
+*** 1593,1602 ****
+      mem = (DEVMODE *)GlobalLock(prt_dlg.hDevMode);
+      if (mem != NULL)
+      {
+- #ifdef WIN3264
+  	if (mem->dmCopies != 1)
+  	    stored_nCopies = mem->dmCopies;
+- #endif
+  	if ((mem->dmFields & DM_DUPLEX) && (mem->dmDuplex & ~DMDUP_SIMPLEX))
+  	    psettings->duplex = TRUE;
+  	if ((mem->dmFields & DM_COLOR) && (mem->dmColor & DMCOLOR_COLOR))
+--- 1530,1537 ----
+***************
+*** 1953,1959 ****
+  		goto shortcut_end;
+  	    }
+  	}
+! 	/* Retry with non-wide function (for Windows 98). */
+      }
+  # endif
+      // create a link manager object and request its interface
+--- 1888,1894 ----
+  		goto shortcut_end;
+  	    }
+  	}
+! 	goto shortcut_end;
+      }
+  # endif
+      // create a link manager object and request its interface
+***************
+*** 2681,2687 ****
+      {"OEM",		OEM_CHARSET},
+      {"SHIFTJIS",	SHIFTJIS_CHARSET},
+      {"SYMBOL",		SYMBOL_CHARSET},
+- #ifdef WIN3264
+      {"ARABIC",		ARABIC_CHARSET},
+      {"BALTIC",		BALTIC_CHARSET},
+      {"EASTEUROPE",	EASTEUROPE_CHARSET},
+--- 2616,2621 ----
+***************
+*** 2693,2702 ****
+      {"RUSSIAN",		RUSSIAN_CHARSET},
+      {"THAI",		THAI_CHARSET},
+      {"TURKISH",		TURKISH_CHARSET},
+! # if (!defined(_MSC_VER) || (_MSC_VER > 1010)) \
+! 	&& (!defined(__BORLANDC__) || (__BORLANDC__ > 0x0500))
+      {"VIETNAMESE",	VIETNAMESE_CHARSET},
+- # endif
+  #endif
+      {NULL,		0}
+  };
+--- 2627,2634 ----
+      {"RUSSIAN",		RUSSIAN_CHARSET},
+      {"THAI",		THAI_CHARSET},
+      {"TURKISH",		TURKISH_CHARSET},
+! #ifdef VIETNAMESE_CHARSET
+      {"VIETNAMESE",	VIETNAMESE_CHARSET},
+  #endif
+      {NULL,		0}
+  };
+*** ../vim-8.0.0028/src/os_win32.c	2016-09-29 15:18:51.359768012 +0200
+--- src/os_win32.c	2016-10-12 14:00:10.242811549 +0200
+***************
+*** 141,183 ****
+  # define __stdcall /* empty */
+  #endif
+  
+- #ifndef FEAT_GUI_W32
+- /* Undocumented API in kernel32.dll needed to work around dead key bug in
+-  * console-mode applications in NT 4.0.  If you switch keyboard layouts
+-  * in a console app to a layout that includes dead keys and then hit a
+-  * dead key, a call to ToAscii will trash the stack.  My thanks to Ian James
+-  * and Michael Dietrich for helping me figure out this workaround.
+-  */
+- 
+- /* WINAPI BOOL WINAPI GetConsoleKeyboardLayoutNameA(LPSTR); */
+- #ifndef WINAPI
+- # define WINAPI __stdcall
+- #endif
+- #if defined(__BORLANDC__)
+- typedef BOOL (__stdcall *PFNGCKLN)(LPSTR);
+- #else
+- typedef BOOL (WINAPI *PFNGCKLN)(LPSTR);
+- #endif
+- static PFNGCKLN    s_pfnGetConsoleKeyboardLayoutName = NULL;
+- #endif
+- 
+  #if defined(__BORLANDC__)
+  /* Strangely Borland uses a non-standard name. */
+  # define wcsicmp(a, b) wcscmpi((a), (b))
+  #endif
+  
+- #ifndef PROTO
+- 
+- /* Enable common dialogs input unicode from IME if possible. */
+- #ifdef FEAT_MBYTE
+- LRESULT (WINAPI *pDispatchMessage)(CONST MSG *) = DispatchMessage;
+- BOOL (WINAPI *pGetMessage)(LPMSG, HWND, UINT, UINT) = GetMessage;
+- BOOL (WINAPI *pIsDialogMessage)(HWND, LPMSG) = IsDialogMessage;
+- BOOL (WINAPI *pPeekMessage)(LPMSG, HWND, UINT, UINT, UINT) = PeekMessage;
+- #endif
+- 
+- #endif /* PROTO */
+- 
+  #ifndef FEAT_GUI_W32
+  /* Win32 Console handles for input and output */
+  static HANDLE g_hConIn  = INVALID_HANDLE_VALUE;
+--- 141,151 ----
+***************
+*** 430,436 ****
+  vimLoadLib(char *name)
+  {
+      HINSTANCE	dll = NULL;
+-     char	old_dir[MAXPATHL];
+  
+      /* NOTE: Do not use mch_dirname() and mch_chdir() here, they may call
+       * vimLoadLib() recursively, which causes a stack overflow. */
+--- 398,403 ----
+***************
+*** 438,444 ****
+  	get_exe_name();
+      if (exe_path != NULL)
+      {
+- #ifdef FEAT_MBYTE
+  	WCHAR old_dirw[MAXPATHL];
+  
+  	if (GetCurrentDirectoryW(MAXPATHL, old_dirw) != 0)
+--- 405,410 ----
+***************
+*** 451,468 ****
+  	    SetCurrentDirectoryW(old_dirw);
+  	    return dll;
+  	}
+- 	/* Retry with non-wide function (for Windows 98). */
+- 	if (GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+- #endif
+- 	    if (GetCurrentDirectory(MAXPATHL, old_dir) != 0)
+- 	    {
+- 		/* Change directory to where the executable is, both to make
+- 		 * sure we find a .dll there and to avoid looking for a .dll
+- 		 * in the current directory. */
+- 		SetCurrentDirectory((LPCSTR)exe_path);
+- 		dll = LoadLibrary(name);
+- 		SetCurrentDirectory(old_dir);
+- 	    }
+      }
+      return dll;
+  }
+--- 417,422 ----
+***************
+*** 621,658 ****
+  # ifndef PROTECTED_DACL_SECURITY_INFORMATION
+  #  define PROTECTED_DACL_SECURITY_INFORMATION	0x80000000L
+  # endif
+- 
+- /*
+-  * These are needed to dynamically load the ADVAPI DLL, which is not
+-  * implemented under Windows 95 (and causes VIM to crash)
+-  */
+- typedef DWORD (WINAPI *PSNSECINFO) (LPSTR, SE_OBJECT_TYPE,
+- 	SECURITY_INFORMATION, PSID, PSID, PACL, PACL);
+- typedef DWORD (WINAPI *PGNSECINFO) (LPSTR, SE_OBJECT_TYPE,
+- 	SECURITY_INFORMATION, PSID *, PSID *, PACL *, PACL *,
+- 	PSECURITY_DESCRIPTOR *);
+- # ifdef FEAT_MBYTE
+- typedef DWORD (WINAPI *PSNSECINFOW) (LPWSTR, SE_OBJECT_TYPE,
+- 	SECURITY_INFORMATION, PSID, PSID, PACL, PACL);
+- typedef DWORD (WINAPI *PGNSECINFOW) (LPWSTR, SE_OBJECT_TYPE,
+- 	SECURITY_INFORMATION, PSID *, PSID *, PACL *, PACL *,
+- 	PSECURITY_DESCRIPTOR *);
+- # endif
+- 
+- static HANDLE advapi_lib = NULL;	/* Handle for ADVAPI library */
+- static PSNSECINFO pSetNamedSecurityInfo;
+- static PGNSECINFO pGetNamedSecurityInfo;
+- # ifdef FEAT_MBYTE
+- static PSNSECINFOW pSetNamedSecurityInfoW;
+- static PGNSECINFOW pGetNamedSecurityInfoW;
+- # endif
+  #endif
+  
+- typedef BOOL (WINAPI *PSETHANDLEINFORMATION)(HANDLE, DWORD, DWORD);
+- 
+- static BOOL allowPiping = FALSE;
+- static PSETHANDLEINFORMATION pSetHandleInformation;
+- 
+  #ifdef HAVE_ACL
+  /*
+   * Enables or disables the specified privilege.
+--- 575,582 ----
+***************
+*** 712,804 ****
+  	    win8_or_later = TRUE;
+  
+  #ifdef HAVE_ACL
+! 	/*
+! 	 * Load the ADVAPI runtime if we are on anything
+! 	 * other than Windows 95
+! 	 */
+! 	if (g_PlatformId == VER_PLATFORM_WIN32_NT)
+! 	{
+! 	    /*
+! 	     * do this load.  Problems: Doesn't unload at end of run (this is
+! 	     * theoretically okay, since Windows should unload it when VIM
+! 	     * terminates).  Should we be using the 'mch_libcall' routines?
+! 	     * Seems like a lot of overhead to load/unload ADVAPI32.DLL each
+! 	     * time we verify security...
+! 	     */
+! 	    advapi_lib = vimLoadLib("ADVAPI32.DLL");
+! 	    if (advapi_lib != NULL)
+! 	    {
+! 		pSetNamedSecurityInfo = (PSNSECINFO)GetProcAddress(advapi_lib,
+! 						      "SetNamedSecurityInfoA");
+! 		pGetNamedSecurityInfo = (PGNSECINFO)GetProcAddress(advapi_lib,
+! 						      "GetNamedSecurityInfoA");
+! # ifdef FEAT_MBYTE
+! 		pSetNamedSecurityInfoW = (PSNSECINFOW)GetProcAddress(advapi_lib,
+! 						      "SetNamedSecurityInfoW");
+! 		pGetNamedSecurityInfoW = (PGNSECINFOW)GetProcAddress(advapi_lib,
+! 						      "GetNamedSecurityInfoW");
+! # endif
+! 		if (pSetNamedSecurityInfo == NULL
+! 			|| pGetNamedSecurityInfo == NULL
+! # ifdef FEAT_MBYTE
+! 			|| pSetNamedSecurityInfoW == NULL
+! 			|| pGetNamedSecurityInfoW == NULL
+! # endif
+! 			)
+! 		{
+! 		    /* If we can't get the function addresses, set advapi_lib
+! 		     * to NULL so that we don't use them. */
+! 		    FreeLibrary(advapi_lib);
+! 		    advapi_lib = NULL;
+! 		}
+! 		/* Enable privilege for getting or setting SACLs. */
+! 		win32_enable_privilege(SE_SECURITY_NAME, TRUE);
+! 	    }
+! 	}
+  #endif
+- 	/*
+- 	 * If we are on windows NT, try to load the pipe functions, only
+- 	 * available from Win2K.
+- 	 */
+- 	if (g_PlatformId == VER_PLATFORM_WIN32_NT)
+- 	{
+- 	    HANDLE kernel32 = GetModuleHandle("kernel32");
+- 	    pSetHandleInformation = (PSETHANDLEINFORMATION)GetProcAddress(
+- 					    kernel32, "SetHandleInformation");
+- 
+- 	    allowPiping = pSetHandleInformation != NULL;
+- 	}
+  	done = TRUE;
+      }
+  }
+  
+- /*
+-  * Return TRUE when running on Windows 95 (or 98 or ME).
+-  * Only to be used after mch_init().
+-  */
+-     int
+- mch_windows95(void)
+- {
+-     return g_PlatformId == VER_PLATFORM_WIN32_WINDOWS;
+- }
+- 
+- #ifdef FEAT_GUI_W32
+- /*
+-  * Used to work around the "can't do synchronous spawn"
+-  * problem on Win32s, without resorting to Universal Thunk.
+-  */
+- static int old_num_windows;
+- static int num_windows;
+- 
+- /*ARGSUSED*/
+-     static BOOL CALLBACK
+- win32ssynch_cb(HWND hwnd, LPARAM lparam)
+- {
+-     num_windows++;
+-     return TRUE;
+- }
+- #endif
+- 
+  #ifndef FEAT_GUI_W32
+  
+  #define SHIFT  (SHIFT_PRESSED)
+--- 636,648 ----
+  	    win8_or_later = TRUE;
+  
+  #ifdef HAVE_ACL
+! 	/* Enable privilege for getting or setting SACLs. */
+! 	win32_enable_privilege(SE_SECURITY_NAME, TRUE);
+  #endif
+  	done = TRUE;
+      }
+  }
+  
+  #ifndef FEAT_GUI_W32
+  
+  #define SHIFT  (SHIFT_PRESSED)
+***************
+*** 926,940 ****
+  
+      vim_memset(abKeystate, 0, sizeof (abKeystate));
+  
+-     // Should only be non-NULL on NT 4.0
+-     if (s_pfnGetConsoleKeyboardLayoutName != NULL)
+-     {
+- 	CHAR szKLID[KL_NAMELENGTH];
+- 
+- 	if ((*s_pfnGetConsoleKeyboardLayoutName)(szKLID))
+- 	    (void)LoadKeyboardLayout(szKLID, KLF_ACTIVATE);
+-     }
+- 
+      /* Clear any pending dead keys */
+      ToUnicode(VK_SPACE, MapVirtualKey(VK_SPACE, 0), abKeystate, awAnsiCode, 2, 0);
+  
+--- 770,775 ----
+***************
+*** 1977,1993 ****
+  	    n = (long)SearchPathW(wnewpath, p, NULL, _MAX_PATH, fnamew, &dumw);
+  	    vim_free(wnewpath);
+  	    vim_free(p);
+! 	    if (n > 0 || GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+! 	    {
+! 		if (n == 0)
+! 		    return FALSE;
+! 		if (GetFileAttributesW(fnamew) & FILE_ATTRIBUTE_DIRECTORY)
+! 		    return FALSE;
+! 		if (path != NULL)
+! 		    *path = utf16_to_enc(fnamew, NULL);
+! 		return TRUE;
+! 	    }
+! 	    /* Retry with non-wide function (for Windows 98). */
+  	}
+      }
+  #endif
+--- 1812,1824 ----
+  	    n = (long)SearchPathW(wnewpath, p, NULL, _MAX_PATH, fnamew, &dumw);
+  	    vim_free(wnewpath);
+  	    vim_free(p);
+! 	    if (n == 0)
+! 		return FALSE;
+! 	    if (GetFileAttributesW(fnamew) & FILE_ATTRIBUTE_DIRECTORY)
+! 		return FALSE;
+! 	    if (path != NULL)
+! 		*path = utf16_to_enc(fnamew, NULL);
+! 	    return TRUE;
+  	}
+      }
+  #endif
+***************
+*** 2462,2469 ****
+      static void
+  SaveConsoleTitleAndIcon(void)
+  {
+-     GETCONSOLEWINDOWPROC GetConsoleWindowProc;
+- 
+      /* Save the original title. */
+      if (!GetConsoleTitle(g_szOrigTitle, sizeof(g_szOrigTitle)))
+  	return;
+--- 2293,2298 ----
+***************
+*** 2475,2486 ****
+       * 2000.  On older operating systems, we can't change the window icon
+       * anyway.
+       */
+!     if ((GetConsoleWindowProc = (GETCONSOLEWINDOWPROC)
+! 	    GetProcAddress(GetModuleHandle("KERNEL32.DLL"),
+! 		    "GetConsoleWindow")) != NULL)
+!     {
+! 	g_hWnd = (*GetConsoleWindowProc)();
+!     }
+      if (g_hWnd == NULL)
+  	return;
+  
+--- 2304,2310 ----
+       * 2000.  On older operating systems, we can't change the window icon
+       * anyway.
+       */
+!     g_hWnd = GetConsoleWindow();
+      if (g_hWnd == NULL)
+  	return;
+  
+***************
+*** 2589,2599 ****
+  #ifdef FEAT_CLIPBOARD
+      win_clip_init();
+  #endif
+- 
+-     /* This will be NULL on anything but NT 4.0 */
+-     s_pfnGetConsoleKeyboardLayoutName =
+- 	(PFNGCKLN) GetProcAddress(GetModuleHandle("kernel32.dll"),
+- 				  "GetConsoleKeyboardLayoutNameA");
+  }
+  
+  /*
+--- 2413,2418 ----
+***************
+*** 2775,2783 ****
+  	    *porig = c;
+  	    ptrue = ptruePrev + wcslen(ptruePrev);
+  	}
+- 	else if (hFind == INVALID_HANDLE_VALUE
+- 		&& GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+- 	    return FAIL;
+      }
+  
+      wcscpy(name, szTrueName);
+--- 2594,2599 ----
+***************
+*** 2836,2842 ****
+  		}
+  	    }
+  	}
+! 	/* Retry with non-wide function (for Windows 98). */
+      }
+  #endif
+  
+--- 2652,2658 ----
+  		}
+  	    }
+  	}
+! 	return;
+      }
+  #endif
+  
+***************
+*** 2966,2974 ****
+  		return OK;
+  	    }
+  	}
+- 	else if (GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+- 	    return FAIL;
+- 	/* Retry with non-wide function (for Windows 98). */
+      }
+  #endif
+      if (GetUserName(szUserName, &cch))
+--- 2782,2787 ----
+***************
+*** 3008,3016 ****
+  		return;
+  	    }
+  	}
+- 	else if (GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+- 	    return;
+- 	/* Retry with non-wide function (for Windows 98). */
+      }
+  #endif
+      if (!GetComputerName((LPSTR)s, &cch))
+--- 2821,2826 ----
+***************
+*** 3059,3067 ****
+  		return OK;
+  	    }
+  	}
+! 	else if (GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+! 	    return FAIL;
+! 	/* Retry with non-wide function (for Windows 98). */
+      }
+  #endif
+      return (GetCurrentDirectory(len, (LPSTR)buf) != 0 ? OK : FAIL);
+--- 2869,2875 ----
+  		return OK;
+  	    }
+  	}
+! 	return FAIL;
+      }
+  #endif
+      return (GetCurrentDirectory(len, (LPSTR)buf) != 0 ? OK : FAIL);
+***************
+*** 3101,3109 ****
+  	{
+  	    n = _wchmod(p, perm);
+  	    vim_free(p);
+! 	    if (n == -1 && g_PlatformId == VER_PLATFORM_WIN32_NT)
+  		return FAIL;
+- 	    /* Retry with non-wide function (for Windows 98). */
+  	}
+      }
+      if (n == -1)
+--- 2909,2916 ----
+  	{
+  	    n = _wchmod(p, perm);
+  	    vim_free(p);
+! 	    if (n == -1)
+  		return FAIL;
+  	}
+      }
+      if (n == -1)
+***************
+*** 3251,3268 ****
+      {
+  	hFind = FindFirstFileW(wn, &findDataW);
+  	vim_free(wn);
+! 	if (hFind == INVALID_HANDLE_VALUE
+! 		&& GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+! 	{
+! 	    /* Retry with non-wide function (for Windows 98). */
+! 	    hFind = FindFirstFile((LPCSTR)name, &findDataA);
+! 	    if (hFind != INVALID_HANDLE_VALUE)
+! 	    {
+! 		fileFlags = findDataA.dwFileAttributes;
+! 		reparseTag = findDataA.dwReserved0;
+! 	    }
+! 	}
+! 	else
+  	{
+  	    fileFlags = findDataW.dwFileAttributes;
+  	    reparseTag = findDataW.dwReserved0;
+--- 3058,3064 ----
+      {
+  	hFind = FindFirstFileW(wn, &findDataW);
+  	vim_free(wn);
+! 	if (hFind != INVALID_HANDLE_VALUE)
+  	{
+  	    fileFlags = findDataW.dwFileAttributes;
+  	    reparseTag = findDataW.dwReserved0;
+***************
+*** 3321,3327 ****
+      {
+  	wn = enc_to_utf16(fname, NULL);
+  	if (wn == NULL)
+! 	    res = FILEINFO_ENC_FAIL;
+      }
+      if (wn != NULL)
+      {
+--- 3117,3123 ----
+      {
+  	wn = enc_to_utf16(fname, NULL);
+  	if (wn == NULL)
+! 	    return FILEINFO_ENC_FAIL;
+      }
+      if (wn != NULL)
+      {
+***************
+*** 3332,3346 ****
+  		    OPEN_EXISTING,	/* creation disposition */
+  		    FILE_FLAG_BACKUP_SEMANTICS,	/* file attributes */
+  		    NULL);		/* handle to template file */
+! 	if (hFile == INVALID_HANDLE_VALUE
+! 			      && GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+! 	{
+! 	    /* Retry with non-wide function (for Windows 98). */
+! 	    vim_free(wn);
+! 	    wn = NULL;
+! 	}
+      }
+!     if (wn == NULL)
+  #endif
+  	hFile = CreateFile((LPCSTR)fname,    /* file name */
+  		    GENERIC_READ,	    /* access mode */
+--- 3128,3136 ----
+  		    OPEN_EXISTING,	/* creation disposition */
+  		    FILE_FLAG_BACKUP_SEMANTICS,	/* file attributes */
+  		    NULL);		/* handle to template file */
+! 	vim_free(wn);
+      }
+!     else
+  #endif
+  	hFile = CreateFile((LPCSTR)fname,    /* file name */
+  		    GENERIC_READ,	    /* access mode */
+***************
+*** 3359,3367 ****
+  	CloseHandle(hFile);
+      }
+  
+- #ifdef FEAT_MBYTE
+-     vim_free(wn);
+- #endif
+      return res;
+  }
+  
+--- 3149,3154 ----
+***************
+*** 3383,3401 ****
+      if (p != NULL)
+      {
+  	attr = GetFileAttributesW(p);
+! 	if (attr < 0 && GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+! 	{
+! 	    /* Retry with non-wide function (for Windows 98). */
+! 	    vim_free(p);
+! 	    p = NULL;
+! 	}
+      }
+!     if (p == NULL)
+  #endif
+  	attr = GetFileAttributes((char *)name);
+! #ifdef FEAT_MBYTE
+!     vim_free(p);
+! #endif
+      return attr;
+  }
+  
+--- 3170,3181 ----
+      if (p != NULL)
+      {
+  	attr = GetFileAttributesW(p);
+! 	vim_free(p);
+      }
+!     else
+  #endif
+  	attr = GetFileAttributes((char *)name);
+! 
+      return attr;
+  }
+  
+***************
+*** 3418,3437 ****
+      if (p != NULL)
+      {
+  	res = SetFileAttributesW(p, attrs);
+! 	if (res == FALSE
+! 	    && GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+! 	{
+! 	    /* Retry with non-wide function (for Windows 98). */
+! 	    vim_free(p);
+! 	    p = NULL;
+! 	}
+      }
+!     if (p == NULL)
+  #endif
+  	res = SetFileAttributes((char *)name, attrs);
+! #ifdef FEAT_MBYTE
+!     vim_free(p);
+! #endif
+      return res ? 0 : -1;
+  }
+  
+--- 3198,3209 ----
+      if (p != NULL)
+      {
+  	res = SetFileAttributesW(p, attrs);
+! 	vim_free(p);
+      }
+!     else
+  #endif
+  	res = SetFileAttributes((char *)name, attrs);
+! 
+      return res ? 0 : -1;
+  }
+  
+***************
+*** 3539,3565 ****
+  
+  #ifdef FEAT_MBYTE
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+-     {
+  	wn = enc_to_utf16(name, NULL);
+! 	if (wn != NULL)
+! 	{
+! 	    hFile = CreateFileW(wn,	/* file name */
+! 			GENERIC_WRITE,	/* access mode */
+! 			0,		/* share mode */
+! 			NULL,		/* security descriptor */
+! 			OPEN_EXISTING,	/* creation disposition */
+! 			0,		/* file attributes */
+! 			NULL);		/* handle to template file */
+! 	    if (hFile == INVALID_HANDLE_VALUE
+! 			      && GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+! 	    {
+! 		/* Retry with non-wide function (for Windows 98). */
+! 		vim_free(wn);
+! 		wn = NULL;
+! 	    }
+! 	}
+      }
+!     if (wn == NULL)
+  #endif
+  	hFile = CreateFile((LPCSTR)name,    /* file name */
+  		    GENERIC_WRITE,	    /* access mode */
+--- 3311,3330 ----
+  
+  #ifdef FEAT_MBYTE
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+  	wn = enc_to_utf16(name, NULL);
+! 
+!     if (wn != NULL)
+!     {
+! 	hFile = CreateFileW(wn,		    /* file name */
+! 		    GENERIC_WRITE,	    /* access mode */
+! 		    0,			    /* share mode */
+! 		    NULL,		    /* security descriptor */
+! 		    OPEN_EXISTING,	    /* creation disposition */
+! 		    0,			    /* file attributes */
+! 		    NULL);		    /* handle to template file */
+! 	vim_free(wn);
+      }
+!     else
+  #endif
+  	hFile = CreateFile((LPCSTR)name,    /* file name */
+  		    GENERIC_WRITE,	    /* access mode */
+***************
+*** 3569,3577 ****
+  		    0,			    /* file attributes */
+  		    NULL);		    /* handle to template file */
+  
+- #ifdef FEAT_MBYTE
+-     vim_free(wn);
+- #endif
+      if (hFile == INVALID_HANDLE_VALUE)
+  	return NODE_NORMAL;
+  
+--- 3334,3339 ----
+***************
+*** 3608,3695 ****
+      struct my_acl   *p = NULL;
+      DWORD   err;
+  
+!     /* This only works on Windows NT and 2000. */
+!     if (g_PlatformId == VER_PLATFORM_WIN32_NT && advapi_lib != NULL)
+      {
+- 	p = (struct my_acl *)alloc_clear((unsigned)sizeof(struct my_acl));
+- 	if (p != NULL)
+- 	{
+  # ifdef FEAT_MBYTE
+! 	    WCHAR	*wn = NULL;
+  
+! 	    if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+! 		wn = enc_to_utf16(fname, NULL);
+! 	    if (wn != NULL)
+  	    {
+! 		/* Try to retrieve the entire security descriptor. */
+! 		err = pGetNamedSecurityInfoW(
+! 			    wn,			// Abstract filename
+! 			    SE_FILE_OBJECT,	// File Object
+! 			    OWNER_SECURITY_INFORMATION |
+! 			    GROUP_SECURITY_INFORMATION |
+! 			    DACL_SECURITY_INFORMATION |
+! 			    SACL_SECURITY_INFORMATION,
+! 			    &p->pSidOwner,	// Ownership information.
+! 			    &p->pSidGroup,	// Group membership.
+! 			    &p->pDacl,		// Discretionary information.
+! 			    &p->pSacl,		// For auditing purposes.
+! 			    &p->pSecurityDescriptor);
+! 		if (err == ERROR_ACCESS_DENIED ||
+! 			err == ERROR_PRIVILEGE_NOT_HELD)
+! 		{
+! 		    /* Retrieve only DACL. */
+! 		    (void)pGetNamedSecurityInfoW(
+! 			    wn,
+! 			    SE_FILE_OBJECT,
+! 			    DACL_SECURITY_INFORMATION,
+! 			    NULL,
+! 			    NULL,
+! 			    &p->pDacl,
+! 			    NULL,
+! 			    &p->pSecurityDescriptor);
+! 		}
+! 		if (p->pSecurityDescriptor == NULL)
+! 		{
+! 		    mch_free_acl((vim_acl_T)p);
+! 		    p = NULL;
+! 		}
+! 		vim_free(wn);
+  	    }
+! 	    else
+  # endif
+  	    {
+! 		/* Try to retrieve the entire security descriptor. */
+! 		err = pGetNamedSecurityInfo(
+! 			    (LPSTR)fname,	// Abstract filename
+! 			    SE_FILE_OBJECT,	// File Object
+! 			    OWNER_SECURITY_INFORMATION |
+! 			    GROUP_SECURITY_INFORMATION |
+! 			    DACL_SECURITY_INFORMATION |
+! 			    SACL_SECURITY_INFORMATION,
+! 			    &p->pSidOwner,	// Ownership information.
+! 			    &p->pSidGroup,	// Group membership.
+! 			    &p->pDacl,		// Discretionary information.
+! 			    &p->pSacl,		// For auditing purposes.
+! 			    &p->pSecurityDescriptor);
+! 		if (err == ERROR_ACCESS_DENIED ||
+! 			err == ERROR_PRIVILEGE_NOT_HELD)
+! 		{
+! 		    /* Retrieve only DACL. */
+! 		    (void)pGetNamedSecurityInfo(
+! 			    (LPSTR)fname,
+! 			    SE_FILE_OBJECT,
+! 			    DACL_SECURITY_INFORMATION,
+! 			    NULL,
+! 			    NULL,
+! 			    &p->pDacl,
+! 			    NULL,
+! 			    &p->pSecurityDescriptor);
+! 		}
+! 		if (p->pSecurityDescriptor == NULL)
+! 		{
+! 		    mch_free_acl((vim_acl_T)p);
+! 		    p = NULL;
+! 		}
+  	    }
+  	}
+      }
+--- 3370,3453 ----
+      struct my_acl   *p = NULL;
+      DWORD   err;
+  
+!     p = (struct my_acl *)alloc_clear((unsigned)sizeof(struct my_acl));
+!     if (p != NULL)
+      {
+  # ifdef FEAT_MBYTE
+! 	WCHAR	*wn = NULL;
+  
+! 	if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+! 	    wn = enc_to_utf16(fname, NULL);
+! 	if (wn != NULL)
+! 	{
+! 	    /* Try to retrieve the entire security descriptor. */
+! 	    err = GetNamedSecurityInfoW(
+! 		    wn,			// Abstract filename
+! 		    SE_FILE_OBJECT,	// File Object
+! 		    OWNER_SECURITY_INFORMATION |
+! 		    GROUP_SECURITY_INFORMATION |
+! 		    DACL_SECURITY_INFORMATION |
+! 		    SACL_SECURITY_INFORMATION,
+! 		    &p->pSidOwner,	// Ownership information.
+! 		    &p->pSidGroup,	// Group membership.
+! 		    &p->pDacl,		// Discretionary information.
+! 		    &p->pSacl,		// For auditing purposes.
+! 		    &p->pSecurityDescriptor);
+! 	    if (err == ERROR_ACCESS_DENIED ||
+! 		    err == ERROR_PRIVILEGE_NOT_HELD)
+! 	    {
+! 		/* Retrieve only DACL. */
+! 		(void)GetNamedSecurityInfoW(
+! 			wn,
+! 			SE_FILE_OBJECT,
+! 			DACL_SECURITY_INFORMATION,
+! 			NULL,
+! 			NULL,
+! 			&p->pDacl,
+! 			NULL,
+! 			&p->pSecurityDescriptor);
+! 	    }
+! 	    if (p->pSecurityDescriptor == NULL)
+  	    {
+! 		mch_free_acl((vim_acl_T)p);
+! 		p = NULL;
+  	    }
+! 	    vim_free(wn);
+! 	}
+! 	else
+  # endif
++ 	{
++ 	    /* Try to retrieve the entire security descriptor. */
++ 	    err = GetNamedSecurityInfo(
++ 		    (LPSTR)fname,	// Abstract filename
++ 		    SE_FILE_OBJECT,	// File Object
++ 		    OWNER_SECURITY_INFORMATION |
++ 		    GROUP_SECURITY_INFORMATION |
++ 		    DACL_SECURITY_INFORMATION |
++ 		    SACL_SECURITY_INFORMATION,
++ 		    &p->pSidOwner,	// Ownership information.
++ 		    &p->pSidGroup,	// Group membership.
++ 		    &p->pDacl,		// Discretionary information.
++ 		    &p->pSacl,		// For auditing purposes.
++ 		    &p->pSecurityDescriptor);
++ 	    if (err == ERROR_ACCESS_DENIED ||
++ 		    err == ERROR_PRIVILEGE_NOT_HELD)
++ 	    {
++ 		/* Retrieve only DACL. */
++ 		(void)GetNamedSecurityInfo(
++ 			(LPSTR)fname,
++ 			SE_FILE_OBJECT,
++ 			DACL_SECURITY_INFORMATION,
++ 			NULL,
++ 			NULL,
++ 			&p->pDacl,
++ 			NULL,
++ 			&p->pSecurityDescriptor);
++ 	    }
++ 	    if (p->pSecurityDescriptor == NULL)
+  	    {
+! 		mch_free_acl((vim_acl_T)p);
+! 		p = NULL;
+  	    }
+  	}
+      }
+***************
+*** 3733,3739 ****
+      struct my_acl   *p = (struct my_acl *)acl;
+      SECURITY_INFORMATION    sec_info = 0;
+  
+!     if (p != NULL && advapi_lib != NULL)
+      {
+  # ifdef FEAT_MBYTE
+  	WCHAR	*wn = NULL;
+--- 3491,3497 ----
+      struct my_acl   *p = (struct my_acl *)acl;
+      SECURITY_INFORMATION    sec_info = 0;
+  
+!     if (p != NULL)
+      {
+  # ifdef FEAT_MBYTE
+  	WCHAR	*wn = NULL;
+***************
+*** 3761,3767 ****
+  	    wn = enc_to_utf16(fname, NULL);
+  	if (wn != NULL)
+  	{
+! 	    (void)pSetNamedSecurityInfoW(
+  			wn,			// Abstract filename
+  			SE_FILE_OBJECT,		// File Object
+  			sec_info,
+--- 3519,3525 ----
+  	    wn = enc_to_utf16(fname, NULL);
+  	if (wn != NULL)
+  	{
+! 	    (void)SetNamedSecurityInfoW(
+  			wn,			// Abstract filename
+  			SE_FILE_OBJECT,		// File Object
+  			sec_info,
+***************
+*** 3775,3781 ****
+  	else
+  # endif
+  	{
+! 	    (void)pSetNamedSecurityInfo(
+  			(LPSTR)fname,		// Abstract filename
+  			SE_FILE_OBJECT,		// File Object
+  			sec_info,
+--- 3533,3539 ----
+  	else
+  # endif
+  	{
+! 	    (void)SetNamedSecurityInfo(
+  			(LPSTR)fname,		// Abstract filename
+  			SE_FILE_OBJECT,		// File Object
+  			sec_info,
+***************
+*** 4076,4082 ****
+      STARTUPINFO		*si,
+      PROCESS_INFORMATION *pi)
+  {
+! #  ifdef FEAT_MBYTE
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+  	WCHAR	*wcmd = enc_to_utf16((char_u *)cmd, NULL);
+--- 3834,3840 ----
+      STARTUPINFO		*si,
+      PROCESS_INFORMATION *pi)
+  {
+! #ifdef FEAT_MBYTE
+      if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+  	WCHAR	*wcmd = enc_to_utf16((char_u *)cmd, NULL);
+***************
+*** 4138,4168 ****
+      si.lpTitle = NULL;
+      si.dwFlags = STARTF_USESHOWWINDOW;
+      /*
+!      * It's nicer to run a filter command in a minimized window, but in
+!      * Windows 95 this makes the command MUCH slower.  We can't do it under
+!      * Win32s either as it stops the synchronous spawn workaround working.
+       * Don't activate the window to keep focus on Vim.
+       */
+!     if ((options & SHELL_DOOUT) && !mch_windows95())
+  	si.wShowWindow = SW_SHOWMINNOACTIVE;
+      else
+  	si.wShowWindow = SW_SHOWNORMAL;
+      si.cbReserved2 = 0;
+      si.lpReserved2 = NULL;
+  
+-     /* There is a strange error on Windows 95 when using "c:\command.com".
+-      * When the "c:\\" is left out it works OK...? */
+-     if (mch_windows95()
+- 	    && (STRNICMP(cmd, "c:/command.com", 14) == 0
+- 		|| STRNICMP(cmd, "c:\\command.com", 14) == 0))
+- 	cmd += 3;
+- 
+      /* Now, run the command */
+      vim_create_process(cmd, FALSE,
+  	    CREATE_DEFAULT_ERROR_MODE |	CREATE_NEW_CONSOLE, &si, &pi);
+  
+      /* Wait for the command to terminate before continuing */
+-     if (g_PlatformId != VER_PLATFORM_WIN32s)
+      {
+  #ifdef FEAT_GUI
+  	int	    delay = 1;
+--- 3896,3916 ----
+      si.lpTitle = NULL;
+      si.dwFlags = STARTF_USESHOWWINDOW;
+      /*
+!      * It's nicer to run a filter command in a minimized window.
+       * Don't activate the window to keep focus on Vim.
+       */
+!     if (options & SHELL_DOOUT)
+  	si.wShowWindow = SW_SHOWMINNOACTIVE;
+      else
+  	si.wShowWindow = SW_SHOWNORMAL;
+      si.cbReserved2 = 0;
+      si.lpReserved2 = NULL;
+  
+      /* Now, run the command */
+      vim_create_process(cmd, FALSE,
+  	    CREATE_DEFAULT_ERROR_MODE |	CREATE_NEW_CONSOLE, &si, &pi);
+  
+      /* Wait for the command to terminate before continuing */
+      {
+  #ifdef FEAT_GUI
+  	int	    delay = 1;
+***************
+*** 4195,4217 ****
+  	/* Get the command exit code */
+  	GetExitCodeProcess(pi.hProcess, &ret);
+      }
+-     else
+-     {
+- 	/*
+- 	 * This ugly code is the only quick way of performing
+- 	 * a synchronous spawn under Win32s. Yuk.
+- 	 */
+- 	num_windows = 0;
+- 	EnumWindows(win32ssynch_cb, 0);
+- 	old_num_windows = num_windows;
+- 	do
+- 	{
+- 	    Sleep(1000);
+- 	    num_windows = 0;
+- 	    EnumWindows(win32ssynch_cb, 0);
+- 	} while (num_windows == old_num_windows);
+- 	ret = 0;
+-     }
+  
+      /* Close the handles to the subprocess, so that it goes away */
+      CloseHandle(pi.hThread);
+--- 3943,3948 ----
+***************
+*** 4453,4463 ****
+  
+      if ( ! CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0)
+  	/* Ensure the read handle to the pipe for STDOUT is not inherited. */
+!        || ! pSetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)
+  	/* Create a pipe for the child process's STDIN. */
+         || ! CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0)
+  	/* Ensure the write handle to the pipe for STDIN is not inherited. */
+!        || ! pSetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0) )
+      {
+  	CloseHandle(g_hChildStd_IN_Rd);
+  	CloseHandle(g_hChildStd_IN_Wr);
+--- 4184,4194 ----
+  
+      if ( ! CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0)
+  	/* Ensure the read handle to the pipe for STDOUT is not inherited. */
+!        || ! SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)
+  	/* Create a pipe for the child process's STDIN. */
+         || ! CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0)
+  	/* Ensure the write handle to the pipe for STDIN is not inherited. */
+!        || ! SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0) )
+      {
+  	CloseHandle(g_hChildStd_IN_Rd);
+  	CloseHandle(g_hChildStd_IN_Wr);
+***************
+*** 4707,4713 ****
+  mch_system(char *cmd, int options)
+  {
+      /* if we can pipe and the shelltemp option is off */
+!     if (allowPiping && !p_stmp)
+  	return mch_system_piped(cmd, options);
+      else
+  	return mch_system_classic(cmd, options);
+--- 4438,4444 ----
+  mch_system(char *cmd, int options)
+  {
+      /* if we can pipe and the shelltemp option is off */
+!     if (!p_stmp)
+  	return mch_system_piped(cmd, options);
+      else
+  	return mch_system_classic(cmd, options);
+***************
+*** 4960,4966 ****
+  	{
+  	    cmdlen = (
+  #ifdef FEAT_GUI_W32
+! 		(allowPiping && !p_stmp ? 0 : STRLEN(vimrun_path)) +
+  #endif
+  		STRLEN(p_sh) + STRLEN(p_shcf) + STRLEN(cmd) + 10);
+  
+--- 4691,4697 ----
+  	{
+  	    cmdlen = (
+  #ifdef FEAT_GUI_W32
+! 		(!p_stmp ? 0 : STRLEN(vimrun_path)) +
+  #endif
+  		STRLEN(p_sh) + STRLEN(p_shcf) + STRLEN(cmd) + 10);
+  
+***************
+*** 4978,4984 ****
+  			    MB_ICONWARNING);
+  		    need_vimrun_warning = FALSE;
+  		}
+! 		if (!s_dont_use_vimrun && (!allowPiping || p_stmp))
+  		    /* Use vimrun to execute the command.  It opens a console
+  		     * window, which can be closed without killing Vim. */
+  		    vim_snprintf((char *)newcmd, cmdlen, "%s%s%s %s %s",
+--- 4709,4715 ----
+  			    MB_ICONWARNING);
+  		    need_vimrun_warning = FALSE;
+  		}
+! 		if (!s_dont_use_vimrun && p_stmp)
+  		    /* Use vimrun to execute the command.  It opens a console
+  		     * window, which can be closed without killing Vim. */
+  		    vim_snprintf((char *)newcmd, cmdlen, "%s%s%s %s %s",
+***************
+*** 5002,5009 ****
+      /* Print the return value, unless "vimrun" was used. */
+      if (x != 0 && !(options & SHELL_SILENT) && !emsg_silent
+  #if defined(FEAT_GUI_W32)
+! 		&& ((options & SHELL_DOOUT) || s_dont_use_vimrun
+! 						  || (allowPiping && !p_stmp))
+  #endif
+  	    )
+      {
+--- 4733,4739 ----
+      /* Print the return value, unless "vimrun" was used. */
+      if (x != 0 && !(options & SHELL_SILENT) && !emsg_silent
+  #if defined(FEAT_GUI_W32)
+! 		&& ((options & SHELL_DOOUT) || s_dont_use_vimrun || !p_stmp)
+  #endif
+  	    )
+      {
+***************
+*** 5051,5064 ****
+                       lpSecurityAttributes, dwCreationDisposition,
+                       dwFlagsAndAttributes, NULL);
+              vim_free(wn);
+-             if (h == INVALID_HANDLE_VALUE
+-                           && GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+-                 wn = NULL;
+          }
+      }
+      if (wn == NULL)
+  # endif
+- 
+          h = CreateFile((LPCSTR)fname, dwDesiredAccess, dwShareMode,
+                       lpSecurityAttributes, dwCreationDisposition,
+                       dwFlagsAndAttributes, NULL);
+--- 4781,4790 ----
+***************
+*** 5127,5133 ****
+      }
+      else if (!use_null_for_in &&
+  	    (!CreatePipe(&ifd[0], &ifd[1], &saAttr, 0)
+! 	    || !pSetHandleInformation(ifd[1], HANDLE_FLAG_INHERIT, 0)))
+  	goto failed;
+  
+      if (use_file_for_out)
+--- 4853,4859 ----
+      }
+      else if (!use_null_for_in &&
+  	    (!CreatePipe(&ifd[0], &ifd[1], &saAttr, 0)
+! 	    || !SetHandleInformation(ifd[1], HANDLE_FLAG_INHERIT, 0)))
+  	goto failed;
+  
+      if (use_file_for_out)
+***************
+*** 5145,5151 ****
+      }
+      else if (!use_null_for_out &&
+  	    (!CreatePipe(&ofd[0], &ofd[1], &saAttr, 0)
+! 	    || !pSetHandleInformation(ofd[0], HANDLE_FLAG_INHERIT, 0)))
+  	goto failed;
+  
+      if (use_file_for_err)
+--- 4871,4877 ----
+      }
+      else if (!use_null_for_out &&
+  	    (!CreatePipe(&ofd[0], &ofd[1], &saAttr, 0)
+! 	    || !SetHandleInformation(ofd[0], HANDLE_FLAG_INHERIT, 0)))
+  	goto failed;
+  
+      if (use_file_for_err)
+***************
+*** 5163,5169 ****
+      }
+      else if (!use_out_for_err && !use_null_for_err &&
+  	    (!CreatePipe(&efd[0], &efd[1], &saAttr, 0)
+! 	    || !pSetHandleInformation(efd[0], HANDLE_FLAG_INHERIT, 0)))
+  	goto failed;
+  
+      si.dwFlags |= STARTF_USESTDHANDLES;
+--- 4889,4895 ----
+      }
+      else if (!use_out_for_err && !use_null_for_err &&
+  	    (!CreatePipe(&efd[0], &efd[1], &saAttr, 0)
+! 	    || !SetHandleInformation(efd[0], HANDLE_FLAG_INHERIT, 0)))
+  	goto failed;
+  
+      si.dwFlags |= STARTF_USESTDHANDLES;
+***************
+*** 6176,6184 ****
+  	{
+  	    n = DeleteFileW(wn) ? 0 : -1;
+  	    vim_free(wn);
+! 	    if (n == 0 || GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+! 		return n;
+! 	    /* Retry with non-wide function (for Windows 98). */
+  	}
+      }
+  #endif
+--- 5902,5908 ----
+  	{
+  	    n = DeleteFileW(wn) ? 0 : -1;
+  	    vim_free(wn);
+! 	    return n;
+  	}
+      }
+  #endif
+***************
+*** 6203,6209 ****
+  
+  /* physical RAM to leave for the OS */
+  #define WINNT_RESERVE_BYTES     (256*1024*1024)
+- #define WIN95_RESERVE_BYTES       (8*1024*1024)
+  
+  /*
+   * How much main memory in KiB that can be used by VIM.
+--- 5927,5932 ----
+***************
+*** 6212,6265 ****
+      long_u
+  mch_total_mem(int special)
+  {
+!     PlatformId();
+! #if (defined(_MSC_VER) && (WINVER > 0x0400)) || defined(MEMORYSTATUSEX)
+!     if (g_PlatformId == VER_PLATFORM_WIN32_NT)
+!     {
+! 	MEMORYSTATUSEX  ms;
+  
+! 	/* Need to use GlobalMemoryStatusEx() when there is more memory than
+! 	 * what fits in 32 bits. But it's not always available. */
+! 	ms.dwLength = sizeof(MEMORYSTATUSEX);
+! 	GlobalMemoryStatusEx(&ms);
+! 	if (ms.ullAvailVirtual < ms.ullTotalPhys)
+! 	{
+! 	    /* Process address space fits in physical RAM, use all of it. */
+! 	    return (long_u)(ms.ullAvailVirtual / 1024);
+! 	}
+! 	if (ms.ullTotalPhys <= WINNT_RESERVE_BYTES)
+! 	{
+! 	    /* Catch old NT box or perverse hardware setup. */
+! 	    return (long_u)((ms.ullTotalPhys / 2) / 1024);
+! 	}
+! 	/* Use physical RAM less reserve for OS + data. */
+! 	return (long_u)((ms.ullTotalPhys - WINNT_RESERVE_BYTES) / 1024);
+      }
+!     else
+! #endif
+      {
+! 	/* Pre-XP or 95 OS handling. */
+! 	MEMORYSTATUS    ms;
+! 	long_u		os_reserve_bytes;
+! 
+! 	ms.dwLength = sizeof(MEMORYSTATUS);
+! 	GlobalMemoryStatus(&ms);
+! 	if (ms.dwAvailVirtual < ms.dwTotalPhys)
+! 	{
+! 	    /* Process address space fits in physical RAM, use all of it. */
+! 	    return (long_u)(ms.dwAvailVirtual / 1024);
+! 	}
+! 	os_reserve_bytes = (g_PlatformId == VER_PLATFORM_WIN32_NT)
+! 	    ? WINNT_RESERVE_BYTES
+! 	    : WIN95_RESERVE_BYTES;
+! 	if (ms.dwTotalPhys <= os_reserve_bytes)
+! 	{
+! 	    /* Catch old boxes or perverse hardware setup. */
+! 	    return (long_u)((ms.dwTotalPhys / 2) / 1024);
+! 	}
+! 	/* Use physical RAM less reserve for OS + data. */
+! 	return (long_u)((ms.dwTotalPhys - os_reserve_bytes) / 1024);
+      }
+  }
+  
+  #ifdef FEAT_MBYTE
+--- 5935,5959 ----
+      long_u
+  mch_total_mem(int special)
+  {
+!     MEMORYSTATUSEX  ms;
+  
+!     PlatformId();
+!     /* Need to use GlobalMemoryStatusEx() when there is more memory than
+!      * what fits in 32 bits. But it's not always available. */
+!     ms.dwLength = sizeof(MEMORYSTATUSEX);
+!     GlobalMemoryStatusEx(&ms);
+!     if (ms.ullAvailVirtual < ms.ullTotalPhys)
+!     {
+! 	/* Process address space fits in physical RAM, use all of it. */
+! 	return (long_u)(ms.ullAvailVirtual / 1024);
+      }
+!     if (ms.ullTotalPhys <= WINNT_RESERVE_BYTES)
+      {
+! 	/* Catch old NT box or perverse hardware setup. */
+! 	return (long_u)((ms.ullTotalPhys / 2) / 1024);
+      }
++     /* Use physical RAM less reserve for OS + data. */
++     return (long_u)((ms.ullTotalPhys - WINNT_RESERVE_BYTES) / 1024);
+  }
+  
+  #ifdef FEAT_MBYTE
+***************
+*** 6276,6291 ****
+      WCHAR	szNewPath[_MAX_PATH + 1];
+      HANDLE	hf;
+  
+!     if (!mch_windows95())
+!     {
+! 	p = wold;
+! 	for (i = 0; wold[i] != NUL; ++i)
+! 	    if ((wold[i] == '/' || wold[i] == '\\' || wold[i] == ':')
+! 		    && wold[i + 1] != 0)
+! 		p = wold + i + 1;
+! 	if ((int)(wold + i - p) < 8 || p[6] != '~')
+! 	    return (MoveFileW(wold, wnew) == 0);
+!     }
+  
+      if (GetFullPathNameW(wnew, _MAX_PATH, szNewPath, &p) == 0 || p == NULL)
+  	return -1;
+--- 5970,5982 ----
+      WCHAR	szNewPath[_MAX_PATH + 1];
+      HANDLE	hf;
+  
+!     p = wold;
+!     for (i = 0; wold[i] != NUL; ++i)
+! 	if ((wold[i] == '/' || wold[i] == '\\' || wold[i] == ':')
+! 		&& wold[i + 1] != 0)
+! 	    p = wold + i + 1;
+!     if ((int)(wold + i - p) < 8 || p[6] != '~')
+! 	return (MoveFileW(wold, wnew) == 0);
+  
+      if (GetFullPathNameW(wnew, _MAX_PATH, szNewPath, &p) == 0 || p == NULL)
+  	return -1;
+***************
+*** 6363,6384 ****
+  	    retval = mch_wrename(wold, wnew);
+  	vim_free(wold);
+  	vim_free(wnew);
+! 	if (retval == 0 || GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+! 	    return retval;
+! 	/* Retry with non-wide function (for Windows 98). */
+      }
+  #endif
+  
+      /*
+!      * No need to play tricks if not running Windows 95, unless the file name
+!      * contains a "~" as the seventh character.
+       */
+!     if (!mch_windows95())
+!     {
+! 	pszFilePart = (char *)gettail((char_u *)pszOldFile);
+! 	if (STRLEN(pszFilePart) < 8 || pszFilePart[6] != '~')
+! 	    return rename(pszOldFile, pszNewFile);
+!     }
+  
+      /* Get base path of new file name.  Undocumented feature: If pszNewFile is
+       * a directory, no error is returned and pszFilePart will be NULL. */
+--- 6054,6070 ----
+  	    retval = mch_wrename(wold, wnew);
+  	vim_free(wold);
+  	vim_free(wnew);
+! 	return retval;
+      }
+  #endif
+  
+      /*
+!      * No need to play tricks unless the file name contains a "~" as the
+!      * seventh character.
+       */
+!     pszFilePart = (char *)gettail((char_u *)pszOldFile);
+!     if (STRLEN(pszFilePart) < 8 || pszFilePart[6] != '~')
+! 	return rename(pszOldFile, pszNewFile);
+  
+      /* Get base path of new file name.  Undocumented feature: If pszNewFile is
+       * a directory, no error is returned and pszFilePart will be NULL. */
+***************
+*** 6441,6456 ****
+      char *
+  default_shell(void)
+  {
+-     char* psz = NULL;
+- 
+      PlatformId();
+  
+!     if (g_PlatformId == VER_PLATFORM_WIN32_NT)		/* Windows NT */
+! 	psz = "cmd.exe";
+!     else if (g_PlatformId == VER_PLATFORM_WIN32_WINDOWS) /* Windows 95 */
+! 	psz = "command.com";
+! 
+!     return psz;
+  }
+  
+  /*
+--- 6127,6135 ----
+      char *
+  default_shell(void)
+  {
+      PlatformId();
+  
+!     return "cmd.exe";
+  }
+  
+  /*
+***************
+*** 6496,6513 ****
+  
+  		hFile = FindFirstFileW(TempNameW, &d);
+  		if (hFile == INVALID_HANDLE_VALUE)
+! 		{
+! 		    if (GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+! 			goto getout;
+! 
+! 		    /* Retry with non-wide function (for Windows 98). */
+! 		    vim_free(wn);
+! 		    wn = NULL;
+! 		}
+  		else
+  		    (void)FindClose(hFile);
+  	    }
+! 	    if (wn == NULL)
+  #endif
+  	    {
+  		char		    *pch;
+--- 6175,6185 ----
+  
+  		hFile = FindFirstFileW(TempNameW, &d);
+  		if (hFile == INVALID_HANDLE_VALUE)
+! 		    goto getout;
+  		else
+  		    (void)FindClose(hFile);
+  	    }
+! 	    else
+  #endif
+  	    {
+  		char		    *pch;
+***************
+*** 6537,6554 ****
+  	    if (wn != NULL)
+  	    {
+  		if (!GetTempFileNameW(wn, L"VIM", 0, TempNameW))
+! 		{
+! 		    if (GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+! 			goto getout;
+! 
+! 		    /* Retry with non-wide function (for Windows 98). */
+! 		    vim_free(wn);
+! 		    wn = NULL;
+! 		}
+  		else
+  		    DeleteFileW(TempNameW);
+  	    }
+! 	    if (wn == NULL)
+  #endif
+  	    {
+  		if (!GetTempFileName(n, "VIM", 0, TempName))
+--- 6209,6219 ----
+  	    if (wn != NULL)
+  	    {
+  		if (!GetTempFileNameW(wn, L"VIM", 0, TempNameW))
+! 		    goto getout;
+  		else
+  		    DeleteFileW(TempNameW);
+  	    }
+! 	    else
+  #endif
+  	    {
+  		if (!GetTempFileName(n, "VIM", 0, TempName))
+***************
+*** 6565,6581 ****
+  		| ((p & R_OK) ? GENERIC_READ : 0);
+  #ifdef FEAT_MBYTE
+  	if (wn != NULL)
+- 	{
+  	    hFile = CreateFileW(wn, am, 0, NULL, OPEN_EXISTING, 0, NULL);
+! 	    if (hFile == INVALID_HANDLE_VALUE
+! 			      && GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+! 	    {
+! 		/* Retry with non-wide function (for Windows 98). */
+! 		vim_free(wn);
+! 		wn = NULL;
+! 	    }
+! 	}
+! 	if (wn == NULL)
+  #endif
+  	    hFile = CreateFile(n, am, 0, NULL, OPEN_EXISTING, 0, NULL);
+  	if (hFile == INVALID_HANDLE_VALUE)
+--- 6230,6237 ----
+  		| ((p & R_OK) ? GENERIC_READ : 0);
+  #ifdef FEAT_MBYTE
+  	if (wn != NULL)
+  	    hFile = CreateFileW(wn, am, 0, NULL, OPEN_EXISTING, 0, NULL);
+! 	else
+  #endif
+  	    hFile = CreateFile(n, am, 0, NULL, OPEN_EXISTING, 0, NULL);
+  	if (hFile == INVALID_HANDLE_VALUE)
+***************
+*** 6610,6620 ****
+  	{
+  	    f = _wopen(wn, flags, mode);
+  	    vim_free(wn);
+! 	    if (f >= 0 || g_PlatformId == VER_PLATFORM_WIN32_NT)
+! 		return f;
+! 	    /* Retry with non-wide function (for Windows 98). Can't use
+! 	     * GetLastError() here and it's unclear what errno gets set to if
+! 	     * the _wopen() fails for missing wide functions. */
+  	}
+      }
+  # endif
+--- 6266,6272 ----
+  	{
+  	    f = _wopen(wn, flags, mode);
+  	    vim_free(wn);
+! 	    return f;
+  	}
+      }
+  # endif
+***************
+*** 6638,6649 ****
+      WCHAR	*wn, *wm;
+      FILE	*f = NULL;
+  
+!     if (enc_codepage >= 0 && (int)GetACP() != enc_codepage
+! # ifdef __BORLANDC__
+! 	    /* Wide functions of Borland C 5.5 do not work on Windows 98. */
+! 	    && g_PlatformId == VER_PLATFORM_WIN32_NT
+! # endif
+!        )
+      {
+  # if defined(DEBUG) && _MSC_VER >= 1400
+  	/* Work around an annoying assertion in the Microsoft debug CRT
+--- 6290,6296 ----
+      WCHAR	*wn, *wm;
+      FILE	*f = NULL;
+  
+!     if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
+      {
+  # if defined(DEBUG) && _MSC_VER >= 1400
+  	/* Work around an annoying assertion in the Microsoft debug CRT
+***************
+*** 6667,6678 ****
+  # if defined(DEBUG) && _MSC_VER >= 1400
+  	_set_fmode(oldMode);
+  # endif
+! 
+! 	if (f != NULL || g_PlatformId == VER_PLATFORM_WIN32_NT)
+! 	    return f;
+! 	/* Retry with non-wide function (for Windows 98). Can't use
+! 	 * GetLastError() here and it's unclear what errno gets set to if
+! 	 * the _wfopen() fails for missing wide functions. */
+      }
+  
+      /* fopen() can open a file which name is longer than _MAX_PATH bytes
+--- 6314,6320 ----
+  # if defined(DEBUG) && _MSC_VER >= 1400
+  	_set_fmode(oldMode);
+  # endif
+! 	return f;
+      }
+  
+      /* fopen() can open a file which name is longer than _MAX_PATH bytes
+***************
+*** 6843,6850 ****
+  #ifdef FEAT_MBYTE
+      /* File streams only work on Windows NT and later. */
+      PlatformId();
+!     if (g_PlatformId == VER_PLATFORM_WIN32_NT)
+! 	copy_infostreams(from, to);
+  #endif
+      return 0;
+  }
+--- 6485,6491 ----
+  #ifdef FEAT_MBYTE
+      /* File streams only work on Windows NT and later. */
+      PlatformId();
+!     copy_infostreams(from, to);
+  #endif
+      return 0;
+  }
+***************
+*** 6856,6862 ****
+   */
+  
+  /* These magic numbers are from the MS header files */
+- #define MIN_STACK_WIN9X 17
+  #define MIN_STACK_WINNT 2
+  
+  /*
+--- 6497,6502 ----
+***************
+*** 6876,6885 ****
+      DWORD	nPageSize;
+      DWORD	dummy;
+  
+-     /* This code will not work on win32s. */
+      PlatformId();
+-     if (g_PlatformId == VER_PLATFORM_WIN32s)
+- 	return 0;
+  
+      /* We need to know the system page size. */
+      GetSystemInfo(&si);
+--- 6516,6522 ----
+***************
+*** 6895,6923 ****
+  
+      /* ...and the page thats min_stack_req pages away from stack base; this is
+       * the lowest page we could use. */
+!     pLowestPossiblePage = pStackBase + ((g_PlatformId == VER_PLATFORM_WIN32_NT)
+! 			     ? MIN_STACK_WINNT : MIN_STACK_WIN9X) * nPageSize;
+  
+-     /* On Win95, we want the next page down from the end of the stack. */
+-     if (g_PlatformId == VER_PLATFORM_WIN32_WINDOWS)
+      {
+! 	/* Find the page that's only 1 page down from the page that the stack
+! 	 * ptr is in. */
+! 	pGuardPage = (BYTE*)((DWORD)nPageSize * (((DWORD)pStackPtr
+! 						    / (DWORD)nPageSize) - 1));
+! 	if (pGuardPage < pLowestPossiblePage)
+! 	    return 0;
+! 
+! 	/* Apply the noaccess attribute to the page -- there's no guard
+! 	 * attribute in win95-type OSes. */
+! 	if (!VirtualProtect(pGuardPage, nPageSize, PAGE_NOACCESS, &dummy))
+! 	    return 0;
+!     }
+!     else
+!     {
+! 	/* On NT, however, we want the first committed page in the stack Start
+! 	 * at the stack base and move forward through memory until we find a
+! 	 * committed block. */
+  	BYTE *pBlock = pStackBase;
+  
+  	for (;;)
+--- 6532,6543 ----
+  
+      /* ...and the page thats min_stack_req pages away from stack base; this is
+       * the lowest page we could use. */
+!     pLowestPossiblePage = pStackBase + MIN_STACK_WINNT * nPageSize;
+  
+      {
+! 	/* We want the first committed page in the stack Start at the stack
+! 	 * base and move forward through memory until we find a committed block.
+! 	 */
+  	BYTE *pBlock = pStackBase;
+  
+  	for (;;)
+*** ../vim-8.0.0028/src/os_win32.h	2016-08-29 22:42:20.000000000 +0200
+--- src/os_win32.h	2016-10-12 14:00:10.242811549 +0200
+***************
+*** 210,229 ****
+  # define vim_mkdir(x, y) mch_mkdir(x)
+  #endif
+  
+- #ifndef PROTO
+- 
+  /* Enable common dialogs input unicode from IME if possible. */
+  #ifdef FEAT_MBYTE
+!     /* The variables are defined in os_win32.c. */
+! extern LRESULT (WINAPI *pDispatchMessage)(CONST MSG *);
+! extern BOOL (WINAPI *pGetMessage)(LPMSG, HWND, UINT, UINT);
+! extern BOOL (WINAPI *pIsDialogMessage)(HWND, LPMSG);
+! extern BOOL (WINAPI *pPeekMessage)(LPMSG, HWND, UINT, UINT, UINT);
+  #else
+  # define pDispatchMessage DispatchMessage
+  # define pGetMessage GetMessage
+  # define pIsDialogMessage IsDialogMessage
+  # define pPeekMessage PeekMessage
+  #endif
+- 
+- #endif /* PROTO */
+--- 210,224 ----
+  # define vim_mkdir(x, y) mch_mkdir(x)
+  #endif
+  
+  /* Enable common dialogs input unicode from IME if possible. */
+  #ifdef FEAT_MBYTE
+! # define pDispatchMessage DispatchMessageW
+! # define pGetMessage GetMessageW
+! # define pIsDialogMessage IsDialogMessageW
+! # define pPeekMessage PeekMessageW
+  #else
+  # define pDispatchMessage DispatchMessage
+  # define pGetMessage GetMessage
+  # define pIsDialogMessage IsDialogMessage
+  # define pPeekMessage PeekMessage
+  #endif
+*** ../vim-8.0.0028/src/proto/os_mswin.pro	2016-09-12 13:04:30.000000000 +0200
+--- src/proto/os_mswin.pro	2016-10-12 14:00:10.242811549 +0200
+***************
+*** 19,25 ****
+  int mch_has_exp_wildcard(char_u *p);
+  int mch_has_wildcard(char_u *p);
+  int mch_chdir(char *path);
+- int can_end_termcap_mode(int give_msg);
+  int mch_screenmode(char_u *arg);
+  int mch_icon_load(HANDLE *iconp);
+  int mch_libcall(char_u *libname, char_u *funcname, char_u *argstring, int argint, char_u **string_result, int *number_result);
+--- 19,24 ----
+*** ../vim-8.0.0028/src/proto/os_win32.pro	2016-09-29 15:18:51.359768012 +0200
+--- src/proto/os_win32.pro	2016-10-12 14:00:10.242811549 +0200
+***************
+*** 3,9 ****
+  int dyn_libintl_init(void);
+  void dyn_libintl_end(void);
+  void PlatformId(void);
+- int mch_windows95(void);
+  void mch_setmouse(int on);
+  void mch_update_cursor(void);
+  int mch_char_avail(void);
+--- 3,8 ----
+*** ../vim-8.0.0028/src/version.c	2016-10-12 12:13:30.488344697 +0200
+--- src/version.c	2016-10-12 14:02:29.605820741 +0200
+***************
+*** 962,976 ****
+      MSG(longVersion);
+  #ifdef WIN3264
+  # ifdef FEAT_GUI_W32
+! #  if defined(_MSC_VER) && (_MSC_VER <= 1010)
+!     /* Only MS VC 4.1 and earlier can do Win32s */
+!     MSG_PUTS(_("\nMS-Windows 16/32-bit GUI version"));
+! #  else
+! #   ifdef _WIN64
+      MSG_PUTS(_("\nMS-Windows 64-bit GUI version"));
+! #   else
+      MSG_PUTS(_("\nMS-Windows 32-bit GUI version"));
+- #   endif
+  #  endif
+  # ifdef FEAT_OLE
+      MSG_PUTS(_(" with OLE support"));
+--- 964,973 ----
+      MSG(longVersion);
+  #ifdef WIN3264
+  # ifdef FEAT_GUI_W32
+! #  ifdef _WIN64
+      MSG_PUTS(_("\nMS-Windows 64-bit GUI version"));
+! #  else
+      MSG_PUTS(_("\nMS-Windows 32-bit GUI version"));
+  #  endif
+  # ifdef FEAT_OLE
+      MSG_PUTS(_(" with OLE support"));
+***************
+*** 1332,1341 ****
+      blanklines = (int)Rows - ((sizeof(lines) / sizeof(char *)) - 1);
+      if (!p_cp)
+  	blanklines += 4;  /* add 4 for not showing "Vi compatible" message */
+- #if defined(WIN3264) && !defined(FEAT_GUI_W32)
+-     if (mch_windows95())
+- 	blanklines -= 3;  /* subtract 3 for showing "Windows 95" message */
+- #endif
+  
+  #ifdef FEAT_WINDOWS
+      /* Don't overwrite a statusline.  Depends on 'cmdheight'. */
+--- 1329,1334 ----
+***************
+*** 1384,1400 ****
+  		do_intro_line(row, (char_u *)_(p), i == 2, 0);
+  	    ++row;
+  	}
+- #if defined(WIN3264) && !defined(FEAT_GUI_W32)
+- 	if (mch_windows95())
+- 	{
+- 	    do_intro_line(++row,
+- 		    (char_u *)_("WARNING: Windows 95/98/ME detected"),
+- 							FALSE, hl_attr(HLF_E));
+- 	    do_intro_line(++row,
+- 		(char_u *)_("type  :help windows95<Enter>  for info on this"),
+- 								    FALSE, 0);
+- 	}
+- #endif
+      }
+  
+      /* Make the wait-return message appear just below the text. */
+--- 1377,1382 ----
+*** ../vim-8.0.0028/src/version.c	2016-10-12 12:13:30.488344697 +0200
+--- src/version.c	2016-10-12 14:02:29.605820741 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     29,
+  /**/
+
+-- 
+Lose weight, NEVER Diet again with
+                  The "Invisible Weight Loss Patch"
+						(spam e-mail)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,143 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0996
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0996
+Problem:    Mac: t_RS is echoed on the screne in Terminal.app.  Even though
+            $TERM is set to "xterm-256colors" it cannot handle this xterm
+            escape sequence.
+Solution:   Recognize Terminal.app from the termresponse and skip sending t_RS
+            if it looks like Terminal.app.
+Files:      src/term.c
+
+
+*** ../vim-8.0.0995/src/term.c	2017-08-24 20:21:11.778002961 +0200
+--- src/term.c	2017-08-26 15:10:30.928418061 +0200
+***************
+*** 1360,1365 ****
+--- 1360,1368 ----
+  static char_u	termleader[256 + 1];	    /* for check_termcode() */
+  #ifdef FEAT_TERMRESPONSE
+  static int	check_for_codes = FALSE;    /* check for key code response */
++ # ifdef MACOS
++ static int	is_terminal_app = FALSE;    /* recognized Terminal.app */
++ # endif
+  #endif
+  
+      static struct builtin_term *
+***************
+*** 3497,3504 ****
+      void
+  may_req_bg_color(void)
+  {
+-     int done = FALSE;
+- 
+      if (can_get_termresponse() && starting == 0)
+      {
+  	/* Only request background if t_RB is set and 'background' wasn't
+--- 3500,3505 ----
+***************
+*** 3510,3536 ****
+  	    LOG_TR("Sending BG request");
+  	    out_str(T_RBG);
+  	    rbg_status = STATUS_SENT;
+- 	    done = TRUE;
+- 	}
+  
+! 	/* Only request the cursor shape if t_SH and t_RS are set. */
+! 	if (rcm_status == STATUS_GET
+! 		&& *T_CSH != NUL
+! 		&& *T_CRS != NUL)
+! 	{
+! 	    LOG_TR("Sending cursor shape request");
+! 	    out_str(T_CRS);
+! 	    rcm_status = STATUS_SENT;
+! 	    done = TRUE;
+  	}
+      }
+-     if (done)
+-     {
+- 	/* check for the characters now, otherwise they might be eaten by
+- 	 * get_keystroke() */
+- 	out_flush();
+- 	(void)vpeekc_nomap();
+-     }
+  }
+  
+  # ifdef DEBUG_TERMRESPONSE
+--- 3511,3523 ----
+  	    LOG_TR("Sending BG request");
+  	    out_str(T_RBG);
+  	    rbg_status = STATUS_SENT;
+  
+! 	    /* check for the characters now, otherwise they might be eaten by
+! 	     * get_keystroke() */
+! 	    out_flush();
+! 	    (void)vpeekc_nomap();
+  	}
+      }
+  }
+  
+  # ifdef DEBUG_TERMRESPONSE
+***************
+*** 4531,4536 ****
+--- 4518,4550 ----
+  			    if (mch_getenv((char_u *)"COLORS") == NULL)
+  				may_adjust_color_count(256);
+  			}
++ 
++ #  ifdef MACOS
++ 			/* Mac Terminal.app sends 1;95;0 */
++ 			if (col == 95
++ 				&& STRNCMP(tp + extra - 2, ">1;95;0c", 9) == 0)
++ 			{
++ 			    /* Terminal.app sets $TERM to "xterm-256colors",
++ 			     * but it's not fully xterm compatible. */
++ 			    is_terminal_app = TRUE;
++ 			}
++ #  endif
++ 
++ 			/* Only request the cursor style if t_SH and t_RS are
++ 			 * set. Not for Terminal.app, it can't handle t_RS, it
++ 			 * echoes the characters to the screen. */
++ 			if (rcm_status == STATUS_GET
++ #  ifdef MACOS
++ 				&& !is_terminal_app
++ #  endif
++ 				&& *T_CSH != NUL
++ 				&& *T_CRS != NUL)
++ 			{
++ 			    LOG_TR("Sending cursor style request");
++ 			    out_str(T_CRS);
++ 			    rcm_status = STATUS_SENT;
++ 			    out_flush();
++ 			}
+  		    }
+  # ifdef FEAT_EVAL
+  		    set_vim_var_string(VV_TERMRESPONSE, tp, i + 1);
+*** ../vim-8.0.0995/src/version.c	2017-08-25 23:22:01.689645666 +0200
+--- src/version.c	2017-08-26 15:14:48.690780271 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     996,
+  /**/
+
+-- 
+Q: What is the difference between open-source and commercial software?
+A: If you have a problem with commercial software you can call a phone
+   number and they will tell you it might be solved in a future version.
+   For open-source software there isn't a phone number to call, but you
+   get the solution within a day.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

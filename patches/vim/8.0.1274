@@ -1,0 +1,148 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1274
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1274
+Problem:    setbufline() fails when using folding.
+Solution:   Set "curwin" if needed. (Ozaki Kiichi, closes #2293)
+Files:      src/evalfunc.c, src/testdir/test_bufline.vim
+
+
+*** ../vim-8.0.1273/src/evalfunc.c	2017-10-30 21:48:36.478732752 +0100
+--- src/evalfunc.c	2017-11-06 21:16:15.837096044 +0100
+***************
+*** 9891,9897 ****
+      listitem_T	*li = NULL;
+      long	added = 0;
+      linenr_T	lcount;
+!     buf_T	*curbuf_save;
+      int		is_curbuf = buf == curbuf;
+  
+      /* When using the current buffer ml_mfp will be set if needed.  Useful when
+--- 9891,9898 ----
+      listitem_T	*li = NULL;
+      long	added = 0;
+      linenr_T	lcount;
+!     buf_T	*curbuf_save = NULL;
+!     win_T	*curwin_save = NULL;
+      int		is_curbuf = buf == curbuf;
+  
+      /* When using the current buffer ml_mfp will be set if needed.  Useful when
+***************
+*** 9903,9910 ****
+  	return;
+      }
+  
+!     curbuf_save = curbuf;
+!     curbuf = buf;
+  
+      lcount = curbuf->b_ml.ml_line_count;
+  
+--- 9904,9925 ----
+  	return;
+      }
+  
+!     if (!is_curbuf)
+!     {
+! 	wininfo_T *wip;
+! 
+! 	curbuf_save = curbuf;
+! 	curwin_save = curwin;
+! 	curbuf = buf;
+! 	for (wip = buf->b_wininfo; wip != NULL; wip = wip->wi_next)
+! 	{
+! 	    if (wip->wi_win != NULL)
+! 	    {
+! 		curwin = wip->wi_win;
+! 		break;
+! 	    }
+! 	}
+!     }
+  
+      lcount = curbuf->b_ml.ml_line_count;
+  
+***************
+*** 9967,9973 ****
+      if (added > 0)
+  	appended_lines_mark(lcount, added);
+  
+!     curbuf = curbuf_save;
+  }
+  
+  /*
+--- 9982,9992 ----
+      if (added > 0)
+  	appended_lines_mark(lcount, added);
+  
+!     if (!is_curbuf)
+!     {
+! 	curbuf = curbuf_save;
+! 	curwin = curwin_save;
+!     }
+  }
+  
+  /*
+*** ../vim-8.0.1273/src/testdir/test_bufline.vim	2017-09-30 14:26:54.073993747 +0200
+--- src/testdir/test_bufline.vim	2017-11-06 21:26:52.798167453 +0100
+***************
+*** 27,32 ****
+--- 27,58 ----
+    exe "bwipe! " . b
+  endfunc
+  
++ func Test_setbufline_getbufline_fold()
++   split Xtest
++   setlocal foldmethod=expr foldexpr=0
++   let b = bufnr('%')
++   new
++   call assert_equal(0, setbufline(b, 1, ['foo', 'bar']))
++   call assert_equal(['foo'], getbufline(b, 1))
++   call assert_equal(['bar'], getbufline(b, 2))
++   call assert_equal(['foo', 'bar'], getbufline(b, 1, 2))
++   exe "bwipe!" b
++   bwipe!
++ endfunc
++ 
++ func Test_setbufline_getbufline_fold_tab()
++   split Xtest
++   setlocal foldmethod=expr foldexpr=0
++   let b = bufnr('%')
++   tab new
++   call assert_equal(0, setbufline(b, 1, ['foo', 'bar']))
++   call assert_equal(['foo'], getbufline(b, 1))
++   call assert_equal(['bar'], getbufline(b, 2))
++   call assert_equal(['foo', 'bar'], getbufline(b, 1, 2))
++   exe "bwipe!" b
++   bwipe!
++ endfunc
++ 
+  func Test_setline_startup()
+    let cmd = GetVimCommand('Xscript')
+    if cmd == ''
+*** ../vim-8.0.1273/src/version.c	2017-11-06 20:41:08.662226269 +0100
+--- src/version.c	2017-11-06 21:17:52.324714359 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1274,
+  /**/
+
+-- 
+(letter from Mark to Mike, about the film's probable certificate)
+      I would like to get back to the Censor and agree to lose the shits, take
+      the odd Jesus Christ out and lose Oh fuck off, but to retain 'fart in
+      your general direction', 'castanets of your testicles' and 'oral sex'
+      and ask him for an 'A' rating on that basis.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

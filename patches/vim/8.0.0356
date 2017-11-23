@@ -1,0 +1,46 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0356
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0356 (after 8.0.0342)
+Problem:    Leaking memory when setting 'ttytype'.
+Solution:   Get free_oldval from the right option entry.
+Files:      src/option.c
+
+
+*** ../vim-8.0.0355/src/option.c	2017-02-19 21:07:01.002386675 +0100
+--- src/option.c	2017-02-23 17:15:56.021286655 +0100
+***************
+*** 5936,5941 ****
+--- 5936,5942 ----
+  	    /* Both 'term' and 'ttytype' point to T_NAME, only set the
+  	     * P_ALLOCED flag on 'term'. */
+  	    opt_idx = findoption((char_u *)"term");
++ 	    free_oldval = (options[opt_idx].flags & P_ALLOCED);
+  	}
+      }
+  
+*** ../vim-8.0.0355/src/version.c	2017-02-23 17:07:10.312599693 +0100
+--- src/version.c	2017-02-23 17:17:47.756582472 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     356,
+  /**/
+
+-- 
+"How is your new girlfriend?"
+"90-60-90 man!"
+"What, pale purple?"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

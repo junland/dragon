@@ -1,0 +1,58 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0811
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0811
+Problem:    MS-Windows: test_expand_dllpath fails.
+Solution:   Change backslashes to forward slashes
+Files:      src/testdir/test_expand_dllpath.vim
+
+
+*** ../vim-8.0.0810/src/testdir/test_expand_dllpath.vim	2017-02-25 22:18:38.435667187 +0100
+--- src/testdir/test_expand_dllpath.vim	2017-07-30 13:45:28.553846296 +0200
+***************
+*** 6,12 ****
+      execute 'call assert_equal("' . $TEST_EXPAND_DLLPATH . '", &' . a:optname . ')' 
+  
+      execute 'set ' . a:optname . '=~' . $TEST_EXPAND_DLLPATH
+!     execute 'call assert_equal("' . $HOME . $TEST_EXPAND_DLLPATH . '", &' . a:optname . ')' 
+    finally
+      execute 'let &' . a:optname . ' = dllpath_save'
+      let $TEST_EXPAND_DLLPATH = ''
+--- 6,13 ----
+      execute 'call assert_equal("' . $TEST_EXPAND_DLLPATH . '", &' . a:optname . ')' 
+  
+      execute 'set ' . a:optname . '=~' . $TEST_EXPAND_DLLPATH
+!     let home = substitute($HOME, '\\', '/', 'g')
+!     execute 'call assert_equal("' . home . $TEST_EXPAND_DLLPATH . '", &' . a:optname . ')' 
+    finally
+      execute 'let &' . a:optname . ' = dllpath_save'
+      let $TEST_EXPAND_DLLPATH = ''
+*** ../vim-8.0.0810/src/version.c	2017-07-30 13:28:19.544983634 +0200
+--- src/version.c	2017-07-30 13:50:46.235643789 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     811,
+  /**/
+
+-- 
+E  M  A  C  S
+s  e  l  o  h
+c  t  t  n  i
+a  a     t  f
+p        r  t
+e        o
+         l
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

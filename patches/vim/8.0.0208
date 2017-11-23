@@ -1,0 +1,76 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0208
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0208
+Problem:    Internally used commands for CTRL-Z and mouse click end up in
+            history. (Matthew Malcomson)
+Solution:   Use do_cmdline_cmd() instead of stuffing them in the readahead
+            buffer. (James McCoy, closes #1395)
+Files:      src/edit.c, src/normal.c
+
+
+*** ../vim-8.0.0207/src/edit.c	2016-12-09 19:36:52.353659104 +0100
+--- src/edit.c	2017-01-20 21:47:17.828507538 +0100
+***************
+*** 1025,1031 ****
+  	case Ctrl_Z:	/* suspend when 'insertmode' set */
+  	    if (!p_im)
+  		goto normalchar;	/* insert CTRL-Z as normal char */
+! 	    stuffReadbuff((char_u *)":st\r");
+  	    c = Ctrl_O;
+  	    /*FALLTHROUGH*/
+  
+--- 1025,1031 ----
+  	case Ctrl_Z:	/* suspend when 'insertmode' set */
+  	    if (!p_im)
+  		goto normalchar;	/* insert CTRL-Z as normal char */
+! 	    do_cmdline_cmd((char_u *)"stop");
+  	    c = Ctrl_O;
+  	    /*FALLTHROUGH*/
+  
+*** ../vim-8.0.0207/src/normal.c	2017-01-14 14:28:26.960592303 +0100
+--- src/normal.c	2017-01-20 21:47:26.552449734 +0100
+***************
+*** 2982,2990 ****
+  	if (State & INSERT)
+  	    stuffcharReadbuff(Ctrl_O);
+  	if (curwin->w_llist_ref == NULL)	/* quickfix window */
+! 	    stuffReadbuff((char_u *)":.cc\n");
+  	else					/* location list window */
+! 	    stuffReadbuff((char_u *)":.ll\n");
+  	got_click = FALSE;		/* ignore drag&release now */
+      }
+  #endif
+--- 2982,2990 ----
+  	if (State & INSERT)
+  	    stuffcharReadbuff(Ctrl_O);
+  	if (curwin->w_llist_ref == NULL)	/* quickfix window */
+! 	    do_cmdline_cmd((char_u *)".cc");
+  	else					/* location list window */
+! 	    do_cmdline_cmd((char_u *)".ll");
+  	got_click = FALSE;		/* ignore drag&release now */
+      }
+  #endif
+*** ../vim-8.0.0207/src/version.c	2017-01-20 19:59:47.987380517 +0100
+--- src/version.c	2017-01-20 21:46:04.992990057 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     208,
+  /**/
+
+-- 
+Back up my hard drive?  I can't find the reverse switch!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

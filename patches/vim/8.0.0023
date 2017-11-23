@@ -1,0 +1,477 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0023
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0023
+Problem:    "gd" and "gD" may find a match in a comment or string.
+Solution:   Ignore matches in comments and strings. (Anton Lindqvist)
+Files:      src/normal.c, src/testdir/test_goto.vim
+
+
+*** ../vim-8.0.0022/src/normal.c	2016-09-11 16:52:37.000000000 +0200
+--- src/normal.c	2016-10-08 19:05:10.213933460 +0200
+***************
+*** 4240,4245 ****
+--- 4240,4291 ----
+  }
+  
+  /*
++  * Return TRUE if line[offset] is not inside a C-style comment or string, FALSE
++  * otherwise.
++  */
++     static int
++ is_ident(char_u *line, int offset)
++ {
++     int	i;
++     int	incomment = FALSE;
++     int	instring = 0;
++     int	prev = 0;
++ 
++     for (i = 0; i < offset && line[i] != NUL; i++)
++     {
++ 	if (instring != 0)
++ 	{
++ 	    if (prev != '\\' && line[i] == instring)
++ 		instring = 0;
++ 	}
++ 	else if ((line[i] == '"' || line[i] == '\'') && !incomment)
++ 	{
++ 	    instring = line[i];
++ 	}
++ 	else
++ 	{
++ 	    if (incomment)
++ 	    {
++ 		if (prev == '*' && line[i] == '/')
++ 		    incomment = FALSE;
++ 	    }
++ 	    else if (prev == '/' && line[i] == '*')
++ 	    {
++ 		incomment = TRUE;
++ 	    }
++ 	    else if (prev == '/' && line[i] == '/')
++ 	    {
++ 		return FALSE;
++ 	    }
++ 	}
++ 
++ 	prev = line[i];
++     }
++ 
++     return incomment == FALSE && instring == 0;
++ }
++ 
++ /*
+   * Search for variable declaration of "ptr[len]".
+   * When "locally" is TRUE in the current function ("gd"), otherwise in the
+   * current file ("gD").
+***************
+*** 4264,4269 ****
+--- 4310,4316 ----
+      int		retval = OK;
+      int		incll;
+      int		searchflags = flags_arg;
++     int		valid;
+  
+      if ((pat = alloc(len + 7)) == NULL)
+  	return FAIL;
+***************
+*** 4301,4306 ****
+--- 4348,4354 ----
+      clearpos(&found_pos);
+      for (;;)
+      {
++ 	valid = FALSE;
+  	t = searchit(curwin, curbuf, &curwin->w_cursor, FORWARD,
+  			    pat, 1L, searchflags, RE_LAST, (linenr_T)0, NULL);
+  	if (curwin->w_cursor.lnum >= old_pos.lnum)
+***************
+*** 4337,4345 ****
+  	    continue;
+  	}
+  #endif
+! 	if (!locally)	/* global search: use first match found */
+  	    break;
+! 	if (curwin->w_cursor.lnum >= par_pos.lnum)
+  	{
+  	    /* If we previously found a valid position, use it. */
+  	    if (found_pos.lnum != 0)
+--- 4385,4404 ----
+  	    continue;
+  	}
+  #endif
+! 	valid = is_ident(ml_get_curline(), curwin->w_cursor.col);
+! 
+! 	/* If the current position is not a valid identifier and a previous
+! 	 * match is present, favor that one instead. */
+! 	if (!valid && found_pos.lnum != 0)
+! 	{
+! 	    curwin->w_cursor = found_pos;
+  	    break;
+! 	}
+! 
+! 	/* Global search: use first valid match found */
+! 	if (valid && !locally)
+! 	    break;
+! 	if (valid && curwin->w_cursor.lnum >= par_pos.lnum)
+  	{
+  	    /* If we previously found a valid position, use it. */
+  	    if (found_pos.lnum != 0)
+***************
+*** 4347,4357 ****
+  	    break;
+  	}
+  
+! 	/* For finding a local variable and the match is before the "{" search
+! 	 * to find a later match.  For K&R style function declarations this
+! 	 * skips the function header without types.  Remove SEARCH_START from
+! 	 * flags to avoid getting stuck at one position. */
+! 	found_pos = curwin->w_cursor;
+  	searchflags &= ~SEARCH_START;
+      }
+  
+--- 4406,4425 ----
+  	    break;
+  	}
+  
+! 	/* For finding a local variable and the match is before the "{" or
+! 	 * inside a comment, continue searching.  For K&R style function
+! 	 * declarations this skips the function header without types. */
+! 	if (!valid)
+! 	{
+! 	    /* Braces needed due to macro expansion of clearpos. */
+! 	    clearpos(&found_pos);
+! 	}
+! 	else
+! 	{
+! 	    found_pos = curwin->w_cursor;
+! 	}
+! 	/* Remove SEARCH_START from flags to avoid getting stuck at one
+! 	 * position. */
+  	searchflags &= ~SEARCH_START;
+      }
+  
+*** ../vim-8.0.0022/src/testdir/test_goto.vim	2016-06-15 21:58:47.000000000 +0200
+--- src/testdir/test_goto.vim	2016-10-08 19:20:00.495818284 +0200
+***************
+*** 1,20 ****
+  " Test commands that jump somewhere.
+  
+! func Test_geeDEE()
+    new
+!   call setline(1, ["Filename x;", "", "int Filename", "int func() {", "Filename y;"])
+!   /y;/
+!   normal gD
+!   call assert_equal(1, line('.'))
+    quit!
+  endfunc
+  
+! func Test_gee_dee()
+!   new
+!   call setline(1, ["int x;", "", "int func(int x)", "{", "  return x;", "}"])
+!   /return/
+!   normal $hgd
+!   call assert_equal(3, line('.'))
+!   call assert_equal(14, col('.'))
+!   quit!
+  endfunc
+--- 1,275 ----
+  " Test commands that jump somewhere.
+  
+! " Create a new buffer using "lines" and place the cursor on the word after the
+! " first occurrence of return and invoke "cmd". The cursor should now be
+! " positioned at the given line and col.
+! func XTest_goto_decl(cmd, lines, line, col)
+    new
+!   call setline(1, a:lines)
+!   /return/
+!   normal! W
+!   execute 'norm! ' . a:cmd
+!   call assert_equal(a:line, line('.'))
+!   call assert_equal(a:col, col('.'))
+    quit!
+  endfunc
+  
+! func Test_gD()
+!   let lines = [
+!     \ 'int x;',
+!     \ '',
+!     \ 'int func(void)',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gD', lines, 1, 5)
+! endfunc
+! 
+! func Test_gD_too()
+!   let lines = [
+! 	\ 'Filename x;',
+! 	\ '',
+! 	\ 'int Filename',
+! 	\ 'int func() {',
+! 	\ '  Filename x;',
+! 	\ '  return x;',
+! 	\ ]
+!   call XTest_goto_decl('gD', lines, 1, 10)
+! endfunc
+! 
+! func Test_gD_comment()
+!   let lines = [
+!     \ '/* int x; */',
+!     \ 'int x;',
+!     \ '',
+!     \ 'int func(void)',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gD', lines, 2, 5)
+! endfunc
+! 
+! func Test_gD_inline_comment()
+!   let lines = [
+!     \ 'int y /* , x */;',
+!     \ 'int x;',
+!     \ '',
+!     \ 'int func(void)',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gD', lines, 2, 5)
+! endfunc
+! 
+! func Test_gD_string()
+!   let lines = [
+!     \ 'char *s[] = "x";',
+!     \ 'int x = 1;',
+!     \ '',
+!     \ 'int func(void)',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gD', lines, 2, 5)
+! endfunc
+! 
+! func Test_gD_string_same_line()
+!   let lines = [
+!     \ 'char *s[] = "x", int x = 1;',
+!     \ '',
+!     \ 'int func(void)',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gD', lines, 1, 22)
+! endfunc
+! 
+! func Test_gD_char()
+!   let lines = [
+!     \ "char c = 'x';",
+!     \ 'int x = 1;',
+!     \ '',
+!     \ 'int func(void)',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gD', lines, 2, 5)
+! endfunc
+! 
+! func Test_gd()
+!   let lines = [
+!     \ 'int x;',
+!     \ '',
+!     \ 'int func(int x)',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gd', lines, 3, 14)
+! endfunc
+! 
+! func Test_gd_not_local()
+!   let lines = [
+!     \ 'int func1(void)',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ '',
+!     \ 'int func2(int x)',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gd', lines, 3, 10)
+! endfunc
+! 
+! func Test_gd_kr_style()
+!   let lines = [
+!     \ 'int func(x)',
+!     \ '  int x;',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gd', lines, 2, 7)
+! endfunc
+! 
+! func Test_gd_missing_braces()
+!   let lines = [
+!     \ 'def func1(a)',
+!     \ '  a + 1',
+!     \ 'end',
+!     \ '',
+!     \ 'a = 1',
+!     \ '',
+!     \ 'def func2()',
+!     \ '  return a',
+!     \ 'end',
+!     \ ]
+!   call XTest_goto_decl('gd', lines, 1, 11)
+! endfunc
+! 
+! func Test_gd_comment()
+!   let lines = [
+!     \ 'int func(void)',
+!     \ '{',
+!     \ '  /* int x; */',
+!     \ '  int x;',
+!     \ '  return x;',
+!     \ '}',
+!     \]
+!   call XTest_goto_decl('gd', lines, 4, 7)
+! endfunc
+! 
+! func Test_gd_comment_in_string()
+!   let lines = [
+!     \ 'int func(void)',
+!     \ '{',
+!     \ '  char *s ="//"; int x;',
+!     \ '  int x;',
+!     \ '  return x;',
+!     \ '}',
+!     \]
+!   call XTest_goto_decl('gd', lines, 3, 22)
+! endfunc
+! 
+! func Test_gd_string_in_comment()
+!   set comments=
+!   let lines = [
+!     \ 'int func(void)',
+!     \ '{',
+!     \ '  /* " */ int x;',
+!     \ '  int x;',
+!     \ '  return x;',
+!     \ '}',
+!     \]
+!   call XTest_goto_decl('gd', lines, 3, 15)
+!   set comments&
+! endfunc
+! 
+! func Test_gd_inline_comment()
+!   let lines = [
+!     \ 'int func(/* x is an int */ int x)',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gd', lines, 1, 32)
+! endfunc
+! 
+! func Test_gd_inline_comment_only()
+!   let lines = [
+!     \ 'int func(void) /* one lonely x */',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gd', lines, 3, 10)
+! endfunc
+! 
+! func Test_gd_inline_comment_body()
+!   let lines = [
+!     \ 'int func(void)',
+!     \ '{',
+!     \ '  int y /* , x */;',
+!     \ '',
+!     \ '  for (/* int x = 0 */; y < 2; y++);',
+!     \ '',
+!     \ '  int x = 0;',
+!     \ '',
+!     \ '  return x;',
+!     \ '}',
+!   \ ]
+!   call XTest_goto_decl('gd', lines, 7, 7)
+! endfunc
+! 
+! func Test_gd_trailing_multiline_comment()
+!   let lines = [
+!     \ 'int func(int x) /* x is an int */',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gd', lines, 1, 14)
+! endfunc
+! 
+! func Test_gd_trailing_comment()
+!   let lines = [
+!     \ 'int func(int x) // x is an int',
+!     \ '{',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gd', lines, 1, 14)
+! endfunc
+! 
+! func Test_gd_string()
+!   let lines = [
+!     \ 'int func(void)',
+!     \ '{',
+!     \ '  char *s = "x";',
+!     \ '  int x = 1;',
+!     \ '',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gd', lines, 4, 7)
+! endfunc
+! 
+! func Test_gd_string_only()
+!   let lines = [
+!     \ 'int func(void)',
+!     \ '{',
+!     \ '  char *s = "x";',
+!     \ '',
+!     \ '  return x;',
+!     \ '}',
+!     \ ]
+!   call XTest_goto_decl('gd', lines, 5, 10)
+  endfunc
+*** ../vim-8.0.0022/src/version.c	2016-10-03 21:37:37.619829811 +0200
+--- src/version.c	2016-10-08 19:20:57.867423971 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     23,
+  /**/
+
+-- 
+Two cows are standing together in a field.  One asks the other:
+"So what do you think about this Mad Cow Disease?"
+The other replies: "That doesn't concern me. I'm a helicopter."
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

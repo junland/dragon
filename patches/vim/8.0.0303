@@ -1,0 +1,189 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0303
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0303
+Problem:    Bracketed paste does not work in Visual mode.
+Solution:   Delete the text before pasting
+Files:      src/normal.c, src/ops.c, src/proto/ops.pro,
+            src/testdir/test_paste.vim
+
+
+*** ../vim-8.0.0302/src/normal.c	2017-02-02 22:20:49.279397163 +0100
+--- src/normal.c	2017-02-04 21:34:10.217657460 +0100
+***************
+*** 9050,9055 ****
+--- 9050,9083 ----
+  	    /* drop the pasted text */
+  	    bracketed_paste(PASTE_INSERT, TRUE, NULL);
+      }
++     else if (cap->cmdchar == K_PS && VIsual_active)
++     {
++ 	pos_T old_pos = curwin->w_cursor;
++ 	pos_T old_visual = VIsual;
++ 
++ 	/* In Visual mode the selected text is deleted. */
++ 	if (VIsual_mode == 'V' || curwin->w_cursor.lnum != VIsual.lnum)
++ 	{
++ 	    shift_delete_registers();
++ 	    cap->oap->regname = '1';
++ 	}
++ 	else
++ 	    cap->oap->regname = '-';
++ 	cap->cmdchar = 'd';
++ 	cap->nchar = NUL;
++ 	nv_operator(cap);
++ 	do_pending_operator(cap, 0, FALSE);
++ 	cap->cmdchar = K_PS;
++ 
++ 	/* When the last char in the line was deleted then append. Detect this
++ 	 * by checking if the cursor moved to before the Visual area. */
++ 	if (*ml_get_cursor() != NUL && lt(curwin->w_cursor, old_pos)
++ 					   && lt(curwin->w_cursor, old_visual))
++ 	    inc_cursor();
++ 
++ 	/* Insert to replace the deleted text with the pasted text. */
++ 	invoke_edit(cap, FALSE, cap->cmdchar, FALSE);
++     }
+      else if (!checkclearopq(cap->oap))
+      {
+  	switch (cap->cmdchar)
+***************
+*** 9079,9086 ****
+  		    beginline(BL_WHITE|BL_FIX);
+  		break;
+  
+! 	    case K_PS:	/* Bracketed paste works like "a"ppend, unless the
+! 			   cursor is in the first column, then it inserts. */
+  		if (curwin->w_cursor.col == 0)
+  		    break;
+  		/*FALLTHROUGH*/
+--- 9107,9115 ----
+  		    beginline(BL_WHITE|BL_FIX);
+  		break;
+  
+! 	    case K_PS:
+! 		/* Bracketed paste works like "a"ppend, unless the cursor is in
+! 		 * the first column, then it inserts. */
+  		if (curwin->w_cursor.col == 0)
+  		    break;
+  		/*FALLTHROUGH*/
+*** ../vim-8.0.0302/src/ops.c	2017-02-01 21:50:16.740465816 +0100
+--- src/ops.c	2017-02-04 21:25:35.429506524 +0100
+***************
+*** 1628,1633 ****
+--- 1628,1649 ----
+  #endif
+  
+  /*
++  * Shift the delete registers: "9 is cleared, "8 becomes "9, etc.
++  */
++     void
++ shift_delete_registers()
++ {
++     int		n;
++ 
++     y_current = &y_regs[9];
++     free_yank_all();			/* free register nine */
++     for (n = 9; n > 1; --n)
++ 	y_regs[n] = y_regs[n - 1];
++     y_previous = y_current = &y_regs[1];
++     y_regs[1].y_array = NULL;		/* set register one to empty */
++ }
++ 
++ /*
+   * Handle a delete operation.
+   *
+   * Return FAIL if undo failed, OK otherwise.
+***************
+*** 1739,1750 ****
+  	if (orig_regname != 0 || oap->motion_type == MLINE
+  				   || oap->line_count > 1 || oap->use_reg_one)
+  	{
+! 	    y_current = &y_regs[9];
+! 	    free_yank_all();			/* free register nine */
+! 	    for (n = 9; n > 1; --n)
+! 		y_regs[n] = y_regs[n - 1];
+! 	    y_previous = y_current = &y_regs[1];
+! 	    y_regs[1].y_array = NULL;		/* set register one to empty */
+  	    if (op_yank(oap, TRUE, FALSE) == OK)
+  		did_yank = TRUE;
+  	}
+--- 1755,1761 ----
+  	if (orig_regname != 0 || oap->motion_type == MLINE
+  				   || oap->line_count > 1 || oap->use_reg_one)
+  	{
+! 	    shift_delete_registers();
+  	    if (op_yank(oap, TRUE, FALSE) == OK)
+  		did_yank = TRUE;
+  	}
+*** ../vim-8.0.0302/src/proto/ops.pro	2016-09-12 13:04:14.000000000 +0200
+--- src/proto/ops.pro	2017-02-04 21:22:36.134848374 +0100
+***************
+*** 23,28 ****
+--- 23,29 ----
+  int get_spec_reg(int regname, char_u **argp, int *allocated, int errmsg);
+  int cmdline_paste_reg(int regname, int literally, int remcr);
+  void adjust_clip_reg(int *rp);
++ void shift_delete_registers(void);
+  int op_delete(oparg_T *oap);
+  int op_replace(oparg_T *oap, int c);
+  void op_tilde(oparg_T *oap);
+*** ../vim-8.0.0302/src/testdir/test_paste.vim	2017-02-02 22:20:49.279397163 +0100
+--- src/testdir/test_paste.vim	2017-02-04 21:28:07.952365566 +0100
+***************
+*** 70,72 ****
+--- 70,99 ----
+    call feedkeys(":a\<Esc>[200~foo\<CR>bar\<Esc>[201~b\<Home>\"\<CR>", 'xt')
+    call assert_equal("\"afoo\<CR>barb", getreg(':'))
+  endfunc
++ 
++ func Test_paste_visual_mode()
++   new
++   call setline(1, 'here are some words')
++   call feedkeys("0fsve\<Esc>[200~more\<Esc>[201~", 'xt')
++   call assert_equal('here are more words', getline(1))
++   call assert_equal('some', getreg('-'))
++ 
++   " include last char in the line
++   call feedkeys("0fwve\<Esc>[200~noises\<Esc>[201~", 'xt')
++   call assert_equal('here are more noises', getline(1))
++   call assert_equal('words', getreg('-'))
++ 
++   " exclude last char in the line
++   call setline(1, 'some words!')
++   call feedkeys("0fwve\<Esc>[200~noises\<Esc>[201~", 'xt')
++   call assert_equal('some noises!', getline(1))
++   call assert_equal('words', getreg('-'))
++ 
++   " multi-line selection
++   call setline(1, ['some words', 'and more'])
++   call feedkeys("0fwvj0fd\<Esc>[200~letters\<Esc>[201~", 'xt')
++   call assert_equal('some letters more', getline(1))
++   call assert_equal("words\nand", getreg('1'))
++ 
++   bwipe!
++ endfunc
+*** ../vim-8.0.0302/src/version.c	2017-02-04 19:49:10.940502929 +0100
+--- src/version.c	2017-02-04 21:33:07.130128890 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     303,
+  /**/
+
+-- 
+Why don't cannibals eat clowns?
+Because they taste funny.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,53 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1251
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1251 (after 8.0.1249)
+Problem:    Invalid expressin passed to WaitFor().
+Solution:   Check if the variable exists.
+Files:      src/testdir/test_clientserver.vim
+
+
+*** ../vim-8.0.1250/src/testdir/test_clientserver.vim	2017-09-09 18:10:56.707952547 +0200
+--- src/testdir/test_clientserver.vim	2017-11-02 19:21:01.249117090 +0100
+***************
+*** 42,48 ****
+    call remote_foreground(name)
+  
+    call remote_send(name, ":let testvar = 'yes'\<CR>")
+!   call WaitFor('remote_expr("' . name . '", "testvar", "", 1) == "yes"')
+    call assert_equal('yes', remote_expr(name, "testvar", "", 2))
+  
+    if has('unix') && has('gui') && !has('gui_running')
+--- 42,48 ----
+    call remote_foreground(name)
+  
+    call remote_send(name, ":let testvar = 'yes'\<CR>")
+!   call WaitFor('remote_expr("' . name . '", "exists(\"testvar\") ? testvar : \"\"", "", 1) == "yes"')
+    call assert_equal('yes', remote_expr(name, "testvar", "", 2))
+  
+    if has('unix') && has('gui') && !has('gui_running')
+*** ../vim-8.0.1250/src/version.c	2017-11-02 19:08:39.741514601 +0100
+--- src/version.c	2017-11-02 19:22:25.148619482 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1251,
+  /**/
+
+-- 
+If an elephant is left tied to a parking meter, the parking fee has to be paid
+just as it would for a vehicle.
+		[real standing law in Florida, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

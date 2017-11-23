@@ -1,0 +1,121 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1217
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1217
+Problem:    Can't use remote eval to inspect vars in debug mode.
+Solution:   Don't discard the call stack in debug mode. (closes #2237, #2247)
+Files:      src/globals.h, src/ex_cmds2.c, src/main.c
+
+
+*** ../vim-8.0.1216/src/globals.h	2017-10-04 18:04:09.397665211 +0200
+--- src/globals.h	2017-10-26 14:17:56.144460038 +0200
+***************
+*** 922,930 ****
+--- 922,934 ----
+   * "Visual_mode"    When State is NORMAL or INSERT.
+   * "finish_op"	    When State is NORMAL, after typing the operator and before
+   *		    typing the motion command.
++  * "debug_mode"	    Debug mode.
+   */
+  EXTERN int	State INIT(= NORMAL);	/* This is the current state of the
+  					 * command interpreter. */
++ #ifdef FEAT_EVAL
++ EXTERN int	debug_mode INIT(= FALSE);
++ #endif
+  
+  EXTERN int	finish_op INIT(= FALSE);/* TRUE while an operator is pending */
+  EXTERN long	opcount INIT(= 0);	/* count for pending operator */
+*** ../vim-8.0.1216/src/ex_cmds2.c	2017-10-19 21:04:33.473886033 +0200
+--- src/ex_cmds2.c	2017-10-26 14:19:33.187794981 +0200
+***************
+*** 131,136 ****
+--- 131,137 ----
+      redir_off = TRUE;		/* don't redirect debug commands */
+  
+      State = NORMAL;
++     debug_mode = TRUE;
+  
+      if (!debug_did_msg)
+  	MSG(_("Entering Debug mode.  Type \"cont\" to continue."));
+***************
+*** 319,324 ****
+--- 320,326 ----
+      msg_scroll = save_msg_scroll;
+      lines_left = Rows - 1;
+      State = save_State;
++     debug_mode = FALSE;
+      did_emsg = save_did_emsg;
+      cmd_silent = save_cmd_silent;
+      msg_silent = save_msg_silent;
+*** ../vim-8.0.1216/src/main.c	2017-10-24 21:49:32.230837763 +0200
+--- src/main.c	2017-10-26 14:20:53.799242582 +0200
+***************
+*** 4180,4190 ****
+      char_u	*res;
+      int		save_dbl = debug_break_level;
+      int		save_ro = redir_off;
+!     void	*fc;
+  
+      /* Evaluate the expression at the toplevel, don't use variables local to
+!      * the calling function. */
+!     fc = clear_current_funccal();
+  
+       /* Disable debugging, otherwise Vim hangs, waiting for "cont" to be
+        * typed. */
+--- 4180,4191 ----
+      char_u	*res;
+      int		save_dbl = debug_break_level;
+      int		save_ro = redir_off;
+!     void	*fc = NULL;
+  
+      /* Evaluate the expression at the toplevel, don't use variables local to
+!      * the calling function. Except when in debug mode. */
+!     if (!debug_mode)
+! 	fc = clear_current_funccal();
+  
+       /* Disable debugging, otherwise Vim hangs, waiting for "cont" to be
+        * typed. */
+***************
+*** 4201,4207 ****
+      --emsg_silent;
+      if (emsg_silent < 0)
+  	emsg_silent = 0;
+!     restore_current_funccal(fc);
+  
+      /* A client can tell us to redraw, but not to display the cursor, so do
+       * that here. */
+--- 4202,4209 ----
+      --emsg_silent;
+      if (emsg_silent < 0)
+  	emsg_silent = 0;
+!     if (fc != NULL)
+! 	restore_current_funccal(fc);
+  
+      /* A client can tell us to redraw, but not to display the cursor, so do
+       * that here. */
+*** ../vim-8.0.1216/src/version.c	2017-10-24 22:32:56.205116305 +0200
+--- src/version.c	2017-10-26 14:19:01.700010766 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1217,
+  /**/
+
+-- 
+CRONE:  Who sent you?
+ARTHUR: The Knights Who Say Ni!
+CRONE:  Aaaagh!  (she looks around in rear) No!  We have no shrubberies here.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

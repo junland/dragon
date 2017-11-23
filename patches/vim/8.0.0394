@@ -1,0 +1,191 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0394
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0394
+Problem:    Tabs are not aligned when scrolling horizontally and a Tab doesn't
+            fit. (Axel Bender)
+Solution:   Handle a Tab as a not fitting character. (Christian Brabandt)
+            Also fix that ":redraw" does not scroll horizontally to show the
+            cursor.  And fix the test that depended on the old behavior.
+Files:      src/screen.c, src/ex_docmd.c, src/testdir/test_listlbr.vim,
+            src/testdir/test_listlbr_utf8.vim,
+            src/testdir/test_breakindent.vim
+
+
+*** ../vim-8.0.0393/src/screen.c	2017-02-27 21:11:29.988530382 +0100
+--- src/screen.c	2017-03-01 18:03:28.751547298 +0100
+***************
+*** 3429,3438 ****
+  #else
+  	    --ptr;
+  #endif
+  #ifdef FEAT_MBYTE
+!            /* character fits on the screen, don't need to skip it */
+!            if ((*mb_ptr2cells)(ptr) >= c && col == 0)
+  #endif
+  	       n_skip = v - vcol;
+  	}
+  
+--- 3429,3441 ----
+  #else
+  	    --ptr;
+  #endif
++ 	    /* If the character fits on the screen, don't need to skip it.
++ 	     * Except for a TAB. */
++ 	    if ((
+  #ifdef FEAT_MBYTE
+! 			(*mb_ptr2cells)(ptr) >= c ||
+  #endif
++ 		       *ptr == TAB) && col == 0)
+  	       n_skip = v - vcol;
+  	}
+  
+*** ../vim-8.0.0393/src/ex_docmd.c	2017-02-25 14:59:29.906090427 +0100
+--- src/ex_docmd.c	2017-03-01 17:32:27.037653167 +0100
+***************
+*** 9812,9817 ****
+--- 9812,9818 ----
+  
+      RedrawingDisabled = 0;
+      p_lz = FALSE;
++     validate_cursor();
+      update_topline();
+      update_screen(eap->forceit ? CLEAR : VIsual_active ? INVERTED : 0);
+  #ifdef FEAT_TITLE
+*** ../vim-8.0.0393/src/testdir/test_listlbr.vim	2017-02-05 21:14:26.743355267 +0100
+--- src/testdir/test_listlbr.vim	2017-03-01 17:12:54.318105910 +0100
+***************
+*** 217,219 ****
+--- 217,235 ----
+    call s:compare_lines(expect, lines)
+    call s:close_windows()
+  endfunc
++ 
++ func Test_list_with_tab_and_skipping_first_chars()
++   call s:test_windows('setl list listchars=tab:>- ts=70 nowrap')
++   call setline(1, ["iiiiiiiiiiiiiiii\taaaaaaaaaaaaaaaaaa", "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii\taaaaaaaaaaaaaaaaaa", "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii\taaaaaaaaaaaaaaaaaa", "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii\taaaaaaaaaaaaaaaaaa"])
++   call cursor(4,64)
++   norm! 2zl
++   let lines = s:screen_lines([1, 4], winwidth(0))
++   let expect = [
++ \ "---------------aaaaa",
++ \ "---------------aaaaa",
++ \ "---------------aaaaa",
++ \ "iiiiiiiii>-----aaaaa",
++ \ ]
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfu
+*** ../vim-8.0.0393/src/testdir/test_listlbr_utf8.vim	2017-02-26 19:40:55.869921651 +0100
+--- src/testdir/test_listlbr_utf8.vim	2017-03-01 17:23:12.433679374 +0100
+***************
+*** 220,222 ****
+--- 220,256 ----
+    call s:compare_lines(expect, lines)
+    call s:close_windows('setl brk&vim')
+  endfunc
++ 
++ func Test_chinese_char_on_wrap_column()
++   call s:test_windows("setl nolbr wrap sbr=")
++   syntax off
++   call setline(1, [
++ \ 'aaaaaaaaaaaaaaaaaaa中'.
++ \ 'aaaaaaaaaaaaaaaaa中'.
++ \ 'aaaaaaaaaaaaaaaaa中'.
++ \ 'aaaaaaaaaaaaaaaaa中'.
++ \ 'aaaaaaaaaaaaaaaaa中'.
++ \ 'aaaaaaaaaaaaaaaaa中'.
++ \ 'aaaaaaaaaaaaaaaaa中'.
++ \ 'aaaaaaaaaaaaaaaaa中'.
++ \ 'aaaaaaaaaaaaaaaaa中'.
++ \ 'aaaaaaaaaaaaaaaaa中'.
++ \ 'hello'])
++   call cursor(1,1)
++   norm! $
++   redraw!
++   let expect=[
++ \ '中aaaaaaaaaaaaaaaaa>',
++ \ '中aaaaaaaaaaaaaaaaa>',
++ \ '中aaaaaaaaaaaaaaaaa>',
++ \ '中aaaaaaaaaaaaaaaaa>',
++ \ '中aaaaaaaaaaaaaaaaa>',
++ \ '中aaaaaaaaaaaaaaaaa>',
++ \ '中aaaaaaaaaaaaaaaaa>',
++ \ '中aaaaaaaaaaaaaaaaa>',
++ \ '中aaaaaaaaaaaaaaaaa>',
++ \ '中hello             ']
++   let lines = s:screen_lines([1, 10], winwidth(0))
++   call s:compare_lines(expect, lines)
++   call s:close_windows()
++ endfu
+*** ../vim-8.0.0393/src/testdir/test_breakindent.vim	2017-02-05 21:14:26.743355267 +0100
+--- src/testdir/test_breakindent.vim	2017-03-01 17:42:25.897230778 +0100
+***************
+*** 274,280 ****
+  
+  function Test_breakindent16()
+    " Check that overlong lines are indented correctly.
+-   " TODO: currently it does not fail even when the bug is not fixed.
+    let s:input=""
+    call s:test_windows('setl breakindent briopt=min:0 ts=4')
+    call setline(1, "\t".repeat("1234567890", 10))
+--- 274,279 ----
+***************
+*** 283,298 ****
+    redraw!
+    let lines=s:screen_lines(1,10)
+    let expect=[
+- \ "    123456",
+  \ "    789012",
+  \ "    345678",
+  \ ]
+    call s:compare_lines(expect, lines)
+    let lines=s:screen_lines(4,10)
+    let expect=[
+- \ "    901234",
+  \ "    567890",
+  \ "    123456",
+  \ ]
+    call s:compare_lines(expect, lines)
+    call s:close_windows()
+--- 282,297 ----
+    redraw!
+    let lines=s:screen_lines(1,10)
+    let expect=[
+  \ "    789012",
+  \ "    345678",
++ \ "    901234",
+  \ ]
+    call s:compare_lines(expect, lines)
+    let lines=s:screen_lines(4,10)
+    let expect=[
+  \ "    567890",
+  \ "    123456",
++ \ "    7890  ",
+  \ ]
+    call s:compare_lines(expect, lines)
+    call s:close_windows()
+*** ../vim-8.0.0393/src/version.c	2017-03-01 15:45:01.410957865 +0100
+--- src/version.c	2017-03-01 17:23:52.709388031 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     394,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+34. You laugh at people with a 10 Mbit connection.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

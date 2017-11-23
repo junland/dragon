@@ -1,0 +1,544 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0059
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0059
+Problem:    Vim does not build on VMS systems.
+Solution:   Various changes for VMS. (Zoltan Arpadffy)
+Files:      src/json.c, src/macros.h, src/Make_vms.mms, src/os_unix.c,
+            src/os_unix.h, src/os_vms.c, src/os_vms_conf.h,
+            src/proto/os_vms.pro, src/testdir/Make_vms.mms
+
+
+*** ../vim-8.0.0058/src/json.c	2016-10-21 20:35:32.632943225 +0200
+--- src/json.c	2016-11-04 20:12:47.107346775 +0100
+***************
+*** 16,21 ****
+--- 16,25 ----
+  
+  #include "vim.h"
+  
++ #ifdef VAX
++ # undef FEAT_FLOAT // VAX does not handle well the Infinities
++ #endif
++ 
+  #if defined(FEAT_EVAL) || defined(PROTO)
+  
+  static int json_encode_item(garray_T *gap, typval_T *val, int copyID, int options);
+*** ../vim-8.0.0058/src/macros.h	2016-08-29 22:42:20.000000000 +0200
+--- src/macros.h	2016-11-04 20:13:34.310988154 +0100
+***************
+*** 177,182 ****
+--- 177,183 ----
+  # define mch_fstat(n, p)	fstat(vms_fixfilename(n), (p))
+  	/* VMS does not have lstat() */
+  # define mch_stat(n, p)		stat(vms_fixfilename(n), (p))
++ # define mch_rmdir(n)		rmdir(vms_fixfilename(n))
+  #else
+  # ifndef WIN32
+  #   define mch_access(n, p)	access((n), (p))
+*** ../vim-8.0.0058/src/Make_vms.mms	2016-07-02 19:59:17.000000000 +0200
+--- src/Make_vms.mms	2016-11-04 20:18:44.880628815 +0100
+***************
+*** 2,8 ****
+  # Makefile for Vim on OpenVMS
+  #
+  # Maintainer:   Zoltan Arpadffy <arpadffy@polarhome.com>
+! # Last change:  2016 Jul 02
+  #
+  # This has script been tested on VMS 6.2 to 8.2 on DEC Alpha, VAX and IA64
+  # with MMS and MMK
+--- 2,8 ----
+  # Makefile for Vim on OpenVMS
+  #
+  # Maintainer:   Zoltan Arpadffy <arpadffy@polarhome.com>
+! # Last change:  2016 Nov 04
+  #
+  # This has script been tested on VMS 6.2 to 8.2 on DEC Alpha, VAX and IA64
+  # with MMS and MMK
+***************
+*** 38,44 ****
+  # GUI or terminal mode executable.
+  # Comment out if you want just the character terminal mode only.
+  # GUI with Motif
+! # GUI = YES
+  
+  # GUI with GTK
+  # If you have GTK installed you might want to enable this option.
+--- 38,44 ----
+  # GUI or terminal mode executable.
+  # Comment out if you want just the character terminal mode only.
+  # GUI with Motif
+! GUI = YES
+  
+  # GUI with GTK
+  # If you have GTK installed you might want to enable this option.
+***************
+*** 299,320 ****
+  ALL_LIBS = $(LIBS) $(GUI_LIB_DIR) $(GUI_LIB) \
+  	   $(PERL_LIB) $(PYTHON_LIB) $(TCL_LIB) $(RUBY_LIB)
+  
+! SRC =	arabic.c blowfish.c buffer.c charset.c crypt.c, crypt_zip.c diff.c digraph.c edit.c eval.c ex_cmds.c ex_cmds2.c \
+! 	ex_docmd.c ex_eval.c ex_getln.c if_xcmdsrv.c farsi.c fileio.c fold.c getchar.c \
+! 	hardcopy.c hashtab.c json.c main.c mark.c menu.c mbyte.c memfile.c memline.c message.c misc1.c \
+  	misc2.c move.c normal.c ops.c option.c popupmnu.c quickfix.c regexp.c search.c sha256.c\
+! 	spell.c syntax.c tag.c term.c termlib.c ui.c undo.c version.c screen.c \
+  	window.c os_unix.c os_vms.c pathdef.c \
+  	$(GUI_SRC) $(PERL_SRC) $(PYTHON_SRC) $(TCL_SRC) \
+  	$(RUBY_SRC) $(HANGULIN_SRC) $(MZSCH_SRC)
+  
+! OBJ =	arabic.obj blowfish.obj buffer.obj charset.obj crypt.obj, crypt_zip.obj diff.obj digraph.obj edit.obj eval.obj \
+! 	ex_cmds.obj ex_cmds2.obj ex_docmd.obj ex_eval.obj ex_getln.obj \
+! 	if_xcmdsrv.obj farsi.obj fileio.obj fold.obj getchar.obj hardcopy.obj hashtab.obj json.obj main.obj mark.obj \
+  	menu.obj memfile.obj memline.obj message.obj misc1.obj misc2.obj \
+  	move.obj mbyte.obj normal.obj ops.obj option.obj popupmnu.obj quickfix.obj \
+! 	regexp.obj search.obj sha256.obj spell.obj syntax.obj tag.obj term.obj termlib.obj \
+! 	ui.obj undo.obj screen.obj version.obj window.obj os_unix.obj \
+  	os_vms.obj pathdef.obj if_mzsch.obj\
+  	$(GUI_OBJ) $(PERL_OBJ) $(PYTHON_OBJ) $(TCL_OBJ) \
+  	$(RUBY_OBJ) $(HANGULIN_OBJ) $(MZSCH_OBJ)
+--- 299,320 ----
+  ALL_LIBS = $(LIBS) $(GUI_LIB_DIR) $(GUI_LIB) \
+  	   $(PERL_LIB) $(PYTHON_LIB) $(TCL_LIB) $(RUBY_LIB)
+  
+! SRC =	arabic.c blowfish.c buffer.c charset.c crypt.c crypt_zip.c dict.c diff.c digraph.c edit.c eval.c evalfunc.c \
+! 	ex_cmds.c ex_cmds2.c ex_docmd.c ex_eval.c ex_getln.c if_cscope.c if_xcmdsrv.c farsi.c fileio.c fold.c getchar.c \
+! 	hardcopy.c hashtab.c json.c list.c main.c mark.c menu.c mbyte.c memfile.c memline.c message.c misc1.c \
+  	misc2.c move.c normal.c ops.c option.c popupmnu.c quickfix.c regexp.c search.c sha256.c\
+! 	spell.c spellfile.c syntax.c tag.c term.c termlib.c ui.c undo.c userfunc.c version.c screen.c \
+  	window.c os_unix.c os_vms.c pathdef.c \
+  	$(GUI_SRC) $(PERL_SRC) $(PYTHON_SRC) $(TCL_SRC) \
+  	$(RUBY_SRC) $(HANGULIN_SRC) $(MZSCH_SRC)
+  
+! OBJ = 	arabic.obj blowfish.obj buffer.obj charset.obj crypt.obj crypt_zip.obj dict.obj diff.obj digraph.obj edit.obj eval.obj \
+! 	evalfunc.obj ex_cmds.obj ex_cmds2.obj ex_docmd.obj ex_eval.obj ex_getln.obj if_cscope.obj \
+! 	if_xcmdsrv.obj farsi.obj fileio.obj fold.obj getchar.obj hardcopy.obj hashtab.obj json.obj list.obj main.obj mark.obj \
+  	menu.obj memfile.obj memline.obj message.obj misc1.obj misc2.obj \
+  	move.obj mbyte.obj normal.obj ops.obj option.obj popupmnu.obj quickfix.obj \
+! 	regexp.obj search.obj sha256.obj spell.obj spellfile.obj syntax.obj tag.obj term.obj termlib.obj \
+! 	ui.obj undo.obj userfunc.obj screen.obj version.obj window.obj os_unix.obj \
+  	os_vms.obj pathdef.obj if_mzsch.obj\
+  	$(GUI_OBJ) $(PERL_OBJ) $(PYTHON_OBJ) $(TCL_OBJ) \
+  	$(RUBY_OBJ) $(HANGULIN_OBJ) $(MZSCH_OBJ)
+***************
+*** 496,501 ****
+--- 496,513 ----
+   ascii.h keymap.h term.h macros.h structs.h regexp.h \
+   gui.h gui_beval.h [.proto]gui_beval.pro option.h ex_cmds.h proto.h \
+   globals.h farsi.h arabic.h
++ crypt.obj : crypt.c vim.h [.auto]config.h feature.h os_unix.h \
++  ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
++  gui_beval.h [.proto]gui_beval.pro alloc.h ex_cmds.h spell.h proto.h \
++  globals.h farsi.h arabic.h
++ crypt_zip.obj : crypt_zip.c vim.h [.auto]config.h feature.h os_unix.h \
++  ascii.h keymap.h term.h macros.h option.h structs.h \
++  regexp.h gui.h gui_beval.h [.proto]gui_beval.pro alloc.h ex_cmds.h spell.h \
++  proto.h globals.h farsi.h arabic.h
++ dict.obj : dict.c vim.h [.auto]config.h feature.h os_unix.h \
++  ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
++  gui_beval.h [.proto]gui_beval.pro alloc.h ex_cmds.h spell.h proto.h \
++  globals.h farsi.h arabic.h
+  diff.obj : diff.c vim.h [.auto]config.h feature.h os_unix.h   \
+   ascii.h keymap.h term.h macros.h structs.h regexp.h gui.h gui_beval.h \
+   [.proto]gui_beval.pro option.h ex_cmds.h proto.h globals.h farsi.h \
+***************
+*** 512,517 ****
+--- 524,533 ----
+   ascii.h keymap.h term.h macros.h structs.h regexp.h gui.h gui_beval.h \
+   [.proto]gui_beval.pro option.h ex_cmds.h proto.h globals.h farsi.h \
+   arabic.h version.h
++ evalfunc.obj : evalfunc.c vim.h [.auto]config.h feature.h os_unix.h \
++  ascii.h keymap.h term.h macros.h option.h structs.h \
++  regexp.h gui.h gui_beval.h [.proto]gui_beval.pro alloc.h ex_cmds.h spell.h \
++  proto.h globals.h farsi.h arabic.h version.h
+  ex_cmds.obj : ex_cmds.c vim.h [.auto]config.h feature.h os_unix.h \
+   ascii.h keymap.h term.h macros.h structs.h regexp.h \
+   gui.h gui_beval.h [.proto]gui_beval.pro option.h ex_cmds.h proto.h \
+***************
+*** 569,574 ****
+--- 585,594 ----
+   ascii.h keymap.h term.h macros.h structs.h regexp.h gui.h gui_beval.h \
+   [.proto]gui_beval.pro option.h ex_cmds.h proto.h globals.h farsi.h \
+   arabic.h version.h
++ list.obj : list.c vim.h [.auto]config.h feature.h os_unix.h \
++  ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
++  gui_beval.h [.proto]gui_beval.pro alloc.h ex_cmds.h spell.h proto.h \
++  globals.h farsi.h arabic.h
+  main.obj : main.c vim.h [.auto]config.h feature.h os_unix.h   \
+   ascii.h keymap.h term.h macros.h structs.h regexp.h gui.h gui_beval.h \
+   [.proto]gui_beval.pro option.h ex_cmds.h proto.h globals.h farsi.h \
+***************
+*** 653,662 ****
+--- 673,690 ----
+   ascii.h keymap.h term.h macros.h structs.h regexp.h \
+   gui.h gui_beval.h [.proto]gui_beval.pro option.h ex_cmds.h proto.h \
+   globals.h farsi.h arabic.h
++ sha256.obj : sha256.c vim.h [.auto]config.h feature.h os_unix.h \
++  ascii.h keymap.h term.h macros.h option.h structs.h regexp.h gui.h \
++  gui_beval.h [.proto]gui_beval.pro alloc.h ex_cmds.h spell.h proto.h \
++  globals.h farsi.h arabic.h
+  spell.obj : spell.c vim.h [.auto]config.h feature.h os_unix.h \
+   ascii.h keymap.h term.h macros.h structs.h regexp.h \
+   gui.h gui_beval.h [.proto]gui_beval.pro option.h ex_cmds.h proto.h \
+   globals.h farsi.h arabic.h
++ spellfile.obj : spellfile.c vim.h [.auto]config.h feature.h os_unix.h \
++  ascii.h keymap.h term.h macros.h option.h structs.h \
++  regexp.h gui.h gui_beval.h [.proto]gui_beval.pro alloc.h ex_cmds.h spell.h \
++  proto.h globals.h farsi.h arabic.h
+  syntax.obj : syntax.c vim.h [.auto]config.h feature.h os_unix.h \
+   ascii.h keymap.h term.h macros.h structs.h regexp.h \
+   gui.h gui_beval.h [.proto]gui_beval.pro option.h ex_cmds.h proto.h \
+***************
+*** 681,686 ****
+--- 709,718 ----
+   ascii.h keymap.h term.h macros.h structs.h regexp.h gui.h gui_beval.h \
+   [.proto]gui_beval.pro option.h ex_cmds.h proto.h globals.h farsi.h \
+   arabic.h
++ userfunc.obj : userfunc.c vim.h [.auto]config.h feature.h os_unix.h \
++  ascii.h keymap.h term.h macros.h option.h structs.h \
++  regexp.h gui.h gui_beval.h [.proto]gui_beval.pro alloc.h ex_cmds.h spell.h \
++  proto.h globals.h farsi.h arabic.h
+  version.obj : version.c vim.h [.auto]config.h feature.h os_unix.h \
+   ascii.h keymap.h term.h macros.h structs.h regexp.h \
+   gui.h gui_beval.h [.proto]gui_beval.pro option.h ex_cmds.h proto.h \
+*** ../vim-8.0.0058/src/os_unix.c	2016-10-30 21:57:48.074395566 +0100
+--- src/os_unix.c	2016-11-04 20:21:15.359474394 +0100
+***************
+*** 501,507 ****
+  	/* no character available */
+  #if !(defined(HAVE_GETTIMEOFDAY) && defined(HAVE_SYS_TIME_H))
+  	/* estimate the elapsed time */
+! 	elapsed += wait_time;
+  #endif
+  
+  	if (do_resize	    /* interrupted by SIGWINCH signal */
+--- 501,507 ----
+  	/* no character available */
+  #if !(defined(HAVE_GETTIMEOFDAY) && defined(HAVE_SYS_TIME_H))
+  	/* estimate the elapsed time */
+! 	elapsed_time += wait_time;
+  #endif
+  
+  	if (do_resize	    /* interrupted by SIGWINCH signal */
+***************
+*** 2644,2650 ****
+      DIR		*dirp;
+      struct dirent *dp;
+  
+!     if (lstat((char *)name, &st) >= 0)
+      {
+  	/* Open the directory where the file is located. */
+  	slash = vim_strrchr(name, '/');
+--- 2644,2650 ----
+      DIR		*dirp;
+      struct dirent *dp;
+  
+!     if (mch_lstat((char *)name, &st) >= 0)
+      {
+  	/* Open the directory where the file is located. */
+  	slash = vim_strrchr(name, '/');
+***************
+*** 2677,2683 ****
+  		    vim_strncpy(newname, name, MAXPATHL);
+  		    vim_strncpy(newname + (tail - name), (char_u *)dp->d_name,
+  						    MAXPATHL - (tail - name));
+! 		    if (lstat((char *)newname, &st2) >= 0
+  			    && st.st_ino == st2.st_ino
+  			    && st.st_dev == st2.st_dev)
+  		    {
+--- 2677,2683 ----
+  		    vim_strncpy(newname, name, MAXPATHL);
+  		    vim_strncpy(newname + (tail - name), (char_u *)dp->d_name,
+  						    MAXPATHL - (tail - name));
+! 		    if (mch_lstat((char *)newname, &st2) >= 0
+  			    && st.st_ino == st2.st_ino
+  			    && st.st_dev == st2.st_dev)
+  		    {
+***************
+*** 3040,3046 ****
+  
+      if (*name == NUL)	    /* Some stat()s don't flag "" as an error. */
+  	return FALSE;
+!     if (lstat((char *)name, &statb))
+  	return FALSE;
+  #ifdef _POSIX_SOURCE
+      return (S_ISDIR(statb.st_mode) ? TRUE : FALSE);
+--- 3040,3046 ----
+  
+      if (*name == NUL)	    /* Some stat()s don't flag "" as an error. */
+  	return FALSE;
+!     if (mch_lstat((char *)name, &statb))
+  	return FALSE;
+  #ifdef _POSIX_SOURCE
+      return (S_ISDIR(statb.st_mode) ? TRUE : FALSE);
+***************
+*** 4098,4103 ****
+--- 4098,4104 ----
+      int		tmode = cur_tmode;
+  #ifdef USE_SYSTEM	/* use system() to start the shell: simple but slow */
+      char_u	*newcmd;	/* only needed for unix */
++     int		x;
+  
+      out_flush();
+  
+*** ../vim-8.0.0058/src/os_unix.h	2016-08-29 22:42:20.000000000 +0200
+--- src/os_unix.h	2016-11-04 20:11:03.284135575 +0100
+***************
+*** 75,84 ****
+  # ifdef VMS
+  #  define mch_remove(x) delete((char *)(x))
+  #  define vim_mkdir(x, y) mkdir((char *)(x), y)
+- #  ifdef VAX
+- #  else
+- #   define mch_rmdir(x) rmdir((char *)(x))
+- #  endif
+  # else
+  #  define vim_mkdir(x, y) mkdir((char *)(x), y)
+  #  define mch_rmdir(x) rmdir((char *)(x))
+--- 75,80 ----
+*** ../vim-8.0.0058/src/os_vms.c	2016-08-29 22:42:20.000000000 +0200
+--- src/os_vms.c	2016-11-04 20:22:07.923071226 +0100
+***************
+*** 726,732 ****
+  RealWaitForChar(
+      int		fd UNUSED, /* always read from iochan */
+      long	msec,
+!     int		*check_for_gpm UNUSED)
+  {
+      int status;
+      struct _generic_64 time_curr;
+--- 726,733 ----
+  RealWaitForChar(
+      int		fd UNUSED, /* always read from iochan */
+      long	msec,
+!     int		*check_for_gpm UNUSED,
+!     int		*interrupted)
+  {
+      int status;
+      struct _generic_64 time_curr;
+*** ../vim-8.0.0058/src/os_vms_conf.h	2016-01-30 21:37:24.000000000 +0100
+--- src/os_vms_conf.h	2016-11-04 20:23:23.210493858 +0100
+***************
+*** 141,146 ****
+--- 141,147 ----
+  #undef	HAVE_SYS_POLL_H
+  #undef	HAVE_PWD_H
+  #undef  HAVE_FCHDIR
++ #undef  HAVE_LSTAT
+  
+  /* Hardware specific */
+  #ifdef  VAX
+***************
+*** 148,160 ****
+  #undef  HAVE_USLEEP
+  #undef  HAVE_STRCASECMP
+  #undef  HAVE_STRINGS_H
+! #undef	HAVE_SIGSETJMP
+  #else
+  #define HAVE_GETTIMEOFDAY
+  #define HAVE_USLEEP
+  #define HAVE_STRCASECMP
+  #define HAVE_STRINGS_H
+! #define	HAVE_SIGSETJMP
+  #endif
+  
+  /* Compiler specific */
+--- 149,163 ----
+  #undef  HAVE_USLEEP
+  #undef  HAVE_STRCASECMP
+  #undef  HAVE_STRINGS_H
+! #undef  HAVE_SIGSETJMP
+! #undef  HAVE_ISNAN
+  #else
+  #define HAVE_GETTIMEOFDAY
+  #define HAVE_USLEEP
+  #define HAVE_STRCASECMP
+  #define HAVE_STRINGS_H
+! #define HAVE_SIGSETJMP
+! #define HAVE_ISNAN
+  #endif
+  
+  /* Compiler specific */
+*** ../vim-8.0.0058/src/proto/os_vms.pro	2016-09-12 13:04:31.000000000 +0200
+--- src/proto/os_vms.pro	2016-11-04 20:11:03.284135575 +0100
+***************
+*** 12,16 ****
+  int mch_expandpath(garray_T *gap, char_u *path, int flags);
+  void *vms_fixfilename(void *instring);
+  void vms_remove_version(void *fname);
+! int RealWaitForChar(int fd, long msec, int *check_for_gpm);
+  /* vim: set ft=c : */
+--- 12,16 ----
+  int mch_expandpath(garray_T *gap, char_u *path, int flags);
+  void *vms_fixfilename(void *instring);
+  void vms_remove_version(void *fname);
+! int RealWaitForChar(int fd, long msec, int *check_for_gpm, int *interrupted);
+  /* vim: set ft=c : */
+*** ../vim-8.0.0058/src/testdir/Make_vms.mms	2016-08-04 20:03:47.000000000 +0200
+--- src/testdir/Make_vms.mms	2016-11-04 20:26:17.725155965 +0100
+***************
+*** 4,10 ****
+  # Authors:	Zoltan Arpadffy, <arpadffy@polarhome.com>
+  #		Sandor Kopanyi,  <sandor.kopanyi@mailbox.hu>
+  #
+! # Last change:  2016 Aug 04
+  #
+  # This has been tested on VMS 6.2 to 8.3 on DEC Alpha, VAX and IA64.
+  # Edit the lines in the Configuration section below to select.
+--- 4,10 ----
+  # Authors:	Zoltan Arpadffy, <arpadffy@polarhome.com>
+  #		Sandor Kopanyi,  <sandor.kopanyi@mailbox.hu>
+  #
+! # Last change:  2016 Nov 04
+  #
+  # This has been tested on VMS 6.2 to 8.3 on DEC Alpha, VAX and IA64.
+  # Edit the lines in the Configuration section below to select.
+***************
+*** 74,87 ****
+  
+  VIMPROG = <->vim.exe
+  
+- default : all
+- 
+- # This probably doesn't work, please fix.
+- .INCLUDE Make_all.mak
+- 
+  .SUFFIXES : .out .in
+  
+! SCRIPT = $(SCRIPTS_ALL) $(SCRIPTS_MORE3)
+  
+  # Known problems:
+  # test17: ?
+--- 74,118 ----
+  
+  VIMPROG = <->vim.exe
+  
+  .SUFFIXES : .out .in
+  
+! SCRIPT = test1.out  test3.out  test4.out  test5.out  \
+!        test7.out  test8.out  test9.out  \
+!        test14.out test15.out \
+!        test19.out test20.out test22.out \
+!        test23.out test24.out test26.out \
+!        test28.out test29.out test30.out test31.out test32.out \
+!        test33.out test34.out test36.out test37.out \
+!        test38.out test39.out test40.out test41.out test42.out \
+!        test43.out test44.out test45.out \
+!        test48.out test49.out test51.out test53.out test54.out \
+!        test55.out test56.out test57.out test60.out \
+!        test64.out test65.out \
+!        test66.out test67.out test68.out test69.out \
+!        test72.out test75.out \
+!        test77a.out test78.out test79.out test80.out \
+!        test82.out test84.out test88.out test89.out \
+!        test90.out test91.out test92.out test93.out test94.out \
+!        test95.out test98.out test99.out \
+!        test103.out test104.out \
+!        test107.out test108.out\
+!        test_autocmd_option.out \
+!        test_autoformat_join.out \
+!        test_breakindent.out \
+!        test_changelist.out \
+!        test_close_count.out \
+!        test_comparators.out \
+!        test_erasebackword.out \
+!        test_eval.out \
+!        test_fixeol.out \
+!        test_getcwd.out \
+!        test_insertcount.out \
+!        test_listchars.out \
+!        test_listlbr.out \
+!        test_listlbr_utf8.out \
+!        test_search_mbyte.out \
+!        test_utf8.out \
+!        test_wordcount.out
+  
+  # Known problems:
+  # test17: ?
+***************
+*** 104,115 ****
+  # On ODS-2 tests fail. 
+  
+  .IFDEF WANT_GUI
+! SCRIPT_GUI = 
+  GUI_OPTION = -g
+  .ENDIF
+  
+  .IFDEF WANT_UNIX
+! SCRIPT_UNIX = test12.out test17.out test25.out test27.out test49.out test73.out
+  .ENDIF
+  
+  .IFDEF WANT_WIN
+--- 135,146 ----
+  # On ODS-2 tests fail. 
+  
+  .IFDEF WANT_GUI
+! SCRIPT_GUI = test16.out
+  GUI_OPTION = -g
+  .ENDIF
+  
+  .IFDEF WANT_UNIX
+! SCRIPT_UNIX = test10.out test12.out test17.out test25.out test27.out test49.out test73.out
+  .ENDIF
+  
+  .IFDEF WANT_WIN
+***************
+*** 163,169 ****
+  	-@ write sys$output "                "$*" "
+  	-@ write sys$output "-----------------------------------------------"
+  	-@ !run the test
+! 	-@ create/term/wait/nodetach mcr $(VIMPROG) $(GUI_OPTION) -u vms.vim $(NO_PLUGIN) -s dotest.in $*.in
+  	-@ !analyse the result
+  	-@ directory /size/date test.out
+  	-@ if "''F$SEARCH("test.out.*")'" .NES. "" then rename/nolog test.out $*.out 
+--- 194,200 ----
+  	-@ write sys$output "                "$*" "
+  	-@ write sys$output "-----------------------------------------------"
+  	-@ !run the test
+! 	-@ create/term/wait/nodetach mcr $(VIMPROG) $(GUI_OPTION) -u vms.vim --noplugin -s dotest.in $*.in
+  	-@ !analyse the result
+  	-@ directory /size/date test.out
+  	-@ if "''F$SEARCH("test.out.*")'" .NES. "" then rename/nolog test.out $*.out 
+***************
+*** 172,178 ****
+  	-@ if "''F$SEARCH("Xdotest.*")'"  .NES. "" then delete/noconfirm/nolog Xdotest.*.*
+  	-@ if "''F$SEARCH("Xtest.*")'"    .NES. "" then delete/noconfirm/nolog Xtest.*.*
+  
+! all : clean nolog $(SCRIPTS_FIRST) $(SCRIPT) $(SCRIPT_GUI) $(SCRIPT_UNIX) $(SCRIPT_WIN) $(SCRIPT_SPELL) $(SCRIPT_ODS5) $(SCRIPT_GZIP) \
+      $(SCRIPT_GDIFF) $(SCRIPT_MZSCH) $(SCRIPT_CKSUM) $(SCRIPT_ICONV) $(SCRIPT_LUA) $(SCRIPT_PYTHON) nolog 
+  	-@ write sys$output " "
+  	-@ write sys$output "-----------------------------------------------"
+--- 203,209 ----
+  	-@ if "''F$SEARCH("Xdotest.*")'"  .NES. "" then delete/noconfirm/nolog Xdotest.*.*
+  	-@ if "''F$SEARCH("Xtest.*")'"    .NES. "" then delete/noconfirm/nolog Xtest.*.*
+  
+! all : clean nolog $(START_WITH) $(SCRIPT) $(SCRIPT_GUI) $(SCRIPT_UNIX) $(SCRIPT_WIN) $(SCRIPT_SPELL) $(SCRIPT_ODS5) $(SCRIPT_GZIP) \
+      $(SCRIPT_GDIFF) $(SCRIPT_MZSCH) $(SCRIPT_CKSUM) $(SCRIPT_ICONV) $(SCRIPT_LUA) $(SCRIPT_PYTHON) nolog 
+  	-@ write sys$output " "
+  	-@ write sys$output "-----------------------------------------------"
+*** ../vim-8.0.0058/src/version.c	2016-11-04 20:08:48.281161315 +0100
+--- src/version.c	2016-11-04 20:26:57.472851325 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     59,
+  /**/
+
+-- 
+"You're fired." (1980)
+"You're laid off." (1985)
+"You're downsized." (1990)
+"You're rightsized." (1992)
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

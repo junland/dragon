@@ -1,0 +1,178 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0434
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0434
+Problem:    Clang version not correctly detected.
+Solution:   Adjust the configure script. (Kazunobu Kuriyama)
+Files:      src/configure.ac, src/auto/configure
+
+
+*** ../vim-8.0.0433/src/configure.ac	2016-12-09 20:11:22.367819580 +0100
+--- src/configure.ac	2017-03-09 11:55:05.842637743 +0100
+***************
+*** 67,74 ****
+  dnl warning when that flag is passed to.  Accordingly, adjust CFLAGS based on
+  dnl the version number of the clang in use.
+  dnl Note that this does not work to get the version of clang 3.1 or 3.2.
+! AC_MSG_CHECKING(for recent clang version)
+! CLANG_VERSION_STRING=`$CC --version 2>/dev/null | sed  -n -e 's/^.*clang.*\([[0-9]][[0-9]]*\.[[0-9]][[0-9]]*\.[[0-9]][[0-9]]*\).*$/\1/p'`
+  if test x"$CLANG_VERSION_STRING" != x"" ; then
+    CLANG_MAJOR=`echo "$CLANG_VERSION_STRING" | sed -n -e 's/\([[0-9]][[0-9]]*\)\.[[0-9]][[0-9]]*\.[[0-9]][[0-9]]*/\1/p'`
+    CLANG_MINOR=`echo "$CLANG_VERSION_STRING" | sed -n -e 's/[[0-9]][[0-9]]*\.\([[0-9]][[0-9]]*\)\.[[0-9]][[0-9]]*/\1/p'`
+--- 67,74 ----
+  dnl warning when that flag is passed to.  Accordingly, adjust CFLAGS based on
+  dnl the version number of the clang in use.
+  dnl Note that this does not work to get the version of clang 3.1 or 3.2.
+! AC_MSG_CHECKING(for clang version)
+! CLANG_VERSION_STRING=`$CC --version 2>/dev/null | sed  -n -e 's/^.*clang[[^0-9]]*\([[0-9]][[0-9]]*\.[[0-9]][[0-9]]*\.[[0-9]][[0-9]]*\).*$/\1/p'`
+  if test x"$CLANG_VERSION_STRING" != x"" ; then
+    CLANG_MAJOR=`echo "$CLANG_VERSION_STRING" | sed -n -e 's/\([[0-9]][[0-9]]*\)\.[[0-9]][[0-9]]*\.[[0-9]][[0-9]]*/\1/p'`
+    CLANG_MINOR=`echo "$CLANG_VERSION_STRING" | sed -n -e 's/[[0-9]][[0-9]]*\.\([[0-9]][[0-9]]*\)\.[[0-9]][[0-9]]*/\1/p'`
+***************
+*** 79,89 ****
+    dnl change the constant 500002075 below appropriately.  To get the
+    dnl integer corresponding to a version number, refer to the
+    dnl definition of CLANG_VERSION above.
+    if test "$CLANG_VERSION" -ge 500002075 ; then
+!     CFLAGS=`echo "$CFLAGS" | sed -n -e 's/-fno-strength-reduce/ /p'`
+    fi
+  else
+!   AC_MSG_RESULT(no)
+  fi
+  
+  dnl If configure thinks we are cross compiling, there might be something
+--- 79,93 ----
+    dnl change the constant 500002075 below appropriately.  To get the
+    dnl integer corresponding to a version number, refer to the
+    dnl definition of CLANG_VERSION above.
++   AC_MSG_CHECKING(if clang supports -fno-strength-reduce)
+    if test "$CLANG_VERSION" -ge 500002075 ; then
+!     AC_MSG_RESULT(no)
+!     CFLAGS=`echo "$CFLAGS" | sed -e 's/-fno-strength-reduce/ /'`
+!   else
+!     AC_MSG_RESULT(yes)
+    fi
+  else
+!   AC_MSG_RESULT(N/A)
+  fi
+  
+  dnl If configure thinks we are cross compiling, there might be something
+***************
+*** 3016,3021 ****
+--- 3020,3033 ----
+  dnl end of GUI-checking
+  dnl ---------------------------------------------------------------------------
+  
++ AC_MSG_CHECKING([for /proc/self/exe])
++ if test -L "/proc/self/exe"; then
++     AC_MSG_RESULT(yes)
++     AC_DEFINE(HAVE_PROC_SELF_EXE)
++ else
++     AC_MSG_RESULT(no)
++ fi
++ 
+  dnl Check for Cygwin, which needs an extra source file if not using X11
+  AC_MSG_CHECKING(for CYGWIN or MSYS environment)
+  case `uname` in
+*** ../vim-8.0.0433/src/auto/configure	2016-12-09 20:11:22.371819553 +0100
+--- src/auto/configure	2017-03-09 11:55:10.874602161 +0100
+***************
+*** 4114,4122 ****
+    fi
+  fi
+  
+! { $as_echo "$as_me:${as_lineno-$LINENO}: checking for recent clang version" >&5
+! $as_echo_n "checking for recent clang version... " >&6; }
+! CLANG_VERSION_STRING=`$CC --version 2>/dev/null | sed  -n -e 's/^.*clang.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$/\1/p'`
+  if test x"$CLANG_VERSION_STRING" != x"" ; then
+    CLANG_MAJOR=`echo "$CLANG_VERSION_STRING" | sed -n -e 's/\([0-9][0-9]*\)\.[0-9][0-9]*\.[0-9][0-9]*/\1/p'`
+    CLANG_MINOR=`echo "$CLANG_VERSION_STRING" | sed -n -e 's/[0-9][0-9]*\.\([0-9][0-9]*\)\.[0-9][0-9]*/\1/p'`
+--- 4114,4122 ----
+    fi
+  fi
+  
+! { $as_echo "$as_me:${as_lineno-$LINENO}: checking for clang version" >&5
+! $as_echo_n "checking for clang version... " >&6; }
+! CLANG_VERSION_STRING=`$CC --version 2>/dev/null | sed  -n -e 's/^.*clang[^0-9]*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$/\1/p'`
+  if test x"$CLANG_VERSION_STRING" != x"" ; then
+    CLANG_MAJOR=`echo "$CLANG_VERSION_STRING" | sed -n -e 's/\([0-9][0-9]*\)\.[0-9][0-9]*\.[0-9][0-9]*/\1/p'`
+    CLANG_MINOR=`echo "$CLANG_VERSION_STRING" | sed -n -e 's/[0-9][0-9]*\.\([0-9][0-9]*\)\.[0-9][0-9]*/\1/p'`
+***************
+*** 4124,4135 ****
+    CLANG_VERSION=`expr $CLANG_MAJOR '*' 1000000 '+' $CLANG_MINOR '*' 1000 '+' $CLANG_REVISION`
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $CLANG_VERSION" >&5
+  $as_echo "$CLANG_VERSION" >&6; }
+!           if test "$CLANG_VERSION" -ge 500002075 ; then
+!     CFLAGS=`echo "$CFLAGS" | sed -n -e 's/-fno-strength-reduce/ /p'`
+    fi
+  else
+!   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+! $as_echo "no" >&6; }
+  fi
+  
+  CROSS_COMPILING=
+--- 4124,4142 ----
+    CLANG_VERSION=`expr $CLANG_MAJOR '*' 1000000 '+' $CLANG_MINOR '*' 1000 '+' $CLANG_REVISION`
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $CLANG_VERSION" >&5
+  $as_echo "$CLANG_VERSION" >&6; }
+!           { $as_echo "$as_me:${as_lineno-$LINENO}: checking if clang supports -fno-strength-reduce" >&5
+! $as_echo_n "checking if clang supports -fno-strength-reduce... " >&6; }
+!   if test "$CLANG_VERSION" -ge 500002075 ; then
+!     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+! $as_echo "no" >&6; }
+!     CFLAGS=`echo "$CFLAGS" | sed -e 's/-fno-strength-reduce/ /'`
+!   else
+!     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+! $as_echo "yes" >&6; }
+    fi
+  else
+!   { $as_echo "$as_me:${as_lineno-$LINENO}: result: N/A" >&5
+! $as_echo "N/A" >&6; }
+  fi
+  
+  CROSS_COMPILING=
+***************
+*** 10094,10099 ****
+--- 10101,10118 ----
+  
+  
+  
++ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for /proc/self/exe" >&5
++ $as_echo_n "checking for /proc/self/exe... " >&6; }
++ if test -L "/proc/self/exe"; then
++     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++ $as_echo "yes" >&6; }
++     $as_echo "#define HAVE_PROC_SELF_EXE 1" >>confdefs.h
++ 
++ else
++     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++ $as_echo "no" >&6; }
++ fi
++ 
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for CYGWIN or MSYS environment" >&5
+  $as_echo_n "checking for CYGWIN or MSYS environment... " >&6; }
+  case `uname` in
+*** ../vim-8.0.0433/src/version.c	2017-03-08 22:55:14.918181192 +0100
+--- src/version.c	2017-03-09 11:57:14.797728899 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     434,
+  /**/
+
+-- 
+From "know your smileys":
+ :-O>-o   Smiley American tourist (note big mouth and camera)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,77 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0892
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0892
+Problem:    When opening a terminal the pty size doesn't always match.
+Solution:   Update the pty size after opening the terminal. (Ken Takata)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0891/src/terminal.c	2017-08-07 22:08:01.425067973 +0200
+--- src/terminal.c	2017-08-08 21:48:58.524090534 +0200
+***************
+*** 43,51 ****
+   * - add option values to the command:
+   *      :term <24x80> <close> vim notes.txt
+   * - support different cursor shapes, colors and attributes
+-  * - MS-Windows: no redraw for 'updatetime'  #1915
+   * - make term_getcursor() return type (none/block/bar/underline) and
+   *   attributes (color, blink, etc.)
+   * - To set BS correctly, check get_stty(); Pass the fd of the pty.
+   *   For the GUI fill termios with default values, perhaps like pangoterm:
+   *   http://bazaar.launchpad.net/~leonerd/pangoterm/trunk/view/head:/main.c#L134
+--- 43,53 ----
+   * - add option values to the command:
+   *      :term <24x80> <close> vim notes.txt
+   * - support different cursor shapes, colors and attributes
+   * - make term_getcursor() return type (none/block/bar/underline) and
+   *   attributes (color, blink, etc.)
++  * - MS-Windows: no redraw for 'updatetime'  #1915
++  * - term_getline() and term_scrape() don't work once the job exited. Use the
++  *   buffer and scrollback, remembering the topline from when the job exited.
+   * - To set BS correctly, check get_stty(); Pass the fd of the pty.
+   *   For the GUI fill termios with default values, perhaps like pangoterm:
+   *   http://bazaar.launchpad.net/~leonerd/pangoterm/trunk/view/head:/main.c#L134
+***************
+*** 337,344 ****
+      /* System dependent: setup the vterm and start the job in it. */
+      if (term_and_job_init(term, term->tl_rows, term->tl_cols, cmd, opt) == OK)
+      {
+! 	/* store the size we ended up with */
+  	vterm_get_size(term->tl_vterm, &term->tl_rows, &term->tl_cols);
+      }
+      else
+      {
+--- 339,347 ----
+      /* System dependent: setup the vterm and start the job in it. */
+      if (term_and_job_init(term, term->tl_rows, term->tl_cols, cmd, opt) == OK)
+      {
+! 	/* Get and remember the size we ended up with.  Update the pty. */
+  	vterm_get_size(term->tl_vterm, &term->tl_rows, &term->tl_cols);
++ 	term_report_winsize(term, term->tl_rows, term->tl_cols);
+      }
+      else
+      {
+*** ../vim-8.0.0891/src/version.c	2017-08-07 22:08:01.429067944 +0200
+--- src/version.c	2017-08-08 21:51:50.634831898 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     892,
+  /**/
+
+-- 
+I bought a book on hair loss, but the pages kept falling out.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,115 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1319
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1319
+Problem:    Can't build GUI on MS-Windows.
+Solution:   Don't define the balloon_split() function in a GUI-only build.
+Files:      src/evalfunc.c, runtime/doc/eval.txt
+
+
+*** ../vim-8.0.1318/src/evalfunc.c	2017-11-19 19:56:21.609895094 +0100
+--- src/evalfunc.c	2017-11-19 20:10:26.596888542 +0100
+***************
+*** 61,67 ****
+--- 61,69 ----
+  #endif
+  #ifdef FEAT_BEVAL
+  static void f_balloon_show(typval_T *argvars, typval_T *rettv);
++ # if defined(FEAT_BEVAL_TERM)
+  static void f_balloon_split(typval_T *argvars, typval_T *rettv);
++ # endif
+  #endif
+  static void f_browse(typval_T *argvars, typval_T *rettv);
+  static void f_browsedir(typval_T *argvars, typval_T *rettv);
+***************
+*** 495,501 ****
+--- 497,505 ----
+  #endif
+  #ifdef FEAT_BEVAL
+      {"balloon_show",	1, 1, f_balloon_show},
++ # if defined(FEAT_BEVAL_TERM)
+      {"balloon_split",	1, 1, f_balloon_split},
++ # endif
+  #endif
+      {"browse",		4, 4, f_browse},
+      {"browsedir",	2, 2, f_browsedir},
+***************
+*** 1424,1429 ****
+--- 1428,1434 ----
+      }
+  }
+  
++ # if defined(FEAT_BEVAL_TERM)
+      static void
+  f_balloon_split(typval_T *argvars, typval_T *rettv UNUSED)
+  {
+***************
+*** 1444,1449 ****
+--- 1449,1455 ----
+  	}
+      }
+  }
++ # endif
+  #endif
+  
+  /*
+*** ../vim-8.0.1318/runtime/doc/eval.txt	2017-11-19 19:56:21.613895033 +0100
+--- runtime/doc/eval.txt	2017-11-19 20:12:00.351449355 +0100
+***************
+*** 2708,2720 ****
+  
+  		When showing a balloon is not possible nothing happens, no
+  		error message.
+! 		{only available when compiled with the +balloon_eval feature}
+  
+  balloon_split({msg})					*balloon_split()*
+  		Split {msg} into lines to be displayed in a balloon.  The
+  		splits are made for the current window size and optimize to
+  		show debugger output.
+  		Returns a |List| with the split lines.
+  
+  							*browse()*
+  browse({save}, {title}, {initdir}, {default})
+--- 2708,2723 ----
+  
+  		When showing a balloon is not possible nothing happens, no
+  		error message.
+! 		{only available when compiled with the +balloon_eval or
+! 		+balloon_eval_term feature}
+  
+  balloon_split({msg})					*balloon_split()*
+  		Split {msg} into lines to be displayed in a balloon.  The
+  		splits are made for the current window size and optimize to
+  		show debugger output.
+  		Returns a |List| with the split lines.
++ 		{only available when compiled with the +balloon_eval_term
++ 		feature}
+  
+  							*browse()*
+  browse({save}, {title}, {initdir}, {default})
+*** ../vim-8.0.1318/src/version.c	2017-11-19 19:56:21.617894971 +0100
+--- src/version.c	2017-11-19 20:11:22.376032251 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1319,
+  /**/
+
+-- 
+The Feynman problem solving Algorithm:
+	1) Write down the problem
+	2) Think real hard
+	3) Write down the answer
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

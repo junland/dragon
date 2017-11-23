@@ -1,0 +1,115 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0616
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0616
+Problem:    When setting the cterm background with ":hi Normal" the value of
+            'background' may be set wrongly.
+Solution:   Check that the color is less than 16.  Don't set 'background' when
+            it was set explicitly. (Lemonboy, closes #1710)
+Files:      src/syntax.c, src/testdir/test_syntax.vim
+
+
+*** ../vim-8.0.0615/src/syntax.c	2017-03-26 13:50:02.528929457 +0200
+--- src/syntax.c	2017-06-04 21:01:20.092774186 +0200
+***************
+*** 7834,7851 ****
+  			must_redraw = CLEAR;
+  			if (color >= 0)
+  			{
+  			    if (termcap_active)
+  				term_bg_color(color);
+  			    if (t_colors < 16)
+! 				i = (color == 0 || color == 4);
+! 			    else
+! 				i = (color < 7 || color == 8);
+  			    /* Set the 'background' option if the value is
+  			     * wrong. */
+! 			    if (i != (*p_bg == 'd'))
+  				set_option_value((char_u *)"bg", 0L,
+! 					i ?  (char_u *)"dark"
+! 					  : (char_u *)"light", 0);
+  			}
+  		    }
+  		}
+--- 7834,7858 ----
+  			must_redraw = CLEAR;
+  			if (color >= 0)
+  			{
++ 			    int dark = -1;
++ 
+  			    if (termcap_active)
+  				term_bg_color(color);
+  			    if (t_colors < 16)
+! 				dark = (color == 0 || color == 4);
+! 			    /* Limit the heuristic to the standard 16 colors */
+! 			    else if (color < 16)
+! 				dark = (color < 7 || color == 8);
+  			    /* Set the 'background' option if the value is
+  			     * wrong. */
+! 			    if (dark != -1
+! 				    && dark != (*p_bg == 'd')
+! 				    && !option_was_set((char_u *)"bg"))
+! 			    {
+  				set_option_value((char_u *)"bg", 0L,
+! 				       (char_u *)(dark ? "dark" : "light"), 0);
+! 				reset_option_was_set((char_u *)"bg");
+! 			    }
+  			}
+  		    }
+  		}
+*** ../vim-8.0.0615/src/testdir/test_syntax.vim	2017-04-10 22:45:26.140352638 +0200
+--- src/testdir/test_syntax.vim	2017-06-04 21:05:49.910918244 +0200
+***************
+*** 401,403 ****
+--- 401,426 ----
+    call assert_fails('hi XXX xxx=White', 'E423:')
+  endfunc
+  
++ func Test_bg_detection()
++   if has('gui_running')
++     return
++   endif
++   " auto-detection of &bg, make sure sure it isn't set anywhere before
++   " this test
++   hi Normal ctermbg=0
++   call assert_equal('dark', &bg)
++   hi Normal ctermbg=4
++   call assert_equal('dark', &bg)
++   hi Normal ctermbg=12
++   call assert_equal('light', &bg)
++   hi Normal ctermbg=15
++   call assert_equal('light', &bg)
++ 
++   " manually-set &bg takes precendence over auto-detection
++   set bg=light
++   hi Normal ctermbg=4
++   call assert_equal('light', &bg)
++   set bg=dark
++   hi Normal ctermbg=12
++   call assert_equal('dark', &bg)
++ endfunc
+*** ../vim-8.0.0615/src/version.c	2017-06-04 20:43:43.956009665 +0200
+--- src/version.c	2017-06-04 21:01:37.528654338 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     616,
+  /**/
+
+-- 
+All good vision statements are created by groups of people with bloated
+bladders who would rather be doing anything else.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,66 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0399
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0399
+Problem:    Crash when using balloon_show() when not supported. (Hirohito
+            Higashi)
+Solution:   Check for balloonEval not to be NULL. (Ken Takata)
+Files:      src/evalfunc.c, src/testdir/test_functions.vim
+
+
+*** ../vim-8.0.0398/src/evalfunc.c	2017-03-01 20:32:40.139105332 +0100
+--- src/evalfunc.c	2017-03-02 22:07:43.577727924 +0100
+***************
+*** 1375,1381 ****
+      static void
+  f_balloon_show(typval_T *argvars, typval_T *rettv UNUSED)
+  {
+!     gui_mch_post_balloon(balloonEval, get_tv_string_chk(&argvars[0]));
+  }
+  #endif
+  
+--- 1375,1382 ----
+      static void
+  f_balloon_show(typval_T *argvars, typval_T *rettv UNUSED)
+  {
+!     if (balloonEval != NULL)
+! 	gui_mch_post_balloon(balloonEval, get_tv_string_chk(&argvars[0]));
+  }
+  #endif
+  
+*** ../vim-8.0.0398/src/testdir/test_functions.vim	2017-02-17 16:43:44.983805306 +0100
+--- src/testdir/test_functions.vim	2017-03-02 22:07:27.789853704 +0100
+***************
+*** 466,468 ****
+--- 466,473 ----
+  
+    set fileformats&
+  endfunc
++ 
++ func Test_balloon_show()
++   " This won't do anything but must not crash either.
++   call balloon_show('hi!')
++ endfunc
+*** ../vim-8.0.0398/src/version.c	2017-03-01 22:17:01.946120304 +0100
+--- src/version.c	2017-03-02 22:08:55.837152407 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     399,
+  /**/
+
+-- 
+Seen it all, done it all, can't remember most of it.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

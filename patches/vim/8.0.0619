@@ -1,0 +1,111 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0619
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0619
+Problem:    In the GUI, when a timer uses feedkeys(), it still waits for an
+            event. (Raymond Ko)
+Solution:   Check tb_change_cnt in one more place.
+Files:      src/gui.c
+
+
+*** ../vim-8.0.0618/src/gui.c	2017-03-16 19:58:19.420253384 +0100
+--- src/gui.c	2017-06-04 22:44:00.609571377 +0200
+***************
+*** 2849,2854 ****
+--- 2849,2858 ----
+      }
+  }
+  
++ /*
++  * Returns OK if a character was found to be available within the given time,
++  * or FAIL otherwise.
++  */
+      static int
+  gui_wait_for_chars_or_timer(long wtime)
+  {
+***************
+*** 2869,2884 ****
+  	if (typebuf.tb_change_cnt != tb_change_cnt)
+  	{
+  	    /* timer may have used feedkeys() */
+! 	    return FALSE;
+  	}
+  	if (due_time <= 0 || (wtime > 0 && due_time > remaining))
+  	    due_time = remaining;
+  	if (gui_mch_wait_for_chars(due_time))
+! 	    return TRUE;
+  	if (wtime > 0)
+  	    remaining -= due_time;
+      }
+!     return FALSE;
+  #else
+      return gui_mch_wait_for_chars(wtime);
+  #endif
+--- 2873,2888 ----
+  	if (typebuf.tb_change_cnt != tb_change_cnt)
+  	{
+  	    /* timer may have used feedkeys() */
+! 	    return FAIL;
+  	}
+  	if (due_time <= 0 || (wtime > 0 && due_time > remaining))
+  	    due_time = remaining;
+  	if (gui_mch_wait_for_chars(due_time))
+! 	    return OK;
+  	if (wtime > 0)
+  	    remaining -= due_time;
+      }
+!     return FAIL;
+  #else
+      return gui_mch_wait_for_chars(wtime);
+  #endif
+***************
+*** 2896,2901 ****
+--- 2900,2906 ----
+  gui_wait_for_chars(long wtime)
+  {
+      int	    retval;
++     int	    tb_change_cnt = typebuf.tb_change_cnt;
+  
+  #ifdef FEAT_MENU
+      /*
+***************
+*** 2953,2959 ****
+      }
+  #endif
+  
+!     if (retval == FAIL)
+      {
+  	/* Blocking wait. */
+  	before_blocking();
+--- 2958,2964 ----
+      }
+  #endif
+  
+!     if (retval == FAIL && typebuf.tb_change_cnt == tb_change_cnt)
+      {
+  	/* Blocking wait. */
+  	before_blocking();
+*** ../vim-8.0.0618/src/version.c	2017-06-05 13:30:01.172255652 +0200
+--- src/version.c	2017-06-05 13:31:31.415643186 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     619,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+2. You kiss your girlfriend's home page.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

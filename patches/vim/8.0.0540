@@ -1,0 +1,83 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0540
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0540 (after 8.0.0540)
+Problem:    Building unit tests fails.
+Solution:   Move params outside of #ifdef.
+Files:      src/main.c, src/message_test.c
+
+
+*** ../vim-8.0.0539/src/main.c	2017-04-02 17:21:09.890069493 +0200
+--- src/main.c	2017-04-02 18:04:03.257961554 +0200
+***************
+*** 89,103 ****
+  };
+  
+  #ifndef PROTO		/* don't want a prototype for main() */
+  #ifndef NO_VIM_MAIN	/* skip this for unittests */
+  
+  static char_u *start_dir = NULL;	/* current working dir on startup */
+  
+  static int has_dash_c_arg = FALSE;
+  
+- /* Various parameters passed between main() and other functions. */
+- static mparm_T	params;
+- 
+      int
+  # ifdef VIMDLL
+  _export
+--- 89,104 ----
+  };
+  
+  #ifndef PROTO		/* don't want a prototype for main() */
++ 
++ /* Various parameters passed between main() and other functions. */
++ static mparm_T	params;
++ 
+  #ifndef NO_VIM_MAIN	/* skip this for unittests */
+  
+  static char_u *start_dir = NULL;	/* current working dir on startup */
+  
+  static int has_dash_c_arg = FALSE;
+  
+      int
+  # ifdef VIMDLL
+  _export
+*** ../vim-8.0.0539/src/message_test.c	2016-08-29 22:42:20.000000000 +0200
+--- src/message_test.c	2017-04-02 18:08:20.140381578 +0200
+***************
+*** 96,103 ****
+      int
+  main(int argc, char **argv)
+  {
+-     mparm_T params;
+- 
+      vim_memset(&params, 0, sizeof(params));
+      params.argc = argc;
+      params.argv = argv;
+--- 96,101 ----
+*** ../vim-8.0.0539/src/version.c	2017-04-02 17:21:09.890069493 +0200
+--- src/version.c	2017-04-02 18:04:56.925631563 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     540,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+259. When you enter your name in the AltaVista search engine, the top ten
+     matches do indeed refer to you.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

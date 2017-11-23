@@ -1,0 +1,56 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0793
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0793
+Problem:    Using wrong terminal name for terminal window.
+Solution:   When 'term' starts with "xterm" use it for $TERM in a terminal
+            window.
+Files:      src/os_unix.c
+
+
+*** ../vim-8.0.0792/src/os_unix.c	2017-07-22 22:32:51.233745323 +0200
+--- src/os_unix.c	2017-07-28 15:47:32.207746495 +0200
+***************
+*** 5276,5282 ****
+  	    set_child_environment(
+  		    (long)options->jo_term_rows,
+  		    (long)options->jo_term_cols,
+! 		    "xterm");
+  	else
+  # endif
+  	    set_default_child_environment();
+--- 5276,5283 ----
+  	    set_child_environment(
+  		    (long)options->jo_term_rows,
+  		    (long)options->jo_term_cols,
+! 		    STRNCMP(T_NAME, "xterm", 5) == 0
+! 						   ? (char *)T_NAME : "xterm");
+  	else
+  # endif
+  	    set_default_child_environment();
+*** ../vim-8.0.0792/src/version.c	2017-07-28 15:38:06.119839818 +0200
+--- src/version.c	2017-07-28 15:54:56.536398655 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     793,
+  /**/
+
+-- 
+   They now pass three KNIGHTS impaled to a tree.  With their feet off the
+   ground,  with one lance through the lot of them, they are skewered up
+   like a barbecue.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

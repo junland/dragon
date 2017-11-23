@@ -1,0 +1,130 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1081
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1081
+Problem:    Memory leak for the channel write queue.
+Solution:   Free the write queue when clearing a channel.
+Files:      src/channel.c
+
+
+*** ../vim-8.0.1080/src/channel.c	2017-09-08 20:46:55.902059559 +0200
+--- src/channel.c	2017-09-09 16:21:11.604483605 +0200
+***************
+*** 2930,2943 ****
+      ch_close_part(channel, PART_IN);
+  }
+  
+  /*
+   * Clear the read buffer on "channel"/"part".
+   */
+      static void
+  channel_clear_one(channel_T *channel, ch_part_T part)
+  {
+!     jsonq_T *json_head = &channel->ch_part[part].ch_json_head;
+!     cbq_T   *cb_head = &channel->ch_part[part].ch_cb_head;
+  
+      while (channel_peek(channel, part) != NULL)
+  	vim_free(channel_get(channel, part));
+--- 2930,2955 ----
+      ch_close_part(channel, PART_IN);
+  }
+  
++     static void
++ remove_from_writeque(writeq_T *wq, writeq_T *entry)
++ {
++     ga_clear(&entry->wq_ga);
++     wq->wq_next = entry->wq_next;
++     if (wq->wq_next == NULL)
++ 	wq->wq_prev = NULL;
++     else
++ 	wq->wq_next->wq_prev = NULL;
++ }
++ 
+  /*
+   * Clear the read buffer on "channel"/"part".
+   */
+      static void
+  channel_clear_one(channel_T *channel, ch_part_T part)
+  {
+!     chanpart_T *ch_part = &channel->ch_part[part];
+!     jsonq_T *json_head = &ch_part->ch_json_head;
+!     cbq_T   *cb_head = &ch_part->ch_cb_head;
+  
+      while (channel_peek(channel, part) != NULL)
+  	vim_free(channel_get(channel, part));
+***************
+*** 2957,2966 ****
+  	remove_json_node(json_head, json_head->jq_next);
+      }
+  
+!     free_callback(channel->ch_part[part].ch_callback,
+! 					channel->ch_part[part].ch_partial);
+!     channel->ch_part[part].ch_callback = NULL;
+!     channel->ch_part[part].ch_partial = NULL;
+  }
+  
+  /*
+--- 2969,2981 ----
+  	remove_json_node(json_head, json_head->jq_next);
+      }
+  
+!     free_callback(ch_part->ch_callback, ch_part->ch_partial);
+!     ch_part->ch_callback = NULL;
+!     ch_part->ch_partial = NULL;
+! 
+!     while (ch_part->ch_writeque.wq_next != NULL)
+! 	remove_from_writeque(&ch_part->ch_writeque,
+! 						 ch_part->ch_writeque.wq_next);
+  }
+  
+  /*
+***************
+*** 3719,3730 ****
+  		if (entry != NULL)
+  		{
+  		    /* Remove the entry from the write queue. */
+! 		    ga_clear(&entry->wq_ga);
+! 		    wq->wq_next = entry->wq_next;
+! 		    if (wq->wq_next == NULL)
+! 			wq->wq_prev = NULL;
+! 		    else
+! 			wq->wq_next->wq_prev = NULL;
+  		    continue;
+  		}
+  		if (did_use_queue)
+--- 3734,3740 ----
+  		if (entry != NULL)
+  		{
+  		    /* Remove the entry from the write queue. */
+! 		    remove_from_writeque(wq, entry);
+  		    continue;
+  		}
+  		if (did_use_queue)
+*** ../vim-8.0.1080/src/version.c	2017-09-09 16:34:28.867014115 +0200
+--- src/version.c	2017-09-09 16:41:04.308321765 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1081,
+  /**/
+
+-- 
+From "know your smileys":
+ %	Bike accident.  A bit far-fetched, I suppose; although...
+             o      _     _         _
+     _o     /\_   _ \\o  (_)\__/o  (_)
+   _< \_   _>(_) (_)/<_    \_| \   _|/' \/
+  (_)>(_) (_)        (_)   (_)    (_)'  _\o_
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,78 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1174
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1174
+Problem:    Mac Terminal.app has wrong color for white.
+Solution:   Use white from the color cube.
+Files:      src/globals.h, src/term.c, src/syntax.c
+
+
+*** ../vim-8.0.1173/src/globals.h	2017-09-16 20:54:47.082560506 +0200
+--- src/globals.h	2017-10-04 17:55:31.544495685 +0200
+***************
+*** 380,385 ****
+--- 380,388 ----
+  EXTERN guicolor_T cterm_normal_fg_gui_color INIT(= INVALCOLOR);
+  EXTERN guicolor_T cterm_normal_bg_gui_color INIT(= INVALCOLOR);
+  #endif
++ #ifdef FEAT_TERMRESPONSE
++ EXTERN int	is_mac_terminal INIT(= FALSE);  /* recognized Terminal.app */
++ #endif
+  
+  #ifdef FEAT_AUTOCMD
+  EXTERN int	autocmd_busy INIT(= FALSE);	/* Is apply_autocmds() busy? */
+*** ../vim-8.0.1173/src/term.c	2017-09-29 22:42:29.582007968 +0200
+--- src/term.c	2017-10-04 17:56:25.740200519 +0200
+***************
+*** 4557,4563 ****
+--- 4557,4566 ----
+  			/* Mac Terminal.app sends 1;95;0 */
+  			if (version == 95
+  				&& STRNCMP(tp + extra - 2, "1;95;0c", 7) == 0)
++ 			{
+  			    is_not_xterm = TRUE;
++ 			    is_mac_terminal = TRUE;
++ 			}
+  
+  			/* Gnome terminal sends 1;3801;0, 1;4402;0 or 1;2501;0.
+  			 * xfce4-terminal sends 1;2802;0.
+*** ../vim-8.0.1173/src/syntax.c	2017-09-30 16:00:07.447448192 +0200
+--- src/syntax.c	2017-10-04 18:03:17.957948742 +0200
+***************
+*** 7350,7355 ****
+--- 7350,7359 ----
+  	    else
+  		color = color_numbers_8[idx];
+  	}
++ 	if (t_colors >= 256 && color == 15 && is_mac_terminal)
++ 	    /* Terminal.app has a bug: 15 is light grey. Use white
++ 	     * from the color cube instead. */
++ 	    color = 231;
+      }
+      return color;
+  }
+*** ../vim-8.0.1173/src/version.c	2017-10-02 21:54:55.101132734 +0200
+--- src/version.c	2017-10-04 17:57:33.039833898 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1174,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+256. You are able to write down over 250 symptoms of being an internet
+     addict, even though they only asked for 101.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,122 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0678
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0678
+Problem:    When 'equalalways' is set and closing a window in a separate
+            frame, not all window sizes are adjusted. (Glacambre)
+Solution:   Resize all windows if the new current window is not in the same
+            frame as the closed window. (closes #1707)
+Files:      src/window.c, src/testdir/test_window_cmd.vim
+
+
+*** ../vim-8.0.0677/src/window.c	2017-03-21 21:57:51.338404174 +0100
+--- src/window.c	2017-06-25 22:41:49.804154182 +0200
+***************
+*** 2282,2287 ****
+--- 2282,2288 ----
+      int		dir;
+      int		help_window = FALSE;
+      tabpage_T   *prev_curtab = curtab;
++     frame_T	*win_frame = win->w_frame;
+  
+      if (last_window())
+      {
+***************
+*** 2459,2465 ****
+  	check_cursor();
+      }
+      if (p_ea && (*p_ead == 'b' || *p_ead == dir))
+! 	win_equal(curwin, TRUE, dir);
+      else
+  	win_comp_pos();
+      if (close_curwin)
+--- 2460,2469 ----
+  	check_cursor();
+      }
+      if (p_ea && (*p_ead == 'b' || *p_ead == dir))
+! 	/* If the frame of the closed window contains the new current window,
+! 	 * only resize that frame.  Otherwise resize all windows. */
+! 	win_equal(curwin,
+! 		      curwin->w_frame->fr_parent == win_frame->fr_parent, dir);
+      else
+  	win_comp_pos();
+      if (close_curwin)
+*** ../vim-8.0.0677/src/testdir/test_window_cmd.vim	2017-03-19 20:22:31.210585166 +0100
+--- src/testdir/test_window_cmd.vim	2017-06-25 22:40:47.120638615 +0200
+***************
+*** 318,323 ****
+--- 318,367 ----
+    bw Xa Xb Xc
+  endfunc
+  
++ func Test_equalalways_on_close()
++   set equalalways
++   vsplit
++   windo split
++   split 
++   wincmd J
++   " now we have a frame top-left with two windows, a frame top-right with two
++   " windows and a frame at the bottom, full-width.
++   let height_1 = winheight(1)
++   let height_2 = winheight(2)
++   let height_3 = winheight(3)
++   let height_4 = winheight(4)
++   " closing the bottom window causes all windows to be resized.
++   close
++   call assert_notequal(height_1, winheight(1))
++   call assert_notequal(height_2, winheight(2))
++   call assert_notequal(height_3, winheight(3))
++   call assert_notequal(height_4, winheight(4))
++   call assert_equal(winheight(1), winheight(3))
++   call assert_equal(winheight(2), winheight(4))
++ 
++   1wincmd w
++   split
++   4wincmd w
++   resize + 5
++   " left column has three windows, equalized heights.
++   " right column has two windows, top one a bit higher
++   let height_1 = winheight(1)
++   let height_2 = winheight(2)
++   let height_4 = winheight(4)
++   let height_5 = winheight(5)
++   3wincmd w
++   " closing window in left column equalizes heights in left column but not in
++   " the right column
++   close
++   call assert_notequal(height_1, winheight(1))
++   call assert_notequal(height_2, winheight(2))
++   call assert_equal(height_4, winheight(3))
++   call assert_equal(height_5, winheight(4))
++ 
++   only
++   set equalalways&
++ endfunc
++ 
+  func Test_window_jump_tag()
+    help
+    /iccf
+*** ../vim-8.0.0677/src/version.c	2017-06-25 21:17:18.579532117 +0200
+--- src/version.c	2017-06-25 22:28:11.278475705 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     678,
+  /**/
+
+-- 
+From "know your smileys":
+ :-H	Is missing teeth
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

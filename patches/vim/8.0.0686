@@ -1,0 +1,47 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0686
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0686
+Problem:    When typing CTRL-L in a window that's not the first one, another
+            redraw will happen later. (Christian Brabandt)
+Solution:   Reset must_redraw after calling screenclear().
+Files:      src/screen.c
+
+
+*** ../vim-8.0.0685/src/screen.c	2017-06-25 18:03:34.007553654 +0200
+--- src/screen.c	2017-06-28 20:43:41.865858323 +0200
+***************
+*** 648,653 ****
+--- 648,655 ----
+      {
+  	screenclear();		/* will reset clear_cmdline */
+  	type = NOT_VALID;
++ 	/* must_redraw may be set indirectly, avoid another redraw later */
++ 	must_redraw = 0;
+      }
+  
+      if (clear_cmdline)		/* going to clear cmdline (done below) */
+*** ../vim-8.0.0685/src/version.c	2017-06-27 22:11:36.131082741 +0200
+--- src/version.c	2017-06-28 20:44:53.317310734 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     686,
+  /**/
+
+-- 
+From "know your smileys":
+ :-X	My lips are sealed
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

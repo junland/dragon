@@ -1,0 +1,82 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0605
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0605
+Problem:    The buffer that quickfix caches for performance may become
+            invalid. (Daniel Hahler)
+Solution:   Reset qf_last_bufref in qf_init_ext(). (Daniel Hahler,
+            closes #1728, closes #1676)
+Files:      src/quickfix.c
+
+
+*** ../vim-8.0.0604/src/quickfix.c	2017-05-15 08:45:00.508812501 +0200
+--- src/quickfix.c	2017-05-28 07:53:28.228115598 +0200
+***************
+*** 158,163 ****
+--- 158,170 ----
+  #define GET_LOC_LIST(wp) (IS_LL_WINDOW(wp) ? wp->w_llist_ref : wp->w_llist)
+  
+  /*
++  * Looking up a buffer can be slow if there are many.  Remember the last one
++  * to make this a lot faster if there are multiple matches in the same file.
++  */
++ static char_u *qf_last_bufname = NULL;
++ static bufref_T  qf_last_bufref = {NULL, 0};
++ 
++ /*
+   * Read the errorfile "efile" into memory, line by line, building the error
+   * list. Set the error list's title to qf_title.
+   * Return -1 for error, number of errors for success.
+***************
+*** 1151,1156 ****
+--- 1158,1167 ----
+      int		    retval = -1;	/* default: return error flag */
+      int		    status;
+  
++     /* Do not used the cached buffer, it may have been wiped out. */
++     vim_free(qf_last_bufname);
++     qf_last_bufname = NULL;
++ 
+      vim_memset(&state, 0, sizeof(state));
+      vim_memset(&fields, 0, sizeof(fields));
+  #ifdef FEAT_MBYTE
+***************
+*** 1660,1672 ****
+  }
+  
+  /*
+-  * Looking up a buffer can be slow if there are many.  Remember the last one
+-  * to make this a lot faster if there are multiple matches in the same file.
+-  */
+- static char_u *qf_last_bufname = NULL;
+- static bufref_T  qf_last_bufref = {NULL, 0};
+- 
+- /*
+   * Get buffer number for file "directory/fname".
+   * Also sets the b_has_qf_entry flag.
+   */
+--- 1671,1676 ----
+*** ../vim-8.0.0604/src/version.c	2017-05-24 10:42:29.402752228 +0200
+--- src/version.c	2017-05-28 07:55:54.083210744 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     605,
+  /**/
+
+-- 
+It is too bad that the speed of light hasn't kept pace with the
+changes in CPU speed and network bandwidth. -- <wietse@porcupine.org>
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

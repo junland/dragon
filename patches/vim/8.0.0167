@@ -1,0 +1,189 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0167
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0167
+Problem:    str2nr() and str2float() do not always work with negative values.
+Solution:   Be more flexible about handling signs. (LemonBoy, closes #1332)
+            Add more tests.
+Files:      src/evalfunc.c, src/testdir/test_float_func.vim,
+            src/testdir/test_functions.vim, src/testdir/test_alot.vim,
+            src/Makefile
+
+
+*** ../vim-8.0.0166/src/evalfunc.c	2017-01-10 15:15:32.878134163 +0100
+--- src/evalfunc.c	2017-01-10 15:48:27.495467137 +0100
+***************
+*** 11066,11075 ****
+  f_str2float(typval_T *argvars, typval_T *rettv)
+  {
+      char_u *p = skipwhite(get_tv_string(&argvars[0]));
+  
+!     if (*p == '+')
+  	p = skipwhite(p + 1);
+      (void)string2float(p, &rettv->vval.v_float);
+      rettv->v_type = VAR_FLOAT;
+  }
+  #endif
+--- 11066,11078 ----
+  f_str2float(typval_T *argvars, typval_T *rettv)
+  {
+      char_u *p = skipwhite(get_tv_string(&argvars[0]));
++     int     isneg = (*p == '-');
+  
+!     if (*p == '+' || *p == '-')
+  	p = skipwhite(p + 1);
+      (void)string2float(p, &rettv->vval.v_float);
++     if (isneg)
++ 	rettv->vval.v_float *= -1;
+      rettv->v_type = VAR_FLOAT;
+  }
+  #endif
+***************
+*** 11084,11089 ****
+--- 11087,11093 ----
+      char_u	*p;
+      varnumber_T	n;
+      int		what;
++     int		isneg;
+  
+      if (argvars[1].v_type != VAR_UNKNOWN)
+      {
+***************
+*** 11096,11102 ****
+      }
+  
+      p = skipwhite(get_tv_string(&argvars[0]));
+!     if (*p == '+')
+  	p = skipwhite(p + 1);
+      switch (base)
+      {
+--- 11100,11107 ----
+      }
+  
+      p = skipwhite(get_tv_string(&argvars[0]));
+!     isneg = (*p == '-');
+!     if (*p == '+' || *p == '-')
+  	p = skipwhite(p + 1);
+      switch (base)
+      {
+***************
+*** 11106,11112 ****
+  	default: what = 0;
+      }
+      vim_str2nr(p, NULL, NULL, what, &n, NULL, 0);
+!     rettv->vval.v_number = n;
+  }
+  
+  #ifdef HAVE_STRFTIME
+--- 11111,11121 ----
+  	default: what = 0;
+      }
+      vim_str2nr(p, NULL, NULL, what, &n, NULL, 0);
+!     if (isneg)
+! 	rettv->vval.v_number = -n;
+!     else
+! 	rettv->vval.v_number = n;
+! 
+  }
+  
+  #ifdef HAVE_STRFTIME
+*** ../vim-8.0.0166/src/testdir/test_float_func.vim	2017-01-08 19:25:34.847896437 +0100
+--- src/testdir/test_float_func.vim	2017-01-10 15:56:40.363761421 +0100
+***************
+*** 165,173 ****
+--- 165,186 ----
+  
+  func Test_str2float()
+    call assert_equal('1.0', string(str2float('1')))
++   call assert_equal('1.0', string(str2float(' 1 ')))
++   call assert_equal('1.0', string(str2float(' 1.0 ')))
+    call assert_equal('1.23', string(str2float('1.23')))
+    call assert_equal('1.23', string(str2float('1.23abc')))
+    call assert_equal('1.0e40', string(str2float('1e40')))
++ 
++   call assert_equal('1.0', string(str2float('+1')))
++   call assert_equal('1.0', string(str2float('+1')))
++   call assert_equal('1.0', string(str2float(' +1 ')))
++   call assert_equal('1.0', string(str2float(' + 1 ')))
++ 
++   call assert_equal('-1.0', string(str2float('-1')))
++   call assert_equal('-1.0', string(str2float('-1')))
++   call assert_equal('-1.0', string(str2float(' -1 ')))
++   call assert_equal('-1.0', string(str2float(' - 1 ')))
++ 
+    call assert_equal('inf', string(str2float('1e1000')))
+    call assert_equal('inf', string(str2float('inf')))
+    call assert_equal('-inf', string(str2float('-inf')))
+*** ../vim-8.0.0166/src/testdir/test_functions.vim	2017-01-10 16:11:14.477198393 +0100
+--- src/testdir/test_functions.vim	2017-01-10 16:09:41.309900997 +0100
+***************
+*** 0 ****
+--- 1,18 ----
++ " Tests for various functions.
++ 
++ func Test_str2nr()
++   call assert_equal(0, str2nr(''))
++   call assert_equal(1, str2nr('1'))
++   call assert_equal(1, str2nr(' 1 '))
++ 
++   call assert_equal(1, str2nr('+1'))
++   call assert_equal(1, str2nr('+ 1'))
++   call assert_equal(1, str2nr(' + 1 '))
++ 
++   call assert_equal(-1, str2nr('-1'))
++   call assert_equal(-1, str2nr('- 1'))
++   call assert_equal(-1, str2nr(' - 1 '))
++ 
++   call assert_equal(123456789, str2nr('123456789'))
++   call assert_equal(-123456789, str2nr('-123456789'))
++ endfunc
+*** ../vim-8.0.0166/src/testdir/test_alot.vim	2017-01-08 17:58:58.767107006 +0100
+--- src/testdir/test_alot.vim	2017-01-10 15:53:57.048992399 +0100
+***************
+*** 18,23 ****
+--- 18,24 ----
+  source test_filter_map.vim
+  source test_float_func.vim
+  source test_fnamemodify.vim
++ source test_functions.vim
+  source test_glob2regpat.vim
+  source test_goto.vim
+  source test_help_tagjump.vim
+*** ../vim-8.0.0166/src/Makefile	2017-01-08 17:58:58.767107006 +0100
+--- src/Makefile	2017-01-10 15:53:12.933325401 +0100
+***************
+*** 2091,2096 ****
+--- 2091,2097 ----
+  	test_delete \
+  	test_diffmode \
+  	test_digraph \
++ 	test_functions \
+  	test_display \
+  	test_ex_undo \
+  	test_execute_func \
+*** ../vim-8.0.0166/src/version.c	2017-01-10 15:15:32.882134134 +0100
+--- src/version.c	2017-01-10 16:11:22.005141661 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     167,
+  /**/
+
+-- 
+"After a few years of marriage a man can look right at a woman
+without seeing her and a woman can see right through a man
+without looking at him."
+ - Helen Rowland
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

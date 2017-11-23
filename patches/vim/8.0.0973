@@ -1,0 +1,388 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0973
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0973
+Problem:    initial info about blinking cursor is wrong
+Solution:   Invert the blink flag.  Add t_VS to stop a blinking cursor.
+Files:      src/term.c, src/proto/term.pro, src/term.h, src/option.c,
+            src/terminal.c
+
+
+*** ../vim-8.0.0972/src/term.c	2017-08-19 23:23:35.323135131 +0200
+--- src/term.c	2017-08-20 14:55:18.963848333 +0200
+***************
+*** 828,844 ****
+      {(int)KS_LE,	"\b"},
+      {(int)KS_VI,	IF_EB("\033[?25l", ESC_STR "[?25l")},
+      {(int)KS_VE,	IF_EB("\033[?25h", ESC_STR "[?25h")},
+- #if 0
+-     /* This is currently disabled, because we cannot reliably restore the
+-      * cursor style because of what appears to be an xterm bug. */
+-     {(int)KS_VE,	IF_EB("\033[?25h\033[?12l", ESC_STR "[?25h" ESC_STR "[?12l")},
+      {(int)KS_VS,	IF_EB("\033[?12h", ESC_STR "[?12h")},
+  #  ifdef TERMINFO
+      {(int)KS_CSH,	IF_EB("\033[%p1%d q", ESC_STR "[%p1%d q")},
+  #  else
+      {(int)KS_CSH,	IF_EB("\033[%d q", ESC_STR "[%d q")},
+  #  endif
+- #endif
+      {(int)KS_CRS,	IF_EB("\033P$q q\033\\", ESC_STR "P$q q" ESC_STR "\\")},
+  #  ifdef TERMINFO
+      {(int)KS_CM,	IF_EB("\033[%i%p1%d;%p2%dH",
+--- 828,840 ----
+      {(int)KS_LE,	"\b"},
+      {(int)KS_VI,	IF_EB("\033[?25l", ESC_STR "[?25l")},
+      {(int)KS_VE,	IF_EB("\033[?25h", ESC_STR "[?25h")},
+      {(int)KS_VS,	IF_EB("\033[?12h", ESC_STR "[?12h")},
++     {(int)KS_CVS,	IF_EB("\033[?12l", ESC_STR "[?12l")},
+  #  ifdef TERMINFO
+      {(int)KS_CSH,	IF_EB("\033[%p1%d q", ESC_STR "[%p1%d q")},
+  #  else
+      {(int)KS_CSH,	IF_EB("\033[%d q", ESC_STR "[%d q")},
+  #  endif
+      {(int)KS_CRS,	IF_EB("\033P$q q\033\\", ESC_STR "P$q q" ESC_STR "\\")},
+  #  ifdef TERMINFO
+      {(int)KS_CM,	IF_EB("\033[%i%p1%d;%p2%dH",
+***************
+*** 1585,1591 ****
+  				{KS_DL, "dl"}, {KS_CDL,"DL"}, {KS_CS, "cs"},
+  				{KS_CL, "cl"}, {KS_CD, "cd"},
+  				{KS_VI, "vi"}, {KS_VE, "ve"}, {KS_MB, "mb"},
+! 				{KS_VS, "vs"}, {KS_ME, "me"}, {KS_MR, "mr"},
+  				{KS_MD, "md"}, {KS_SE, "se"}, {KS_SO, "so"},
+  				{KS_CZH,"ZH"}, {KS_CZR,"ZR"}, {KS_UE, "ue"},
+  				{KS_US, "us"}, {KS_UCE, "Ce"}, {KS_UCS, "Cs"},
+--- 1581,1587 ----
+  				{KS_DL, "dl"}, {KS_CDL,"DL"}, {KS_CS, "cs"},
+  				{KS_CL, "cl"}, {KS_CD, "cd"},
+  				{KS_VI, "vi"}, {KS_VE, "ve"}, {KS_MB, "mb"},
+! 				{KS_ME, "me"}, {KS_MR, "mr"},
+  				{KS_MD, "md"}, {KS_SE, "se"}, {KS_SO, "so"},
+  				{KS_CZH,"ZH"}, {KS_CZR,"ZR"}, {KS_UE, "ue"},
+  				{KS_US, "us"}, {KS_UCE, "Ce"}, {KS_UCS, "Cs"},
+***************
+*** 1595,1600 ****
+--- 1591,1597 ----
+  				{KS_BC, "bc"}, {KS_CSB,"Sb"}, {KS_CSF,"Sf"},
+  				{KS_CAB,"AB"}, {KS_CAF,"AF"}, {KS_LE, "le"},
+  				{KS_ND, "nd"}, {KS_OP, "op"}, {KS_CRV, "RV"},
++ 				{KS_VS, "vs"}, {KS_CVS, "VS"},
+  				{KS_CIS, "IS"}, {KS_CIE, "IE"},
+  				{KS_CSC, "SC"}, {KS_CEC, "EC"},
+  				{KS_TS, "ts"}, {KS_FS, "fs"},
+***************
+*** 3665,3675 ****
+      void
+  scroll_start(void)
+  {
+!     if (*T_VS != NUL)
+      {
+  	out_str(T_VS);
+! 	out_str(T_VE);
+! 	screen_start();			/* don't know where cursor is now */
+      }
+  }
+  
+--- 3662,3672 ----
+      void
+  scroll_start(void)
+  {
+!     if (*T_VS != NUL && *T_CVS != NUL)
+      {
+  	out_str(T_VS);
+! 	out_str(T_CVS);
+! 	screen_start();		/* don't know where cursor is now */
+      }
+  }
+  
+***************
+*** 3694,3703 ****
+      void
+  cursor_off(void)
+  {
+!     if (full_screen)
+      {
+! 	if (!cursor_is_off)
+! 	    out_str(T_VI);	    /* disable cursor */
+  	cursor_is_off = TRUE;
+      }
+  }
+--- 3691,3699 ----
+      void
+  cursor_off(void)
+  {
+!     if (full_screen && !cursor_is_off)
+      {
+! 	out_str(T_VI);	    /* disable cursor */
+  	cursor_is_off = TRUE;
+      }
+  }
+***************
+*** 3766,3785 ****
+  	out_flush();
+      }
+  }
+- 
+-     void
+- term_cursor_blink(int blink)
+- {
+-     if (blink)
+- 	out_str(T_VS);
+-     else
+- 	out_str(T_VE);
+-     out_flush();
+- }
+  # endif
+  
+  /*
+!  * "shape" == 1: block, "shape" == 2: underline, "shape" == 3: vertical bar
+   */
+      void
+  term_cursor_shape(int shape, int blink)
+--- 3762,3771 ----
+  	out_flush();
+      }
+  }
+  # endif
+  
+  /*
+!  * "shape": 1 = block, 2 = underline, 3 = vertical bar
+   */
+      void
+  term_cursor_shape(int shape, int blink)
+***************
+*** 3789,3794 ****
+--- 3775,3791 ----
+  	OUT_STR(tgoto((char *)T_CSH, 0, shape * 2 - blink));
+  	out_flush();
+      }
++     /* When t_SH is not set try setting just the blink state. */
++     else if (blink && *T_VS != NUL)
++     {
++ 	out_str(T_VS);
++ 	out_flush();
++     }
++     else if (!blink && *T_CVS != NUL)
++     {
++ 	out_str(T_CVS);
++ 	out_flush();
++     }
+  }
+  #endif
+  
+***************
+*** 4693,4699 ****
+  			 * 5 = vertical bar blink, 6 = vertical bar */
+  			number = number == 0 ? 1 : number;
+  			initial_cursor_shape = (number + 1) / 2;
+! 			initial_cursor_blink = (number & 1) ? TRUE : FALSE;
+  			rcm_status = STATUS_GOT;
+  			LOG_TR("Received cursor shape response");
+  
+--- 4690,4698 ----
+  			 * 5 = vertical bar blink, 6 = vertical bar */
+  			number = number == 0 ? 1 : number;
+  			initial_cursor_shape = (number + 1) / 2;
+! 			/* The blink flag is actually inverted, compared to
+! 			 * the value set with T_SH. */
+! 			initial_cursor_blink = (number & 1) ? FALSE : TRUE;
+  			rcm_status = STATUS_GOT;
+  			LOG_TR("Received cursor shape response");
+  
+*** ../vim-8.0.0972/src/proto/term.pro	2017-08-12 19:51:37.819214168 +0200
+--- src/proto/term.pro	2017-08-20 14:47:15.778810840 +0200
+***************
+*** 53,59 ****
+  void cursor_off(void);
+  void term_cursor_mode(int forced);
+  void term_cursor_color(char_u *color);
+- void term_cursor_blink(int blink);
+  void term_cursor_shape(int shape, int blink);
+  void scroll_region_set(win_T *wp, int off);
+  void scroll_region_reset(void);
+--- 53,58 ----
+*** ../vim-8.0.0972/src/term.h	2017-08-19 19:40:42.185061127 +0200
+--- src/term.h	2017-08-20 14:49:40.325924506 +0200
+***************
+*** 39,45 ****
+      KS_DB,	/* text may be scrolled up from down */
+      KS_VI,	/* cursor invisible */
+      KS_VE,	/* cursor visible */
+!     KS_VS,	/* cursor very visible */
+      KS_CSH,	/* cursor shape */
+      KS_CRS,	/* request cursor shape */
+      KS_ME,	/* normal mode */
+--- 39,46 ----
+      KS_DB,	/* text may be scrolled up from down */
+      KS_VI,	/* cursor invisible */
+      KS_VE,	/* cursor visible */
+!     KS_VS,	/* cursor very visible (blink) */
+!     KS_CVS,	/* cursor normally visible (no blink) */
+      KS_CSH,	/* cursor shape */
+      KS_CRS,	/* request cursor shape */
+      KS_ME,	/* normal mode */
+***************
+*** 131,137 ****
+  #define T_DB	(TERM_STR(KS_DB))	/* text may be scrolled up from down */
+  #define T_VI	(TERM_STR(KS_VI))	/* cursor invisible */
+  #define T_VE	(TERM_STR(KS_VE))	/* cursor visible */
+! #define T_VS	(TERM_STR(KS_VS))	/* cursor very visible */
+  #define T_CSH	(TERM_STR(KS_CSH))	/* cursor shape */
+  #define T_CRS	(TERM_STR(KS_CRS))	/* request cursor shape */
+  #define T_ME	(TERM_STR(KS_ME))	/* normal mode */
+--- 132,139 ----
+  #define T_DB	(TERM_STR(KS_DB))	/* text may be scrolled up from down */
+  #define T_VI	(TERM_STR(KS_VI))	/* cursor invisible */
+  #define T_VE	(TERM_STR(KS_VE))	/* cursor visible */
+! #define T_VS	(TERM_STR(KS_VS))	/* cursor very visible (blink) */
+! #define T_CVS	(TERM_STR(KS_CVS))	/* cursor normally visible (no blink) */
+  #define T_CSH	(TERM_STR(KS_CSH))	/* cursor shape */
+  #define T_CRS	(TERM_STR(KS_CRS))	/* request cursor shape */
+  #define T_ME	(TERM_STR(KS_ME))	/* normal mode */
+*** ../vim-8.0.0972/src/option.c	2017-08-19 19:40:42.189061102 +0200
+--- src/option.c	2017-08-20 14:52:58.120711785 +0200
+***************
+*** 3157,3162 ****
+--- 3157,3164 ----
+      p_term("t_AL", T_CAL)
+      p_term("t_al", T_AL)
+      p_term("t_bc", T_BC)
++     p_term("t_BE", T_BE)
++     p_term("t_BD", T_BD)
+      p_term("t_cd", T_CD)
+      p_term("t_ce", T_CE)
+      p_term("t_cl", T_CL)
+***************
+*** 3173,3185 ****
+      p_term("t_db", T_DB)
+      p_term("t_DL", T_CDL)
+      p_term("t_dl", T_DL)
+      p_term("t_EI", T_CEI)
+      p_term("t_fs", T_FS)
+      p_term("t_IE", T_CIE)
+-     p_term("t_SC", T_CSC)
+-     p_term("t_EC", T_CEC)
+-     p_term("t_SH", T_CSH)
+-     p_term("t_RS", T_CRS)
+      p_term("t_IS", T_CIS)
+      p_term("t_ke", T_KE)
+      p_term("t_ks", T_KS)
+--- 3175,3185 ----
+      p_term("t_db", T_DB)
+      p_term("t_DL", T_CDL)
+      p_term("t_dl", T_DL)
++     p_term("t_EC", T_CEC)
+      p_term("t_EI", T_CEI)
+      p_term("t_fs", T_FS)
++     p_term("t_GP", T_CGP)
+      p_term("t_IE", T_CIE)
+      p_term("t_IS", T_CIS)
+      p_term("t_ke", T_KE)
+      p_term("t_ks", T_KS)
+***************
+*** 3193,3202 ****
+--- 3193,3205 ----
+      p_term("t_op", T_OP)
+      p_term("t_RB", T_RBG)
+      p_term("t_RI", T_CRI)
++     p_term("t_RS", T_CRS)
+      p_term("t_RV", T_CRV)
+      p_term("t_Sb", T_CSB)
++     p_term("t_SC", T_CSC)
+      p_term("t_se", T_SE)
+      p_term("t_Sf", T_CSF)
++     p_term("t_SH", T_CSH)
+      p_term("t_SI", T_CSI)
+      p_term("t_so", T_SO)
+      p_term("t_SR", T_CSR)
+***************
+*** 3211,3219 ****
+      p_term("t_vb", T_VB)
+      p_term("t_ve", T_VE)
+      p_term("t_vi", T_VI)
+      p_term("t_vs", T_VS)
+      p_term("t_WP", T_CWP)
+-     p_term("t_GP", T_CGP)
+      p_term("t_WS", T_CWS)
+      p_term("t_xn", T_XN)
+      p_term("t_xs", T_XS)
+--- 3214,3222 ----
+      p_term("t_vb", T_VB)
+      p_term("t_ve", T_VE)
+      p_term("t_vi", T_VI)
++     p_term("t_VS", T_CVS)
+      p_term("t_vs", T_VS)
+      p_term("t_WP", T_CWP)
+      p_term("t_WS", T_CWS)
+      p_term("t_xn", T_XN)
+      p_term("t_xs", T_XS)
+***************
+*** 3221,3228 ****
+      p_term("t_ZR", T_CZR)
+      p_term("t_8f", T_8F)
+      p_term("t_8b", T_8B)
+-     p_term("t_BE", T_BE)
+-     p_term("t_BD", T_BD)
+  
+  /* terminal key codes are not in here */
+  
+--- 3224,3229 ----
+*** ../vim-8.0.0972/src/terminal.c	2017-08-19 21:23:00.499089179 +0200
+--- src/terminal.c	2017-08-20 14:41:30.616927619 +0200
+***************
+*** 38,44 ****
+   * in tl_scrollback are no longer used.
+   *
+   * TODO:
+-  * - help index for winptydll, optwin entry for winptydll
+   * - make [range]terminal pipe [range] lines to the terminal
+   * - implement term_setsize()
+   * - add test for giving error for invalid 'termsize' value.
+--- 38,43 ----
+***************
+*** 1271,1278 ****
+  	    term_cursor_color(term->tl_cursor_color);
+  	else
+  	    term_cursor_color((char_u *)"");
+- 	/* do both blink and shape+blink, in case setting shape does not work */
+- 	term_cursor_blink(term->tl_cursor_blink);
+  	term_cursor_shape(term->tl_cursor_shape, term->tl_cursor_blink);
+      }
+  }
+--- 1270,1275 ----
+***************
+*** 1288,1294 ****
+      {
+  	did_change_cursor = FALSE;
+  	term_cursor_color((char_u *)"");
+- 	term_cursor_blink(FALSE);
+  	/* this will restore the initial cursor style, if possible */
+  	ui_cursor_shape_forced(TRUE);
+      }
+--- 1285,1290 ----
+*** ../vim-8.0.0972/src/version.c	2017-08-19 23:23:35.323135131 +0200
+--- src/version.c	2017-08-20 15:03:21.340880785 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     973,
+  /**/
+
+-- 
+An easy way to determine if you have enough teamwork to be doomed is simply to
+measure how long it takes from the time you decide to go to lunch together
+until the time you actually eat.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

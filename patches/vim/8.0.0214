@@ -1,0 +1,64 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0214
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0214
+Problem:    Leaking memory when syntax cluster id is unknown. (Coverity)
+Solution:   Free the memory.
+Files:      src/syntax.c
+
+
+*** ../vim-8.0.0213/src/syntax.c	2017-01-17 19:48:48.132511120 +0100
+--- src/syntax.c	2017-01-22 15:24:16.324723771 +0100
+***************
+*** 5668,5673 ****
+--- 5668,5675 ----
+  	    if (scl_id >= 0)
+  		syn_combine_list(&SYN_CLSTR(curwin->w_s)[scl_id].scl_list,
+  			     &clstr_list, list_op);
++ 	    else
++ 		vim_free(clstr_list);
+  	    got_clstr = TRUE;
+  	}
+  
+***************
+*** 6034,6040 ****
+  		}
+  		if (count != 0)
+  		{
+! 		    EMSG2(_("E408: %s must be first in contains list"), name + 1);
+  		    failed = TRUE;
+  		    vim_free(name);
+  		    break;
+--- 6036,6043 ----
+  		}
+  		if (count != 0)
+  		{
+! 		    EMSG2(_("E408: %s must be first in contains list"),
+! 								     name + 1);
+  		    failed = TRUE;
+  		    vim_free(name);
+  		    break;
+*** ../vim-8.0.0213/src/version.c	2017-01-22 15:19:16.814623922 +0100
+--- src/version.c	2017-01-22 15:25:45.504158117 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     214,
+  /**/
+
+-- 
+Yah, well, we had to carve our electrons out of driftwood we'd
+find.  In the winter.  Uphill.  Both ways.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

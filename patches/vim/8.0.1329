@@ -1,0 +1,56 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1329
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1329
+Problem:    When a flaky test fails it also often fails the second time.
+Solution:   Sleep a couple of seconds before the second try.
+Files:      src/testdir/runtest.vim
+
+
+*** ../vim-8.0.1328/src/testdir/runtest.vim	2017-11-16 21:52:07.655021738 +0100
+--- src/testdir/runtest.vim	2017-11-21 15:11:14.566046921 +0100
+***************
+*** 286,291 ****
+--- 286,295 ----
+      call add(s:messages, 'Flaky test failed, running it again')
+      let first_run = v:errors
+  
++     " Flakiness is often caused by the system being very busy.  Sleep a couple
++     " of seconds to have a higher chance of succeeding the second time.
++     sleep 2
++ 
+      let v:errors = []
+      call RunTheTest(s:test)
+      if len(v:errors) > 0
+*** ../vim-8.0.1328/src/version.c	2017-11-21 14:47:51.526423044 +0100
+--- src/version.c	2017-11-21 15:11:23.569914592 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1329,
+  /**/
+
+-- 
+Far back in the mists of ancient time, in the great and glorious days of the
+former Galactic Empire, life was wild, rich and largely tax free.
+Mighty starships plied their way between exotic suns, seeking adventure and
+reward among the furthest reaches of Galactic space.  In those days, spirits
+were brave, the stakes were high, men were real men, women were real women
+and small furry creatures from Alpha Centauri were real small furry creatures
+from Alpha Centauri.  And all dared to brave unknown terrors, to do mighty
+deeds, to boldly split infinitives that no man had split before -- and thus
+was the Empire forged.
+		-- Douglas Adams, "The Hitchhiker's Guide to the Galaxy"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,61 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0279
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0279
+Problem:    With MSVC 2015 the dll name is vcruntime140.dll.
+Solution:   Check the MSVC version and use the right dll name. (Ken Takata)
+Files:      src/Make_mvc.mak
+
+
+*** ../vim-8.0.0278/src/Make_mvc.mak	2017-01-06 14:55:17.125157197 +0100
+--- src/Make_mvc.mak	2017-02-01 12:59:47.275729522 +0100
+***************
+*** 285,292 ****
+  # Base name of the msvcrXX.dll
+  !if $(MSVCRT_VER) <= 60
+  MSVCRT_NAME = msvcrt
+! !else
+  MSVCRT_NAME = msvcr$(MSVCRT_VER)
+  !endif
+  
+  !if $(MSVC_MAJOR) == 6
+--- 285,294 ----
+  # Base name of the msvcrXX.dll
+  !if $(MSVCRT_VER) <= 60
+  MSVCRT_NAME = msvcrt
+! !elseif $(MSVCRT_VER) <= 130
+  MSVCRT_NAME = msvcr$(MSVCRT_VER)
++ !else
++ MSVCRT_NAME = vcruntime$(MSVCRT_VER)
+  !endif
+  
+  !if $(MSVC_MAJOR) == 6
+*** ../vim-8.0.0278/src/version.c	2017-02-01 12:32:54.422023552 +0100
+--- src/version.c	2017-02-01 13:01:07.567218183 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     279,
+  /**/
+
+-- 
+ARTHUR: Charge!
+   [They all charge with swords drawn towards the RABBIT.  A tremendous twenty
+   second fight with Peckinpahish shots and borrowing heavily also on the
+   Kung Fu and karate-type films ensues, in which some four KNIGHTS are
+   comprehensively killed.]
+ARTHUR: Run away!  Run away!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

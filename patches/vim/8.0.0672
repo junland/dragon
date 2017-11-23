@@ -1,0 +1,156 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0672
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0672
+Problem:    Third item of synconcealed() changes too often. (Dominique Pelle)
+Solution:   Reset the sequence number at the start of each line.
+Files:      src/syntax.c, src/testdir/test_syntax.vim, runtime/doc/eval.txt
+
+
+*** ../vim-8.0.0671/src/syntax.c	2017-06-22 16:04:23.809432669 +0200
+--- src/syntax.c	2017-06-24 22:19:51.581816064 +0200
+***************
+*** 1061,1066 ****
+--- 1061,1067 ----
+  
+      next_match_idx = -1;
+      ++current_line_id;
++     next_seqnr = 1;
+  }
+  
+  /*
+***************
+*** 1857,1862 ****
+--- 1858,1864 ----
+  #endif
+  #ifdef FEAT_CONCEAL
+  	current_flags = 0;
++ 	current_seqnr = 0;
+  #endif
+  	return 0;
+      }
+***************
+*** 2346,2351 ****
+--- 2348,2354 ----
+  #endif
+  #ifdef FEAT_CONCEAL
+      current_flags = 0;
++     current_seqnr = 0;
+  #endif
+      if (cur_si != NULL)
+      {
+*** ../vim-8.0.0671/src/testdir/test_syntax.vim	2017-06-22 23:03:08.488157710 +0200
+--- src/testdir/test_syntax.vim	2017-06-24 22:22:30.352582668 +0200
+***************
+*** 474,497 ****
+  
+    set conceallevel=0
+    call assert_equal('123456 ', ScreenLines(2, 7)[0])
+!   call assert_equal([[0, ''], [0, ''], [0, ''], [0, ''], [0, ''], [0, '']], map(range(1, 6), 'synconcealed(2, v:val)[0:1]'))
+  
+    set conceallevel=1
+    call assert_equal('1X 6   ', ScreenLines(2, 7)[0])
+!   call assert_equal([[0, ''], [1, 'X'], [1, 'X'], [1, ' '], [1, ' '], [0, '']], map(range(1, 6), 'synconcealed(2, v:val)[0:1]'))
+  
+    set conceallevel=1
+    set listchars=conceal:Y
+!   call assert_equal([[0, ''], [1, 'X'], [1, 'X'], [1, 'Y'], [1, 'Y'], [0, '']], map(range(1, 6), 'synconcealed(2, v:val)[0:1]'))
+    call assert_equal('1XY6   ', ScreenLines(2, 7)[0])
+  
+    set conceallevel=2
+    call assert_match('1X6    ', ScreenLines(2, 7)[0])
+!   call assert_equal([[0, ''], [1, 'X'], [1, 'X'], [1, ''], [1, ''], [0, '']], map(range(1, 6), 'synconcealed(2, v:val)[0:1]'))
+  
+    set conceallevel=3
+    call assert_match('16     ', ScreenLines(2, 7)[0])
+!   call assert_equal([[0, ''], [1, ''], [1, ''], [1, ''], [1, ''], [0, '']], map(range(1, 6), 'synconcealed(2, v:val)[0:1]'))
+  
+    syn clear
+    set conceallevel&
+--- 474,497 ----
+  
+    set conceallevel=0
+    call assert_equal('123456 ', ScreenLines(2, 7)[0])
+!   call assert_equal([[0, '', 0], [0, '', 0], [0, '', 0], [0, '', 0], [0, '', 0], [0, '', 0]], map(range(1, 6), 'synconcealed(2, v:val)'))
+  
+    set conceallevel=1
+    call assert_equal('1X 6   ', ScreenLines(2, 7)[0])
+!   call assert_equal([[0, '', 0], [1, 'X', 1], [1, 'X', 1], [1, ' ', 2], [1, ' ', 2], [0, '', 0]], map(range(1, 6), 'synconcealed(2, v:val)'))
+  
+    set conceallevel=1
+    set listchars=conceal:Y
+!   call assert_equal([[0, '', 0], [1, 'X', 1], [1, 'X', 1], [1, 'Y', 2], [1, 'Y', 2], [0, '', 0]], map(range(1, 6), 'synconcealed(2, v:val)'))
+    call assert_equal('1XY6   ', ScreenLines(2, 7)[0])
+  
+    set conceallevel=2
+    call assert_match('1X6    ', ScreenLines(2, 7)[0])
+!   call assert_equal([[0, '', 0], [1, 'X', 1], [1, 'X', 1], [1, '', 2], [1, '', 2], [0, '', 0]], map(range(1, 6), 'synconcealed(2, v:val)'))
+  
+    set conceallevel=3
+    call assert_match('16     ', ScreenLines(2, 7)[0])
+!   call assert_equal([[0, '', 0], [1, '', 1], [1, '', 1], [1, '', 2], [1, '', 2], [0, '', 0]], map(range(1, 6), 'synconcealed(2, v:val)'))
+  
+    syn clear
+    set conceallevel&
+*** ../vim-8.0.0671/runtime/doc/eval.txt	2017-06-23 20:52:21.579128739 +0200
+--- runtime/doc/eval.txt	2017-06-24 22:26:42.982616738 +0200
+***************
+*** 7655,7666 ****
+  		   is 1, the second item contains the text which will be
+  		   displayed in place of the concealed text, depending on the
+  		   current setting of 'conceallevel' and 'listchars'.
+! 		3. The third and final item in the list is a unique number
+! 		   representing the specific syntax region matched. This
+! 		   allows detection of the beginning of a new concealable
+! 		   region if there are two consecutive regions with the same
+! 		   replacement character.  For an example use see
+! 		   $VIMRUNTIME/syntax/2html.vim .
+  
+  
+  synstack({lnum}, {col})					*synstack()*
+--- 7663,7683 ----
+  		   is 1, the second item contains the text which will be
+  		   displayed in place of the concealed text, depending on the
+  		   current setting of 'conceallevel' and 'listchars'.
+! 		3. The third and final item in the list is a number
+! 		   representing the specific syntax region matched in the
+! 		   line. When the character is not concealed the value is
+! 		   zero. This allows detection of the beginning of a new
+! 		   concealable region if there are two consecutive regions
+! 		   with the same replacement character.  For an example, if
+! 		   the text is "123456" and both "23" and "45" are concealed
+! 		   and replace by the character "X", then:
+! 			call			returns ~
+! 		   	synconcealed(lnum, 1)   [0, '', 0]
+! 		   	synconcealed(lnum, 2)   [1, 'X', 1]
+! 		   	synconcealed(lnum, 3)   [1, 'X', 1]
+! 		   	synconcealed(lnum, 4)   [1, 'X', 2]
+! 		   	synconcealed(lnum, 5)   [1, 'X', 2]
+! 		   	synconcealed(lnum, 6)   [0, '', 0]
+  
+  
+  synstack({lnum}, {col})					*synstack()*
+*** ../vim-8.0.0671/src/version.c	2017-06-24 18:48:55.103858569 +0200
+--- src/version.c	2017-06-24 22:12:58.857031741 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     672,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+86. E-mail Deficiency Depression (EDD) forces you to e-mail yourself.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

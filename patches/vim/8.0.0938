@@ -1,0 +1,84 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0938
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0938
+Problem:    Scrolling in terminal window is inefficient.
+Solution:   Use win_del_lines().
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0937/src/terminal.c	2017-08-13 20:06:14.963846989 +0200
+--- src/terminal.c	2017-08-13 22:10:48.129667596 +0200
+***************
+*** 38,48 ****
+   * in tl_scrollback are no longer used.
+   *
+   * TODO:
+-  * - add a character in :ls output
+-  * - add 't' to mode()
+-  * - use win_del_lines() to make scroll-up efficient.
+-  * - Make StatusLineTerm adjust UserN highlighting like StatusLineNC does, see
+-  *   use of hightlight_stlnc[].
+   * - implement term_setsize()
+   * - add test for giving error for invalid 'termsize' value.
+   * - support minimal size when 'termsize' is "rows*cols".
+--- 38,43 ----
+***************
+*** 1495,1505 ****
+  }
+  
+      static int
+! handle_moverect(VTermRect dest UNUSED, VTermRect src UNUSED, void *user)
+  {
+      term_T	*term = (term_T *)user;
+  
+!     /* TODO */
+      redraw_buf_later(term->tl_buffer, NOT_VALID);
+      return 1;
+  }
+--- 1490,1510 ----
+  }
+  
+      static int
+! handle_moverect(VTermRect dest, VTermRect src, void *user)
+  {
+      term_T	*term = (term_T *)user;
++     win_T	*wp;
+  
+!     if (dest.start_col == src.start_col
+! 	    && dest.end_col == src.end_col
+! 	    && dest.start_row < src.start_row)
+! 	FOR_ALL_WINDOWS(wp)
+! 	{
+! 	    if (wp->w_buffer == term->tl_buffer)
+! 		/* scrolling up is much more efficient when deleting lines */
+! 		win_del_lines(wp, dest.start_row,
+! 				 src.start_row - dest.start_row, FALSE, FALSE);
+! 	}
+      redraw_buf_later(term->tl_buffer, NOT_VALID);
+      return 1;
+  }
+*** ../vim-8.0.0937/src/version.c	2017-08-13 21:37:38.629950080 +0200
+--- src/version.c	2017-08-13 22:12:25.993076098 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     938,
+  /**/
+
+-- 
+Communication is one of the most compli..., eh, well, it's hard.
+You know what I mean.  Not?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,79 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0479
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0479
+Problem:    remote_peek() is not tested.
+Solution:   Add a test.
+Files:      src/testdir/test_clientserver.vim, src/testdir/runtest.vim
+
+
+*** ../vim-8.0.0478/src/testdir/test_clientserver.vim	2017-03-18 19:41:45.892072924 +0100
+--- src/testdir/test_clientserver.vim	2017-03-18 20:43:20.869118167 +0100
+***************
+*** 81,86 ****
+--- 81,107 ----
+    call assert_equal('got it', remote_read(g:myserverid))
+    let s:where = 16
+  
++   call remote_send(name, ":call server2client(expand('<client>'), 'another')\<CR>", 'g:myserverid')
++   let s:where = 151
++   let peek_result = 'nothing'
++   let r = remote_peek(g:myserverid, 'peek_result')
++   let s:where = 161
++   " unpredictable whether the result is already avaialble.
++   if r > 0
++     call assert_equal('another', peek_result)
++   elseif r == 0
++     call assert_equal('nothing', peek_result)
++   else
++     call assert_report('remote_peek() failed')
++   endif
++   let g:peek_result = 'empty'
++   call WaitFor('remote_peek(g:myserverid, "g:peek_result") > 0')
++   let s:where = 171
++   call assert_equal('another', g:peek_result)
++   let s:where = 181
++   call assert_equal('another', remote_read(g:myserverid))
++   let s:where = 191
++ 
+    call remote_send(name, ":qa!\<CR>")
+    let s:where = 17
+    call WaitFor('job_status(g:job) == "dead"')
+*** ../vim-8.0.0478/src/testdir/runtest.vim	2017-03-18 19:41:45.892072924 +0100
+--- src/testdir/runtest.vim	2017-03-18 20:39:37.154760934 +0100
+***************
+*** 247,252 ****
+--- 247,254 ----
+    call RunTheTest(s:test)
+  
+    if len(v:errors) > 0 && index(s:flaky, s:test) >= 0
++     call add(s:messages, 'Found errors in ' . s:test . ':')
++     call extend(s:messages, v:errors)
+      call add(s:messages, 'Flaky test failed, running it again')
+      let v:errors = []
+      call RunTheTest(s:test)
+*** ../vim-8.0.0478/src/version.c	2017-03-18 20:18:42.067950195 +0100
+--- src/version.c	2017-03-18 20:33:24.689489915 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     479,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+152. You find yourself falling for someone you've never seen or hardly
+     know, but, boy can he/she TYPE!!!!!!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

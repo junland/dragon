@@ -1,0 +1,121 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0924
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0924
+Problem:    Terminal window not updated after using term_sendkeys().
+Solution:   Call redraw_after_callback().
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0923/src/terminal.c	2017-08-13 14:13:15.252878860 +0200
+--- src/terminal.c	2017-08-13 15:12:53.242782302 +0200
+***************
+*** 47,53 ****
+   * - do not store terminal window in viminfo.  Or prefix term:// ?
+   * - add a character in :ls output
+   * - add 't' to mode()
+-  * - set 'filetype' to "terminal"?
+   * - use win_del_lines() to make scroll-up efficient.
+   * - Make StatusLineTerm adjust UserN highlighting like StatusLineNC does, see
+   *   use of hightlight_stlnc[].
+--- 47,52 ----
+***************
+*** 568,576 ****
+      if (term->tl_normal_mode)
+  	return;
+      setcursor();
+!     if (redraw && term->tl_buffer == curbuf)
+      {
+! 	if (term->tl_cursor_visible)
+  	    cursor_on();
+  	out_flush();
+  #ifdef FEAT_GUI
+--- 567,575 ----
+      if (term->tl_normal_mode)
+  	return;
+      setcursor();
+!     if (redraw)
+      {
+! 	if (term->tl_buffer == curbuf && term->tl_cursor_visible)
+  	    cursor_on();
+  	out_flush();
+  #ifdef FEAT_GUI
+***************
+*** 598,608 ****
+      ch_log(channel, "writing %d bytes to terminal", (int)len);
+      term_write_job_output(term, msg, len);
+  
+      if (!term->tl_normal_mode)
+      {
+  	/* TODO: only update once in a while. */
+! 	update_screen(0);
+! 	update_cursor(term, TRUE);
+      }
+  }
+  
+--- 597,615 ----
+      ch_log(channel, "writing %d bytes to terminal", (int)len);
+      term_write_job_output(term, msg, len);
+  
++     /* In Terminal-Normal mode we are displaying the buffer, not the terminal
++      * contents, thus no screen update is needed. */
+      if (!term->tl_normal_mode)
+      {
+  	/* TODO: only update once in a while. */
+! 	ch_log(term->tl_job->jv_channel, "updating screen");
+! 	if (buffer == curbuf)
+! 	{
+! 	    update_screen(0);
+! 	    update_cursor(term, TRUE);
+! 	}
+! 	else
+! 	    redraw_after_callback();
+      }
+  }
+  
+***************
+*** 2558,2571 ****
+  	send_keys_to_term(term, PTR2CHAR(msg), FALSE);
+  	msg += MB_PTR2LEN(msg);
+      }
+- 
+-     if (!term->tl_normal_mode)
+-     {
+- 	/* TODO: only update once in a while. */
+- 	update_screen(0);
+- 	if (buf == curbuf)
+- 	    update_cursor(term, TRUE);
+-     }
+  }
+  
+  /*
+--- 2565,2570 ----
+*** ../vim-8.0.0923/src/version.c	2017-08-13 14:13:15.252878860 +0200
+--- src/version.c	2017-08-13 15:14:54.770035685 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     924,
+  /**/
+
+-- 
+FROG: How you English say:  I one more time, mac, I unclog my nose towards
+      you, sons of a window-dresser,  so, you think you could out-clever us
+      French fellows with your silly knees-bent creeping about advancing
+      behaviour.  (blows a raspberry) I wave my private parts at your aunties,
+      you brightly-coloured, mealy-templed, cranberry-smelling, electric
+      donkey-bottom biters.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

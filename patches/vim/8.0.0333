@@ -1,0 +1,74 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0333
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0333
+Problem:    Illegal memory access when 'complete' ends in a backslash.
+Solution:   Check for trailing backslash. (Dominique Pelle, closes #1478)
+Files:      src/option.c, src/testdir/test_options.vim
+
+
+*** ../vim-8.0.0332/src/option.c	2017-02-05 14:13:12.152033013 +0100
+--- src/option.c	2017-02-17 14:39:06.079032637 +0100
+***************
+*** 7017,7023 ****
+  		    /* skip optional filename after 'k' and 's' */
+  		    while (*s && *s != ',' && *s != ' ')
+  		    {
+! 			if (*s == '\\')
+  			    ++s;
+  			++s;
+  		    }
+--- 7017,7023 ----
+  		    /* skip optional filename after 'k' and 's' */
+  		    while (*s && *s != ',' && *s != ' ')
+  		    {
+! 			if (*s == '\\' && s[1] != NUL)
+  			    ++s;
+  			++s;
+  		    }
+*** ../vim-8.0.0332/src/testdir/test_options.vim	2017-02-05 14:13:12.152033013 +0100
+--- src/testdir/test_options.vim	2017-02-17 14:46:07.183899766 +0100
+***************
+*** 136,141 ****
+--- 136,150 ----
+    call Check_dir_option('thesaurus')
+  endfun
+  
++ func Test_complete()
++   " Trailing single backslash used to cause invalid memory access.
++   set complete=s\
++   new
++   call feedkeys("i\<C-N>\<Esc>", 'xt')
++   bwipe!
++   set complete&
++ endfun
++ 
+  func Test_set_completion()
+    call feedkeys(":set di\<C-A>\<C-B>\"\<CR>", 'tx')
+    call assert_equal('"set dictionary diff diffexpr diffopt digraph directory display', @:)
+*** ../vim-8.0.0332/src/version.c	2017-02-17 13:44:44.299321045 +0100
+--- src/version.c	2017-02-17 14:40:33.770380078 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     333,
+  /**/
+
+-- 
+BEDEVERE: Wait.  Wait ... tell me, what also floats on water?
+ALL:      Bread?  No, no, no.  Apples .... gravy ... very small rocks ...
+ARTHUR:   A duck.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

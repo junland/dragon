@@ -1,0 +1,101 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0010
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0010
+Problem:    Crash when editing file that starts with crypt yeader. (igor2x)
+Solution:   Check for length of text. (Christian Brabandt) Add a test.
+Files:      src/fileio.c, src/testdir/test_crypt.vim, src/Makefile,
+            src/testdir/Make_all.mak
+
+
+*** ../vim-8.0.0009/src/fileio.c	2016-09-03 16:58:56.000000000 +0200
+--- src/fileio.c	2016-09-25 20:45:03.194238557 +0200
+***************
+*** 3011,3016 ****
+--- 3011,3019 ----
+  
+  	    /* Remove cryptmethod specific header from the text. */
+  	    header_len = crypt_get_header_len(method);
++ 	    if (*sizep <= header_len)
++ 		/* invalid header, buffer can't be encrypted */
++ 		return NULL;
+  	    *filesizep += header_len;
+  	    *sizep -= header_len;
+  	    mch_memmove(ptr, ptr + header_len, (size_t)*sizep);
+*** ../vim-8.0.0009/src/testdir/test_crypt.vim	2016-09-25 20:50:18.387694352 +0200
+--- src/testdir/test_crypt.vim	2016-09-25 20:49:42.123986969 +0200
+***************
+*** 0 ****
+--- 1,21 ----
++ " Tests for encryption.
++ " TODO: include tests from test71.
++ 
++ func Common_head_only(text)
++   " This was crashing Vim
++   split Xtest.txt
++   call setline(1, a:text)
++   wq
++   call feedkeys(":split Xtest.txt\<CR>foobar\<CR>", "tx")
++   call delete('Xtest.txt')
++   call assert_match('VimCrypt', getline(1))
++   bwipe!
++ endfunc
++ 
++ func Test_head_only_2()
++   call Common_head_only('VimCrypt~02!abc')
++ endfunc
++ 
++ func Test_head_only_3()
++   call Common_head_only('VimCrypt~03!abc')
++ endfunc
+*** ../vim-8.0.0009/src/Makefile	2016-09-12 13:41:08.000000000 +0200
+--- src/Makefile	2016-09-25 20:38:05.889563491 +0200
+***************
+*** 2066,2071 ****
+--- 2066,2072 ----
+  	test_channel \
+  	test_charsearch \
+  	test_cmdline \
++ 	test_crypt \
+  	test_cscope \
+  	test_cursor_func \
+  	test_delete \
+*** ../vim-8.0.0009/src/testdir/Make_all.mak	2016-09-07 20:37:01.000000000 +0200
+--- src/testdir/Make_all.mak	2016-09-25 20:38:28.705380237 +0200
+***************
+*** 149,154 ****
+--- 149,155 ----
+  	    test_channel.res \
+  	    test_charsearch.res \
+  	    test_cmdline.res \
++ 	    test_crypt.res \
+  	    test_cscope.res \
+  	    test_diffmode.res \
+  	    test_digraph.res \
+*** ../vim-8.0.0009/src/version.c	2016-09-25 20:21:58.333062395 +0200
+--- src/version.c	2016-09-25 20:50:47.543459277 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     10,
+  /**/
+
+-- 
+   LAUNCELOT leaps into SHOT with a mighty cry and runs the GUARD through and
+   hacks him to the floor.  Blood.  Swashbuckling music (perhaps).
+   LAUNCELOT races through into the castle screaming.
+SECOND SENTRY: Hey!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

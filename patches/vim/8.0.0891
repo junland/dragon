@@ -1,0 +1,61 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0891
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0891
+Problem:    Uninitialized memory use with empty line in terminal.
+Solution:   Initialize growarray earlier. (Yasuhiro Matsumoto, closes #1949)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0890/src/terminal.c	2017-08-07 21:26:24.215375332 +0200
+--- src/terminal.c	2017-08-07 22:05:43.250069791 +0200
+***************
+*** 1346,1356 ****
+  	    if (cells[i].chars[0] != 0)
+  		len = i + 1;
+  
+  	if (len > 0)
+  	    p = (cellattr_T *)alloc((int)sizeof(cellattr_T) * len);
+  	if (p != NULL)
+  	{
+- 	    ga_init2(&ga, 1, 100);
+  	    for (col = 0; col < len; col += cells[col].width)
+  	    {
+  		if (ga_grow(&ga, MB_MAXBYTES) == FAIL)
+--- 1346,1356 ----
+  	    if (cells[i].chars[0] != 0)
+  		len = i + 1;
+  
++ 	ga_init2(&ga, 1, 100);
+  	if (len > 0)
+  	    p = (cellattr_T *)alloc((int)sizeof(cellattr_T) * len);
+  	if (p != NULL)
+  	{
+  	    for (col = 0; col < len; col += cells[col].width)
+  	    {
+  		if (ga_grow(&ga, MB_MAXBYTES) == FAIL)
+*** ../vim-8.0.0890/src/version.c	2017-08-07 22:02:09.323624594 +0200
+--- src/version.c	2017-08-07 22:07:33.549270101 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     891,
+  /**/
+
+-- 
+LAUNCELOT: Isn't there a St. Aaaaarrrrrrggghhh's in Cornwall?
+ARTHUR:    No, that's Saint Ives.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

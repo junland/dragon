@@ -1,0 +1,111 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0760
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0760
+Problem:    Terminal window colors wrong with 'termguicolors'.
+Solution:   Add 'termguicolors' support.
+Files:      src/terminal.c, src/syntax.c, src/proto/syntax.pro
+
+
+*** ../vim-8.0.0759/src/terminal.c	2017-07-23 17:27:49.235693907 +0200
+--- src/terminal.c	2017-07-23 18:07:42.022871700 +0200
+***************
+*** 33,39 ****
+   * while, if the terminal window is visible, the screen contents is drawn.
+   *
+   * TODO:
+-  * - color for 'termguicolors'
+   * - cursor flickers when moving the cursor
+   * - set buffer options to be scratch, hidden, nomodifiable, etc.
+   * - set buffer name to command, add (1) to avoid duplicates.
+--- 33,38 ----
+***************
+*** 731,738 ****
+  #ifdef FEAT_TERMGUICOLORS
+      if (p_tgc)
+      {
+! 	/* TODO */
+      }
+  #endif
+      {
+  	return get_cterm_attr_idx(attr, color2index(&cell->fg),
+--- 730,743 ----
+  #ifdef FEAT_TERMGUICOLORS
+      if (p_tgc)
+      {
+! 	guicolor_T fg, bg;
+! 
+! 	fg = gui_get_rgb_color_cmn(cell->fg.red, cell->fg.green, cell->fg.blue);
+! 	bg = gui_get_rgb_color_cmn(cell->bg.red, cell->bg.green, cell->bg.blue);
+! 
+! 	return get_tgc_attr_idx(attr, fg, bg);
+      }
++     else
+  #endif
+      {
+  	return get_cterm_attr_idx(attr, color2index(&cell->fg),
+*** ../vim-8.0.0759/src/syntax.c	2017-07-23 16:45:05.665761210 +0200
+--- src/syntax.c	2017-07-23 18:02:56.476879016 +0200
+***************
+*** 8796,8801 ****
+--- 8796,8819 ----
+      return get_attr_entry(&cterm_attr_table, &at_en);
+  }
+  
++ #if defined(FEAT_TERMGUICOLORS) || defined(PROTO)
++ /*
++  * Get an attribute index for a 'termguicolors' entry.
++  * Uses an existing entry when possible or adds one when needed.
++  */
++     int
++ get_tgc_attr_idx(int attr, guicolor_T fg, guicolor_T bg)
++ {
++     attrentry_T		at_en;
++ 
++     vim_memset(&at_en, 0, sizeof(attrentry_T));
++     at_en.ae_attr = attr;
++     at_en.ae_u.cterm.fg_rgb = fg;
++     at_en.ae_u.cterm.bg_rgb = bg;
++     return get_attr_entry(&cterm_attr_table, &at_en);
++ }
++ #endif
++ 
+  #if defined(FEAT_GUI) || defined(PROTO)
+  /*
+   * Get an attribute index for a cterm entry.
+*** ../vim-8.0.0759/src/proto/syntax.pro	2017-07-23 16:45:05.669761183 +0200
+--- src/proto/syntax.pro	2017-07-23 18:03:00.328851937 +0200
+***************
+*** 32,37 ****
+--- 32,38 ----
+  void hl_set_bg_color_name(char_u *name);
+  void hl_set_fg_color_name(char_u *name);
+  int get_cterm_attr_idx(int attr, int fg, int bg);
++ int get_tgc_attr_idx(int attr, guicolor_T fg, guicolor_T bg);
+  int get_gui_attr_idx(int attr, guicolor_T fg, guicolor_T bg);
+  void clear_hl_tables(void);
+  int hl_combine_attr(int char_attr, int prim_attr);
+*** ../vim-8.0.0759/src/version.c	2017-07-23 17:27:49.239693879 +0200
+--- src/version.c	2017-07-23 18:07:08.547107030 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     760,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+221. Your wife melts your keyboard in the oven.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

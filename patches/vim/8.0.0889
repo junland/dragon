@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0889
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0889
+Problem:    Gcc gives warnings for uninitialized variables. (Tony Mechelynck)
+Solution:   Initialize variables even though they are not used.
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0888/src/terminal.c	2017-08-07 20:38:38.596341530 +0200
+--- src/terminal.c	2017-08-07 21:24:20.868275089 +0200
+***************
+*** 2145,2151 ****
+--- 2145,2155 ----
+      pos.row = get_row_number(&argvars[1], term);
+  
+      if (term->tl_vterm != NULL)
++     {
+  	screen = vterm_obtain_screen(term->tl_vterm);
++ 	p = NULL;
++ 	line = NULL;
++     }
+      else
+      {
+  	linenr_T	lnum = pos.row + term->tl_scrollback_scrolled;
+*** ../vim-8.0.0888/src/version.c	2017-08-07 21:17:53.115100890 +0200
+--- src/version.c	2017-08-07 21:25:25.763802095 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     889,
+  /**/
+
+-- 
+   Arthur pulls Pin out.  The MONK blesses the grenade as ...
+ARTHUR:  (quietly) One, two, five ...
+GALAHAD: Three, sir!
+ARTHUR:  Three.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

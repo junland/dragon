@@ -1,0 +1,1115 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0334
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0334
+Problem:    Can't access b:changedtick from a dict reference.
+Solution:   Make changedtick a member of the b: dict. (inspired by neovim
+            #6112)
+Files:      src/structs.h, src/buffer.c, src/edit.c, src/eval.c,
+            src/evalfunc.c, src/ex_docmd.c, src/main.c, src/globals.h,
+            src/fileio.c, src/memline.c, src/misc1.c, src/syntax.c,
+            src/proto/eval.pro, src/testdir/test_changedtick.vim,
+            src/Makefile, src/testdir/test_alot.vim, src/testdir/test91.in,
+            src/testdir/test91.ok, src/testdir/test_functions.vim
+
+
+*** ../vim-8.0.0333/src/structs.h	2017-02-06 21:56:04.996335436 +0100
+--- src/structs.h	2017-02-17 15:12:24.304192531 +0100
+***************
+*** 1916,1922 ****
+  
+      int		b_changed;	/* 'modified': Set to TRUE if something in the
+  				   file has been changed and not written out. */
+!     int		b_changedtick;	/* incremented for each change, also for undo */
+  
+      int		b_saving;	/* Set to TRUE if we are in the middle of
+  				   saving the buffer. */
+--- 1916,1924 ----
+  
+      int		b_changed;	/* 'modified': Set to TRUE if something in the
+  				   file has been changed and not written out. */
+!     varnumber_T	*b_changedtick;	/* points into b:changedtick or b_ct_val;
+! 				   incremented for each change, also for undo */
+!     varnumber_T b_ct_val;	/* fallback for b:changedtick */
+  
+      int		b_saving;	/* Set to TRUE if we are in the middle of
+  				   saving the buffer. */
+*** ../vim-8.0.0333/src/buffer.c	2017-01-24 17:48:32.466675400 +0100
+--- src/buffer.c	2017-02-17 16:29:27.826094150 +0100
+***************
+*** 832,837 ****
+--- 832,838 ----
+      free_buffer_stuff(buf, TRUE);
+  #ifdef FEAT_EVAL
+      unref_var_dict(buf->b_vars);
++     buf->b_changedtick = &buf->b_ct_val;
+  #endif
+  #ifdef FEAT_LUA
+      lua_buffer_free(buf);
+***************
+*** 873,878 ****
+--- 874,902 ----
+  }
+  
+  /*
++  * Initializes buf->b_changedtick.
++  */
++     static void
++ init_changedtick(buf_T *buf)
++ {
++ #ifdef FEAT_EVAL
++     dictitem_T *di = dictitem_alloc((char_u *)"changedtick");
++ 
++     if (di != NULL)
++     {
++ 	di->di_flags |= DI_FLAGS_LOCK | DI_FLAGS_FIX | DI_FLAGS_RO;
++ 	di->di_tv.v_type = VAR_NUMBER;
++ 	di->di_tv.v_lock = VAR_FIXED;
++ 	di->di_tv.vval.v_number = 0;
++ 	dict_add(buf->b_vars, di);
++ 	buf->b_changedtick = &di->di_tv.vval.v_number;
++     }
++     else
++ #endif
++ 	buf->b_changedtick = &buf->b_ct_val;
++ }
++ 
++ /*
+   * Free stuff in the buffer for ":bdel" and when wiping out the buffer.
+   */
+      static void
+***************
+*** 889,896 ****
+  #endif
+      }
+  #ifdef FEAT_EVAL
+!     vars_clear(&buf->b_vars->dv_hashtab); /* free all internal variables */
+!     hash_init(&buf->b_vars->dv_hashtab);
+  #endif
+  #ifdef FEAT_USR_CMDS
+      uc_clear(&buf->b_ucmds);		/* clear local user commands */
+--- 913,926 ----
+  #endif
+      }
+  #ifdef FEAT_EVAL
+!     {
+! 	varnumber_T tick = *buf->b_changedtick;
+! 
+! 	vars_clear(&buf->b_vars->dv_hashtab); /* free all buffer variables */
+! 	hash_init(&buf->b_vars->dv_hashtab);
+! 	init_changedtick(buf);
+! 	*buf->b_changedtick = tick;
+!     }
+  #endif
+  #ifdef FEAT_USR_CMDS
+      uc_clear(&buf->b_ucmds);		/* clear local user commands */
+***************
+*** 1979,1984 ****
+--- 2009,2015 ----
+  	}
+  	init_var_dict(buf->b_vars, &buf->b_bufvar, VAR_SCOPE);
+  #endif
++ 	init_changedtick(buf);
+      }
+  
+      if (ffname != NULL)
+*** ../vim-8.0.0333/src/edit.c	2017-02-09 17:36:59.293629503 +0100
+--- src/edit.c	2017-02-17 15:19:35.880993583 +0100
+***************
+*** 1668,1674 ****
+  #ifdef FEAT_AUTOCMD
+      /* Trigger TextChangedI if b_changedtick differs. */
+      if (ready && has_textchangedI()
+! 	    && last_changedtick != curbuf->b_changedtick
+  # ifdef FEAT_INS_EXPAND
+  	    && !pum_visible()
+  # endif
+--- 1668,1674 ----
+  #ifdef FEAT_AUTOCMD
+      /* Trigger TextChangedI if b_changedtick differs. */
+      if (ready && has_textchangedI()
+! 	    && last_changedtick != *curbuf->b_changedtick
+  # ifdef FEAT_INS_EXPAND
+  	    && !pum_visible()
+  # endif
+***************
+*** 1677,1683 ****
+  	if (last_changedtick_buf == curbuf)
+  	    apply_autocmds(EVENT_TEXTCHANGEDI, NULL, NULL, FALSE, curbuf);
+  	last_changedtick_buf = curbuf;
+! 	last_changedtick = curbuf->b_changedtick;
+      }
+  #endif
+  
+--- 1677,1683 ----
+  	if (last_changedtick_buf == curbuf)
+  	    apply_autocmds(EVENT_TEXTCHANGEDI, NULL, NULL, FALSE, curbuf);
+  	last_changedtick_buf = curbuf;
+! 	last_changedtick = *curbuf->b_changedtick;
+      }
+  #endif
+  
+*** ../vim-8.0.0333/src/eval.c	2017-01-28 18:08:08.155009961 +0100
+--- src/eval.c	2017-02-17 15:56:13.384754244 +0100
+***************
+*** 1451,1464 ****
+      static void
+  list_buf_vars(int *first)
+  {
+-     char_u	numbuf[NUMBUFLEN];
+- 
+      list_hashtable_vars(&curbuf->b_vars->dv_hashtab, (char_u *)"b:",
+  								 TRUE, first);
+- 
+-     sprintf((char *)numbuf, "%ld", (long)curbuf->b_changedtick);
+-     list_one_var_a((char_u *)"b:", (char_u *)"changedtick", VAR_NUMBER,
+- 							       numbuf, first);
+  }
+  
+  /*
+--- 1451,1458 ----
+***************
+*** 1806,1825 ****
+  }
+  
+  /*
+-  * If "arg" is equal to "b:changedtick" give an error and return TRUE.
+-  */
+-     int
+- check_changedtick(char_u *arg)
+- {
+-     if (STRNCMP(arg, "b:changedtick", 13) == 0 && !eval_isnamec(arg[13]))
+-     {
+- 	EMSG2(_(e_readonlyvar), arg);
+- 	return TRUE;
+-     }
+-     return FALSE;
+- }
+- 
+- /*
+   * Get an lval: variable, Dict item or List item that can be assigned a value
+   * to: "name", "na{me}", "name[expr]", "name[expr:expr]", "name[expr][expr]",
+   * "name.key", "name.key[expr]" etc.
+--- 1800,1805 ----
+***************
+*** 2208,2239 ****
+  
+      if (lp->ll_tv == NULL)
+      {
+! 	if (!check_changedtick(lp->ll_name))
+! 	{
+! 	    cc = *endp;
+! 	    *endp = NUL;
+! 	    if (op != NULL && *op != '=')
+! 	    {
+! 		typval_T tv;
+! 
+! 		/* handle +=, -= and .= */
+! 		di = NULL;
+! 		if (get_var_tv(lp->ll_name, (int)STRLEN(lp->ll_name),
+! 						 &tv, &di, TRUE, FALSE) == OK)
+! 		{
+! 		    if ((di == NULL
+! 			   || (!var_check_ro(di->di_flags, lp->ll_name, FALSE)
+! 			      && !tv_check_lock(di->di_tv.v_lock, lp->ll_name,
+! 								      FALSE)))
+! 			    && tv_op(&tv, rettv, op) == OK)
+! 			set_var(lp->ll_name, &tv, FALSE);
+! 		    clear_tv(&tv);
+! 		}
+  	    }
+- 	    else
+- 		set_var(lp->ll_name, rettv, copy);
+- 	    *endp = cc;
+  	}
+      }
+      else if (tv_check_lock(lp->ll_newkey == NULL
+  		? lp->ll_tv->v_lock
+--- 2188,2216 ----
+  
+      if (lp->ll_tv == NULL)
+      {
+! 	cc = *endp;
+! 	*endp = NUL;
+! 	if (op != NULL && *op != '=')
+! 	{
+! 	    typval_T tv;
+! 
+! 	    /* handle +=, -= and .= */
+! 	    di = NULL;
+! 	    if (get_var_tv(lp->ll_name, (int)STRLEN(lp->ll_name),
+! 					     &tv, &di, TRUE, FALSE) == OK)
+! 	    {
+! 		if ((di == NULL
+! 		       || (!var_check_ro(di->di_flags, lp->ll_name, FALSE)
+! 			  && !tv_check_lock(di->di_tv.v_lock, lp->ll_name,
+! 								  FALSE)))
+! 			&& tv_op(&tv, rettv, op) == OK)
+! 		    set_var(lp->ll_name, &tv, FALSE);
+! 		clear_tv(&tv);
+  	    }
+  	}
++ 	else
++ 	    set_var(lp->ll_name, rettv, copy);
++ 	*endp = cc;
+      }
+      else if (tv_check_lock(lp->ll_newkey == NULL
+  		? lp->ll_tv->v_lock
+***************
+*** 2776,2784 ****
+  	*name_end = NUL;
+  
+  	/* Normal name or expanded name. */
+! 	if (check_changedtick(lp->ll_name))
+! 	    ret = FAIL;
+! 	else if (do_unlet(lp->ll_name, forceit) == FAIL)
+  	    ret = FAIL;
+  	*name_end = cc;
+      }
+--- 2753,2759 ----
+  	*name_end = NUL;
+  
+  	/* Normal name or expanded name. */
+! 	if (do_unlet(lp->ll_name, forceit) == FAIL)
+  	    ret = FAIL;
+  	*name_end = cc;
+      }
+***************
+*** 2904,2924 ****
+  	*name_end = NUL;
+  
+  	/* Normal name or expanded name. */
+! 	if (check_changedtick(lp->ll_name))
+  	    ret = FAIL;
+  	else
+  	{
+! 	    di = find_var(lp->ll_name, NULL, TRUE);
+! 	    if (di == NULL)
+! 		ret = FAIL;
+  	    else
+! 	    {
+! 		if (lock)
+! 		    di->di_flags |= DI_FLAGS_LOCK;
+! 		else
+! 		    di->di_flags &= ~DI_FLAGS_LOCK;
+! 		item_lock(&di->di_tv, deep, lock);
+! 	    }
+  	}
+  	*name_end = cc;
+      }
+--- 2879,2894 ----
+  	*name_end = NUL;
+  
+  	/* Normal name or expanded name. */
+! 	di = find_var(lp->ll_name, NULL, TRUE);
+! 	if (di == NULL)
+  	    ret = FAIL;
+  	else
+  	{
+! 	    if (lock)
+! 		di->di_flags |= DI_FLAGS_LOCK;
+  	    else
+! 		di->di_flags &= ~DI_FLAGS_LOCK;
+! 	    item_lock(&di->di_tv, deep, lock);
+  	}
+  	*name_end = cc;
+      }
+***************
+*** 3139,3149 ****
+  	    ++hi;
+  	return cat_prefix_varname('b', hi->hi_key);
+      }
+-     if (bdone == ht->ht_used)
+-     {
+- 	++bdone;
+- 	return (char_u *)"b:changedtick";
+-     }
+  
+      /* w: variables */
+      ht = &curwin->w_vars->dv_hashtab;
+--- 3109,3114 ----
+***************
+*** 6815,6821 ****
+  {
+      int		ret = OK;
+      typval_T	*tv = NULL;
+-     typval_T	atv;
+      dictitem_T	*v;
+      int		cc;
+  
+--- 6780,6785 ----
+***************
+*** 6824,6850 ****
+      name[len] = NUL;
+  
+      /*
+-      * Check for "b:changedtick".
+-      */
+-     if (STRCMP(name, "b:changedtick") == 0)
+-     {
+- 	atv.v_type = VAR_NUMBER;
+- 	atv.vval.v_number = curbuf->b_changedtick;
+- 	tv = &atv;
+-     }
+- 
+-     /*
+       * Check for user-defined variables.
+       */
+!     else
+      {
+! 	v = find_var(name, NULL, no_autoload);
+! 	if (v != NULL)
+! 	{
+! 	    tv = &v->di_tv;
+! 	    if (dip != NULL)
+! 		*dip = v;
+! 	}
+      }
+  
+      if (tv == NULL)
+--- 6788,6801 ----
+      name[len] = NUL;
+  
+      /*
+       * Check for user-defined variables.
+       */
+!     v = find_var(name, NULL, no_autoload);
+!     if (v != NULL)
+      {
+! 	tv = &v->di_tv;
+! 	if (dip != NULL)
+! 	    *dip = v;
+      }
+  
+      if (tv == NULL)
+*** ../vim-8.0.0333/src/evalfunc.c	2017-02-01 17:24:29.681328124 +0100
+--- src/evalfunc.c	2017-02-17 15:21:58.943933276 +0100
+***************
+*** 2539,2545 ****
+  #ifdef FEAT_DIFF
+      linenr_T		lnum = get_tv_lnum(argvars);
+      static linenr_T	prev_lnum = 0;
+!     static int		changedtick = 0;
+      static int		fnum = 0;
+      static int		change_start = 0;
+      static int		change_end = 0;
+--- 2539,2545 ----
+  #ifdef FEAT_DIFF
+      linenr_T		lnum = get_tv_lnum(argvars);
+      static linenr_T	prev_lnum = 0;
+!     static varnumber_T	changedtick = 0;
+      static int		fnum = 0;
+      static int		change_start = 0;
+      static int		change_end = 0;
+***************
+*** 2550,2556 ****
+      if (lnum < 0)	/* ignore type error in {lnum} arg */
+  	lnum = 0;
+      if (lnum != prev_lnum
+! 	    || changedtick != curbuf->b_changedtick
+  	    || fnum != curbuf->b_fnum)
+      {
+  	/* New line, buffer, change: need to get the values. */
+--- 2550,2556 ----
+      if (lnum < 0)	/* ignore type error in {lnum} arg */
+  	lnum = 0;
+      if (lnum != prev_lnum
+! 	    || changedtick != *curbuf->b_changedtick
+  	    || fnum != curbuf->b_fnum)
+      {
+  	/* New line, buffer, change: need to get the values. */
+***************
+*** 2572,2578 ****
+  	else
+  	    hlID = (hlf_T)0;
+  	prev_lnum = lnum;
+! 	changedtick = curbuf->b_changedtick;
+  	fnum = curbuf->b_fnum;
+      }
+  
+--- 2572,2578 ----
+  	else
+  	    hlID = (hlf_T)0;
+  	prev_lnum = lnum;
+! 	changedtick = *curbuf->b_changedtick;
+  	fnum = curbuf->b_fnum;
+      }
+  
+***************
+*** 3957,3963 ****
+      dict_add_nr_str(dict, "loaded", buf->b_ml.ml_mfp != NULL, NULL);
+      dict_add_nr_str(dict, "listed", buf->b_p_bl, NULL);
+      dict_add_nr_str(dict, "changed", bufIsChanged(buf), NULL);
+!     dict_add_nr_str(dict, "changedtick", buf->b_changedtick, NULL);
+      dict_add_nr_str(dict, "hidden",
+  		    buf->b_ml.ml_mfp != NULL && buf->b_nwindows == 0,
+  		    NULL);
+--- 3957,3963 ----
+      dict_add_nr_str(dict, "loaded", buf->b_ml.ml_mfp != NULL, NULL);
+      dict_add_nr_str(dict, "listed", buf->b_p_bl, NULL);
+      dict_add_nr_str(dict, "changed", bufIsChanged(buf), NULL);
+!     dict_add_nr_str(dict, "changedtick", *buf->b_changedtick, NULL);
+      dict_add_nr_str(dict, "hidden",
+  		    buf->b_ml.ml_mfp != NULL && buf->b_nwindows == 0,
+  		    NULL);
+***************
+*** 4190,4201 ****
+  		/* buffer-local-option */
+  		done = TRUE;
+  	}
+- 	else if (STRCMP(varname, "changedtick") == 0)
+- 	{
+- 	    rettv->v_type = VAR_NUMBER;
+- 	    rettv->vval.v_number = curbuf->b_changedtick;
+- 	    done = TRUE;
+- 	}
+  	else
+  	{
+  	    /* Look up the variable. */
+--- 4190,4195 ----
+***************
+*** 6576,6596 ****
+  	{
+  	    if (lv.ll_tv == NULL)
+  	    {
+! 		if (check_changedtick(lv.ll_name))
+! 		    rettv->vval.v_number = 1;	    /* always locked */
+! 		else
+  		{
+! 		    di = find_var(lv.ll_name, NULL, TRUE);
+! 		    if (di != NULL)
+! 		    {
+! 			/* Consider a variable locked when:
+! 			 * 1. the variable itself is locked
+! 			 * 2. the value of the variable is locked.
+! 			 * 3. the List or Dict value is locked.
+! 			 */
+! 			rettv->vval.v_number = ((di->di_flags & DI_FLAGS_LOCK)
+! 						  || tv_islocked(&di->di_tv));
+! 		    }
+  		}
+  	    }
+  	    else if (lv.ll_range)
+--- 6570,6585 ----
+  	{
+  	    if (lv.ll_tv == NULL)
+  	    {
+! 		di = find_var(lv.ll_name, NULL, TRUE);
+! 		if (di != NULL)
+  		{
+! 		    /* Consider a variable locked when:
+! 		     * 1. the variable itself is locked
+! 		     * 2. the value of the variable is locked.
+! 		     * 3. the List or Dict value is locked.
+! 		     */
+! 		    rettv->vval.v_number = ((di->di_flags & DI_FLAGS_LOCK)
+! 						   || tv_islocked(&di->di_tv));
+  		}
+  	    }
+  	    else if (lv.ll_range)
+***************
+*** 11551,11558 ****
+  	return;
+      if (no < 0 || no >= NSUBEXP)
+      {
+!         EMSGN(_("E935: invalid submatch number: %d"), no);
+!         return;
+      }
+      if (argvars[1].v_type != VAR_UNKNOWN)
+  	retList = (int)get_tv_number_chk(&argvars[1], &error);
+--- 11540,11547 ----
+  	return;
+      if (no < 0 || no >= NSUBEXP)
+      {
+! 	EMSGN(_("E935: invalid submatch number: %d"), no);
+! 	return;
+      }
+      if (argvars[1].v_type != VAR_UNKNOWN)
+  	retList = (int)get_tv_number_chk(&argvars[1], &error);
+*** ../vim-8.0.0333/src/ex_docmd.c	2017-02-12 18:34:00.898048918 +0100
+--- src/ex_docmd.c	2017-02-17 15:23:04.691446007 +0100
+***************
+*** 626,632 ****
+      int		save_msg_scroll;
+      int		prev_msg_row;
+      linenr_T	prev_line;
+!     int		changedtick;
+  
+      if (improved)
+  	exmode_active = EXMODE_VIM;
+--- 626,632 ----
+      int		save_msg_scroll;
+      int		prev_msg_row;
+      linenr_T	prev_line;
+!     varnumber_T	changedtick;
+  
+      if (improved)
+  	exmode_active = EXMODE_VIM;
+***************
+*** 660,666 ****
+  	need_wait_return = FALSE;
+  	ex_pressedreturn = FALSE;
+  	ex_no_reprint = FALSE;
+! 	changedtick = curbuf->b_changedtick;
+  	prev_msg_row = msg_row;
+  	prev_line = curwin->w_cursor.lnum;
+  	if (improved)
+--- 660,666 ----
+  	need_wait_return = FALSE;
+  	ex_pressedreturn = FALSE;
+  	ex_no_reprint = FALSE;
+! 	changedtick = *curbuf->b_changedtick;
+  	prev_msg_row = msg_row;
+  	prev_line = curwin->w_cursor.lnum;
+  	if (improved)
+***************
+*** 673,679 ****
+  	lines_left = Rows - 1;
+  
+  	if ((prev_line != curwin->w_cursor.lnum
+! 		    || changedtick != curbuf->b_changedtick) && !ex_no_reprint)
+  	{
+  	    if (curbuf->b_ml.ml_flags & ML_EMPTY)
+  		EMSG(_(e_emptybuf));
+--- 673,679 ----
+  	lines_left = Rows - 1;
+  
+  	if ((prev_line != curwin->w_cursor.lnum
+! 		   || changedtick != *curbuf->b_changedtick) && !ex_no_reprint)
+  	{
+  	    if (curbuf->b_ml.ml_flags & ML_EMPTY)
+  		EMSG(_(e_emptybuf));
+*** ../vim-8.0.0333/src/main.c	2017-02-03 22:01:43.934349479 +0100
+--- src/main.c	2017-02-17 15:25:02.010576558 +0100
+***************
+*** 1164,1176 ****
+  #ifdef FEAT_AUTOCMD
+  	    /* Trigger TextChanged if b_changedtick differs. */
+  	    if (!finish_op && has_textchanged()
+! 		    && last_changedtick != curbuf->b_changedtick)
+  	    {
+  		if (last_changedtick_buf == curbuf)
+  		    apply_autocmds(EVENT_TEXTCHANGED, NULL, NULL,
+  							       FALSE, curbuf);
+  		last_changedtick_buf = curbuf;
+! 		last_changedtick = curbuf->b_changedtick;
+  	    }
+  #endif
+  
+--- 1164,1176 ----
+  #ifdef FEAT_AUTOCMD
+  	    /* Trigger TextChanged if b_changedtick differs. */
+  	    if (!finish_op && has_textchanged()
+! 		    && last_changedtick != *curbuf->b_changedtick)
+  	    {
+  		if (last_changedtick_buf == curbuf)
+  		    apply_autocmds(EVENT_TEXTCHANGED, NULL, NULL,
+  							       FALSE, curbuf);
+  		last_changedtick_buf = curbuf;
+! 		last_changedtick = *curbuf->b_changedtick;
+  	    }
+  #endif
+  
+***************
+*** 1388,1398 ****
+  		    /* Autocmd must have close the buffer already, skip. */
+  		    continue;
+  		buf = wp->w_buffer;
+! 		if (buf->b_changedtick != -1)
+  		{
+  		    apply_autocmds(EVENT_BUFWINLEAVE, buf->b_fname,
+  						    buf->b_fname, FALSE, buf);
+! 		    buf->b_changedtick = -1;  /* note that we did it already */
+  		    /* start all over, autocommands may mess up the lists */
+  		    next_tp = first_tabpage;
+  		    break;
+--- 1388,1398 ----
+  		    /* Autocmd must have close the buffer already, skip. */
+  		    continue;
+  		buf = wp->w_buffer;
+! 		if (buf->b_ct_val != -1)
+  		{
+  		    apply_autocmds(EVENT_BUFWINLEAVE, buf->b_fname,
+  						    buf->b_fname, FALSE, buf);
+! 		    buf->b_ct_val = -1;  /* note that we did it already */
+  		    /* start all over, autocommands may mess up the lists */
+  		    next_tp = first_tabpage;
+  		    break;
+*** ../vim-8.0.0333/src/globals.h	2017-02-12 18:45:19.281209607 +0100
+--- src/globals.h	2017-02-17 15:23:50.323107829 +0100
+***************
+*** 1088,1094 ****
+  			= INIT_POS_T(0, 0, 0)
+  # endif
+  			;
+! EXTERN int	last_changedtick INIT(= 0);   /* for TextChanged event */
+  EXTERN buf_T	*last_changedtick_buf INIT(= NULL);
+  #endif
+  
+--- 1088,1094 ----
+  			= INIT_POS_T(0, 0, 0)
+  # endif
+  			;
+! EXTERN varnumber_T last_changedtick INIT(= 0);   /* for TextChanged event */
+  EXTERN buf_T	*last_changedtick_buf INIT(= NULL);
+  #endif
+  
+*** ../vim-8.0.0333/src/fileio.c	2017-01-24 15:46:43.875356367 +0100
+--- src/fileio.c	2017-02-17 15:30:25.812177039 +0100
+***************
+*** 4926,4934 ****
+  #ifdef FEAT_AUTOCMD
+  	/* buf->b_changedtick is always incremented in unchanged() but that
+  	 * should not trigger a TextChanged event. */
+! 	if (last_changedtick + 1 == buf->b_changedtick
+  					       && last_changedtick_buf == buf)
+! 	    last_changedtick = buf->b_changedtick;
+  #endif
+  	u_unchanged(buf);
+  	u_update_save_nr(buf);
+--- 4926,4934 ----
+  #ifdef FEAT_AUTOCMD
+  	/* buf->b_changedtick is always incremented in unchanged() but that
+  	 * should not trigger a TextChanged event. */
+! 	if (last_changedtick + 1 == *buf->b_changedtick
+  					       && last_changedtick_buf == buf)
+! 	    last_changedtick = *buf->b_changedtick;
+  #endif
+  	u_unchanged(buf);
+  	u_update_save_nr(buf);
+*** ../vim-8.0.0333/src/memline.c	2017-01-13 21:59:59.327172086 +0100
+--- src/memline.c	2017-02-17 15:25:21.274433797 +0100
+***************
+*** 1148,1158 ****
+      len = (int)STRLEN(fname);
+      if (len >= 4 &&
+  #if defined(VMS)
+! 	    STRNICMP(fname + len - 4, "_s" , 2)
+  #else
+! 	    STRNICMP(fname + len - 4, ".s" , 2)
+  #endif
+! 		== 0
+  		&& vim_strchr((char_u *)"UVWuvw", fname[len - 2]) != NULL
+  		&& ASCII_ISALPHA(fname[len - 1]))
+      {
+--- 1148,1158 ----
+      len = (int)STRLEN(fname);
+      if (len >= 4 &&
+  #if defined(VMS)
+! 	    STRNICMP(fname + len - 4, "_s", 2)
+  #else
+! 	    STRNICMP(fname + len - 4, ".s", 2)
+  #endif
+! 						== 0
+  		&& vim_strchr((char_u *)"UVWuvw", fname[len - 2]) != NULL
+  		&& ASCII_ISALPHA(fname[len - 1]))
+      {
+***************
+*** 1649,1655 ****
+  	if (!(curbuf->b_ml.ml_line_count == 2 && *ml_get(1) == NUL))
+  	{
+  	    changed_int();
+! 	    ++curbuf->b_changedtick;
+  	}
+      }
+      else
+--- 1649,1655 ----
+  	if (!(curbuf->b_ml.ml_line_count == 2 && *ml_get(1) == NUL))
+  	{
+  	    changed_int();
+! 	    ++*curbuf->b_changedtick;
+  	}
+      }
+      else
+***************
+*** 1663,1669 ****
+  	    if (i != 0)
+  	    {
+  		changed_int();
+! 		++curbuf->b_changedtick;
+  		break;
+  	    }
+  	}
+--- 1663,1669 ----
+  	    if (i != 0)
+  	    {
+  		changed_int();
+! 		++*curbuf->b_changedtick;
+  		break;
+  	    }
+  	}
+*** ../vim-8.0.0333/src/misc1.c	2017-02-01 22:31:45.112052371 +0100
+--- src/misc1.c	2017-02-17 15:26:35.901880755 +0100
+***************
+*** 492,498 ****
+      static int	    prev_indent = 0;  /* cached indent value */
+      static long	    prev_ts     = 0L; /* cached tabstop value */
+      static char_u   *prev_line = NULL; /* cached pointer to line */
+!     static int	    prev_tick = 0;   /* changedtick of cached value */
+      int		    bri = 0;
+      /* window width minus window margin space, i.e. what rests for text */
+      const int	    eff_wwidth = W_WIDTH(wp)
+--- 492,498 ----
+      static int	    prev_indent = 0;  /* cached indent value */
+      static long	    prev_ts     = 0L; /* cached tabstop value */
+      static char_u   *prev_line = NULL; /* cached pointer to line */
+!     static varnumber_T prev_tick = 0;   /* changedtick of cached value */
+      int		    bri = 0;
+      /* window width minus window margin space, i.e. what rests for text */
+      const int	    eff_wwidth = W_WIDTH(wp)
+***************
+*** 502,512 ****
+  
+      /* used cached indent, unless pointer or 'tabstop' changed */
+      if (prev_line != line || prev_ts != wp->w_buffer->b_p_ts
+! 				  || prev_tick != wp->w_buffer->b_changedtick)
+      {
+  	prev_line = line;
+  	prev_ts = wp->w_buffer->b_p_ts;
+! 	prev_tick = wp->w_buffer->b_changedtick;
+  	prev_indent = get_indent_str(line,
+  				     (int)wp->w_buffer->b_p_ts, wp->w_p_list);
+      }
+--- 502,512 ----
+  
+      /* used cached indent, unless pointer or 'tabstop' changed */
+      if (prev_line != line || prev_ts != wp->w_buffer->b_p_ts
+! 				  || prev_tick != *wp->w_buffer->b_changedtick)
+      {
+  	prev_line = line;
+  	prev_ts = wp->w_buffer->b_p_ts;
+! 	prev_tick = *wp->w_buffer->b_changedtick;
+  	prev_indent = get_indent_str(line,
+  				     (int)wp->w_buffer->b_p_ts, wp->w_p_list);
+      }
+***************
+*** 2768,2774 ****
+  	}
+  	changed_int();
+      }
+!     ++curbuf->b_changedtick;
+  }
+  
+  /*
+--- 2768,2774 ----
+  	}
+  	changed_int();
+      }
+!     ++*curbuf->b_changedtick;
+  }
+  
+  /*
+***************
+*** 3195,3201 ****
+  	need_maketitle = TRUE;	    /* set window title later */
+  #endif
+      }
+!     ++buf->b_changedtick;
+  #ifdef FEAT_NETBEANS_INTG
+      netbeans_unmodified(buf);
+  #endif
+--- 3195,3201 ----
+  	need_maketitle = TRUE;	    /* set window title later */
+  #endif
+      }
+!     ++*buf->b_changedtick;
+  #ifdef FEAT_NETBEANS_INTG
+      netbeans_unmodified(buf);
+  #endif
+*** ../vim-8.0.0333/src/syntax.c	2017-01-22 19:25:28.228530629 +0100
+--- src/syntax.c	2017-02-17 15:27:03.709674682 +0100
+***************
+*** 503,509 ****
+      linenr_T	parsed_lnum;
+      linenr_T	first_stored;
+      int		dist;
+!     static int	changedtick = 0;	/* remember the last change ID */
+  
+  #ifdef FEAT_CONCEAL
+      current_sub_char = NUL;
+--- 503,509 ----
+      linenr_T	parsed_lnum;
+      linenr_T	first_stored;
+      int		dist;
+!     static varnumber_T changedtick = 0;	/* remember the last change ID */
+  
+  #ifdef FEAT_CONCEAL
+      current_sub_char = NUL;
+***************
+*** 516,528 ****
+       */
+      if (syn_block != wp->w_s
+  	    || syn_buf != wp->w_buffer
+! 	    || changedtick != syn_buf->b_changedtick)
+      {
+  	invalidate_current_state();
+  	syn_buf = wp->w_buffer;
+  	syn_block = wp->w_s;
+      }
+!     changedtick = syn_buf->b_changedtick;
+      syn_win = wp;
+  
+      /*
+--- 516,528 ----
+       */
+      if (syn_block != wp->w_s
+  	    || syn_buf != wp->w_buffer
+! 	    || changedtick != *syn_buf->b_changedtick)
+      {
+  	invalidate_current_state();
+  	syn_buf = wp->w_buffer;
+  	syn_block = wp->w_s;
+      }
+!     changedtick = *syn_buf->b_changedtick;
+      syn_win = wp;
+  
+      /*
+*** ../vim-8.0.0333/src/proto/eval.pro	2016-09-12 13:04:00.000000000 +0200
+--- src/proto/eval.pro	2017-02-17 15:28:47.908902521 +0100
+***************
+*** 25,31 ****
+  int eval_foldexpr(char_u *arg, int *cp);
+  void ex_let(exarg_T *eap);
+  void list_hashtable_vars(hashtab_T *ht, char_u *prefix, int empty, int *first);
+- int check_changedtick(char_u *arg);
+  char_u *get_lval(char_u *name, typval_T *rettv, lval_T *lp, int unlet, int skip, int flags, int fne_flags);
+  void clear_lval(lval_T *lp);
+  void *eval_for_line(char_u *arg, int *errp, char_u **nextcmdp, int skip);
+--- 25,30 ----
+*** ../vim-8.0.0333/src/testdir/test_changedtick.vim	2017-02-17 16:28:14.582631189 +0100
+--- src/testdir/test_changedtick.vim	2017-02-17 15:54:21.101578599 +0100
+***************
+*** 0 ****
+--- 1,45 ----
++ " Tests for b:changedtick
++ 
++ func Test_changedtick_increments()
++   new
++   " New buffer has an empty line, tick starts at 2.
++   let expected = 2
++   call assert_equal(expected, b:changedtick)
++   call assert_equal(expected, b:['changedtick'])
++   call setline(1, 'hello')
++   let expected += 1
++   call assert_equal(expected, b:changedtick)
++   call assert_equal(expected, b:['changedtick'])
++   undo
++   " Somehow undo counts as two changes.
++   let expected += 2
++   call assert_equal(expected, b:changedtick)
++   call assert_equal(expected, b:['changedtick'])
++   bwipe!
++ endfunc
++ 
++ func Test_changedtick_dict_entry()
++   let d = b:
++   call assert_equal(b:changedtick, d['changedtick'])
++ endfunc
++ 
++ func Test_changedtick_bdel()
++   new
++   let bnr = bufnr('%')
++   let v = b:changedtick
++   bdel
++   " Delete counts as a change too.
++   call assert_equal(v + 1, getbufvar(bnr, 'changedtick'))
++ endfunc
++ 
++ func Test_changedtick_fixed()
++   call assert_fails('let b:changedtick = 4', 'E46')
++   call assert_fails('let b:["changedtick"] = 4', 'E46')
++ 
++   call assert_fails('unlet b:changedtick', 'E795')
++   call assert_fails('unlet b:["changedtick"]', 'E46')
++ 
++   let d = b:
++   call assert_fails('unlet d["changedtick"]', 'E46')
++ 
++ endfunc
+*** ../vim-8.0.0333/src/Makefile	2017-02-17 12:04:35.843808317 +0100
+--- src/Makefile	2017-02-17 15:33:20.794880834 +0100
+***************
+*** 2099,2104 ****
+--- 2099,2105 ----
+  	test_cdo \
+  	test_channel \
+  	test_charsearch \
++ 	test_changedtick \
+  	test_cmdline \
+  	test_command_count \
+  	test_crypt \
+*** ../vim-8.0.0333/src/testdir/test_alot.vim	2017-02-01 20:53:18.659092738 +0100
+--- src/testdir/test_alot.vim	2017-02-17 15:33:37.034760809 +0100
+***************
+*** 3,12 ****
+  
+  source test_assign.vim
+  source test_autocmd.vim
+  source test_cursor_func.vim
+  source test_delete.vim
+- source test_execute_func.vim
+  source test_ex_undo.vim
+  source test_expand.vim
+  source test_expr.vim
+  source test_expand_dllpath.vim
+--- 3,13 ----
+  
+  source test_assign.vim
+  source test_autocmd.vim
++ source test_changedtick.vim
+  source test_cursor_func.vim
+  source test_delete.vim
+  source test_ex_undo.vim
++ source test_execute_func.vim
+  source test_expand.vim
+  source test_expr.vim
+  source test_expand_dllpath.vim
+*** ../vim-8.0.0333/src/testdir/test91.in	2015-08-25 16:14:21.000000000 +0200
+--- src/testdir/test91.in	2017-02-17 16:05:39.560595078 +0100
+***************
+*** 1,4 ****
+! Tests for getbufvar(), getwinvar(), gettabvar() and gettabwinvar().
+  vim: set ft=vim :
+  
+  STARTTEST
+--- 1,4 ----
+! Tests for getwinvar(), gettabvar() and gettabwinvar().
+  vim: set ft=vim :
+  
+  STARTTEST
+***************
+*** 10,43 ****
+  :let t:testvar='abcd'
+  :$put =string(gettabvar(1,'testvar'))
+  :$put =string(gettabvar(1,'testvar'))
+- :" Test for getbufvar()
+- :let b:var_num = '1234'
+- :let def_num = '5678'
+- :$put =string(getbufvar(1, 'var_num'))
+- :$put =string(getbufvar(1, 'var_num', def_num))
+- :$put =string(getbufvar(1, ''))
+- :$put =string(getbufvar(1, '', def_num))
+- :unlet b:var_num
+- :$put =string(getbufvar(1, 'var_num', def_num))
+- :$put =string(getbufvar(1, ''))
+- :$put =string(getbufvar(1, '', def_num))
+- :$put =string(getbufvar(9, ''))
+- :$put =string(getbufvar(9, '', def_num))
+- :unlet def_num
+- :$put =string(getbufvar(1, '&autoindent'))
+- :$put =string(getbufvar(1, '&autoindent', 1))
+  :"
+- :" Open new window with forced option values
+- :set fileformats=unix,dos
+- :new ++ff=dos ++bin ++enc=iso-8859-2
+- :let otherff = getbufvar(bufnr('%'), '&fileformat')
+- :let otherbin = getbufvar(bufnr('%'), '&bin')
+- :let otherfenc = getbufvar(bufnr('%'), '&fenc')
+- :close
+- :$put =otherff
+- :$put =string(otherbin)
+- :$put =otherfenc
+- :unlet otherff otherbin otherfenc
+  :" test for getwinvar()
+  :let w:var_str = "Dance"
+  :let def_str = "Chance"
+--- 10,16 ----
+*** ../vim-8.0.0333/src/testdir/test91.ok	2015-08-25 16:14:21.000000000 +0200
+--- src/testdir/test91.ok	2017-02-17 16:23:08.896877188 +0100
+***************
+*** 1,20 ****
+  start:
+  'abcd'
+  'abcd'
+- '1234'
+- '1234'
+- {'var_num': '1234'}
+- {'var_num': '1234'}
+- '5678'
+- {}
+- {}
+- ''
+- '5678'
+- 0
+- 0
+- dos
+- 1
+- iso-8859-2
+  'Dance'
+  'Dance'
+  {'var_str': 'Dance'}
+--- 1,6 ----
+*** ../vim-8.0.0333/src/testdir/test_functions.vim	2017-02-05 14:15:24.583095563 +0100
+--- src/testdir/test_functions.vim	2017-02-17 16:22:47.197036900 +0100
+***************
+*** 424,426 ****
+--- 424,468 ----
+    bwipe!
+    iunmap <F2>
+  endfunc
++ 
++ func Test_getbufvar()
++   let bnr = bufnr('%')
++   let b:var_num = '1234'
++   let def_num = '5678'
++   call assert_equal('1234', getbufvar(bnr, 'var_num'))
++   call assert_equal('1234', getbufvar(bnr, 'var_num', def_num))
++ 
++   let bd = getbufvar(bnr, '')
++   call assert_equal('1234', bd['var_num'])
++   call assert_true(exists("bd['changedtick']"))
++   call assert_equal(2, len(bd))
++ 
++   let bd2 = getbufvar(bnr, '', def_num)
++   call assert_equal(bd, bd2)
++ 
++   unlet b:var_num
++   call assert_equal(def_num, getbufvar(bnr, 'var_num', def_num))
++   call assert_equal('', getbufvar(bnr, 'var_num'))
++ 
++   let bd = getbufvar(bnr, '')
++   call assert_equal(1, len(bd))
++   let bd = getbufvar(bnr, '',def_num)
++   call assert_equal(1, len(bd))
++ 
++   call assert_equal('', getbufvar(9, ''))
++   call assert_equal(def_num, getbufvar(9, '', def_num))
++   unlet def_num
++ 
++   call assert_equal(0, getbufvar(1, '&autoindent'))
++   call assert_equal(0, getbufvar(1, '&autoindent', 1))
++ 
++   " Open new window with forced option values
++   set fileformats=unix,dos
++   new ++ff=dos ++bin ++enc=iso-8859-2
++   call assert_equal('dos', getbufvar(bufnr('%'), '&fileformat'))
++   call assert_equal(1, getbufvar(bufnr('%'), '&bin'))
++   call assert_equal('iso-8859-2', getbufvar(bufnr('%'), '&fenc'))
++   close
++ 
++   set fileformats&
++ endfunc
+*** ../vim-8.0.0333/src/version.c	2017-02-17 14:53:11.704743399 +0100
+--- src/version.c	2017-02-17 15:02:39.148530713 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     334,
+  /**/
+
+-- 
+Never under any circumstances take a sleeping pill
+and a laxative on the same night.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

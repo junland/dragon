@@ -1,0 +1,171 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1269
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1269
+Problem:    Effect of autocommands on marks is not tested.
+Solution:   Add a couple of tests. (James McCoy, closes #2271)
+Files:      src/testdir/test_autocmd.vim
+
+
+*** ../vim-8.0.1268/src/testdir/test_autocmd.vim	2017-11-02 21:04:17.987345075 +0100
+--- src/testdir/test_autocmd.vim	2017-11-05 16:10:43.122672610 +0100
+***************
+*** 997,999 ****
+--- 997,1126 ----
+    call delete('Xxx')
+    enew!
+  endfunc
++ 
++ func SetChangeMarks(start, end)
++   exe a:start. 'mark ['
++   exe a:end. 'mark ]'
++ endfunc
++ 
++ " Verify the effects of autocmds on '[ and ']
++ func Test_change_mark_in_autocmds()
++   edit! Xtest
++   call feedkeys("ia\<CR>b\<CR>c\<CR>d\<C-g>u", 'xtn')
++ 
++   call SetChangeMarks(2, 3)
++   write
++   call assert_equal([1, 4], [line("'["), line("']")])
++ 
++   call SetChangeMarks(2, 3)
++   au BufWritePre * call assert_equal([1, 4], [line("'["), line("']")])
++   write
++   au! BufWritePre
++ 
++   if executable('cat')
++     write XtestFilter
++     write >> XtestFilter
++ 
++     call SetChangeMarks(2, 3)
++     " Marks are set to the entire range of the write
++     au FilterWritePre * call assert_equal([1, 4], [line("'["), line("']")])
++     " '[ is adjusted to just before the line that will receive the filtered
++     " data
++     au FilterReadPre * call assert_equal([4, 4], [line("'["), line("']")])
++     " The filtered data is read into the buffer, and the source lines are
++     " still present, so the range is after the source lines
++     au FilterReadPost * call assert_equal([5, 12], [line("'["), line("']")])
++     %!cat XtestFilter
++     " After the filtered data is read, the original lines are deleted
++     call assert_equal([1, 8], [line("'["), line("']")])
++     au! FilterWritePre,FilterReadPre,FilterReadPost
++     undo
++ 
++     call SetChangeMarks(1, 4)
++     au FilterWritePre * call assert_equal([2, 3], [line("'["), line("']")])
++     au FilterReadPre * call assert_equal([3, 3], [line("'["), line("']")])
++     au FilterReadPost * call assert_equal([4, 11], [line("'["), line("']")])
++     2,3!cat XtestFilter
++     call assert_equal([2, 9], [line("'["), line("']")])
++     au! FilterWritePre,FilterReadPre,FilterReadPost
++     undo
++ 
++     call delete('XtestFilter')
++   endif
++ 
++   call SetChangeMarks(1, 4)
++   au FileWritePre * call assert_equal([2, 3], [line("'["), line("']")])
++   2,3write Xtest2
++   au! FileWritePre
++ 
++   call SetChangeMarks(2, 3)
++   au FileAppendPre * call assert_equal([1, 4], [line("'["), line("']")])
++   write >> Xtest2
++   au! FileAppendPre
++ 
++   call SetChangeMarks(1, 4)
++   au FileAppendPre * call assert_equal([2, 3], [line("'["), line("']")])
++   2,3write >> Xtest2
++   au! FileAppendPre
++ 
++   call SetChangeMarks(1, 1)
++   au FileReadPre * call assert_equal([3, 1], [line("'["), line("']")])
++   au FileReadPost * call assert_equal([4, 11], [line("'["), line("']")])
++   3read Xtest2
++   au! FileReadPre,FileReadPost
++   undo
++ 
++   call SetChangeMarks(4, 4)
++   " When the line is 0, it's adjusted to 1
++   au FileReadPre * call assert_equal([1, 4], [line("'["), line("']")])
++   au FileReadPost * call assert_equal([1, 8], [line("'["), line("']")])
++   0read Xtest2
++   au! FileReadPre,FileReadPost
++   undo
++ 
++   call SetChangeMarks(4, 4)
++   " When the line is 0, it's adjusted to 1
++   au FileReadPre * call assert_equal([1, 4], [line("'["), line("']")])
++   au FileReadPost * call assert_equal([2, 9], [line("'["), line("']")])
++   1read Xtest2
++   au! FileReadPre,FileReadPost
++   undo
++ 
++   bwipe!
++   call delete('Xtest')
++   call delete('Xtest2')
++ endfunc
++ 
++ func Test_Filter_noshelltemp()
++   if !executable('cat')
++     return
++   endif
++ 
++   enew!
++   call setline(1, ['a', 'b', 'c', 'd'])
++ 
++   let shelltemp = &shelltemp
++   set shelltemp
++ 
++   let g:filter_au = 0
++   au FilterWritePre * let g:filter_au += 1
++   au FilterReadPre * let g:filter_au += 1
++   au FilterReadPost * let g:filter_au += 1
++   %!cat
++   call assert_equal(3, g:filter_au)
++ 
++   if has('filterpipe')
++     set noshelltemp
++ 
++     let g:filter_au = 0
++     au FilterWritePre * let g:filter_au += 1
++     au FilterReadPre * let g:filter_au += 1
++     au FilterReadPost * let g:filter_au += 1
++     %!cat
++     call assert_equal(0, g:filter_au)
++   endif
++ 
++   au! FilterWritePre,FilterReadPre,FilterReadPost
++   let &shelltemp = shelltemp
++   bwipe!
++ endfunc
+*** ../vim-8.0.1268/src/version.c	2017-11-05 16:04:36.476687104 +0100
+--- src/version.c	2017-11-05 16:09:26.043095369 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1269,
+  /**/
+
+-- 
+INSPECTOR END OF FILM: Move along.  There's nothing to see!  Keep moving!
+   [Suddenly he notices the cameras.]
+INSPECTOR END OF FILM: (to Camera) All right, put that away sonny.
+   [He walks over to it and puts his hand over the lens.]
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

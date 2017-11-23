@@ -1,0 +1,97 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1291
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1291
+Problem:    C indent wrong when * immediately follows comment. (John Bowler)
+Solution:   Do not see "/*" after "*" as a comment start. (closes #2321)
+Files:      src/search.c, src/testdir/test3.in, src/testdir/test3.ok
+
+
+*** ../vim-8.0.1290/src/search.c	2017-10-30 21:48:36.482732724 +0100
+--- src/search.c	2017-11-12 15:31:02.966855975 +0100
+***************
+*** 2280,2286 ****
+  	    {
+  		/*
+  		 * A comment may contain / * or / /, it may also start or end
+! 		 * with / * /.	Ignore a / * after / /.
+  		 */
+  		if (pos.col == 0)
+  		    continue;
+--- 2280,2286 ----
+  	    {
+  		/*
+  		 * A comment may contain / * or / /, it may also start or end
+! 		 * with / * /.	Ignore a / * after / / and after *.
+  		 */
+  		if (pos.col == 0)
+  		    continue;
+***************
+*** 2306,2311 ****
+--- 2306,2312 ----
+  		}
+  		else if (  linep[pos.col - 1] == '/'
+  			&& linep[pos.col] == '*'
++ 			&& (pos.col == 1 || linep[pos.col - 2] != '*')
+  			&& (int)pos.col < comment_col)
+  		{
+  		    count++;
+*** ../vim-8.0.1290/src/testdir/test3.in	2017-03-11 18:42:51.070931565 +0100
+--- src/testdir/test3.in	2017-11-12 15:15:37.804823663 +0100
+***************
+*** 2339,2344 ****
+--- 2339,2354 ----
+  /* end of define */
+  
+  STARTTEST
++ :set cin cino&
++ /a = second
++ ox
++ ENDTEST
++ 
++ {
++ 	a = second/*bug*/*line;
++ }
++ 
++ STARTTEST
+  :g/^STARTTEST/.,/^ENDTEST/d
+  :1;/start of AUTO/,$wq! test.out
+  ENDTEST
+*** ../vim-8.0.1290/src/testdir/test3.ok	2017-01-07 15:39:36.401759496 +0100
+--- src/testdir/test3.ok	2017-11-12 15:32:20.705690224 +0100
+***************
+*** 2094,2096 ****
+--- 2094,2102 ----
+  	4
+  /* end of define */
+  
++ 
++ {
++ 	a = second/*bug*/*line;
++ 	x
++ }
++ 
+*** ../vim-8.0.1290/src/version.c	2017-11-11 23:37:04.192694223 +0100
+--- src/version.c	2017-11-12 15:35:09.315173029 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1291,
+  /**/
+
+-- 
+Hacker: Someone skilled in computer programming (good guy).
+Cracker: A hacker that uses his skills to crack software (bad guy).
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

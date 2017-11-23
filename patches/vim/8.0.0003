@@ -1,0 +1,94 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0003
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0003
+Problem:    getwinvar() returns wrong Value of boolean and number options,
+            especially non big endian systems. (James McCoy)
+Solution:   Cast the pointer to long or int. (closes #1060)
+Files:      src/option.c, src/testdir/test_bufwintabinfo.vim
+
+
+*** ../vim-8.0.0002/src/option.c	2016-09-02 19:26:03.000000000 +0200
+--- src/option.c	2016-09-12 19:20:38.051099762 +0200
+***************
+*** 12363,12370 ****
+  	    {
+  		if (opt->flags & P_STRING)
+  		    dict_add_nr_str(d, opt->fullname, 0L, *(char_u **)varp);
+  		else
+! 		    dict_add_nr_str(d, opt->fullname, *varp, NULL);
+  	    }
+  	}
+      }
+--- 12363,12372 ----
+  	    {
+  		if (opt->flags & P_STRING)
+  		    dict_add_nr_str(d, opt->fullname, 0L, *(char_u **)varp);
++ 		else if (opt->flags & P_NUM)
++ 		    dict_add_nr_str(d, opt->fullname, *(long *)varp, NULL);
+  		else
+! 		    dict_add_nr_str(d, opt->fullname, *(int *)varp, NULL);
+  	    }
+  	}
+      }
+*** ../vim-8.0.0002/src/testdir/test_bufwintabinfo.vim	2016-08-27 21:14:58.000000000 +0200
+--- src/testdir/test_bufwintabinfo.vim	2016-09-12 19:31:06.346360420 +0200
+***************
+*** 87,95 ****
+--- 87,103 ----
+  endfunc
+  
+  function Test_get_win_options()
++   if has('folding')
++     set foldlevel=999
++   endif
++   set list
+    let opts = getwinvar(1, '&')
+    call assert_equal(v:t_dict, type(opts))
+    call assert_equal(0, opts.linebreak)
++   call assert_equal(1, opts.list)
++   if has('folding')
++     call assert_equal(999, opts.foldlevel)
++   endif
+    if has('signs')
+      call assert_equal('auto', opts.signcolumn)
+    endif
+***************
+*** 97,103 ****
+--- 105,116 ----
+    let opts = gettabwinvar(1, 1, '&')
+    call assert_equal(v:t_dict, type(opts))
+    call assert_equal(0, opts.linebreak)
++   call assert_equal(1, opts.list)
+    if has('signs')
+      call assert_equal('auto', opts.signcolumn)
+    endif
++   set list&
++   if has('folding')
++     set foldlevel=0
++   endif
+  endfunc
+*** ../vim-8.0.0002/src/version.c	2016-09-12 16:30:42.348454179 +0200
+--- src/version.c	2016-09-12 19:24:10.184148642 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     3,
+  /**/
+
+-- 
+If VIM were a woman, I'd marry her.  Slim, organized, helpful
+and beautiful; what's not to like?     --David A. Rogers
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

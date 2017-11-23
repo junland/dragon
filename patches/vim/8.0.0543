@@ -1,0 +1,440 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0543
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0543
+Problem:    Test_edit causes older xfce4-terminal to close. (Dominique Pelle)
+Solution:   Reduce number of columns to 2000.  Try to restore the window
+            position.
+Files:      src/testdir/test_edit.vim, src/evalfunc.c, src/term.c,
+            src/proto/term.pro, src/term.h
+
+
+*** ../vim-8.0.0542/src/testdir/test_edit.vim	2017-04-01 14:13:11.866693326 +0200
+--- src/testdir/test_edit.vim	2017-04-04 22:33:33.907147970 +0200
+***************
+*** 1328,1337 ****
+      " Long directory names only work on Unix.
+      return
+    endif
+    let save_columns = &columns
+!   set columns=5000
+!   call assert_equal(5000, &columns)
+    set noswapfile
+    let dirname = getcwd() . "/Xdir"
+    let longdirname = dirname . repeat('/' . repeat('d', 255), 4)
+    let longfilename = longdirname . '/' . repeat('a', 255)
+--- 1328,1341 ----
+      " Long directory names only work on Unix.
+      return
+    endif
++   " Try to get the Vim window position before setting 'columns'.
++   let winposx = getwinposx()
++   let winposy = getwinposy()
+    let save_columns = &columns
+!   set columns=2000
+!   call assert_equal(2000, &columns)
+    set noswapfile
++ 
+    let dirname = getcwd() . "/Xdir"
+    let longdirname = dirname . repeat('/' . repeat('d', 255), 4)
+    let longfilename = longdirname . '/' . repeat('a', 255)
+***************
+*** 1345,1349 ****
+--- 1349,1356 ----
+    exe 'bwipe! ' . longfilename
+    call delete(dirname, 'rf')
+    let &columns = save_columns
++   if winposx >= 0 && winposy >= 0
++     exe 'winpos ' . winposx . ' ' . winposy
++   endif
+    set swapfile&
+  endfunc
+*** ../vim-8.0.0542/src/evalfunc.c	2017-03-29 14:19:21.882199174 +0200
+--- src/evalfunc.c	2017-04-04 21:50:59.879208445 +0200
+***************
+*** 5242,5265 ****
+  }
+  
+  /*
+-  * "getwinposx()" function
+-  */
+-     static void
+- f_getwinposx(typval_T *argvars UNUSED, typval_T *rettv)
+- {
+-     rettv->vval.v_number = -1;
+- #ifdef FEAT_GUI
+-     if (gui.in_use)
+-     {
+- 	int	    x, y;
+- 
+- 	if (gui_mch_get_winpos(&x, &y) == OK)
+- 	    rettv->vval.v_number = x;
+-     }
+- #endif
+- }
+- 
+- /*
+   * "win_findbuf()" function
+   */
+      static void
+--- 5242,5247 ----
+***************
+*** 5307,5312 ****
+--- 5289,5320 ----
+  }
+  
+  /*
++  * "getwinposx()" function
++  */
++     static void
++ f_getwinposx(typval_T *argvars UNUSED, typval_T *rettv)
++ {
++     rettv->vval.v_number = -1;
++ #ifdef FEAT_GUI
++     if (gui.in_use)
++     {
++ 	int	    x, y;
++ 
++ 	if (gui_mch_get_winpos(&x, &y) == OK)
++ 	    rettv->vval.v_number = x;
++     }
++ #endif
++ #if defined(HAVE_TGETENT) && defined(FEAT_TERMRESPONSE)
++     {
++ 	int	    x, y;
++ 
++ 	if (term_get_winpos(&x, &y) == OK)
++ 	    rettv->vval.v_number = x;
++     }
++ #endif
++ }
++ 
++ /*
+   * "getwinposy()" function
+   */
+      static void
+***************
+*** 5322,5327 ****
+--- 5330,5343 ----
+  	    rettv->vval.v_number = y;
+      }
+  #endif
++ #if defined(HAVE_TGETENT) && defined(FEAT_TERMRESPONSE)
++     {
++ 	int	    x, y;
++ 
++ 	if (term_get_winpos(&x, &y) == OK)
++ 	    rettv->vval.v_number = y;
++     }
++ #endif
+  }
+  
+  /*
+*** ../vim-8.0.0542/src/term.c	2017-04-02 17:21:09.890069493 +0200
+--- src/term.c	2017-04-04 22:33:20.819229358 +0200
+***************
+*** 845,853 ****
+--- 845,855 ----
+  						  ESC_STR "[8;%p1%d;%p2%dt")},
+      {(int)KS_CWP,	IF_EB("\033[3;%p1%d;%p2%dt",
+  						  ESC_STR "[3;%p1%d;%p2%dt")},
++     {(int)KS_CGP,	IF_EB("\033[13t", ESC_STR "[13t")},
+  #  else
+      {(int)KS_CWS,	IF_EB("\033[8;%d;%dt", ESC_STR "[8;%d;%dt")},
+      {(int)KS_CWP,	IF_EB("\033[3;%d;%dt", ESC_STR "[3;%d;%dt")},
++     {(int)KS_CGP,	IF_EB("\033[13t", ESC_STR "[13t")},
+  #  endif
+      {(int)KS_CRV,	IF_EB("\033[>c", ESC_STR "[>c")},
+      {(int)KS_RBG,	IF_EB("\033]11;?\007", ESC_STR "]11;?\007")},
+***************
+*** 2581,2586 ****
+--- 2583,2642 ----
+      OUT_STR(tgoto((char *)T_CWP, y, x));
+  }
+  
++ # if defined(FEAT_TERMRESPONSE) || defined(PROTO)
++ /*
++  * Return TRUE if we can request the terminal for a response.
++  */
++     static int
++ can_get_termresponse()
++ {
++     return cur_tmode == TMODE_RAW
++ 	    && termcap_active
++ # ifdef UNIX
++ 	    && (is_not_a_term() || (isatty(1) && isatty(read_cmd_fd)))
++ # endif
++ 	    && p_ek;
++ }
++ 
++ static int winpos_x;
++ static int winpos_y;
++ static int waiting_for_winpos = FALSE;
++ 
++ /*
++  * Try getting the Vim window position from the terminal.
++  * Returns OK or FAIL.
++  */
++     int
++ term_get_winpos(int *x, int *y)
++ {
++     int count = 0;
++ 
++     if (*T_CGP == NUL || !can_get_termresponse())
++ 	return FAIL;
++     winpos_x = -1;
++     winpos_y = -1;
++     waiting_for_winpos = TRUE;
++     OUT_STR(T_CGP);
++     out_flush();
++ 
++     /* Try reading the result for 100 msec. */
++     while (count++ < 10)
++     {
++ 	(void)vpeekc_nomap();
++ 	if (winpos_x >= 0 && winpos_y >= 0)
++ 	{
++ 	    *x = winpos_x;
++ 	    *y = winpos_y;
++ 	    waiting_for_winpos = FALSE;
++ 	    return OK;
++ 	}
++ 	ui_delay(10, FALSE);
++     }
++     waiting_for_winpos = FALSE;
++     return FALSE;
++ }
++ # endif
++ 
+      void
+  term_set_winsize(int width, int height)
+  {
+***************
+*** 3229,3242 ****
+  may_req_termresponse(void)
+  {
+      if (crv_status == CRV_GET
+! 	    && cur_tmode == TMODE_RAW
+  	    && starting == 0
+- 	    && termcap_active
+- 	    && p_ek
+- # ifdef UNIX
+- 	    && isatty(1)
+- 	    && isatty(read_cmd_fd)
+- # endif
+  	    && *T_CRV != NUL)
+      {
+  	LOG_TR("Sending CRV");
+--- 3285,3292 ----
+  may_req_termresponse(void)
+  {
+      if (crv_status == CRV_GET
+! 	    && can_get_termresponse()
+  	    && starting == 0
+  	    && *T_CRV != NUL)
+      {
+  	LOG_TR("Sending CRV");
+***************
+*** 3263,3275 ****
+  may_req_ambiguous_char_width(void)
+  {
+      if (u7_status == U7_GET
+! 	    && cur_tmode == TMODE_RAW
+! 	    && termcap_active
+! 	    && p_ek
+! #  ifdef UNIX
+! 	    && isatty(1)
+! 	    && isatty(read_cmd_fd)
+! #  endif
+  	    && *T_U7 != NUL
+  	    && !option_was_set((char_u *)"ambiwidth"))
+      {
+--- 3313,3320 ----
+  may_req_ambiguous_char_width(void)
+  {
+      if (u7_status == U7_GET
+! 	    && can_get_termresponse()
+! 	    && starting == 0
+  	    && *T_U7 != NUL
+  	    && !option_was_set((char_u *)"ambiwidth"))
+      {
+***************
+*** 3295,3301 ****
+  }
+  # endif
+  
+- #if defined(FEAT_TERMRESPONSE) || defined(PROTO)
+  /*
+   * Similar to requesting the version string: Request the terminal background
+   * color when it is the right moment.
+--- 3340,3345 ----
+***************
+*** 3304,3316 ****
+  may_req_bg_color(void)
+  {
+      if (rbg_status == RBG_GET
+! 	    && cur_tmode == TMODE_RAW
+! 	    && termcap_active
+! 	    && p_ek
+! #  ifdef UNIX
+! 	    && isatty(1)
+! 	    && isatty(read_cmd_fd)
+! #  endif
+  	    && *T_RBG != NUL
+  	    && !option_was_set((char_u *)"bg"))
+      {
+--- 3348,3355 ----
+  may_req_bg_color(void)
+  {
+      if (rbg_status == RBG_GET
+! 	    && can_get_termresponse()
+! 	    && starting == 0
+  	    && *T_RBG != NUL
+  	    && !option_was_set((char_u *)"bg"))
+      {
+***************
+*** 3323,3329 ****
+  	(void)vpeekc_nomap();
+      }
+  }
+- # endif
+  
+  # ifdef DEBUG_TERMRESPONSE
+      static void
+--- 3362,3367 ----
+***************
+*** 4136,4145 ****
+  	     * - Cursor position report: <Esc>[{row};{col}R
+  	     *   The final byte must be 'R'. It is used for checking the
+  	     *   ambiguous-width character state.
+  	     */
+  	    char_u *argp = tp[0] == ESC ? tp + 2 : tp + 1;
+  
+! 	    if ((*T_CRV != NUL || *T_U7 != NUL)
+  			&& ((tp[0] == ESC && len >= 3 && tp[1] == '[')
+  			    || (tp[0] == CSI && len >= 2))
+  			&& (VIM_ISDIGIT(*argp) || *argp == '>' || *argp == '?'))
+--- 4174,4185 ----
+  	     * - Cursor position report: <Esc>[{row};{col}R
+  	     *   The final byte must be 'R'. It is used for checking the
+  	     *   ambiguous-width character state.
++ 	     *
++ 	     * - window position reply: <Esc>[3;{x};{y}t
+  	     */
+  	    char_u *argp = tp[0] == ESC ? tp + 2 : tp + 1;
+  
+! 	    if ((*T_CRV != NUL || *T_U7 != NUL || waiting_for_winpos)
+  			&& ((tp[0] == ESC && len >= 3 && tp[1] == '[')
+  			    || (tp[0] == CSI && len >= 2))
+  			&& (VIM_ISDIGIT(*argp) || *argp == '>' || *argp == '?'))
+***************
+*** 4278,4283 ****
+--- 4318,4358 ----
+  		    key_name[1] = (int)KE_IGNORE;
+  		    slen = i + 1;
+  		}
++ 
++ 		/*
++ 		 * Check for a window position response from the terminal:
++ 		 *       {lead}3;{x}:{y}t
++ 		 */
++ 		else if (waiting_for_winpos
++ 			    && ((len >= 4 && tp[0] == ESC && tp[1] == '[')
++ 				|| (len >= 3 && tp[0] == CSI))
++ 			    && tp[(j = 1 + (tp[0] == ESC))] == '3'
++ 			    && tp[j + 1] == ';')
++ 		{
++ 		    j += 2;
++ 		    for (i = j; i < len && vim_isdigit(tp[i]); ++i)
++ 			;
++ 		    if (i < len && tp[i] == ';')
++ 		    {
++ 			winpos_x = atoi((char *)tp + j);
++ 			j = i + 1;
++ 			for (i = j; i < len && vim_isdigit(tp[i]); ++i)
++ 			    ;
++ 			if (i < len && tp[i] == 't')
++ 			{
++ 			    winpos_y = atoi((char *)tp + j);
++ 			    /* got finished code: consume it */
++ 			    key_name[0] = (int)KS_EXTRA;
++ 			    key_name[1] = (int)KE_IGNORE;
++ 			    slen = i + 1;
++ 			}
++ 		    }
++ 		    if (i == len)
++ 		    {
++ 			LOG_TR("not enough characters for winpos");
++ 			return -1;
++ 		    }
++ 		}
+  	    }
+  
+  	    /* Check for background color response from the terminal:
+*** ../vim-8.0.0542/src/proto/term.pro	2016-09-12 13:04:20.000000000 +0200
+--- src/proto/term.pro	2017-04-04 21:26:37.440495254 +0200
+***************
+*** 22,27 ****
+--- 22,28 ----
+  void term_append_lines(int line_count);
+  void term_delete_lines(int line_count);
+  void term_set_winpos(int x, int y);
++ int term_get_winpos(int *x, int *y);
+  void term_set_winsize(int width, int height);
+  void term_fg_color(int n);
+  void term_bg_color(int n);
+*** ../vim-8.0.0542/src/term.h	2017-03-16 17:23:26.839815753 +0100
+--- src/term.h	2017-04-04 20:54:20.296766437 +0200
+***************
+*** 77,82 ****
+--- 77,83 ----
+      KS_TS,	/* set window title start (to status line)*/
+      KS_FS,	/* set window title end (from status line) */
+      KS_CWP,	/* set window position in pixels */
++     KS_CGP,	/* get window position */
+      KS_CWS,	/* set window size in characters */
+      KS_CRV,	/* request version string */
+      KS_RBG,	/* request background color */
+***************
+*** 163,169 ****
+  #define T_CIE	(TERM_STR(KS_CIE))	/* set icon text end */
+  #define T_TS	(TERM_STR(KS_TS))	/* set window title start */
+  #define T_FS	(TERM_STR(KS_FS))	/* set window title end */
+! #define T_CWP	(TERM_STR(KS_CWP))	/* window position */
+  #define T_CWS	(TERM_STR(KS_CWS))	/* window size */
+  #define T_CSI	(TERM_STR(KS_CSI))	/* start insert mode */
+  #define T_CEI	(TERM_STR(KS_CEI))	/* end insert mode */
+--- 164,171 ----
+  #define T_CIE	(TERM_STR(KS_CIE))	/* set icon text end */
+  #define T_TS	(TERM_STR(KS_TS))	/* set window title start */
+  #define T_FS	(TERM_STR(KS_FS))	/* set window title end */
+! #define T_CWP	(TERM_STR(KS_CWP))	/* set window position */
+! #define T_CGP	(TERM_STR(KS_CGP))	/* get window position */
+  #define T_CWS	(TERM_STR(KS_CWS))	/* window size */
+  #define T_CSI	(TERM_STR(KS_CSI))	/* start insert mode */
+  #define T_CEI	(TERM_STR(KS_CEI))	/* end insert mode */
+*** ../vim-8.0.0542/src/version.c	2017-04-03 22:02:51.778787637 +0200
+--- src/version.c	2017-04-04 22:39:02.645102811 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     543,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+269. You receive an e-mail from the wife of a deceased president, offering
+     to send you twenty million dollar, and you are not even surprised.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

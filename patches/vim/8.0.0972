@@ -1,0 +1,66 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0972
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0972
+Problem:    Compiler warnings for unused variables. (Tony Mechelynck)
+Solution:   Add #ifdefs.
+Files:      src/term.c
+
+
+*** ../vim-8.0.0971/src/term.c	2017-08-19 21:11:52.863147785 +0200
+--- src/term.c	2017-08-19 23:20:52.728143860 +0200
+***************
+*** 161,171 ****
+--- 161,173 ----
+  
+  static int  detected_8bit = FALSE;	/* detected 8-bit terminal */
+  
++ #ifdef FEAT_TERMRESPONSE
+  /* When the cursor shape was detected these values are used:
+   * 1: block, 2: underline, 3: vertical bar
+   * initial_cursor_blink is only valid when initial_cursor_shape is not zero. */
+  static int initial_cursor_shape = 0;
+  static int initial_cursor_blink = FALSE;
++ #endif
+  
+  static struct builtin_term builtin_termcaps[] =
+  {
+***************
+*** 3714,3722 ****
+--- 3716,3726 ----
+       * mode. */
+      if (!full_screen || *T_CEI == NUL)
+      {
++ # ifdef FEAT_TERMRESPONSE
+  	if (forced && initial_cursor_shape > 0)
+  	    /* Restore to initial values. */
+  	    term_cursor_shape(initial_cursor_shape, initial_cursor_blink);
++ # endif
+  	return;
+      }
+  
+*** ../vim-8.0.0971/src/version.c	2017-08-19 23:17:58.325226091 +0200
+--- src/version.c	2017-08-19 23:22:18.791609897 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     972,
+  /**/
+
+-- 
+Managers are like cats in a litter box.  They instinctively shuffle things
+around to conceal what they've done.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,59 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1246
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1246
+Problem:    Popup test has an arbitrary delay.
+Solution:   Wait for the ruler to show. (James McCoy)
+Files:      src/testdir/test_popup.vim
+
+
+*** ../vim-8.0.1245/src/testdir/test_popup.vim	2017-10-31 22:19:54.732086180 +0100
+--- src/testdir/test_popup.vim	2017-11-02 17:40:11.560690990 +0100
+***************
+*** 637,645 ****
+    if h < 15
+      return
+    endif
+!   let g:buf = term_start([GetVimProg(), '--clean', '-c', 'set noswapfile'], {'term_rows': h / 3})
+!   call term_sendkeys(g:buf, (h / 3 - 1)."o\<esc>")
+!   call term_wait(g:buf, 500)
+    call term_sendkeys(g:buf, "Gi\<c-x>")
+    call term_sendkeys(g:buf, "\<c-v>")
+    call term_wait(g:buf, 100)
+--- 637,649 ----
+    if h < 15
+      return
+    endif
+!   let rows = h / 3
+!   let g:buf = term_start([GetVimProg(), '--clean', '-c', 'set noswapfile'], {'term_rows': rows})
+!   call term_sendkeys(g:buf, (h / 3 - 1) . "o\<esc>")
+!   " Wait for the nested Vim to exit insert mode, where it will show the ruler.
+!   " Need to trigger a redraw.
+!   call WaitFor(printf('execute("redraw") == "" && term_getline(g:buf, %d) =~ "\\<%d,.*Bot"', rows, rows))
+! 
+    call term_sendkeys(g:buf, "Gi\<c-x>")
+    call term_sendkeys(g:buf, "\<c-v>")
+    call term_wait(g:buf, 100)
+*** ../vim-8.0.1245/src/version.c	2017-11-02 16:57:54.379496792 +0100
+--- src/version.c	2017-11-02 17:48:57.753587844 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1246,
+  /**/
+
+-- 
+Every person is responsible for the choices he makes.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

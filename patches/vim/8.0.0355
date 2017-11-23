@@ -1,0 +1,134 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0355
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0355
+Problem:    Using uninitialized memory when 'isfname' is empty.
+Solution:   Don't call getpwnam() without an argument. (Dominique Pelle,
+            closes #1464)
+Files:      src/misc1.c, src/testdir/test_options.vim
+
+
+*** ../vim-8.0.0354/src/misc1.c	2017-02-17 16:31:16.925294107 +0100
+--- src/misc1.c	2017-02-23 17:00:02.835293538 +0100
+***************
+*** 4028,4042 ****
+  		 */
+  #  if defined(HAVE_GETPWNAM) && defined(HAVE_PWD_H)
+  		{
+- 		    struct passwd *pw;
+- 
+  		    /* Note: memory allocated by getpwnam() is never freed.
+  		     * Calling endpwent() apparently doesn't help. */
+! 		    pw = getpwnam((char *)dst + 1);
+! 		    if (pw != NULL)
+! 			var = (char_u *)pw->pw_dir;
+! 		    else
+! 			var = NULL;
+  		}
+  		if (var == NULL)
+  #  endif
+--- 4028,4039 ----
+  		 */
+  #  if defined(HAVE_GETPWNAM) && defined(HAVE_PWD_H)
+  		{
+  		    /* Note: memory allocated by getpwnam() is never freed.
+  		     * Calling endpwent() apparently doesn't help. */
+! 		    struct passwd *pw = (*dst == NUL)
+! 					? NULL : getpwnam((char *)dst + 1);
+! 
+! 		    var = (pw == NULL) ? NULL : (char_u *)pw->pw_dir;
+  		}
+  		if (var == NULL)
+  #  endif
+***************
+*** 9652,9658 ****
+  # endif
+  	    if (match_file_list(p_wig, (*files)[i], ffname))
+  	    {
+! 		/* remove this matching files from the list */
+  		vim_free((*files)[i]);
+  		for (j = i; j + 1 < *num_files; ++j)
+  		    (*files)[j] = (*files)[j + 1];
+--- 9649,9655 ----
+  # endif
+  	    if (match_file_list(p_wig, (*files)[i], ffname))
+  	    {
+! 		/* remove this matching file from the list */
+  		vim_free((*files)[i]);
+  		for (j = i; j + 1 < *num_files; ++j)
+  		    (*files)[j] = (*files)[j + 1];
+***************
+*** 10736,10749 ****
+  static int has_special_wildchar(char_u *p);
+  
+  /*
+!  * Return TRUE if "p" contains a special wildcard character.
+!  * Allowing for escaping.
+   */
+      static int
+  has_special_wildchar(char_u *p)
+  {
+      for ( ; *p; mb_ptr_adv(p))
+      {
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+  	else if (vim_strchr((char_u *)SPECIAL_WILDCHAR, *p) != NULL)
+--- 10733,10747 ----
+  static int has_special_wildchar(char_u *p);
+  
+  /*
+!  * Return TRUE if "p" contains a special wildcard character, one that Vim
+!  * cannot expand, requires using a shell.
+   */
+      static int
+  has_special_wildchar(char_u *p)
+  {
+      for ( ; *p; mb_ptr_adv(p))
+      {
++ 	/* Allow for escaping. */
+  	if (*p == '\\' && p[1] != NUL)
+  	    ++p;
+  	else if (vim_strchr((char_u *)SPECIAL_WILDCHAR, *p) != NULL)
+*** ../vim-8.0.0354/src/testdir/test_options.vim	2017-02-19 21:07:01.002386675 +0100
+--- src/testdir/test_options.vim	2017-02-23 17:00:02.835293538 +0100
+***************
+*** 22,27 ****
+--- 22,34 ----
+    set whichwrap&
+  endfunction
+  
++ function! Test_isfname()
++   " This used to cause Vim to access uninitialized memory.
++   set isfname=
++   call assert_equal("~X", expand("~X"))
++   set isfname&
++ endfunction
++ 
+  function Test_options()
+    let caught = 'ok'
+    try
+*** ../vim-8.0.0354/src/version.c	2017-02-23 15:19:59.409451193 +0100
+--- src/version.c	2017-02-23 16:59:49.219379339 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     355,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+9. All your daydreaming is preoccupied with getting a faster connection to the
+   net: 28.8...ISDN...cable modem...T1...T3.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

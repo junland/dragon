@@ -1,0 +1,392 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0621
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0621
+Problem:    The ":stag" command does not respect 'switchbuf'.
+Solution:   Check 'switchbuf' for tag commands that may open a new window.
+            (Ingo Karkat, closes #1681)  Define macros for the return values
+            of getfile().
+Files:      src/tag.c, src/testdir/test_tagjump.vim, src/vim.h, src/buffer.c,
+            src/ex_cmds.c, src/search.c
+
+
+*** ../vim-8.0.0620/src/tag.c	2017-04-07 20:30:24.192092760 +0200
+--- src/tag.c	2017-06-05 15:36:06.960394321 +0200
+***************
+*** 3088,3094 ****
+      char_u	*fname;
+      tagptrs_T	tagp;
+      int		retval = FAIL;
+!     int		getfile_result;
+      int		search_options;
+  #ifdef FEAT_SEARCH_EXTRA
+      int		save_no_hlsearch;
+--- 3088,3094 ----
+      char_u	*fname;
+      tagptrs_T	tagp;
+      int		retval = FAIL;
+!     int		getfile_result = GETFILE_UNUSED;
+      int		search_options;
+  #ifdef FEAT_SEARCH_EXTRA
+      int		save_no_hlsearch;
+***************
+*** 3202,3208 ****
+  
+      /* If it was a CTRL-W CTRL-] command split window now.  For ":tab tag"
+       * open a new tab page. */
+!     if (postponed_split || cmdmod.tab != 0)
+      {
+  	if (win_split(postponed_split > 0 ? postponed_split : 0,
+  						postponed_split_flags) == FAIL)
+--- 3202,3230 ----
+  
+      /* If it was a CTRL-W CTRL-] command split window now.  For ":tab tag"
+       * open a new tab page. */
+!     if (postponed_split && (swb_flags & (SWB_USEOPEN | SWB_USETAB)))
+!     {
+! 	buf_T *existing_buf = buflist_findname_exp(fname);
+! 
+! 	if (existing_buf != NULL)
+! 	{
+! 	    win_T *wp = NULL;
+! 
+! 	    if (swb_flags & SWB_USEOPEN)
+! 		wp = buf_jump_open_win(existing_buf);
+! 
+! 	    /* If 'switchbuf' contains "usetab": jump to first window in any tab
+! 	     * page containing "existing_buf" if one exists */
+! 	    if (wp == NULL && (swb_flags & SWB_USETAB))
+! 		wp = buf_jump_open_tab(existing_buf);
+! 	    /* We've switched to the buffer, the usual loading of the file must
+! 	     * be skipped. */
+! 	    if (wp != NULL)
+! 		getfile_result = GETFILE_SAME_FILE;
+! 	}
+!     }
+!     if (getfile_result == GETFILE_UNUSED
+! 				       && (postponed_split || cmdmod.tab != 0))
+      {
+  	if (win_split(postponed_split > 0 ? postponed_split : 0,
+  						postponed_split_flags) == FAIL)
+***************
+*** 3225,3234 ****
+  #endif
+  	    keep_help_flag = curbuf->b_help;
+      }
+!     getfile_result = getfile(0, fname, NULL, TRUE, (linenr_T)0, forceit);
+      keep_help_flag = FALSE;
+  
+!     if (getfile_result <= 0)		/* got to the right file */
+      {
+  	curwin->w_set_curswant = TRUE;
+  #ifdef FEAT_WINDOWS
+--- 3247,3257 ----
+  #endif
+  	    keep_help_flag = curbuf->b_help;
+      }
+!     if (getfile_result == GETFILE_UNUSED)
+! 	getfile_result = getfile(0, fname, NULL, TRUE, (linenr_T)0, forceit);
+      keep_help_flag = FALSE;
+  
+!     if (GETFILE_SUCCESS(getfile_result))	/* got to the right file */
+      {
+  	curwin->w_set_curswant = TRUE;
+  #ifdef FEAT_WINDOWS
+***************
+*** 3377,3383 ****
+  #endif
+  
+  	/* Return OK if jumped to another file (at least we found the file!). */
+! 	if (getfile_result == -1)
+  	    retval = OK;
+  
+  	if (retval == OK)
+--- 3400,3406 ----
+  #endif
+  
+  	/* Return OK if jumped to another file (at least we found the file!). */
+! 	if (getfile_result == GETFILE_OPEN_OTHER)
+  	    retval = OK;
+  
+  	if (retval == OK)
+*** ../vim-8.0.0620/src/testdir/test_tagjump.vim	2017-03-01 15:45:01.410957865 +0100
+--- src/testdir/test_tagjump.vim	2017-06-05 15:17:42.800017671 +0200
+***************
+*** 65,70 ****
+--- 65,112 ----
+    call delete('Xfile1')
+  endfunc
+  
++ func Test_tagjump_switchbuf()
++   set tags=Xtags
++   call writefile(["!_TAG_FILE_ENCODING\tutf-8\t//",
++         \ "second\tXfile1\t2",
++         \ "third\tXfile1\t3",],
++         \ 'Xtags')
++   call writefile(['first', 'second', 'third'], 'Xfile1')
++ 
++   enew | only
++   set switchbuf=
++   stag second
++   call assert_equal(2, winnr('$'))
++   call assert_equal(2, line('.'))
++   stag third
++   call assert_equal(3, winnr('$'))
++   call assert_equal(3, line('.'))
++ 
++   enew | only
++   set switchbuf=useopen
++   stag second
++   call assert_equal(2, winnr('$'))
++   call assert_equal(2, line('.'))
++   stag third
++   call assert_equal(2, winnr('$'))
++   call assert_equal(3, line('.'))
++ 
++   enew | only
++   set switchbuf=usetab
++   tab stag second
++   call assert_equal(2, tabpagenr('$'))
++   call assert_equal(2, line('.'))
++   1tabnext | stag third
++   call assert_equal(2, tabpagenr('$'))
++   call assert_equal(3, line('.'))
++ 
++   tabclose!
++   enew | only
++   call delete('Xfile1')
++   call delete('Xtags')
++   set switchbuf&vim
++ endfunc
++ 
+  " Tests for [ CTRL-I and CTRL-W CTRL-I commands
+  function Test_keyword_jump()
+    call writefile(["#include Xinclude", "",
+*** ../vim-8.0.0620/src/vim.h	2017-04-30 19:39:32.650857838 +0200
+--- src/vim.h	2017-06-05 15:30:32.566704929 +0200
+***************
+*** 958,963 ****
+--- 958,971 ----
+  #define GETF_ALT	0x02	/* jumping to alternate file (not buf num) */
+  #define GETF_SWITCH	0x04	/* respect 'switchbuf' settings when jumping */
+  
++ /* Return values of getfile() */
++ #define GETFILE_ERROR	    1	/* normal error */
++ #define GETFILE_NOT_WRITTEN 2	/* "not written" error */
++ #define GETFILE_SAME_FILE   0	/* success, same file */
++ #define GETFILE_OPEN_OTHER -1	/* success, opened another file */
++ #define GETFILE_UNUSED	    8
++ #define GETFILE_SUCCESS(x)  ((x) <= 0)
++ 
+  /* Values for buflist_new() flags */
+  #define BLN_CURBUF	1	/* may re-use curbuf for new buffer */
+  #define BLN_LISTED	2	/* put new buffer in buffer list */
+*** ../vim-8.0.0620/src/buffer.c	2017-06-04 14:57:57.308461406 +0200
+--- src/buffer.c	2017-06-05 15:33:39.305414781 +0200
+***************
+*** 2352,2359 ****
+  #endif
+  
+      ++RedrawingDisabled;
+!     if (getfile(buf->b_fnum, NULL, NULL, (options & GETF_SETMARK),
+! 							  lnum, forceit) <= 0)
+      {
+  	--RedrawingDisabled;
+  
+--- 2352,2359 ----
+  #endif
+  
+      ++RedrawingDisabled;
+!     if (GETFILE_SUCCESS(getfile(buf->b_fnum, NULL, NULL,
+! 				     (options & GETF_SETMARK), lnum, forceit)))
+      {
+  	--RedrawingDisabled;
+  
+*** ../vim-8.0.0620/src/ex_cmds.c	2017-04-20 21:12:26.592211591 +0200
+--- src/ex_cmds.c	2017-06-05 15:31:19.554380344 +0200
+***************
+*** 3520,3530 ****
+  
+  /*
+   * Try to abandon current file and edit a new or existing file.
+!  * 'fnum' is the number of the file, if zero use ffname/sfname.
+   *
+!  * Return 1 for "normal" error, 2 for "not written" error, 0 for success
+!  * -1 for successfully opening another file.
+!  * 'lnum' is the line number for the cursor in the new file (if non-zero).
+   */
+      int
+  getfile(
+--- 3520,3533 ----
+  
+  /*
+   * Try to abandon current file and edit a new or existing file.
+!  * "fnum" is the number of the file, if zero use ffname/sfname.
+!  * "lnum" is the line number for the cursor in the new file (if non-zero).
+   *
+!  * Return:
+!  * GETFILE_ERROR for "normal" error,
+!  * GETFILE_NOT_WRITTEN for "not written" error,
+!  * GETFILE_SAME_FILE for success
+!  * GETFILE_OPEN_OTHER for successfully opening another file.
+   */
+      int
+  getfile(
+***************
+*** 3540,3549 ****
+      char_u	*free_me = NULL;
+  
+      if (text_locked())
+! 	return 1;
+  #ifdef FEAT_AUTOCMD
+      if (curbuf_locked())
+! 	return 1;
+  #endif
+  
+      if (fnum == 0)
+--- 3543,3552 ----
+      char_u	*free_me = NULL;
+  
+      if (text_locked())
+! 	return GETFILE_ERROR;
+  #ifdef FEAT_AUTOCMD
+      if (curbuf_locked())
+! 	return GETFILE_ERROR;
+  #endif
+  
+      if (fnum == 0)
+***************
+*** 3570,3576 ****
+  	    if (other)
+  		--no_wait_return;
+  	    EMSG(_(e_nowrtmsg));
+! 	    retval = 2;	/* file has been changed */
+  	    goto theend;
+  	}
+      }
+--- 3573,3579 ----
+  	    if (other)
+  		--no_wait_return;
+  	    EMSG(_(e_nowrtmsg));
+! 	    retval = GETFILE_NOT_WRITTEN;	/* file has been changed */
+  	    goto theend;
+  	}
+      }
+***************
+*** 3584,3597 ****
+  	    curwin->w_cursor.lnum = lnum;
+  	check_cursor_lnum();
+  	beginline(BL_SOL | BL_FIX);
+! 	retval = 0;	/* it's in the same file */
+      }
+      else if (do_ecmd(fnum, ffname, sfname, NULL, lnum,
+  		(P_HID(curbuf) ? ECMD_HIDE : 0) + (forceit ? ECMD_FORCEIT : 0),
+  		curwin) == OK)
+! 	retval = -1;	/* opened another file */
+      else
+! 	retval = 1;	/* error encountered */
+  
+  theend:
+      vim_free(free_me);
+--- 3587,3600 ----
+  	    curwin->w_cursor.lnum = lnum;
+  	check_cursor_lnum();
+  	beginline(BL_SOL | BL_FIX);
+! 	retval = GETFILE_SAME_FILE;	/* it's in the same file */
+      }
+      else if (do_ecmd(fnum, ffname, sfname, NULL, lnum,
+  		(P_HID(curbuf) ? ECMD_HIDE : 0) + (forceit ? ECMD_FORCEIT : 0),
+  		curwin) == OK)
+! 	retval = GETFILE_OPEN_OTHER;	/* opened another file */
+      else
+! 	retval = GETFILE_ERROR;		/* error encountered */
+  
+  theend:
+      vim_free(free_me);
+*** ../vim-8.0.0620/src/search.c	2017-03-29 19:48:07.499210857 +0200
+--- src/search.c	2017-06-05 15:34:46.276951968 +0200
+***************
+*** 1524,1532 ****
+   * search_for_exact_line(buf, pos, dir, pat)
+   *
+   * Search for a line starting with the given pattern (ignoring leading
+!  * white-space), starting from pos and going in direction dir.	pos will
+   * contain the position of the match found.    Blank lines match only if
+!  * ADDING is set.  if p_ic is set then the pattern must be in lowercase.
+   * Return OK for success, or FAIL if no line found.
+   */
+      int
+--- 1524,1532 ----
+   * search_for_exact_line(buf, pos, dir, pat)
+   *
+   * Search for a line starting with the given pattern (ignoring leading
+!  * white-space), starting from pos and going in direction "dir". "pos" will
+   * contain the position of the match found.    Blank lines match only if
+!  * ADDING is set.  If p_ic is set then the pattern must be in lowercase.
+   * Return OK for success, or FAIL if no line found.
+   */
+      int
+***************
+*** 5397,5404 ****
+  #if defined(FEAT_WINDOWS) && defined(FEAT_QUICKFIX)
+  			if (g_do_tagpreview != 0)
+  			{
+! 			    if (getfile(0, curwin_save->w_buffer->b_fname,
+! 						 NULL, TRUE, lnum, FALSE) > 0)
+  				break;	/* failed to jump to file */
+  			}
+  			else
+--- 5397,5405 ----
+  #if defined(FEAT_WINDOWS) && defined(FEAT_QUICKFIX)
+  			if (g_do_tagpreview != 0)
+  			{
+! 			    if (!GETFILE_SUCCESS(getfile(
+! 					    0, curwin_save->w_buffer->b_fname,
+! 						     NULL, TRUE, lnum, FALSE)))
+  				break;	/* failed to jump to file */
+  			}
+  			else
+***************
+*** 5408,5415 ****
+  		    }
+  		    else
+  		    {
+! 			if (getfile(0, files[depth].name, NULL, TRUE,
+! 						files[depth].lnum, FALSE) > 0)
+  			    break;	/* failed to jump to file */
+  			/* autocommands may have changed the lnum, we don't
+  			 * want that here */
+--- 5409,5417 ----
+  		    }
+  		    else
+  		    {
+! 			if (!GETFILE_SUCCESS(getfile(
+! 					0, files[depth].name, NULL, TRUE,
+! 						    files[depth].lnum, FALSE)))
+  			    break;	/* failed to jump to file */
+  			/* autocommands may have changed the lnum, we don't
+  			 * want that here */
+*** ../vim-8.0.0620/src/version.c	2017-06-05 15:07:04.948381553 +0200
+--- src/version.c	2017-06-05 15:58:56.643049696 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     621,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+6. You refuse to go to a vacation spot with no electricity and no phone lines.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

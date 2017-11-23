@@ -1,0 +1,86 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1106
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1106
+Problem:    Terminal colors on an MS-Windows console are not matching the
+            normal colors.
+Solution:   Use the normal colors for the terminal. (Yasuhiro Matsumoto,
+            closes #2087)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.1105/src/terminal.c	2017-09-14 13:36:56.104152393 +0200
+--- src/terminal.c	2017-09-14 15:51:12.748877361 +0200
+***************
+*** 2497,2503 ****
+  # endif
+         )
+      {
+! 	guicolor_T	    fg_rgb, bg_rgb;
+  
+  	if (id != 0)
+  	    syn_id2colors(id, &fg_rgb, &bg_rgb);
+--- 2497,2504 ----
+  # endif
+         )
+      {
+! 	guicolor_T	fg_rgb = INVALCOLOR;
+! 	guicolor_T	bg_rgb = INVALCOLOR;
+  
+  	if (id != 0)
+  	    syn_id2colors(id, &fg_rgb, &bg_rgb);
+***************
+*** 2551,2556 ****
+--- 2552,2579 ----
+  	if (cterm_bg >= 0)
+  	    cterm_color2rgb(cterm_bg, bg);
+      }
++ #if defined(WIN3264) && !defined(FEAT_GUI_W32)
++     else
++     {
++ 	int tmp;
++ 
++ 	/* In an MS-Windows console we know the normal colors. */
++ 	if (cterm_normal_fg_color > 0)
++ 	{
++ 	    cterm_color2rgb(cterm_normal_fg_color - 1, fg);
++ 	    tmp = fg->red;
++ 	    fg->red = fg->blue;
++ 	    fg->blue = tmp;
++ 	}
++ 	if (cterm_normal_bg_color > 0)
++ 	{
++ 	    cterm_color2rgb(cterm_normal_bg_color - 1, bg);
++ 	    tmp = bg->red;
++ 	    bg->red = bg->blue;
++ 	    bg->blue = tmp;
++ 	}
++     }
++ #endif
+  
+      vterm_state_set_default_colors(vterm_obtain_state(vterm), fg, bg);
+  
+*** ../vim-8.0.1105/src/version.c	2017-09-14 14:31:13.428963263 +0200
+--- src/version.c	2017-09-14 15:53:53.467953224 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1106,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+121. You ask for e-mail adresses instead of telephone numbers.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

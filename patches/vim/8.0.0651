@@ -1,0 +1,49 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0651
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0651 (after 8.0.0649)
+Problem:    Build failure without the auto command feature.
+Solution:   Add #ifdef. (closes #1782)
+Files:      src/ex_cmds.c
+
+
+*** ../vim-8.0.0650/src/ex_cmds.c	2017-06-22 14:16:09.792934521 +0200
+--- src/ex_cmds.c	2017-06-22 14:52:31.239743155 +0200
+***************
+*** 6832,6840 ****
+--- 6832,6842 ----
+      char_u	*rt;
+      int		mustfree;
+  
++ #ifdef FEAT_AUTOCMD
+      /* Set filetype to "help" if still needed. */
+      if (STRCMP(curbuf->b_p_ft, "help") != 0)
+  	set_option_value((char_u *)"ft", 0L, (char_u *)"help", OPT_LOCAL);
++ #endif
+  
+  #ifdef FEAT_SYN_HL
+      if (!syntax_present(curwin))
+*** ../vim-8.0.0650/src/version.c	2017-06-22 14:46:40.014516178 +0200
+--- src/version.c	2017-06-22 14:53:34.535243288 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     651,
+  /**/
+
+-- 
+Over the years, I've developed my sense of deja vu so acutely that now
+I can remember things that *have* happened before ...
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

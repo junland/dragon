@@ -1,0 +1,296 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0431
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0431
+Problem:    'cinoptions' cannot set indent for extern block.
+Solution:   Add the "E" flag in 'cinoptions'. (Hirohito Higashi)
+Files:      runtime/doc/indent.txt, src/misc1.c, src/structs.h,
+            src/testdir/test_cindent.vim
+
+
+*** ../vim-8.0.0430/runtime/doc/indent.txt	2016-09-12 12:45:26.000000000 +0200
+--- runtime/doc/indent.txt	2017-03-08 21:34:43.061320700 +0100
+***************
+*** 325,330 ****
+--- 325,345 ----
+  		      void function();       void function();
+  		  }                          }
+  <
++ 							*cino-E*
++ 	EN    Indent inside C++ linkage specifications (extern "C" or
++ 	      extern "C++") N characters extra compared to a normal block.
++ 	      (default 0).
++ 
++ 		cino=			   cino=E-s >
++ 		  extern "C" {               extern "C" {
++ 		      void function();       void function();
++ 		  }                          }
++ 
++ 		  extern "C"                 extern "C"
++ 		  {                          {
++ 		      void function();       void function();
++ 		  }                          }
++ <
+  							*cino-p*
+  	pN    Parameter declarations for K&R-style function declarations will
+  	      be indented N characters from the margin.  (default
+***************
+*** 554,560 ****
+  
+  
+  The defaults, spelled out in full, are:
+! 	cinoptions=>s,e0,n0,f0,{0,}0,^0,L-1,:s,=s,l0,b0,gs,hs,N0,ps,ts,is,+s,
+  			c3,C0,/0,(2s,us,U0,w0,W0,k0,m0,j0,J0,)20,*70,#0
+  
+  Vim puts a line in column 1 if:
+--- 569,575 ----
+  
+  
+  The defaults, spelled out in full, are:
+! 	cinoptions=>s,e0,n0,f0,{0,}0,^0,L-1,:s,=s,l0,b0,gs,hs,N0,E0,ps,ts,is,+s,
+  			c3,C0,/0,(2s,us,U0,w0,W0,k0,m0,j0,J0,)20,*70,#0
+  
+  Vim puts a line in column 1 if:
+*** ../vim-8.0.0430/src/misc1.c	2017-03-05 19:43:44.545127347 +0100
+--- src/misc1.c	2017-03-08 21:34:43.065320672 +0100
+***************
+*** 5810,5815 ****
+--- 5810,5863 ----
+  }
+  
+  /*
++  * Recognize a `extern "C"` or `extern "C++"` linkage specifications.
++  */
++     static int
++ cin_is_cpp_extern_c(char_u *s)
++ {
++     char_u	*p;
++     int		has_string_literal = FALSE;
++ 
++     s = cin_skipcomment(s);
++     if (STRNCMP(s, "extern", 6) == 0 && (s[6] == NUL || !vim_iswordc(s[6])))
++     {
++ 	p = cin_skipcomment(skipwhite(s + 6));
++ 	while (*p != NUL)
++ 	{
++ 	    if (vim_iswhite(*p))
++ 	    {
++ 		p = cin_skipcomment(skipwhite(p));
++ 	    }
++ 	    else if (*p == '{')
++ 	    {
++ 		break;
++ 	    }
++ 	    else if (p[0] == '"' && p[1] == 'C' && p[2] == '"')
++ 	    {
++ 		if (has_string_literal)
++ 		    return FALSE;
++ 		has_string_literal = TRUE;
++ 		p += 3;
++ 	    }
++ 	    else if (p[0] == '"' && p[1] == 'C' && p[2] == '+' && p[3] == '+'
++ 		    && p[4] == '"')
++ 	    {
++ 		if (has_string_literal)
++ 		    return FALSE;
++ 		has_string_literal = TRUE;
++ 		p += 5;
++ 	    }
++ 	    else
++ 	    {
++ 		return FALSE;
++ 	    }
++ 	}
++ 	return has_string_literal ? TRUE : FALSE;
++     }
++     return FALSE;
++ }
++ 
++ /*
+   * Return a pointer to the first non-empty non-comment character after a ':'.
+   * Return NULL if not found.
+   *	  case 234:    a = b;
+***************
+*** 6652,6657 ****
+--- 6700,6706 ----
+  {
+      char_u	*line;
+      char_u	*p;
++     char_u	*new_p;
+  
+      p = line = ml_get(trypos->lnum);
+      while (*p && (colnr_T)(p - line) < trypos->col)
+***************
+*** 6660,6667 ****
+  	    p = cin_skipcomment(p);
+  	else
+  	{
+! 	    p = skip_string(p);
+! 	    ++p;
+  	}
+      }
+      return (int)(p - line);
+--- 6709,6719 ----
+  	    p = cin_skipcomment(p);
+  	else
+  	{
+! 	    new_p = skip_string(p);
+! 	    if (new_p == p)
+! 		++p;
+! 	    else
+! 		p = new_p;
+  	}
+      }
+      return (int)(p - line);
+***************
+*** 6977,6982 ****
+--- 7029,7037 ----
+      /* indentation for # comments */
+      buf->b_ind_hash_comment = 0;
+  
++     /* Handle C++ extern "C" or "C++" */
++     buf->b_ind_cpp_extern_c = 0;
++ 
+      for (p = buf->b_p_cino; *p; )
+      {
+  	l = p++;
+***************
+*** 7051,7056 ****
+--- 7106,7112 ----
+  	    case '#': buf->b_ind_hash_comment = n; break;
+  	    case 'N': buf->b_ind_cpp_namespace = n; break;
+  	    case 'k': buf->b_ind_if_for_while = n; break;
++ 	    case 'E': buf->b_ind_cpp_extern_c = n; break;
+  	}
+  	if (*p == ',')
+  	    ++p;
+***************
+*** 7764,7769 ****
+--- 7820,7827 ----
+  		    l = skipwhite(ml_get_curline());
+  		    if (cin_is_cpp_namespace(l))
+  			amount += curbuf->b_ind_cpp_namespace;
++ 		    else if (cin_is_cpp_extern_c(l))
++ 			amount += curbuf->b_ind_cpp_extern_c;
+  		}
+  		else
+  		{
+***************
+*** 7990,7995 ****
+--- 8048,8059 ----
+  							    - added_to_amount;
+  				break;
+  			    }
++ 			    else if (cin_is_cpp_extern_c(l))
++ 			    {
++ 				amount += curbuf->b_ind_cpp_extern_c
++ 							    - added_to_amount;
++ 				break;
++ 			    }
+  
+  			    if (cin_nocode(l))
+  				continue;
+*** ../vim-8.0.0430/src/structs.h	2017-03-05 17:43:10.624245543 +0100
+--- src/structs.h	2017-03-08 21:34:43.069320646 +0100
+***************
+*** 2236,2241 ****
+--- 2236,2242 ----
+      int		b_ind_hash_comment;
+      int		b_ind_cpp_namespace;
+      int		b_ind_if_for_while;
++     int		b_ind_cpp_extern_c;
+  #endif
+  
+      linenr_T	b_no_eol_lnum;	/* non-zero lnum when last line of next binary
+*** ../vim-8.0.0430/src/testdir/test_cindent.vim	2017-03-05 19:43:44.549127317 +0100
+--- src/testdir/test_cindent.vim	2017-03-08 21:55:12.984178666 +0100
+***************
+*** 14,16 ****
+--- 14,76 ----
+    call assert_equal(["#include <iostream>", "#include"], getline(1,2))
+    bwipe!
+  endfunc
++ 
++ func Test_cino_extern_c()
++   " Test for cino-E
++ 
++   let without_ind = [
++         \ '#ifdef __cplusplus',
++         \ 'extern "C" {',
++         \ '#endif',
++         \ 'int func_a(void);',
++         \ '#ifdef __cplusplus',
++         \ '}',
++         \ '#endif'
++         \ ]
++ 
++   let with_ind = [
++         \ '#ifdef __cplusplus',
++         \ 'extern "C" {',
++         \ '#endif',
++         \ "\tint func_a(void);",
++         \ '#ifdef __cplusplus',
++         \ '}',
++         \ '#endif'
++         \ ]
++   new
++   setlocal cindent cinoptions=E0
++   call setline(1, without_ind)
++   call feedkeys("gg=G", 'tx')
++   call assert_equal(with_ind, getline(1, '$'))
++ 
++   setlocal cinoptions=E-s
++   call setline(1, with_ind)
++   call feedkeys("gg=G", 'tx')
++   call assert_equal(without_ind, getline(1, '$'))
++ 
++   setlocal cinoptions=Es
++   let tests = [
++         \ ['recognized', ['extern "C" {'], "\t\t;"],
++         \ ['recognized', ['extern "C++" {'], "\t\t;"],
++         \ ['recognized', ['extern /* com */ "C"{'], "\t\t;"],
++         \ ['recognized', ['extern"C"{'], "\t\t;"],
++         \ ['recognized', ['extern "C"', '{'], "\t\t;"],
++         \ ['not recognized', ['extern {'], "\t;"],
++         \ ['not recognized', ['extern /*"C"*/{'], "\t;"],
++         \ ['not recognized', ['extern "C" //{'], ";"],
++         \ ['not recognized', ['extern "C" /*{*/'], ";"],
++         \ ]
++ 
++   for pair in tests
++     let lines = pair[1]
++     call setline(1, lines)
++     call feedkeys(len(lines) . "Go;", 'tx')
++     call assert_equal(pair[2], getline(len(lines) + 1), 'Failed for "' . string(lines) . '"')
++   endfor
++ 
++ 
++ 
++   bwipe!
++ endfunc
++ 
++ " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.0430/src/version.c	2017-03-08 00:01:31.489347798 +0100
+--- src/version.c	2017-03-08 21:37:32.088116586 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     431,
+  /**/
+
+-- 
+From "know your smileys":
+ y:-)	Bad toupee
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

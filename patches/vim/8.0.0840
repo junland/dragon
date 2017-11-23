@@ -1,0 +1,147 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0840
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0840
+Problem:    MS-Windows: fopen() and open() prototypes do not match the ones in
+            the system header file.  Can't build without FEAT_MBYTE.
+Solution:   Add "const".  Move macro to after including protoo.h.
+Files:      src/os_win32.c, src/proto/os_win32.pro, src/macros.h, src/vim.h
+
+
+*** ../vim-8.0.0839/src/os_win32.c	2017-07-22 18:04:04.313865722 +0200
+--- src/os_win32.c	2017-08-02 21:02:56.390174531 +0200
+***************
+*** 6503,6509 ****
+   * Version of open() that may use UTF-16 file name.
+   */
+      int
+! mch_open(char *name, int flags, int mode)
+  {
+      /* _wopen() does not work with Borland C 5.5: creates a read-only file. */
+  # ifndef __BORLANDC__
+--- 6503,6509 ----
+   * Version of open() that may use UTF-16 file name.
+   */
+      int
+! mch_open(const char *name, int flags, int mode)
+  {
+      /* _wopen() does not work with Borland C 5.5: creates a read-only file. */
+  # ifndef __BORLANDC__
+***************
+*** 6536,6542 ****
+   * Version of fopen() that may use UTF-16 file name.
+   */
+      FILE *
+! mch_fopen(char *name, char *mode)
+  {
+      WCHAR	*wn, *wm;
+      FILE	*f = NULL;
+--- 6536,6542 ----
+   * Version of fopen() that may use UTF-16 file name.
+   */
+      FILE *
+! mch_fopen(const char *name, const char *mode)
+  {
+      WCHAR	*wn, *wm;
+      FILE	*f = NULL;
+*** ../vim-8.0.0839/src/proto/os_win32.pro	2017-07-22 18:04:04.313865722 +0200
+--- src/proto/os_win32.pro	2017-08-02 22:06:13.354776522 +0200
+***************
+*** 4,9 ****
+--- 4,11 ----
+  void *get_dll_import_func(HINSTANCE hInst, const char *funcname);
+  int dyn_libintl_init(void);
+  void dyn_libintl_end(void);
++ int null_libintl_putenv(const char *envstring);
++ int null_libintl_wputenv(const wchar_t *envstring);
+  void PlatformId(void);
+  void mch_setmouse(int on);
+  void mch_update_cursor(void);
+***************
+*** 56,63 ****
+  int mch_rename(const char *pszOldFile, const char *pszNewFile);
+  char *default_shell(void);
+  int mch_access(char *n, int p);
+! int mch_open(char *name, int flags, int mode);
+! FILE *mch_fopen(char *name, char *mode);
+  int mch_copy_file_attribute(char_u *from, char_u *to);
+  int myresetstkoflw(void);
+  int get_cmd_argsW(char ***argvp);
+--- 58,65 ----
+  int mch_rename(const char *pszOldFile, const char *pszNewFile);
+  char *default_shell(void);
+  int mch_access(char *n, int p);
+! int mch_open(const char *name, int flags, int mode);
+! FILE *mch_fopen(const char *name, const char *mode);
+  int mch_copy_file_attribute(char_u *from, char_u *to);
+  int myresetstkoflw(void);
+  int get_cmd_argsW(char ***argvp);
+*** ../vim-8.0.0839/src/macros.h	2017-06-04 20:29:56.585724971 +0200
+--- src/macros.h	2017-08-02 22:01:15.304260237 +0200
+***************
+*** 191,199 ****
+  # ifndef WIN32
+  #   define mch_access(n, p)	access((n), (p))
+  # endif
+- # if !(defined(FEAT_MBYTE) && defined(WIN3264))
+- #  define mch_fopen(n, p)	fopen((n), (p))
+- # endif
+  # define mch_fstat(n, p)	fstat((n), (p))
+  # ifdef MSWIN	/* has it's own mch_stat() function */
+  #  define mch_stat(n, p)	vim_stat((n), (p))
+--- 191,196 ----
+***************
+*** 223,232 ****
+   * but it is not recommended, because it can destroy indexes etc.
+   */
+  #  define mch_open(n, m, p)	open(vms_fixfilename(n), (m), (p))
+- # else
+- #  if !(defined(FEAT_MBYTE) && defined(WIN3264))
+- #   define mch_open(n, m, p)	open((n), (m), (p))
+- #  endif
+  # endif
+  #endif
+  
+--- 220,225 ----
+*** ../vim-8.0.0839/src/vim.h	2017-07-31 22:29:29.796202708 +0200
+--- src/vim.h	2017-08-02 22:00:52.850759054 +0200
+***************
+*** 2141,2146 ****
+--- 2141,2151 ----
+  # define number_width(x) 7
+  #endif
+  
++ /* This must come after including proto.h */
++ #if !(defined(FEAT_MBYTE) && defined(WIN3264))
++ # define mch_open(n, m, p)	open((n), (m), (p))
++ # define mch_fopen(n, p)	fopen((n), (p))
++ #endif
+  
+  #include "globals.h"	    /* global variables and messages */
+  
+*** ../vim-8.0.0839/src/version.c	2017-08-01 22:24:21.557439065 +0200
+--- src/version.c	2017-08-02 22:05:45.786975423 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     840,
+  /**/
+
+-- 
+A mathematician is a device for turning coffee into theorems.
+					Paul Erdos
+A computer programmer is a device for turning coffee into bugs.
+					Bram Moolenaar
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

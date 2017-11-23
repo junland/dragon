@@ -1,0 +1,95 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0222
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0222
+Problem:    When a multi-byte character ends in a zero byte, putting blockwise
+            text puts it before the character instead of after it.
+Solution:   Use int instead of char for the character under the cursor.
+            (Luchr, closes #1403)  Add a test.
+Files:      src/ops.c, src/testdir/test_put.vim, src/Makefile,
+            src/testdir/test_alot.vim
+
+
+*** ../vim-8.0.0221/src/ops.c	2017-01-02 17:31:20.606046097 +0100
+--- src/ops.c	2017-01-22 19:46:19.756372768 +0100
+***************
+*** 3550,3556 ****
+       */
+      if (y_type == MBLOCK)
+      {
+! 	char	c = gchar_cursor();
+  	colnr_T	endcol2 = 0;
+  
+  	if (dir == FORWARD && c != NUL)
+--- 3550,3556 ----
+       */
+      if (y_type == MBLOCK)
+      {
+! 	int	c = gchar_cursor();
+  	colnr_T	endcol2 = 0;
+  
+  	if (dir == FORWARD && c != NUL)
+*** ../vim-8.0.0221/src/testdir/test_put.vim	2017-01-22 19:50:58.966537022 +0100
+--- src/testdir/test_put.vim	2017-01-22 19:46:03.612478400 +0100
+***************
+*** 0 ****
+--- 1,12 ----
++ 
++ func Test_put_block()
++   if !has('multi_byte')
++     return
++   endif
++   new
++   call feedkeys("i\<C-V>u2500\<CR>x\<ESC>", 'x')
++   call feedkeys("\<C-V>y", 'x')
++   call feedkeys("gg0p", 'x')
++   call assert_equal("\u2500x", getline(1))
++   bwipe!
++ endfunc
+*** ../vim-8.0.0221/src/Makefile	2017-01-17 22:15:42.451784910 +0100
+--- src/Makefile	2017-01-22 19:42:12.029994462 +0100
+***************
+*** 2150,2155 ****
+--- 2150,2156 ----
+  	test_perl \
+  	test_popup \
+  	test_profile \
++ 	test_put \
+  	test_quickfix \
+  	test_regexp_latin \
+  	test_regexp_utf8 \
+*** ../vim-8.0.0221/src/testdir/test_alot.vim	2017-01-13 22:30:03.761030349 +0100
+--- src/testdir/test_alot.vim	2017-01-22 19:45:15.424793742 +0100
+***************
+*** 31,36 ****
+--- 31,37 ----
+  source test_messages.vim
+  source test_partial.vim
+  source test_popup.vim
++ source test_put.vim
+  source test_reltime.vim
+  source test_searchpos.vim
+  source test_set.vim
+*** ../vim-8.0.0221/src/version.c	2017-01-22 19:49:07.983272435 +0100
+--- src/version.c	2017-01-22 19:50:04.666897089 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     222,
+  /**/
+
+-- 
+Not too long ago, compress was something you did to garbage...
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

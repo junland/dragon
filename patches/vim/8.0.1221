@@ -1,0 +1,2065 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1221
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1221
+Problem:    Still too many old style tests.
+Solution:   Convert a few more tests to new style. (Yegappan Lakshmanan,
+            closes #2256)
+Files:      src/Makefile, src/testdir/Make_all.mak,
+            src/testdir/Make_amiga.mak, src/testdir/Make_dos.mak,
+            src/testdir/Make_ming.mak, src/testdir/Make_vms.mms,
+            src/testdir/main.aap, src/testdir/test19.in,
+            src/testdir/test19.ok, src/testdir/test20.in,
+            src/testdir/test20.ok, src/testdir/test25.in,
+            src/testdir/test25.ok, src/testdir/test28.in,
+            src/testdir/test28.ok, src/testdir/test32.in,
+            src/testdir/test32.ok, src/testdir/test38.in,
+            src/testdir/test38.ok, src/testdir/test66.in,
+            src/testdir/test66.ok, src/testdir/test79.in,
+            src/testdir/test79.ok, src/testdir/test_ins_complete.vim,
+            src/testdir/test_source_utf8.vim, src/testdir/test_substitute.vim,
+            src/testdir/test_tab.vim, src/testdir/test_tagjump.vim,
+            src/testdir/test_undo.vim, src/testdir/test_visual.vim
+
+
+*** ../vim-8.0.1220/src/Makefile	2017-10-22 14:23:40.120199236 +0200
+--- src/Makefile	2017-10-26 20:01:41.557329760 +0200
+***************
+*** 2100,2112 ****
+  	test_listchars \
+  	test_search_mbyte \
+  	test_wordcount \
+! 	test3 test11 test12 test14 test15 test17 test19 \
+! 	test20 test25 test28 test29 \
+! 	test30 test32 test36 test37 test38 test39 \
+  	test40 test42 test44 test45 test48 test49 \
+  	test50 test52 test55 test59 \
+! 	test64 test66 test68 test69 \
+! 	test70 test72 test73 test77 test79 \
+  	test83 test85 test86 test87 test88 \
+  	test94 test95 test99 test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+--- 2101,2112 ----
+  	test_listchars \
+  	test_search_mbyte \
+  	test_wordcount \
+! 	test3 test11 test12 test14 test15 test17 \
+! 	test29 test30 test36 test37 test39 \
+  	test40 test42 test44 test45 test48 test49 \
+  	test50 test52 test55 test59 \
+! 	test64 test68 test69 \
+! 	test70 test72 test73 test77 \
+  	test83 test85 test86 test87 test88 \
+  	test94 test95 test99 test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+*** ../vim-8.0.1220/src/testdir/Make_all.mak	2017-10-22 14:23:40.120199236 +0200
+--- src/testdir/Make_all.mak	2017-10-26 19:57:28.171059301 +0200
+***************
+*** 16,28 ****
+  	test3.out \
+  	test14.out \
+  	test15.out \
+- 	test19.out \
+- 	test20.out \
+- 	test28.out \
+  	test29.out \
+  	test36.out \
+  	test37.out \
+- 	test38.out \
+  	test39.out \
+  	test40.out \
+  	test42.out \
+--- 16,24 ----
+***************
+*** 31,42 ****
+  	test48.out \
+  	test55.out \
+  	test64.out \
+- 	test66.out \
+  	test68.out \
+  	test69.out \
+  	test70.out \
+  	test73.out \
+- 	test79.out \
+  	test88.out \
+  	test94.out \
+  	test95.out \
+--- 27,36 ----
+***************
+*** 65,71 ****
+  # Tests that run on most systems, but not on Amiga and DOS/Windows.
+  SCRIPTS_MORE2 = \
+  	test12.out \
+- 	test25.out \
+  	test49.out
+  
+  
+--- 59,64 ----
+***************
+*** 73,79 ****
+  SCRIPTS_MORE4 = \
+  	test17.out \
+  	test30.out \
+- 	test32.out \
+  	test59.out \
+  	test72.out \
+  	test83.out
+--- 66,71 ----
+***************
+*** 129,134 ****
+--- 121,127 ----
+  	    test_hlsearch.res \
+  	    test_increment.res \
+  	    test_increment_dbcs.res \
++ 	    test_ins_complete.res \
+  	    test_job_fails.res \
+  	    test_json.res \
+  	    test_langmap.res \
+***************
+*** 173,178 ****
+--- 166,172 ----
+  	    test_substitute.res \
+  	    test_syntax.res \
+  	    test_system.res \
++ 	    test_tab.res \
+  	    test_tcl.res \
+  	    test_terminal.res \
+  	    test_terminal_fail.res \
+*** ../vim-8.0.1220/src/testdir/Make_amiga.mak	2017-10-22 14:23:40.120199236 +0200
+--- src/testdir/Make_amiga.mak	2017-10-26 19:57:28.171059301 +0200
+***************
+*** 14,20 ****
+  # test10	'errorformat' is different
+  # test11	"cat" doesn't work properly
+  # test12	can't unlink a swap file
+- # test25	uses symbolic link
+  # test52	only for Win32
+  # test85	no Lua interface
+  # test86, 87	no Python interface
+--- 14,19 ----
+*** ../vim-8.0.1220/src/testdir/Make_dos.mak	2017-10-22 14:23:40.120199236 +0200
+--- src/testdir/Make_dos.mak	2017-10-26 19:57:28.171059301 +0200
+***************
+*** 13,19 ****
+  # test2		"\\tmp" doesn't work.
+  # test10	'errorformat' is different
+  # test12	can't unlink a swap file
+- # test25	uses symbolic link
+  # test49	fails in various ways
+  # test97	\{ and \$ are not escaped characters.
+  
+--- 13,18 ----
+*** ../vim-8.0.1220/src/testdir/Make_ming.mak	2017-10-22 14:23:40.120199236 +0200
+--- src/testdir/Make_ming.mak	2017-10-26 19:57:28.171059301 +0200
+***************
+*** 32,38 ****
+  # test2		"\\tmp" doesn't work.
+  # test10	'errorformat' is different
+  # test12	can't unlink a swap file
+- # test25	uses symbolic link
+  # test97	\{ and \$ are not escaped characters
+  
+  SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE1) $(SCRIPTS_MORE4) $(SCRIPTS_WIN32)
+--- 32,37 ----
+*** ../vim-8.0.1220/src/testdir/Make_vms.mms	2017-10-22 14:23:40.120199236 +0200
+--- src/testdir/Make_vms.mms	2017-10-26 19:57:28.171059301 +0200
+***************
+*** 75,95 ****
+  
+  SCRIPT = test1.out test3.out \
+         test14.out test15.out \
+!        test19.out test20.out \
+!        test28.out test29.out test30.out test32.out \
+!        test36.out test37.out \
+!        test38.out test39.out test40.out test42.out \
+!        test44.out test45.out \
+!        test48.out test49.out \
+!        test55.out \
+!        test64.out \
+!        test66.out test68.out test69.out \
+!        test72.out \
+!        test77a.out test79.out \
+!        test88.out \
+!        test94.out \
+!        test95.out test99.out \
+!        test108.out\
+         test_autocmd_option.out \
+         test_breakindent.out \
+         test_changelist.out \
+--- 75,87 ----
+  
+  SCRIPT = test1.out test3.out \
+         test14.out test15.out \
+!        test29.out test30.out \
+!        test36.out test37.out test39.out \
+!        test40.out test42.out test44.out test45.out \
+!        test48.out test49.out test55.out \
+!        test64.out test68.out test69.out \
+!        test72.out test77a.out test88.out \
+!        test94.out test95.out test99.out test108.out\
+         test_autocmd_option.out \
+         test_breakindent.out \
+         test_changelist.out \
+***************
+*** 110,119 ****
+  #
+  # test30: bug, most probably - a problem around mac format
+  #
+- # test32: VMS is not case sensitive and all filenames are lowercase within Vim
+- # (this should be changed in order to preserve the original filename) - should
+- # be fixed. VMS allows just one dot in the filename
+- #
+  # test59: Failed/Hangs - VMS does not support spell files (file names
+  # with too many dots).
+  #
+--- 102,107 ----
+***************
+*** 131,137 ****
+  .ENDIF
+  
+  .IFDEF WANT_UNIX
+! SCRIPT_UNIX = test10.out test12.out test17.out test25.out test27.out test49.out test73.out
+  .ENDIF
+  
+  .IFDEF WANT_WIN
+--- 119,125 ----
+  .ENDIF
+  
+  .IFDEF WANT_UNIX
+! SCRIPT_UNIX = test10.out test12.out test17.out test27.out test49.out test73.out
+  .ENDIF
+  
+  .IFDEF WANT_WIN
+*** ../vim-8.0.1220/src/testdir/main.aap	2017-10-22 14:23:40.120199236 +0200
+--- src/testdir/main.aap	2017-10-26 19:57:28.171059301 +0200
+***************
+*** 7,17 ****
+  Scripts = test1.out test2.out test3.out test6.out
+  		test11.out
+  		test12.out  test13.out test14.out test15.out test17.out
+! 		test18.out test19.out test20.out test21.out
+! 		test25.out test27.out
+! 		test28.out test29.out test30.out test32.out
+  		test36.out test37.out
+! 		test38.out test39.out test40.out test42.out
+  		test44.out test45.out test46.out test47.out
+  		test48.out test49.out test74.out
+  
+--- 7,16 ----
+  Scripts = test1.out test2.out test3.out test6.out
+  		test11.out
+  		test12.out  test13.out test14.out test15.out test17.out
+! 		test18.out test21.out
+! 		test27.out test29.out test30.out
+  		test36.out test37.out
+! 		test39.out test40.out test42.out
+  		test44.out test45.out test46.out test47.out
+  		test48.out test49.out test74.out
+  
+*** ../vim-8.0.1220/src/testdir/test19.in	2012-12-12 17:19:36.000000000 +0100
+--- src/testdir/test19.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,33 ****
+- Tests for "r<Tab>" with 'smarttab' and 'expandtab' set/not set.
+- Also test that dv_ works correctly
+- 
+- STARTTEST
+- :so small.vim
+- :set smarttab expandtab ts=8 sw=4
+- :" make sure that backspace works, no matter what termcap is used
+- :set t_kD=x7f t_kb=x08
+- /some
+- r	:set noexpandtab
+- /other
+- r	
+- :" Test replacing with Tabs and then backspacing to undo it
+- 0wR			
+- :" Test replacing with Tabs
+- 0wR			
+- :" Test that copyindent works with expandtab set
+- :set expandtab smartindent copyindent ts=8 sw=8 sts=8
+- o{
+- x:set nosol
+- /Second line/
+- fwdv_:?^start?,$w! test.out
+- :qa!
+- ENDTEST
+- 
+- start text
+- 		some test text
+- test text
+- 		other test text
+-     a cde
+-     f ghi
+- test text
+-   Second line beginning with whitespace
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test19.ok	2012-12-12 17:19:36.000000000 +0100
+--- src/testdir/test19.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,10 ****
+- start text
+- 		    ome test text
+- test text
+- 		    ther test text
+-     a cde
+-     		hi
+- test text
+- {
+-         x
+-   with whitespace
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test20.in	2013-09-22 15:11:37.000000000 +0200
+--- src/testdir/test20.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,28 ****
+- Tests Blockwise Visual when there are TABs before the text.
+- First test for undo working properly when executing commands from a register.
+- Also test this in an empty buffer.
+- 
+- STARTTEST
+- :so tiny.vim
+- G0"ay$k@au
+- :new
+- @auY:quit!
+- GP
+- /start here$
+- "by$jjlld
+- /456$
+- jj"bP
+- :/56$/,$-1w! test.out
+- :qa!
+- ENDTEST
+- 
+- 123456
+- 234567
+- 345678
+- 
+- test text test tex start here
+- 		some text
+- 		test text
+- test text
+- 
+- OxjAykdd
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test20.ok	2013-09-22 15:11:37.000000000 +0200
+--- src/testdir/test20.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,10 ****
+- 123start here56
+- 234start here67
+- 345start here78
+- 
+- test text test tex rt here
+- 		somext
+- 		tesext
+- test text
+- 
+- 
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test25.in	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test25.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,31 ****
+- Test for jumping to a tag with 'hidden' set, with symbolic link in path of tag.
+- This only works for Unix, because of the symbolic link.
+- 
+- STARTTEST
+- :so small.vim
+- :set hidden
+- :" Create a link from test25.dir to the current directory.
+- :!rm -f test25.dir
+- :!ln -s . test25.dir
+- :" Create tags.text, with the current directory name inserted.
+- /tags line
+- :r !pwd
+- d$/test
+- hP:.w! tags.test
+- :" Try jumping to a tag in the current file, but with a path that contains a
+- :" symbolic link.  When wrong, this will give the ATTENTION message.  The next
+- :" space will then be eaten by hit-return, instead of moving the cursor to 'd'.
+- :set tags=tags.test
+- G x:.w! test.out
+- :!rm -f test25.dir tags.test
+- :qa!
+- ENDTEST
+- 
+- tags line:
+- SECTION_OFF	/test25.dir/test25.in	/^#define  SECTION_OFF  3$/
+- 
+- /*tx.c*/
+- #define  SECTION_OFF  3
+- #define  NUM_SECTIONS 3
+- 
+- SECTION_OFF
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test25.ok	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test25.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1 ****
+- #efine  SECTION_OFF  3
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test28.in	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test28.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,23 ****
+- Test for sourcing a file with CTRL-V's at the end of the line
+- 
+- STARTTEST
+- :/firstline/+1,/lastline/-1w! Xtestfile
+- :so Xtestfile
+- Gmm__1__2__3__4__5:'m,$s/ /0/g
+- :'m,$w! test.out
+- :qa!
+- ENDTEST
+- 
+- firstline
+- map __1 afirst
+- map __2 asecond
+- map __3 athird
+- map __4 afourth
+- map __5 afifth
+- map __1 asd
+- map __2 asd
+- map __3 asd
+- map __4 asd
+- map __5 asd
+- lastline
+- 
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test28.ok	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test28.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,2 ****
+- sd
+- map __2 asdsecondsdsd0map __5 asd0fifth
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test32.in	2017-03-08 22:55:14.914181221 +0100
+--- src/testdir/test32.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,61 ****
+- Test for insert expansion
+- 
+- :se cpt=.,w
+- * add-expands (word from next line) from other window
+- * add-expands (current buffer first)
+- * Local expansion, ends in an empty line (unless it becomes a global expansion)
+- * starts Local and switches to global add-expansion
+- :se cpt=.,w,i
+- * i-add-expands and switches to local
+- * add-expands lines (it would end in an empty line if it didn't ignored it self)
+- :se cpt=kXtestfile
+- * checks k-expansion, and file expansion (use Xtest11 instead of test11,
+- * because TEST11.OUT may match first on DOS)
+- :se cpt=w
+- * checks make_cyclic in other window
+- :se cpt=u nohid
+- * checks unloaded buffer expansion
+- * checks adding mode abortion
+- :se cpt=t,d
+- * tag expansion, define add-expansion interrupted
+- * t-expansion
+- 
+- STARTTEST
+- :so small.vim
+- :se nocp viminfo+=nviminfo cpt=.,w ff=unix | $-2,$w!Xtestfile | set ff&
+- :set belloff=all
+- :se cot=
+- nO#include "Xtestfile"
+- ru
+- O
+- 
+- 
+- :se cpt=.,w,i
+- kOM
+- 
+- :se cpt=kXtestfile
+- :w Xtest11.one
+- :w Xtest11.two
+- OIXA
+- :" use CTRL-X CTRL-F to complete Xtest11.one, remove it and then use
+- :" CTRL-X CTRL-F again to verify this doesn't cause trouble.
+- OXddk
+- :se cpt=w
+- OST
+- :se cpt=u nohid
+- oOEN
+- unl
+- :se cpt=t,d def=^\\k* tags=Xtestfile notagbsearch
+- O
+- a
+- :wq! test.out
+- ENDTEST
+- 
+- start of testfile
+- run1
+- run2
+- end of testfile
+- 
+- test11	36Gepeto	/Tag/
+- asd	test11file	36G
+- Makefile	to	run
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test32.ok	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test32.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,15 ****
+- #include "Xtestfile"
+- run1 run3
+- run3 run3
+- 
+- Makefile	to	run3
+- Makefile	to	run3
+- Makefile	to	run3
+- Xtest11.two
+- STARTTEST
+- ENDTEST
+- unless
+- test11file	36Gepeto	/Tag/ asd
+- asd
+- run1 run2
+- 
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test38.in	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test38.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,35 ****
+- 
+- Test Virtual replace mode.
+- 
+- STARTTEST
+- :so small.vim
+- :" make sure that backspace works, no matter what termcap is used
+- :set t_kD=x7f t_kb=x08
+- ggdGa
+- abcdefghi
+- jk	lmn
+-     opq	rst
+- uvwxyz
+- gg:set ai
+- :set bs=2
+- gR0 1
+- A
+- BCDEFGHIJ
+- 	KL
+- MNO
+- PQRG:ka
+- o0
+- abcdefghi
+- jk	lmn
+-     opq	rst
+- uvwxyz
+- 'ajgR0 1
+- A
+- BCDEFGHIJ
+- 	KL
+- MNO
+- PQR:$
+- iab	cdefghi	jkl0gRAB......CDEFGHI.Jo:
+- iabcdefghijklmnopqrst0gRAB	IJKLMNO	QR:wq! test.out
+- ENDTEST
+- 
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test38.ok	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test38.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,13 ****
+-  1
+-  A
+-  BCDEFGHIJ
+-  	KL
+- 	MNO
+- 	PQR
+-  1
+- abcdefghi
+- jk	lmn
+-     opq	rst
+- uvwxyz
+- AB......CDEFGHI.Jkl
+- AB	IJKLMNO	QRst
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test66.in	2013-03-13 18:42:46.000000000 +0100
+--- src/testdir/test66.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,33 ****
+- 
+- Test for visual block shift and tab characters.
+- 
+- STARTTEST
+- :so small.vim
+- /^one
+- fe4jRugvr1:'<,'>w! test.out
+- /^abcdefgh
+- 4jI    j<<11|D
+- 7|a		
+- 7|a		   
+- 7|a	       	4k13|4j<
+- :$-5,$w >> test.out
+- :$-4,$s/\s\+//g
+- 4kI    j<<
+- 7|a		
+- 7|a					
+- 7|a	       		4k13|4j3<
+- :$-4,$w >> test.out
+- :qa!
+- ENDTEST
+- 
+- one two three
+- one two three
+- one two three
+- one two three
+- one two three
+- 
+- abcdefghijklmnopqrstuvwxyz
+- abcdefghijklmnopqrstuvwxyz
+- abcdefghijklmnopqrstuvwxyz
+- abcdefghijklmnopqrstuvwxyz
+- abcdefghijklmnopqrstuvwxyz
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test66.ok	2013-03-13 18:42:46.000000000 +0100
+--- src/testdir/test66.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,16 ****
+- on1 two three
+- on1 two three
+- on1 two three
+- on1 two three
+- on1 two three
+- 
+-     abcdefghijklmnopqrstuvwxyz
+- abcdefghij
+-     abc	    defghijklmnopqrstuvwxyz
+-     abc	    defghijklmnopqrstuvwxyz
+-     abc	    defghijklmnopqrstuvwxyz
+-     abcdefghijklmnopqrstuvwxyz
+- abcdefghij
+-     abc	    defghijklmnopqrstuvwxyz
+-     abc		defghijklmnopqrstuvwxyz
+-     abc	    defghijklmnopqrstuvwxyz
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test79.in	2014-04-23 18:36:29.000000000 +0200
+--- src/testdir/test79.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,255 ****
+- Test for *sub-replace-special* and *sub-replace-expression* on :substitute.
+- Test for submatch() on :substitue.
+- Test for *:s%* on :substitute.
+- Test for :s replacing \n with  line break.
+- 
+- STARTTEST
+- :so small.vim
+- ENDTEST
+- 
+- Results of test71:
+- 
+- STARTTEST
+- :set magic
+- :set cpo&
+- /^TEST/
+- j:s/A/&&/
+- j:s/B/\&/
+- j:s/C\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)/\0\9\8\7\6\5\4\3\2\1/
+- j:s/D/d/
+- j:s/E/~/
+- j:s/F/\~/
+- j:s/G/\ugg/
+- j:s/H/\Uh\Eh/
+- j:s/I/\lII/
+- j:s/J/\LJ\EJ/
+- j:s/K/\Uk\ek/
+- j:s/L//
+- j:s/M/\r/
+- j:s/N/\/
+- j:s/O/\n/
+- j:s/P/\b/
+- j:s/Q/\t/
+- j:s/R/\\/
+- j:s/S/\c/
+- j:s/T/ /
+- j:s/U/\L\uuUu\l\EU/
+- j:s/V/\U\lVvV\u\Ev/
+- ENDTEST
+- 
+- TEST_1:
+- A
+- B
+- C123456789
+- D
+- E
+- F
+- G
+- H
+- I
+- J
+- K
+- lLl
+- mMm
+- nNn
+- oOo
+- pPp
+- qQq
+- rRr
+- sSs
+- tTt
+- U
+- V
+- 
+- STARTTEST
+- :set nomagic
+- :set cpo&
+- /^TEST/
+- j:s/A/&&/
+- j:s/B/\&/
+- j:s/\mC\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)/\0\9\8\7\6\5\4\3\2\1/
+- j:s/D/d/
+- j:s/E/~/
+- j:s/F/\~/
+- j:s/G/\ugg/
+- j:s/H/\Uh\Eh/
+- j:s/I/\lII/
+- j:s/J/\LJ\EJ/
+- j:s/K/\Uk\ek/
+- j:s/L//
+- j:s/M/\r/
+- j:s/N/\/
+- j:s/O/\n/
+- j:s/P/\b/
+- j:s/Q/\t/
+- j:s/R/\\/
+- j:s/S/\c/
+- j:s/T/ /
+- j:s/U/\L\uuUu\l\EU/
+- j:s/V/\U\lVvV\u\Ev/
+- ENDTEST
+- 
+- TEST_2:
+- A
+- B
+- C123456789
+- D
+- E
+- F
+- G
+- H
+- I
+- J
+- K
+- lLl
+- mMm
+- nNn
+- oOo
+- pPp
+- qQq
+- rRr
+- sSs
+- tTt
+- U
+- V
+- 
+- STARTTEST
+- :set magic&
+- :set cpo&
+- /^TEST/
+- j:s/A/\='\'/
+- j:s/B/\='\\'/
+- j:s/C/\=''/
+- j:s/D/\='\'/
+- j:s/E/\='\\'/
+- j:s/F/\='\r'/
+- j:s/G/\=' '/
+- j:s/H/\='\ '/
+- j:s/I/\='\\ '/
+- j:s/J/\='\n'/
+- j:s/K/\="\r"/
+- j:s/L/\="\n"/
+- ENDTEST
+- 
+- TEST_3:
+- aAa
+- bBb
+- cCc
+- dDd
+- eEe
+- fFf
+- gGg
+- hHh
+- iIi
+- jJj
+- kKk
+- lLl
+- 
+- STARTTEST
+- :set magic&
+- :set cpo&
+- /^TEST/
+- j:s/A/\=substitute(submatch(0), '.', '\', '')/
+- j:s/B/\=substitute(submatch(0), '.', '\\', '')/
+- j:s/C/\=substitute(submatch(0), '.', '', '')/
+- j:s/D/\=substitute(submatch(0), '.', '\', '')/
+- j:s/E/\=substitute(submatch(0), '.', '\\', '')/
+- j:s/F/\=substitute(submatch(0), '.', '\r', '')/
+- j:s/G/\=substitute(submatch(0), '.', ' ', '')/
+- j:s/H/\=substitute(submatch(0), '.', '\ ', '')/
+- j:s/I/\=substitute(submatch(0), '.', '\\ ', '')/
+- j:s/J/\=substitute(submatch(0), '.', '\n', '')/
+- j:s/K/\=substitute(submatch(0), '.', "\r", '')/
+- j:s/L/\=substitute(submatch(0), '.', "\n", '')/
+- ENDTEST
+- 
+- TEST_4:
+- aAa
+- bBb
+- cCc
+- dDd
+- eEe
+- fFf
+- gGg
+- hHh
+- iIi
+- jJj
+- kKk
+- lLl
+- 
+- STARTTEST
+- :set magic&
+- :set cpo&
+- /^TEST/
+- j:s/A\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)/\=submatch(0) . submatch(9) . submatch(8) . submatch(7) . submatch(6) . submatch(5) . submatch(4) . submatch(3) . submatch(2) . submatch(1)/
+- j:s/B\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)/\=string([submatch(0, 1), submatch(9, 1), submatch(8, 1), submatch(7, 1), submatch(6, 1), submatch(5, 1), submatch(4, 1), submatch(3, 1), submatch(2, 1), submatch(1, 1)])/
+- ENDTEST
+- 
+- TEST_5:
+- A123456789
+- B123456789
+- 
+- STARTTEST
+- :set magic&
+- /^TEST/
+- :set cpo+=/
+- j:s/A/a/
+- j:s/B/%/
+- :set cpo-=/
+- j:s/C/c/
+- j:s/D/%/
+- ENDTEST
+- 
+- TEST_6:
+- A
+- B
+- C
+- D
+- 
+- STARTTEST
+- :set magic&
+- :set cpo&
+- /^TEST_7/
+- j:s/A./\=submatch(0)/
+- j:s/B./\=submatch(0)/
+- j:s/C./\=strtrans(string(submatch(0, 1)))/
+- j:s/D.\nD/\=strtrans(string(submatch(0, 1)))/
+- j:s/E\_.\{-}E/\=strtrans(string(submatch(0, 1)))/
+- /^Q$
+- :s/Q[^\n]Q/\=submatch(0)."foobar"/
+- :" Avoid :s error breaks dotest map on Windows.
+- ENDTEST
+- 
+- TEST_7:
+- AA
+- B B
+- C C
+- D 
+- D
+- E 
+-  
+-  
+-  
+-  E
+- Q
+- Q
+- 
+- STARTTEST
+- :function! TitleString()
+-   let check = 'foo' =~ 'bar'
+-   return ""
+- endfunction
+- :set titlestring=%{TitleString()}
+- :/^test_one/s/.*/\="foo\nbar"/
+- :/^test_two/s/.*/\="foo\nbar"/c
+- y
+- ENDTEST
+- 
+- test_one
+- test_two
+- 
+- STARTTEST
+- :g/^STARTTEST/.,/^ENDTEST/d
+- :1;/^Results/,$wq! test.out
+- :call getchar()
+- ENDTEST
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test79.ok	2014-04-23 18:35:30.000000000 +0200
+--- src/testdir/test79.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,134 ****
+- Results of test71:
+- 
+- 
+- TEST_1:
+- AA
+- &
+- C123456789987654321
+- d
+- d
+- ~
+- Gg
+- Hh
+- iI
+- jJ
+- Kk
+- l
+- l
+- m
+- m
+- nn
+- o o
+- pp
+- q	q
+- r\r
+- scs
+- t t
+- UuuU
+- vVVv
+- 
+- 
+- TEST_2:
+- &&
+- B
+- C123456789987654321
+- d
+- ~
+- ~
+- Gg
+- Hh
+- iI
+- jJ
+- Kk
+- l
+- l
+- m
+- m
+- nn
+- o o
+- pp
+- q	q
+- r\r
+- scs
+- t t
+- UuuU
+- vVVv
+- 
+- 
+- TEST_3:
+- a\a
+- b\\b
+- c
+- c
+- d\
+- d
+- e\\
+- e
+- f\rf
+- g
+- g
+- h\
+- h
+- i\\
+- i
+- j\nj
+- k
+- k
+- l
+- l
+- 
+- 
+- TEST_4:
+- a\a
+- b\b
+- c
+- c
+- d
+- d
+- e\
+- e
+- f
+- f
+- g
+- g
+- h
+- h
+- i\
+- i
+- j
+- j
+- k
+- k
+- l
+- l
+- 
+- 
+- TEST_5:
+- A123456789987654321
+- [['B123456789'], ['9'], ['8'], ['7'], ['6'], ['5'], ['4'], ['3'], ['2'], ['1']]
+- 
+- 
+- TEST_6:
+- a
+- a
+- c
+- %
+- 
+- 
+- TEST_7:
+- A
+- A
+- B
+- B
+- ['C^@']C
+- ['D^@', 'D']
+- ['E^@', '^@', '^@', '^@', '^@E']
+- Q
+- Q
+- 
+- 
+- foo
+- bar
+- foo
+- bar
+- 
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test_ins_complete.vim	2017-10-26 20:19:52.421837748 +0200
+--- src/testdir/test_ins_complete.vim	2017-10-26 19:57:28.175059273 +0200
+***************
+*** 0 ****
+--- 1,91 ----
++ 
++ " Test for insert expansion
++ func Test_ins_complete()
++   set ff=unix
++   call writefile(["test11\t36Gepeto\t/Tag/",
++ 	      \ "asd\ttest11file\t36G",
++ 	      \ "Makefile\tto\trun"], 'Xtestfile')
++   call writefile(['', 'start of testfile',
++ 	      \ 'ru',
++ 	      \ 'run1',
++ 	      \ 'run2',
++ 	      \ 'STARTTEST',
++ 	      \ 'ENDTEST',
++ 	      \ 'end of testfile'], 'Xtestdata')
++   set ff&
++ 
++   enew!
++   edit Xtestdata
++   new
++   call append(0, ['#include "Xtestfile"', ''])
++   call cursor(2, 1)
++ 
++   set cot=
++   set cpt=.,w
++   " add-expands (word from next line) from other window
++   exe "normal iru\<C-N>\<C-N>\<C-X>\<C-N>\<Esc>\<C-A>"
++   call assert_equal('run1 run3', getline('.'))
++   " add-expands (current buffer first)
++   exe "normal o\<C-P>\<C-X>\<C-N>"
++   call assert_equal('run3 run3', getline('.'))
++   " Local expansion, ends in an empty line (unless it becomes a global
++   " expansion)
++   exe "normal o\<C-X>\<C-P>\<C-P>\<C-P>\<C-P>\<C-P>"
++   call assert_equal('', getline('.'))
++   " starts Local and switches to global add-expansion
++   exe "normal o\<C-X>\<C-P>\<C-P>\<C-X>\<C-X>\<C-N>\<C-X>\<C-N>\<C-N>"
++   call assert_equal('run1 run2', getline('.'))
++ 
++   set cpt=.,w,i
++   " i-add-expands and switches to local
++   exe "normal OM\<C-N>\<C-X>\<C-N>\<C-X>\<C-N>\<C-X>\<C-X>\<C-X>\<C-P>"
++   call assert_equal("Makefile\tto\trun3", getline('.'))
++   " add-expands lines (it would end in an empty line if it didn't ignored
++   " itself)
++   exe "normal o\<C-X>\<C-L>\<C-X>\<C-L>\<C-P>\<C-P>"
++   call assert_equal("Makefile\tto\trun3", getline('.'))
++   call assert_equal("Makefile\tto\trun3", getline(line('.') - 1))
++ 
++   set cpt=kXtestfile
++   " checks k-expansion, and file expansion (use Xtest11 instead of test11,
++   " because TEST11.OUT may match first on DOS)
++   write Xtest11.one
++   write Xtest11.two
++   exe "normal o\<C-N>\<Esc>IX\<Esc>A\<C-X>\<C-F>\<C-N>"
++   call assert_equal('Xtest11.two', getline('.'))
++ 
++   " use CTRL-X CTRL-F to complete Xtest11.one, remove it and then use CTRL-X
++   " CTRL-F again to verify this doesn't cause trouble.
++   exe "normal oXt\<C-X>\<C-F>\<BS>\<BS>\<BS>\<BS>\<BS>\<BS>\<BS>\<BS>\<C-X>\<C-F>"
++   call assert_equal('Xtest11.one', getline('.'))
++   normal ddk
++ 
++   set cpt=w
++   " checks make_cyclic in other window
++   exe "normal oST\<C-N>\<C-P>\<C-P>\<C-P>\<C-P>"
++   call assert_equal('STARTTEST', getline('.'))
++ 
++   set cpt=u nohid
++   " checks unloaded buffer expansion
++   only
++   exe "normal oEN\<C-N>"
++   call assert_equal('ENDTEST', getline('.'))
++   " checks adding mode abortion
++   exe "normal ounl\<C-N>\<C-X>\<C-X>\<C-P>"
++   call assert_equal('unless', getline('.'))
++ 
++   set cpt=t,d def=^\\k* tags=Xtestfile notagbsearch
++   " tag expansion, define add-expansion interrupted
++   exe "normal o\<C-X>\<C-]>\<C-X>\<C-D>\<C-X>\<C-D>\<C-X>\<C-X>\<C-D>\<C-X>\<C-D>\<C-X>\<C-D>\<C-X>\<C-D>"
++   call assert_equal('test11file	36Gepeto	/Tag/ asd', getline('.'))
++   " t-expansion
++   exe "normal oa\<C-N>\<Esc>"
++   call assert_equal('asd', getline('.'))
++ 
++   %bw!
++   call delete('Xtestfile')
++   call delete('Xtest11.one')
++   call delete('Xtest11.two')
++   call delete('Xtestdata')
++   set cpt& cot& def& tags& tagbsearch& hidden&
++ endfunc
+*** ../vim-8.0.1220/src/testdir/test_source_utf8.vim	2016-08-17 21:28:17.000000000 +0200
+--- src/testdir/test_source_utf8.vim	2017-10-26 19:57:28.175059273 +0200
+***************
+*** 31,33 ****
+--- 31,63 ----
+    bwipe!
+    call delete('Xscript')
+  endfunc
++ 
++ " Test for sourcing a file with CTRL-V's at the end of the line
++ func Test_source_ctrl_v()
++     call writefile(['map __1 afirst',
++ 		\ 'map __2 asecond',
++ 		\ 'map __3 athird',
++ 		\ 'map __4 afourth',
++ 		\ 'map __5 afifth',
++ 		\ "map __1 asd\<C-V>",
++ 		\ "map __2 asd\<C-V>\<C-V>",
++ 		\ "map __3 asd\<C-V>\<C-V>",
++ 		\ "map __4 asd\<C-V>\<C-V>\<C-V>",
++ 		\ "map __5 asd\<C-V>\<C-V>\<C-V>",
++ 		\ ], 'Xtestfile')
++   source Xtestfile
++   enew!
++   exe "normal __1\<Esc>\<Esc>__2\<Esc>__3\<Esc>\<Esc>__4\<Esc>__5\<Esc>"
++   exe "%s/\<C-J>/0/g"
++   call assert_equal(['sd',
++ 	      \ "map __2 asd\<Esc>secondsd\<Esc>sd0map __5 asd0fifth"],
++ 	      \ getline(1, 2))
++ 
++   enew!
++   call delete('Xtestfile')
++   unmap __1
++   unmap __2
++   unmap __3
++   unmap __4
++   unmap __5
++ endfunc
+*** ../vim-8.0.1220/src/testdir/test_substitute.vim	2017-08-30 20:21:54.254963240 +0200
+--- src/testdir/test_substitute.vim	2017-10-26 19:57:28.175059273 +0200
+***************
+*** 294,296 ****
+--- 294,502 ----
+     call assert_equal('aa2a3a', substitute('123', '1\|\ze', 'a', 'g'))
+     call assert_equal('1aaa', substitute('123', '1\zs\|[23]', 'a', 'g'))
+  endfunc
++ 
++ " Tests for *sub-replace-special* and *sub-replace-expression* on :substitute.
++ 
++ " Execute a list of :substitute command tests
++ func Run_SubCmd_Tests(tests)
++   enew!
++   for t in a:tests
++     let start = line('.') + 1
++     let end = start + len(t[2]) - 1
++     exe "normal o" . t[0]
++     call cursor(start, 1)
++     exe t[1]
++     call assert_equal(t[2], getline(start, end), t[1])
++   endfor
++   enew!
++ endfunc
++ 
++ func Test_sub_cmd_1()
++   set magic
++   set cpo&
++ 
++   " List entry format: [input, cmd, output]
++   let tests = [['A', 's/A/&&/', ['AA']],
++ 	      \ ['B', 's/B/\&/', ['&']],
++ 	      \ ['C123456789', 's/C\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)/\0\9\8\7\6\5\4\3\2\1/', ['C123456789987654321']],
++ 	      \ ['D', 's/D/d/', ['d']],
++ 	      \ ['E', 's/E/~/', ['d']],
++ 	      \ ['F', 's/F/\~/', ['~']],
++ 	      \ ['G', 's/G/\ugg/', ['Gg']],
++ 	      \ ['H', 's/H/\Uh\Eh/', ['Hh']],
++ 	      \ ['I', 's/I/\lII/', ['iI']],
++ 	      \ ['J', 's/J/\LJ\EJ/', ['jJ']],
++ 	      \ ['K', 's/K/\Uk\ek/', ['Kk']],
++ 	      \ ['lLl', "s/L/\<C-V>\<C-M>/", ["l\<C-V>", 'l']],
++ 	      \ ['mMm', 's/M/\r/', ['m', 'm']],
++ 	      \ ['nNn', "s/N/\\\<C-V>\<C-M>/", ["n\<C-V>", 'n']],
++ 	      \ ['oOo', 's/O/\n/', ["o\no"]],
++ 	      \ ['pPp', 's/P/\b/', ["p\<C-H>p"]],
++ 	      \ ['qQq', 's/Q/\t/', ["q\tq"]],
++ 	      \ ['rRr', 's/R/\\/', ['r\r']],
++ 	      \ ['sSs', 's/S/\c/', ['scs']],
++ 	      \ ['tTt', "s/T/\<C-V>\<C-J>/", ["t\<C-V>\<C-J>t"]],
++ 	      \ ['U', 's/U/\L\uuUu\l\EU/', ['UuuU']],
++ 	      \ ['V', 's/V/\U\lVvV\u\Ev/', ['vVVv']]
++ 	      \ ]
++   call Run_SubCmd_Tests(tests)
++ endfunc
++ 
++ func Test_sub_cmd_2()
++   set nomagic
++   set cpo&
++ 
++   " List entry format: [input, cmd, output]
++   let tests = [['A', 's/A/&&/', ['&&']],
++ 	      \ ['B', 's/B/\&/', ['B']],
++ 	      \ ['C123456789', 's/\mC\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)/\0\9\8\7\6\5\4\3\2\1/', ['C123456789987654321']],
++ 	      \ ['D', 's/D/d/', ['d']],
++ 	      \ ['E', 's/E/~/', ['~']],
++ 	      \ ['F', 's/F/\~/', ['~']],
++ 	      \ ['G', 's/G/\ugg/', ['Gg']],
++ 	      \ ['H', 's/H/\Uh\Eh/', ['Hh']],
++ 	      \ ['I', 's/I/\lII/', ['iI']],
++ 	      \ ['J', 's/J/\LJ\EJ/', ['jJ']],
++ 	      \ ['K', 's/K/\Uk\ek/', ['Kk']],
++ 	      \ ['lLl', "s/L/\<C-V>\<C-M>/", ["l\<C-V>", 'l']],
++ 	      \ ['mMm', 's/M/\r/', ['m', 'm']],
++ 	      \ ['nNn', "s/N/\\\<C-V>\<C-M>/", ["n\<C-V>", 'n']],
++ 	      \ ['oOo', 's/O/\n/', ["o\no"]],
++ 	      \ ['pPp', 's/P/\b/', ["p\<C-H>p"]],
++ 	      \ ['qQq', 's/Q/\t/', ["q\tq"]],
++ 	      \ ['rRr', 's/R/\\/', ['r\r']],
++ 	      \ ['sSs', 's/S/\c/', ['scs']],
++ 	      \ ['tTt', "s/T/\<C-V>\<C-J>/", ["t\<C-V>\<C-J>t"]],
++ 	      \ ['U', 's/U/\L\uuUu\l\EU/', ['UuuU']],
++ 	      \ ['V', 's/V/\U\lVvV\u\Ev/', ['vVVv']]
++ 	      \ ]
++   call Run_SubCmd_Tests(tests)
++ endfunc
++ 
++ func Test_sub_cmd_3()
++   set nomagic
++   set cpo&
++ 
++   " List entry format: [input, cmd, output]
++   let tests = [['aAa', "s/A/\\='\\'/", ['a\a']],
++ 	      \ ['bBb', "s/B/\\='\\\\'/", ['b\\b']],
++ 	      \ ['cCc', "s/C/\\='\<C-V>\<C-M>'/", ["c\<C-V>", 'c']],
++ 	      \ ['dDd', "s/D/\\='\\\<C-V>\<C-M>'/", ["d\\\<C-V>", 'd']],
++ 	      \ ['eEe', "s/E/\\='\\\\\<C-V>\<C-M>'/", ["e\\\\\<C-V>", 'e']],
++ 	      \ ['fFf', "s/F/\\='\r'/", ['f', 'f']],
++ 	      \ ['gGg', "s/G/\\='\<C-V>\<C-J>'/", ["g\<C-V>", 'g']],
++ 	      \ ['hHh', "s/H/\\='\\\<C-V>\<C-J>'/", ["h\\\<C-V>", 'h']],
++ 	      \ ['iIi', "s/I/\\='\\\\\<C-V>\<C-J>'/", ["i\\\\\<C-V>", 'i']],
++ 	      \ ['jJj', "s/J/\\='\n'/", ['j', 'j']],
++ 	      \ ['kKk', 's/K/\="\r"/', ['k', 'k']],
++ 	      \ ['lLl', 's/L/\="\n"/', ['l', 'l']]
++ 	      \ ]
++   call Run_SubCmd_Tests(tests)
++ endfunc
++ 
++ " Test for submatch() on :substitue.
++ func Test_sub_cmd_4()
++   set magic&
++   set cpo&
++ 
++   " List entry format: [input, cmd, output]
++   let tests = [ ['aAa', "s/A/\\=substitute(submatch(0), '.', '\\', '')/",
++ 	      \ 			['a\a']],
++ 	      \ ['bBb', "s/B/\\=substitute(submatch(0), '.', '\\', '')/",
++ 	      \   			['b\b']],
++ 	      \ ['cCc', "s/C/\\=substitute(submatch(0), '.', '\<C-V>\<C-M>', '')/",
++ 	      \				["c\<C-V>", 'c']],
++ 	      \ ['dDd', "s/D/\\=substitute(submatch(0), '.', '\\\<C-V>\<C-M>', '')/",
++ 	      \				["d\<C-V>", 'd']],
++ 	      \ ['eEe', "s/E/\\=substitute(submatch(0), '.', '\\\\\<C-V>\<C-M>', '')/",
++ 	      \				["e\\\<C-V>", 'e']],
++ 	      \ ['fFf', "s/F/\\=substitute(submatch(0), '.', '\\r', '')/",
++ 	      \				['f', 'f']],
++ 	      \ ['gGg', 's/G/\=substitute(submatch(0), ".", "\<C-V>\<C-J>", "")/',
++ 	      \				["g\<C-V>", 'g']],
++ 	      \ ['hHh', 's/H/\=substitute(submatch(0), ".", "\\\<C-V>\<C-J>", "")/',
++ 	      \				["h\<C-V>", 'h']],
++ 	      \ ['iIi', 's/I/\=substitute(submatch(0), ".", "\\\\\<C-V>\<C-J>", "")/',
++ 	      \				["i\\\<C-V>", 'i']],
++ 	      \ ['jJj', "s/J/\\=substitute(submatch(0), '.', '\\n', '')/",
++ 	      \				['j', 'j']],
++ 	      \ ['kKk', "s/K/\\=substitute(submatch(0), '.', '\\r', '')/",
++ 	      \				['k', 'k']],
++ 	      \ ['lLl', "s/L/\\=substitute(submatch(0), '.', '\\n', '')/",
++ 	      \				['l', 'l']],
++ 	      \ ]
++   call Run_SubCmd_Tests(tests)
++ endfunc
++ 
++ func Test_sub_cmd_5()
++   set magic&
++   set cpo&
++ 
++   " List entry format: [input, cmd, output]
++   let tests = [ ['A123456789', 's/A\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)/\=submatch(0) . submatch(9) . submatch(8) . submatch(7) . submatch(6) . submatch(5) . submatch(4) . submatch(3) . submatch(2) . submatch(1)/', ['A123456789987654321']],
++ 	      \ ['B123456789', 's/B\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)/\=string([submatch(0, 1), submatch(9, 1), submatch(8, 1), submatch(7, 1), submatch(6, 1), submatch(5, 1), submatch(4, 1), submatch(3, 1), submatch(2, 1), submatch(1, 1)])/', ["[['B123456789'], ['9'], ['8'], ['7'], ['6'], ['5'], ['4'], ['3'], ['2'], ['1']]"]],
++ 	      \ ]
++   call Run_SubCmd_Tests(tests)
++ endfunc
++ 
++ " Test for *:s%* on :substitute.
++ func Test_sub_cmd_6()
++   set magic&
++   set cpo+=/
++ 
++   " List entry format: [input, cmd, output]
++   let tests = [ ['A', 's/A/a/', ['a']],
++ 	      \ ['B', 's/B/%/', ['a']],
++ 	      \ ]
++   call Run_SubCmd_Tests(tests)
++ 
++   set cpo-=/
++   let tests = [ ['C', 's/C/c/', ['c']],
++ 	      \ ['D', 's/D/%/', ['%']],
++ 	      \ ]
++   call Run_SubCmd_Tests(tests)
++ 
++   set cpo&
++ endfunc
++ 
++ " Test for :s replacing \n with  line break.
++ func Test_sub_cmd_7()
++   set magic&
++   set cpo&
++ 
++   " List entry format: [input, cmd, output]
++   let tests = [ ["A\<C-V>\<C-M>A", 's/A./\=submatch(0)/', ['A', 'A']],
++ 	      \ ["B\<C-V>\<C-J>B", 's/B./\=submatch(0)/', ['B', 'B']],
++ 	      \ ["C\<C-V>\<C-J>C", 's/C./\=strtrans(string(submatch(0, 1)))/', [strtrans("['C\<C-J>']C")]],
++ 	      \ ["D\<C-V>\<C-J>\nD", 's/D.\nD/\=strtrans(string(submatch(0, 1)))/', [strtrans("['D\<C-J>', 'D']")]],
++ 	      \ ["E\<C-V>\<C-J>\n\<C-V>\<C-J>\n\<C-V>\<C-J>\n\<C-V>\<C-J>\n\<C-V>\<C-J>E", 's/E\_.\{-}E/\=strtrans(string(submatch(0, 1)))/', [strtrans("['E\<C-J>', '\<C-J>', '\<C-J>', '\<C-J>', '\<C-J>E']")]],
++ 	      \ ]
++   call Run_SubCmd_Tests(tests)
++ 
++   exe "normal oQ\nQ\<Esc>k"
++   call assert_fails('s/Q[^\n]Q/\=submatch(0)."foobar"/', 'E486')
++   enew!
++ endfunc
++ 
++ func TitleString()
++   let check = 'foo' =~ 'bar'
++   return ""
++ endfunc
++ 
++ func Test_sub_cmd_8()
++   set titlestring=%{TitleString()}
++ 
++   enew!
++   call append(0, ['', 'test_one', 'test_two'])
++   call cursor(1,1)
++   /^test_one/s/.*/\="foo\nbar"/
++   call assert_equal('foo', getline(2))
++   call assert_equal('bar', getline(3))
++   call feedkeys(':/^test_two/s/.*/\="foo\nbar"/c', "t")
++   call feedkeys("\<CR>y", "xt")
++   call assert_equal('foo', getline(4))
++   call assert_equal('bar', getline(5))
++ 
++   enew!
++   set titlestring&
++ endfunc
+*** ../vim-8.0.1220/src/testdir/test_tab.vim	2017-10-26 20:19:52.441837610 +0200
+--- src/testdir/test_tab.vim	2017-10-26 19:57:28.175059273 +0200
+***************
+*** 0 ****
+--- 1,45 ----
++ 
++ " Tests for "r<Tab>" with 'smarttab' and 'expandtab' set/not set.
++ " Also test that dv_ works correctly
++ func Test_smarttab()
++   enew!
++   set smarttab expandtab ts=8 sw=4
++   " make sure that backspace works, no matter what termcap is used
++   exe "set t_kD=\<C-V>x7f t_kb=\<C-V>x08"
++   call append(0, ['start text',
++ 	      \ "\t\tsome test text",
++ 	      \ 'test text',
++ 	      \ "\t\tother test text",
++ 	      \ '    a cde',
++ 	      \ '    f ghi',
++ 	      \ 'test text',
++ 	      \ '  Second line beginning with whitespace'
++ 	      \ ])
++   call cursor(1, 1)
++   exe "normal /some\<CR>"
++   exe "normal r\t"
++   call assert_equal("\t\t    ome test text", getline('.'))
++   set noexpandtab
++   exe "normal /other\<CR>"
++   exe "normal r\t"
++   call assert_equal("\t\t    ther test text", getline('.'))
++ 
++   " Test replacing with Tabs and then backspacing to undo it
++   exe "normal j0wR\t\t\t\<BS>\<BS>\<BS>"
++   call assert_equal("    a cde", getline('.'))
++   " Test replacing with Tabs
++   exe "normal j0wR\t\t\t"
++   call assert_equal("    \t\thi", getline('.'))
++ 
++   " Test that copyindent works with expandtab set
++   set expandtab smartindent copyindent ts=8 sw=8 sts=8
++   exe "normal jo{\<CR>x"
++   call assert_equal('{', getline(line('.') - 1))
++   call assert_equal('        x', getline('.'))
++   set nosol
++   exe "normal /Second line/\<CR>"
++   exe "normal fwdv_"
++   call assert_equal('  with whitespace', getline('.'))
++   enew!
++   set expandtab& smartindent& copyindent& ts& sw& sts&
++ endfunc
+*** ../vim-8.0.1220/src/testdir/test_tagjump.vim	2017-06-05 16:01:53.913848249 +0200
+--- src/testdir/test_tagjump.vim	2017-10-26 19:57:28.175059273 +0200
+***************
+*** 137,140 ****
+--- 137,177 ----
+    call delete('Xinclude')
+  endfunction
+  
++ " Test for jumping to a tag with 'hidden' set, with symbolic link in path of
++ " tag.  This only works for Unix, because of the symbolic link.
++ func Test_tag_symbolic()
++   if !has('unix')
++     return
++   endif
++   set hidden
++   call delete("Xtest.dir", "rf")
++   call system("ln -s . Xtest.dir")
++   " Create a tags file with the current directory name inserted.
++   call writefile([
++         \ "SECTION_OFF	" . getcwd() . "/Xtest.dir/Xtest.c	/^#define  SECTION_OFF  3$/",
++         \ '',
++         \ ], 'Xtags')
++   call writefile(['#define  SECTION_OFF  3',
++         \ '#define  NUM_SECTIONS 3'], 'Xtest.c')
++ 
++   " Try jumping to a tag, but with a path that contains a symbolic link.  When
++   " wrong, this will give the ATTENTION message.  The next space will then be
++   " eaten by hit-return, instead of moving the cursor to 'd'.
++   set tags=Xtags
++   enew!
++   call append(0, 'SECTION_OFF')
++   call cursor(1,1)
++   exe "normal \<C-]> "
++   call assert_equal('Xtest.c', expand('%:t'))
++   call assert_equal(2, col('.'))
++ 
++   set hidden&
++   set tags&
++   enew!
++   call delete('Xtags')
++   call delete('Xtest.c')
++   call delete("Xtest.dir", "rf")
++   %bwipe!
++ endfunc
++ 
+  " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.1220/src/testdir/test_undo.vim	2017-10-15 22:07:35.211683156 +0200
+--- src/testdir/test_undo.vim	2017-10-26 19:57:28.175059273 +0200
+***************
+*** 273,275 ****
+--- 273,291 ----
+    call delete('Xfile')
+    call delete('Xundofile')
+  endfunc
++ 
++ " Test for undo working properly when executing commands from a register.
++ " Also test this in an empty buffer.
++ func Test_cmd_in_reg_undo()
++   enew!
++   let @a="Ox\<Esc>jAy\<Esc>kdd"
++   edit +/^$ test_undo.vim
++   normal @au
++   call assert_equal(0, &modified)
++   return
++   new
++   normal @au
++   call assert_equal(0, &modified)
++   only!
++   let @a=''
++ endfunc
+*** ../vim-8.0.1220/src/testdir/test_visual.vim	2017-10-15 22:07:35.211683156 +0200
+--- src/testdir/test_visual.vim	2017-10-26 19:57:28.175059273 +0200
+***************
+*** 89,91 ****
+--- 89,189 ----
+  
+  endfunc
+  
++ " Test for visual block shift and tab characters.
++ func Test_block_shift_tab()
++   enew!
++   call append(0, repeat(['one two three'], 5))
++   call cursor(1,1)
++   exe "normal i\<C-G>u"
++   exe "normal fe\<C-V>4jR\<Esc>ugvr1"
++   call assert_equal('on1 two three', getline(1))
++   call assert_equal('on1 two three', getline(2))
++   call assert_equal('on1 two three', getline(5))
++ 
++   enew!
++   call append(0, repeat(['abcdefghijklmnopqrstuvwxyz'], 5))
++   call cursor(1,1)
++   exe "normal \<C-V>4jI    \<Esc>j<<11|D"
++   exe "normal j7|a\<Tab>\<Tab>"
++   exe "normal j7|a\<Tab>\<Tab>   "
++   exe "normal j7|a\<Tab>       \<Tab>\<Esc>4k13|\<C-V>4j<"
++   call assert_equal('    abcdefghijklmnopqrstuvwxyz', getline(1))
++   call assert_equal('abcdefghij', getline(2))
++   call assert_equal("    abc\<Tab>    defghijklmnopqrstuvwxyz", getline(3))
++   call assert_equal("    abc\<Tab>    defghijklmnopqrstuvwxyz", getline(4))
++   call assert_equal("    abc\<Tab>    defghijklmnopqrstuvwxyz", getline(5))
++ 
++   %s/\s\+//g
++   call cursor(1,1)
++   exe "normal \<C-V>4jI    \<Esc>j<<"
++   exe "normal j7|a\<Tab>\<Tab>"
++   exe "normal j7|a\<Tab>\<Tab>\<Tab>\<Tab>\<Tab>"
++   exe "normal j7|a\<Tab>       \<Tab>\<Tab>\<Esc>4k13|\<C-V>4j3<"
++   call assert_equal('    abcdefghijklmnopqrstuvwxyz', getline(1))
++   call assert_equal('abcdefghij', getline(2))
++   call assert_equal("    abc\<Tab>    defghijklmnopqrstuvwxyz", getline(3))
++   call assert_equal("    abc\<Tab>\<Tab>defghijklmnopqrstuvwxyz", getline(4))
++   call assert_equal("    abc\<Tab>    defghijklmnopqrstuvwxyz", getline(5))
++ 
++   enew!
++ endfunc
++ 
++ " Tests Blockwise Visual when there are TABs before the text.
++ func Test_blockwise_visual()
++   enew!
++   call append(0, ['123456',
++ 	      \ '234567',
++ 	      \ '345678',
++ 	      \ '',
++ 	      \ 'test text test tex start here',
++ 	      \ "\t\tsome text",
++ 	      \ "\t\ttest text",
++ 	      \ 'test text'])
++   call cursor(1,1)
++   exe "normal /start here$\<CR>"
++   exe 'normal "by$' . "\<C-V>jjlld"
++   exe "normal /456$\<CR>"
++   exe "normal \<C-V>jj" . '"bP'
++   call assert_equal(['123start here56',
++ 	      \ '234start here67',
++ 	      \ '345start here78',
++ 	      \ '',
++ 	      \ 'test text test tex rt here',
++ 	      \ "\t\tsomext",
++ 	      \ "\t\ttesext"], getline(1, 7))
++ 
++   enew!
++ endfunc
++ 
++ " Test Virtual replace mode.
++ func Test_virtual_replace()
++   exe "set t_kD=\<C-V>x7f t_kb=\<C-V>x08"
++   enew!
++   exe "normal a\nabcdefghi\njk\tlmn\n    opq	rst\n\<C-D>uvwxyz"
++   call cursor(1,1)
++   set ai bs=2
++   exe "normal gR0\<C-D> 1\nA\nBCDEFGHIJ\n\tKL\nMNO\nPQR"
++   call assert_equal([' 1',
++ 	      \ ' A',
++ 	      \ ' BCDEFGHIJ',
++ 	      \ ' 	KL',
++ 	      \ '	MNO',
++ 	      \ '	PQR',
++ 	      \ ], getline(1, 6))
++   normal G
++   mark a
++   exe "normal o0\<C-D>\nabcdefghi\njk\tlmn\n    opq\trst\n\<C-D>uvwxyz\n"
++   exe "normal 'ajgR0\<C-D> 1\nA\nBCDEFGHIJ\n\tKL\nMNO\nPQR" . repeat("\<BS>", 29)
++   call assert_equal([' 1',
++ 	      \ 'abcdefghi',
++ 	      \ 'jk	lmn',
++ 	      \ '    opq	rst',
++ 	      \ 'uvwxyz'], getline(7, 11))
++   normal G
++   exe "normal iab\tcdefghi\tjkl"
++   exe "normal 0gRAB......CDEFGHI.J\<Esc>o"
++   exe "normal iabcdefghijklmnopqrst\<Esc>0gRAB\tIJKLMNO\tQR"
++   call assert_equal(['AB......CDEFGHI.Jkl',
++ 	      \ 'AB	IJKLMNO	QRst'], getline(12, 13))
++   enew!
++ endfunc
+*** ../vim-8.0.1220/src/testdir/test79.ok	2014-04-23 18:35:30.000000000 +0200
+--- src/testdir/test79.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,134 ****
+- Results of test71:
+- 
+- 
+- TEST_1:
+- AA
+- &
+- C123456789987654321
+- d
+- d
+- ~
+- Gg
+- Hh
+- iI
+- jJ
+- Kk
+- l
+- l
+- m
+- m
+- nn
+- o o
+- pp
+- q	q
+- r\r
+- scs
+- t t
+- UuuU
+- vVVv
+- 
+- 
+- TEST_2:
+- &&
+- B
+- C123456789987654321
+- d
+- ~
+- ~
+- Gg
+- Hh
+- iI
+- jJ
+- Kk
+- l
+- l
+- m
+- m
+- nn
+- o o
+- pp
+- q	q
+- r\r
+- scs
+- t t
+- UuuU
+- vVVv
+- 
+- 
+- TEST_3:
+- a\a
+- b\\b
+- c
+- c
+- d\
+- d
+- e\\
+- e
+- f\rf
+- g
+- g
+- h\
+- h
+- i\\
+- i
+- j\nj
+- k
+- k
+- l
+- l
+- 
+- 
+- TEST_4:
+- a\a
+- b\b
+- c
+- c
+- d
+- d
+- e\
+- e
+- f
+- f
+- g
+- g
+- h
+- h
+- i\
+- i
+- j
+- j
+- k
+- k
+- l
+- l
+- 
+- 
+- TEST_5:
+- A123456789987654321
+- [['B123456789'], ['9'], ['8'], ['7'], ['6'], ['5'], ['4'], ['3'], ['2'], ['1']]
+- 
+- 
+- TEST_6:
+- a
+- a
+- c
+- %
+- 
+- 
+- TEST_7:
+- A
+- A
+- B
+- B
+- ['C^@']C
+- ['D^@', 'D']
+- ['E^@', '^@', '^@', '^@', '^@E']
+- Q
+- Q
+- 
+- 
+- foo
+- bar
+- foo
+- bar
+- 
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test79.in	2014-04-23 18:36:29.000000000 +0200
+--- src/testdir/test79.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,255 ****
+- Test for *sub-replace-special* and *sub-replace-expression* on :substitute.
+- Test for submatch() on :substitue.
+- Test for *:s%* on :substitute.
+- Test for :s replacing \n with  line break.
+- 
+- STARTTEST
+- :so small.vim
+- ENDTEST
+- 
+- Results of test71:
+- 
+- STARTTEST
+- :set magic
+- :set cpo&
+- /^TEST/
+- j:s/A/&&/
+- j:s/B/\&/
+- j:s/C\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)/\0\9\8\7\6\5\4\3\2\1/
+- j:s/D/d/
+- j:s/E/~/
+- j:s/F/\~/
+- j:s/G/\ugg/
+- j:s/H/\Uh\Eh/
+- j:s/I/\lII/
+- j:s/J/\LJ\EJ/
+- j:s/K/\Uk\ek/
+- j:s/L//
+- j:s/M/\r/
+- j:s/N/\/
+- j:s/O/\n/
+- j:s/P/\b/
+- j:s/Q/\t/
+- j:s/R/\\/
+- j:s/S/\c/
+- j:s/T/ /
+- j:s/U/\L\uuUu\l\EU/
+- j:s/V/\U\lVvV\u\Ev/
+- ENDTEST
+- 
+- TEST_1:
+- A
+- B
+- C123456789
+- D
+- E
+- F
+- G
+- H
+- I
+- J
+- K
+- lLl
+- mMm
+- nNn
+- oOo
+- pPp
+- qQq
+- rRr
+- sSs
+- tTt
+- U
+- V
+- 
+- STARTTEST
+- :set nomagic
+- :set cpo&
+- /^TEST/
+- j:s/A/&&/
+- j:s/B/\&/
+- j:s/\mC\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)/\0\9\8\7\6\5\4\3\2\1/
+- j:s/D/d/
+- j:s/E/~/
+- j:s/F/\~/
+- j:s/G/\ugg/
+- j:s/H/\Uh\Eh/
+- j:s/I/\lII/
+- j:s/J/\LJ\EJ/
+- j:s/K/\Uk\ek/
+- j:s/L//
+- j:s/M/\r/
+- j:s/N/\/
+- j:s/O/\n/
+- j:s/P/\b/
+- j:s/Q/\t/
+- j:s/R/\\/
+- j:s/S/\c/
+- j:s/T/ /
+- j:s/U/\L\uuUu\l\EU/
+- j:s/V/\U\lVvV\u\Ev/
+- ENDTEST
+- 
+- TEST_2:
+- A
+- B
+- C123456789
+- D
+- E
+- F
+- G
+- H
+- I
+- J
+- K
+- lLl
+- mMm
+- nNn
+- oOo
+- pPp
+- qQq
+- rRr
+- sSs
+- tTt
+- U
+- V
+- 
+- STARTTEST
+- :set magic&
+- :set cpo&
+- /^TEST/
+- j:s/A/\='\'/
+- j:s/B/\='\\'/
+- j:s/C/\=''/
+- j:s/D/\='\'/
+- j:s/E/\='\\'/
+- j:s/F/\='\r'/
+- j:s/G/\=' '/
+- j:s/H/\='\ '/
+- j:s/I/\='\\ '/
+- j:s/J/\='\n'/
+- j:s/K/\="\r"/
+- j:s/L/\="\n"/
+- ENDTEST
+- 
+- TEST_3:
+- aAa
+- bBb
+- cCc
+- dDd
+- eEe
+- fFf
+- gGg
+- hHh
+- iIi
+- jJj
+- kKk
+- lLl
+- 
+- STARTTEST
+- :set magic&
+- :set cpo&
+- /^TEST/
+- j:s/A/\=substitute(submatch(0), '.', '\', '')/
+- j:s/B/\=substitute(submatch(0), '.', '\\', '')/
+- j:s/C/\=substitute(submatch(0), '.', '', '')/
+- j:s/D/\=substitute(submatch(0), '.', '\', '')/
+- j:s/E/\=substitute(submatch(0), '.', '\\', '')/
+- j:s/F/\=substitute(submatch(0), '.', '\r', '')/
+- j:s/G/\=substitute(submatch(0), '.', ' ', '')/
+- j:s/H/\=substitute(submatch(0), '.', '\ ', '')/
+- j:s/I/\=substitute(submatch(0), '.', '\\ ', '')/
+- j:s/J/\=substitute(submatch(0), '.', '\n', '')/
+- j:s/K/\=substitute(submatch(0), '.', "\r", '')/
+- j:s/L/\=substitute(submatch(0), '.', "\n", '')/
+- ENDTEST
+- 
+- TEST_4:
+- aAa
+- bBb
+- cCc
+- dDd
+- eEe
+- fFf
+- gGg
+- hHh
+- iIi
+- jJj
+- kKk
+- lLl
+- 
+- STARTTEST
+- :set magic&
+- :set cpo&
+- /^TEST/
+- j:s/A\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)/\=submatch(0) . submatch(9) . submatch(8) . submatch(7) . submatch(6) . submatch(5) . submatch(4) . submatch(3) . submatch(2) . submatch(1)/
+- j:s/B\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)\(.\)/\=string([submatch(0, 1), submatch(9, 1), submatch(8, 1), submatch(7, 1), submatch(6, 1), submatch(5, 1), submatch(4, 1), submatch(3, 1), submatch(2, 1), submatch(1, 1)])/
+- ENDTEST
+- 
+- TEST_5:
+- A123456789
+- B123456789
+- 
+- STARTTEST
+- :set magic&
+- /^TEST/
+- :set cpo+=/
+- j:s/A/a/
+- j:s/B/%/
+- :set cpo-=/
+- j:s/C/c/
+- j:s/D/%/
+- ENDTEST
+- 
+- TEST_6:
+- A
+- B
+- C
+- D
+- 
+- STARTTEST
+- :set magic&
+- :set cpo&
+- /^TEST_7/
+- j:s/A./\=submatch(0)/
+- j:s/B./\=submatch(0)/
+- j:s/C./\=strtrans(string(submatch(0, 1)))/
+- j:s/D.\nD/\=strtrans(string(submatch(0, 1)))/
+- j:s/E\_.\{-}E/\=strtrans(string(submatch(0, 1)))/
+- /^Q$
+- :s/Q[^\n]Q/\=submatch(0)."foobar"/
+- :" Avoid :s error breaks dotest map on Windows.
+- ENDTEST
+- 
+- TEST_7:
+- AA
+- B B
+- C C
+- D 
+- D
+- E 
+-  
+-  
+-  
+-  E
+- Q
+- Q
+- 
+- STARTTEST
+- :function! TitleString()
+-   let check = 'foo' =~ 'bar'
+-   return ""
+- endfunction
+- :set titlestring=%{TitleString()}
+- :/^test_one/s/.*/\="foo\nbar"/
+- :/^test_two/s/.*/\="foo\nbar"/c
+- y
+- ENDTEST
+- 
+- test_one
+- test_two
+- 
+- STARTTEST
+- :g/^STARTTEST/.,/^ENDTEST/d
+- :1;/^Results/,$wq! test.out
+- :call getchar()
+- ENDTEST
+--- 0 ----
+*** ../vim-8.0.1220/src/testdir/test28.in	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test28.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,23 ****
+- Test for sourcing a file with CTRL-V's at the end of the line
+- 
+- STARTTEST
+- :/firstline/+1,/lastline/-1w! Xtestfile
+- :so Xtestfile
+- Gmm__1__2__3__4__5:'m,$s/ /0/g
+- :'m,$w! test.out
+- :qa!
+- ENDTEST
+- 
+- firstline
+- map __1 afirst
+- map __2 asecond
+- map __3 athird
+- map __4 afourth
+- map __5 afifth
+- map __1 asd
+- map __2 asd
+- map __3 asd
+- map __4 asd
+- map __5 asd
+- lastline
+- 
+--- 0 ----
+*** ../vim-8.0.1220/src/version.c	2017-10-26 18:21:20.166104258 +0200
+--- src/version.c	2017-10-26 20:04:40.288103736 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1221,
+  /**/
+
+-- 
+ARTHUR: Listen, old crone!  Unless you tell us where we can buy a shrubbery,
+        my friend and I will ... we will say "Ni!"
+CRONE:  Do your worst!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

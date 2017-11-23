@@ -1,0 +1,58 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0866
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0866
+Problem:    Solaris also doesn't have MIN and MAX.
+Solution:   Define MIN and MAX whenever they are not defined. (Ozaki Kiichi,
+            closes #1939)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0865/src/terminal.c	2017-08-05 14:49:37.405044311 +0200
+--- src/terminal.c	2017-08-05 15:13:24.746589348 +0200
+***************
+*** 92,100 ****
+  
+  #if defined(FEAT_TERMINAL) || defined(PROTO)
+  
+! #ifdef WIN3264
+! # define MIN(x,y) (x < y ? x : y)
+! # define MAX(x,y) (x > y ? x : y)
+  #endif
+  
+  #include "libvterm/include/vterm.h"
+--- 92,102 ----
+  
+  #if defined(FEAT_TERMINAL) || defined(PROTO)
+  
+! #ifndef MIN
+! # define MIN(x,y) ((x) < (y) ? (x) : (y))
+! #endif
+! #ifndef MAX
+! # define MAX(x,y) ((x) > (y) ? (x) : (y))
+  #endif
+  
+  #include "libvterm/include/vterm.h"
+*** ../vim-8.0.0865/src/version.c	2017-08-05 15:02:00.811606320 +0200
+--- src/version.c	2017-08-05 15:14:10.082256884 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     866,
+  /**/
+
+-- 
+Be nice to your kids...  they'll be the ones choosing your nursing home.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

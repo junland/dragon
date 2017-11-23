@@ -1,0 +1,62 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0285
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0285 (after 8.0.0277)
+Problem:    Tests fail with tiny build on Unix.
+Solution:   Only set g:tester_HOME when build with the +eval feature.
+Files:      src/testdir/unix.vim
+
+
+*** ../vim-8.0.0284/src/testdir/unix.vim	2017-02-01 12:08:43.939201642 +0100
+--- src/testdir/unix.vim	2017-02-01 18:04:10.117964780 +0100
+***************
+*** 2,10 ****
+  " Always use "sh", don't use the value of "$SHELL".
+  set shell=sh
+  
+! " While some tests overwrite $HOME to prevent them from polluting user files,
+! " we need to remember the original value so that we can tell external systems
+! " where to ask about their own user settings.
+! let g:tester_HOME = $HOME
+  
+  source setup.vim
+--- 2,13 ----
+  " Always use "sh", don't use the value of "$SHELL".
+  set shell=sh
+  
+! " Only when the +eval feature is present. 
+! if 1
+!   " While some tests overwrite $HOME to prevent them from polluting user files,
+!   " we need to remember the original value so that we can tell external systems
+!   " where to ask about their own user settings.
+!   let g:tester_HOME = $HOME
+! endif
+  
+  source setup.vim
+*** ../vim-8.0.0284/src/version.c	2017-02-01 18:00:08.123535971 +0100
+--- src/version.c	2017-02-01 18:05:40.133378639 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     285,
+  /**/
+
+-- 
+ARTHUR:          But if he was dying, he wouldn't bother to carve
+                 "Aaaaarrrrrrggghhh".  He'd just say it.
+BROTHER MAYNARD: It's down there carved in stone.
+GALAHAD:         Perhaps he was dictating.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

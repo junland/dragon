@@ -1,0 +1,1238 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0708
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0708
+Problem:    Some tests are old style.
+Solution:   Change a few tests from old style to new style. (pschuh,
+            closes #1813)
+Files:      src/Makefile, src/testdir/Make_all.mak, src/testdir/Make_ming.mak,
+            src/testdir/Make_vms.mms, src/testdir/main.aap,
+            src/testdir/test23.in, src/testdir/test23.ok,
+            src/testdir/test24.in, src/testdir/test24.ok,
+            src/testdir/test26.in, src/testdir/test26.ok,
+            src/testdir/test67.in, src/testdir/test67.ok,
+            src/testdir/test75.in, src/testdir/test75.ok,
+            src/testdir/test97.in, src/testdir/test97.ok,
+            src/testdir/test_comparators.in, src/testdir/test_comparators.ok,
+            src/testdir/test_comparators.vim,
+            src/testdir/test_escaped_glob.vim,
+            src/testdir/test_exec_while_if.vim,
+            src/testdir/test_exists_autocmd.vim, src/testdir/test_getcwd.in,
+            src/testdir/test_getcwd.ok, src/testdir/test_getcwd.vim,
+            src/testdir/test_maparg.vim, src/testdir/test_plus_arg_edit.vim,
+            src/testdir/test_regex_char_classes.vim
+
+
+*** ../vim-8.0.0707/src/Makefile	2017-07-07 12:42:36.317480270 +0200
+--- src/Makefile	2017-07-11 21:35:19.670303616 +0200
+***************
+*** 2092,2116 ****
+  	test_autoformat_join \
+  	test_changelist \
+  	test_close_count \
+- 	test_comparators \
+  	test_erasebackword \
+  	test_eval \
+  	test_fixeol \
+- 	test_getcwd \
+  	test_insertcount \
+  	test_listchars \
+  	test_search_mbyte \
+  	test_wordcount \
+  	test3 test4 test5 test6 test7 test8 test9 \
+  	test11 test12 test14 test15 test17 test18 test19 \
+! 	test20 test21 test22 test23 test24 test25 test26 test27 test28 test29 \
+  	test30 test31 test32 test33 test34 test36 test37 test38 test39 \
+  	test40 test41 test42 test43 test44 test45 test48 test49 \
+  	test50 test51 test52 test53 test54 test55 test56 test57 test59 \
+! 	test60 test64 test66 test67 test68 test69 \
+! 	test70 test72 test73 test74 test75 test77 test78 test79 \
+  	test80 test83 test84 test85 test86 test87 test88 \
+! 	test91 test94 test95 test97 test98 test99 \
+  	test100 test101 test103 test104 test107 test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+--- 2092,2114 ----
+  	test_autoformat_join \
+  	test_changelist \
+  	test_close_count \
+  	test_erasebackword \
+  	test_eval \
+  	test_fixeol \
+  	test_insertcount \
+  	test_listchars \
+  	test_search_mbyte \
+  	test_wordcount \
+  	test3 test4 test5 test6 test7 test8 test9 \
+  	test11 test12 test14 test15 test17 test18 test19 \
+! 	test20 test21 test22 test25 test27 test28 test29 \
+  	test30 test31 test32 test33 test34 test36 test37 test38 test39 \
+  	test40 test41 test42 test43 test44 test45 test48 test49 \
+  	test50 test51 test52 test53 test54 test55 test56 test57 test59 \
+! 	test60 test64 test66 test68 test69 \
+! 	test70 test72 test73 test74 test77 test78 test79 \
+  	test80 test83 test84 test85 test86 test87 test88 \
+! 	test91 test94 test95 test98 test99 \
+  	test100 test101 test103 test104 test107 test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+***************
+*** 2134,2139 ****
+--- 2132,2138 ----
+  	test_clientserver \
+  	test_cmdline \
+  	test_command_count \
++ 	test_comparators \
+  	test_crypt \
+  	test_cscope \
+  	test_cursor_func \
+***************
+*** 2142,2150 ****
+--- 2141,2152 ----
+  	test_digraph \
+  	test_display \
+  	test_edit \
++ 	test_escaped_glob \
+  	test_ex_undo \
+  	test_ex_z \
++ 	test_exec_while_if \
+  	test_execute_func \
++ 	test_exists_autocmd \
+  	test_expand \
+  	test_expand_dllpath \
+  	test_expr \
+***************
+*** 2163,2168 ****
+--- 2165,2171 ----
+  	test_fold \
+  	test_functions \
+  	test_ga \
++ 	test_getcwd \
+  	test_gf \
+  	test_glob2regpat \
+  	test_global \
+***************
+*** 2191,2196 ****
+--- 2194,2200 ----
+  	test_lua \
+  	test_makeencoding \
+  	test_man \
++ 	test_maparg \
+  	test_mapping \
+  	test_marks \
+  	test_match \
+***************
+*** 2209,2214 ****
+--- 2213,2219 ----
+  	test_partial \
+  	test_paste \
+  	test_perl \
++ 	test_plus_arg_edit \
+  	test_popup \
+  	test_profile \
+  	test_put \
+***************
+*** 2219,2224 ****
+--- 2224,2230 ----
+  	test_quickfix \
+  	test_quotestar \
+  	test_recover \
++ 	test_regex_char_classes \
+  	test_regexp_latin \
+  	test_regexp_utf8 \
+  	test_reltime \
+*** ../vim-8.0.0707/src/testdir/Make_all.mak	2017-06-27 18:28:52.558196805 +0200
+--- src/testdir/Make_all.mak	2017-07-11 21:35:19.670303616 +0200
+***************
+*** 24,32 ****
+  	test19.out \
+  	test20.out \
+  	test22.out \
+- 	test23.out \
+- 	test24.out \
+- 	test26.out \
+  	test28.out \
+  	test29.out \
+  	test31.out \
+--- 24,29 ----
+***************
+*** 51,62 ****
+  	test60.out \
+  	test64.out \
+  	test66.out \
+- 	test67.out \
+  	test68.out \
+  	test69.out \
+  	test70.out \
+  	test73.out \
+- 	test75.out \
+  	test77.out \
+  	test79.out \
+  	test80.out \
+--- 48,57 ----
+***************
+*** 75,85 ****
+  	test_autoformat_join.out \
+  	test_changelist.out \
+  	test_close_count.out \
+- 	test_comparators.out \
+  	test_erasebackword.out \
+  	test_eval.out \
+  	test_fixeol.out \
+- 	test_getcwd.out \
+  	test_insertcount.out \
+  	test_listchars.out \
+  	test_search_mbyte.out \
+--- 70,78 ----
+***************
+*** 99,106 ****
+  SCRIPTS_MORE2 = \
+  	test12.out \
+  	test25.out \
+! 	test49.out \
+! 	test97.out
+  
+  
+  # Tests that run on most systems, but not MingW and Cygwin.
+--- 92,98 ----
+  SCRIPTS_MORE2 = \
+  	test12.out \
+  	test25.out \
+! 	test49.out
+  
+  
+  # Tests that run on most systems, but not MingW and Cygwin.
+*** ../vim-8.0.0707/src/testdir/Make_ming.mak	2017-03-13 22:41:38.376723909 +0100
+--- src/testdir/Make_ming.mak	2017-07-11 21:35:19.670303616 +0200
+***************
+*** 69,75 ****
+  	-$(VIMPROG) -u dos.vim $(NO_INITS) "+argdo set ff=dos|upd" +q *.in *.ok
+  	-$(VIMPROG) -u dos.vim $(NO_INITS) "+argdo set ff=unix|upd" +q \
+  		dotest.in test60.ok test_listchars.ok \
+! 		test_getcwd.ok test_wordcount.ok
+  
+  clean:
+  	-@if exist *.out $(DEL) *.out
+--- 69,75 ----
+  	-$(VIMPROG) -u dos.vim $(NO_INITS) "+argdo set ff=dos|upd" +q *.in *.ok
+  	-$(VIMPROG) -u dos.vim $(NO_INITS) "+argdo set ff=unix|upd" +q \
+  		dotest.in test60.ok test_listchars.ok \
+! 		test_wordcount.ok
+  
+  clean:
+  	-@if exist *.out $(DEL) *.out
+*** ../vim-8.0.0707/src/testdir/Make_vms.mms	2017-06-27 18:28:52.558196805 +0200
+--- src/testdir/Make_vms.mms	2017-07-11 21:35:19.670303616 +0200
+***************
+*** 80,86 ****
+         test7.out  test8.out  test9.out  \
+         test14.out test15.out \
+         test19.out test20.out test22.out \
+-        test23.out test24.out test26.out \
+         test28.out test29.out test30.out test31.out test32.out \
+         test33.out test34.out test36.out test37.out \
+         test38.out test39.out test40.out test41.out test42.out \
+--- 80,85 ----
+***************
+*** 88,95 ****
+         test48.out test49.out test51.out test53.out test54.out \
+         test55.out test56.out test57.out test60.out \
+         test64.out \
+!        test66.out test67.out test68.out test69.out \
+!        test72.out test75.out \
+         test77a.out test78.out test79.out test80.out \
+         test84.out test88.out \
+         test91.out test94.out \
+--- 87,94 ----
+         test48.out test49.out test51.out test53.out test54.out \
+         test55.out test56.out test57.out test60.out \
+         test64.out \
+!        test66.out test68.out test69.out \
+!        test72.out \
+         test77a.out test78.out test79.out test80.out \
+         test84.out test88.out \
+         test91.out test94.out \
+***************
+*** 101,111 ****
+         test_breakindent.out \
+         test_changelist.out \
+         test_close_count.out \
+-        test_comparators.out \
+         test_erasebackword.out \
+         test_eval.out \
+         test_fixeol.out \
+-        test_getcwd.out \
+         test_insertcount.out \
+         test_listchars.out \
+         test_listlbr.out \
+--- 100,108 ----
+***************
+*** 131,137 ****
+  # test83: ?
+  # test85: no Lua interface
+  # test89: bug - findfile() does not work on VMS (just in the current directory) 
+! # test97, test102: Just ODS-5 supports space and special chars in the filename.
+  # On ODS-2 tests fail. 
+  
+  .IFDEF WANT_GUI
+--- 128,134 ----
+  # test83: ?
+  # test85: no Lua interface
+  # test89: bug - findfile() does not work on VMS (just in the current directory) 
+! # test102: Just ODS-5 supports space and special chars in the filename.
+  # On ODS-2 tests fail. 
+  
+  .IFDEF WANT_GUI
+***************
+*** 156,162 ****
+  .ENDIF
+  
+  .IFDEF HAVE_ODS5                                                                                                                                   
+! SCRIPT_ODS5 = test97.out test102.out                                                                                                   
+  .ENDIF  
+  
+  .IFDEF HAVE_GZIP
+--- 153,159 ----
+  .ENDIF
+  
+  .IFDEF HAVE_ODS5                                                                                                                                   
+! SCRIPT_ODS5 = test102.out                                                                                                   
+  .ENDIF  
+  
+  .IFDEF HAVE_GZIP
+*** ../vim-8.0.0707/src/testdir/main.aap	2016-06-26 19:33:16.000000000 +0200
+--- src/testdir/main.aap	2017-07-11 21:35:19.670303616 +0200
+***************
+*** 8,14 ****
+  		test7.out test8.out test9.out test11.out
+  		test12.out  test13.out test14.out test15.out test17.out
+  		test18.out test19.out test20.out test21.out test22.out
+! 		test23.out test24.out test25.out test26.out test27.out
+  		test28.out test29.out test30.out test31.out test32.out
+  		test33.out test34.out test36.out test37.out
+  		test38.out test39.out test40.out test41.out test42.out
+--- 8,14 ----
+  		test7.out test8.out test9.out test11.out
+  		test12.out  test13.out test14.out test15.out test17.out
+  		test18.out test19.out test20.out test21.out test22.out
+! 		test25.out test27.out
+  		test28.out test29.out test30.out test31.out test32.out
+  		test33.out test34.out test36.out test37.out
+  		test38.out test39.out test40.out test41.out test42.out
+*** ../vim-8.0.0707/src/testdir/test23.in	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test23.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,15 ****
+- Tests for complicated + argument to :edit command
+- 
+- STARTTEST
+- :$-1w! Xfile1
+- :$w! Xfile2
+- :edit +1|s/|/PIPE/|w Xfile1| e Xfile2|1 | s/\//SLASH/|w
+- :w! test.out
+- :e Xfile1
+- :w >> test.out
+- :qa!
+- ENDTEST
+- 
+- The result should be in Xfile1: "fooPIPEbar", in Xfile2: "fooSLASHbar"
+- foo|bar
+- foo/bar
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test23.ok	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test23.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,2 ****
+- fooSLASHbar
+- fooPIPEbar
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test24.in	2013-06-02 22:03:23.000000000 +0200
+--- src/testdir/test24.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,89 ****
+- Tests for regexp with backslash and other special characters inside []
+- Also test backslash for hex/octal numbered character.
+- 
+- STARTTEST
+- :set nocompatible viminfo+=nviminfo
+- /[\x]
+- x/[\t\]]
+- x/[]y]
+- x/[\]]
+- x/[y^]
+- x/[$y]
+- x/[\x61]
+- x/[\x60-\x64]
+- xj0/[\x785]
+- x/[\o143]
+- x/[\o140-\o144]
+- x/[\o417]
+- x/\%x42
+- x/\%o103
+- x/[\x00]
+- x
+- :s/[\x00-\x10]//g
+- 
+- :s/[\x-z]\+//
+- 
+- :s/[\u-z]\{2,}//
+- 
+- :s/\(a\)\+//
+- 
+- :s/\(a*\)\+//
+- 
+- :s/\(a*\)*//
+- 
+- :s/\(a\)\{2,3}/A/
+- 
+- :s/\(a\)\{-2,3}/A/
+- 
+- :s/\(a\)*\(12\)\@>/A/
+- 
+- :s/\(foo\)\@<!bar/A/
+- 
+- :s/\(an\_s\+\)\@<=file/A/
+- 
+- :s/^\(\h\w*\%(->\|\.\)\=\)\+=/XX/
+- 
+- :s/^\(\h\w*\%(->\|\.\)\=\)\+=/YY/
+- 
+- :s/aaa/xyz/
+- 
+- :s/~/bcd/
+- 
+- :s/~\+/BB/
+- :"
+- :?start?,$w! test.out
+- :qa!
+- ENDTEST
+- 
+- start
+- test \text test text
+- test 	text test text
+- test text ]test text
+- test ]text test text
+- test text te^st text
+- test te$xt test text
+- test taext test text  x61
+- test tbext test text  x60-x64
+- test 5text test text  x78 5
+- testc text test text  o143
+- tesdt text test text  o140-o144
+- test7 text test text  o41 7
+- test text tBest text  \%x42
+- test text teCst text  \%o103
+- test text  test text  [\x00]
+- test te xt test text  [\x00-\x10]
+- test \xyztext test text  [\x-z]
+- test text tev\uyst text  [\u-z]
+- xx aaaaa xx a
+- xx aaaaa xx a
+- xx aaaaa xx a
+- xx aaaaa xx
+- xx aaaaa xx
+- xx aaa12aa xx
+- xx foobar xbar xx
+- xx an file xx
+- x= 9;
+- hh= 77;
+-  aaa 
+-  xyz
+-  bcdbcdbcd
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test24.ok	2013-06-02 22:03:36.000000000 +0200
+--- src/testdir/test24.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,32 ****
+- start
+- test text test text
+- test text test text
+- test text test text
+- test text test text
+- test text test text
+- test text test text
+- test text test text  x61
+- test text test text  x60-x64
+- test text test text  x78 5
+- test text test text  o143
+- test text test text  o140-o144
+- test text test text  o41 7
+- test text test text  \%x42
+- test text test text  \%o103
+- test text test text  [\x00]
+- test text test text  [\x00-\x10]
+- test text test text  [\x-z]
+- test text test text  [\u-z]
+- xx  xx a
+- xx aaaaa xx a
+- xx aaaaa xx a
+- xx Aaa xx
+- xx Aaaa xx
+- xx Aaa xx
+- xx foobar xA xx
+- xx an A xx
+- XX 9;
+- YY 77;
+-  xyz 
+-  bcd
+-  BB
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test26.in	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test26.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,44 ****
+- Test for :execute, :while and :if
+- 
+- STARTTEST
+- :so small.vim
+- mt:let i = 0
+- :while i < 12
+- :  let i = i + 1
+- :  if has("ebcdic")
+- :    execute "normal o" . i . "\047"
+- :  else
+- :    execute "normal o" . i . "\033"
+- :  endif
+- :  if i % 2
+- :    normal Ax
+- :    if i == 9
+- :      break
+- :    endif
+- :    if i == 5
+- :      continue
+- :    else
+- :      let j = 9
+- :      while j > 0
+- :        if has("ebcdic")
+- :          execute "normal" j . "a" . j . "\x27"
+- :        else
+- :          execute "normal" j . "a" . j . "\x1b"
+- :        endif
+- :        let j = j - 1
+- :      endwhile
+- :    endif
+- :  endif
+- :  if i == 9
+- :    if has("ebcdic")
+- :      execute "normal Az\047"
+- :    else
+- :      execute "normal Az\033"
+- :    endif
+- :  endif
+- :endwhile
+- :unlet i j
+- :'t,$w! test.out
+- :qa!
+- ENDTEST
+- 
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test26.ok	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test26.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,10 ****
+- 
+- 1x999999999888888887777777666666555554444333221
+- 2
+- 3x999999999888888887777777666666555554444333221
+- 4
+- 5x
+- 6
+- 7x999999999888888887777777666666555554444333221
+- 8
+- 9x
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test67.in	2016-10-12 17:52:39.199701825 +0200
+--- src/testdir/test67.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,33 ****
+- Test that groups and patterns are tested correctly when calling exists() for
+- autocommands.
+- 
+- STARTTEST
+- :so small.vim
+- :let results=[]
+- :augroup auexists
+- :augroup END
+- :call add(results, "##BufEnter: " . exists("##BufEnter"))
+- :call add(results, "#BufEnter: " . exists("#BufEnter"))
+- :au BufEnter * let g:entered=1
+- :call add(results, "#BufEnter: " . exists("#BufEnter"))
+- :call add(results, "#auexists#BufEnter: " . exists("#auexists#BufEnter"))
+- :augroup auexists
+- :au BufEnter * let g:entered=1
+- :augroup END
+- :call add(results, "#auexists#BufEnter: " . exists("#auexists#BufEnter"))
+- :call add(results, "#BufEnter#*.test: " . exists("#BufEnter#*.test"))
+- :au BufEnter *.test let g:entered=1
+- :call add(results, "#BufEnter#*.test: " . exists("#BufEnter#*.test"))
+- :edit testfile.test
+- :call add(results, "#BufEnter#<buffer>: " . exists("#BufEnter#<buffer>"))
+- :au BufEnter <buffer> let g:entered=1
+- :call add(results, "#BufEnter#<buffer>: " . exists("#BufEnter#<buffer>"))
+- :edit testfile2.test
+- :call add(results, "#BufEnter#<buffer>: " . exists("#BufEnter#<buffer>"))
+- :e! test.out
+- :call append(0, results)
+- :$d
+- :w
+- :qa!
+- ENDTEST
+- 
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test67.ok	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test67.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,10 ****
+- ##BufEnter: 1
+- #BufEnter: 0
+- #BufEnter: 1
+- #auexists#BufEnter: 0
+- #auexists#BufEnter: 1
+- #BufEnter#*.test: 0
+- #BufEnter#*.test: 1
+- #BufEnter#<buffer>: 0
+- #BufEnter#<buffer>: 1
+- #BufEnter#<buffer>: 0
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test75.in	2014-09-09 13:48:54.000000000 +0200
+--- src/testdir/test75.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,41 ****
+- Tests for maparg().
+- Also test utf8 map with a 0x80 byte.
+- 
+- STARTTEST
+- :so small.vim
+- :so mbyte.vim
+- :set cpo-=<
+- :set encoding=utf8
+- :" Test maparg() with a string result
+- :map foo<C-V> is<F4>foo
+- :vnoremap <script> <buffer> <expr> <silent> bar isbar
+- :call append('$', maparg('foo<C-V>'))
+- :call append('$', string(maparg('foo<C-V>', '', 0, 1)))
+- :call append('$', string(maparg('bar', '', 0, 1)))
+- :map <buffer> <nowait> foo bar
+- :call append('$', string(maparg('foo', '', 0, 1)))
+- :"
+- :map abc x<char-114>x
+- :call append('$', maparg('abc'))
+- :map abc y<S-char-114>y
+- :call append('$', maparg('abc'))
+- :"
+- Go:"
+- :" Outside of the range, minimum
+- :inoremap <Char-0x1040> a
+- :execute "normal a\u1040\<Esc>"
+- :" Inside of the range, minimum
+- :inoremap <Char-0x103f> b
+- :execute "normal a\u103f\<Esc>"
+- :" Inside of the range, maximum
+- :inoremap <Char-0xf03f> c
+- :execute "normal a\uf03f\<Esc>"
+- :" Outside of the range, maximum
+- :inoremap <Char-0xf040> d
+- :execute "normal a\uf040\<Esc>"
+- :"
+- :/^eof/+1,$w! test.out
+- :qa!
+- ENDTEST
+- 
+- eof
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test75.ok	2014-03-12 20:02:49.000000000 +0100
+--- src/testdir/test75.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,7 ****
+- is<F4>foo
+- {'silent': 0, 'noremap': 0, 'lhs': 'foo<C-V>', 'mode': ' ', 'nowait': 0, 'expr': 0, 'sid': 0, 'rhs': 'is<F4>foo', 'buffer': 0}
+- {'silent': 1, 'noremap': 1, 'lhs': 'bar', 'mode': 'v', 'nowait': 0, 'expr': 1, 'sid': 0, 'rhs': 'isbar', 'buffer': 1}
+- {'silent': 0, 'noremap': 0, 'lhs': 'foo', 'mode': ' ', 'nowait': 1, 'expr': 0, 'sid': 0, 'rhs': 'bar', 'buffer': 1}
+- xrx
+- yRy
+- abcd
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test97.in	2016-10-12 17:52:39.199701825 +0200
+--- src/testdir/test97.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,23 ****
+- Test whether glob()/globpath() return correct results with certain escaped
+- characters.
+- 
+- STARTTEST
+- :so small.vim
+- :" make sure glob() doesn't use the shell
+- :set shell=doesnotexist
+- :" consistent sorting of file names
+- :set nofileignorecase
+- :e! test.out
+- :$put =glob('Xxx\{')
+- :$put =glob('Xxx\$')
+- :w! Xxx{
+- :w! Xxx\$
+- :$put =glob('Xxx\{')
+- :$put =glob('Xxx\$')
+- :"
+- :$put =string(globpath('sautest/autoload', '*.vim'))
+- :$put =string(globpath('sautest/autoload', '*.vim', 0, 1))
+- :w
+- :qa!
+- ENDTEST
+- 
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test97.ok	2014-05-07 18:28:01.000000000 +0200
+--- src/testdir/test97.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,8 ****
+- 
+- 
+- 
+- Xxx{
+- Xxx$
+- 'sautest/autoload/Test104.vim
+- sautest/autoload/footest.vim'
+- ['sautest/autoload/Test104.vim', 'sautest/autoload/footest.vim']
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test_comparators.in	2015-09-01 15:55:25.000000000 +0200
+--- src/testdir/test_comparators.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,21 ****
+- " Test for expression comparators.   vim: set ft=vim :
+- 
+- 
+- STARTTEST
+- :so small.vim
+- :try
+- :  let oldisident=&isident
+- :  set isident+=#
+- :  if 1 is#1
+- :    $put ='ok'
+- :  else
+- :    $put ='ng'
+- :  endif
+- :finally
+- :  let &isident=oldisident
+- :endtry
+- :"
+- :/^marker/+1,$wq! test.out
+- ENDTEST
+- 
+- marker
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test_comparators.ok	2015-09-01 15:55:43.000000000 +0200
+--- src/testdir/test_comparators.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1 ****
+- ok
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test_comparators.vim	2017-07-11 21:42:35.531081671 +0200
+--- src/testdir/test_comparators.vim	2017-07-11 21:35:19.674303586 +0200
+***************
+*** 0 ****
+--- 1,9 ----
++ function Test_Comparators()
++   try
++     let oldisident=&isident
++     set isident+=#
++     call assert_equal(1, 1 is#1)
++   finally
++     let &isident=oldisident
++   endtry
++ endfunction
+*** ../vim-8.0.0707/src/testdir/test_escaped_glob.vim	2017-07-11 21:42:35.535081642 +0200
+--- src/testdir/test_escaped_glob.vim	2017-07-11 21:35:19.674303586 +0200
+***************
+*** 0 ****
+--- 1,25 ----
++ " Test whether glob()/globpath() return correct results with certain escaped
++ " characters.
++ 
++ function SetUp()
++   " make sure glob() doesn't use the shell
++   set shell=doesnotexist
++   " consistent sorting of file names
++   set nofileignorecase
++ endfunction
++ 
++ function Test_glob()
++   call assert_equal("", glob('Xxx\{'))
++   call assert_equal("", glob('Xxx\$'))
++   w! Xxx{
++   w! Xxx\$
++   call assert_equal("Xxx{", glob('Xxx\{'))
++   call assert_equal("Xxx$", glob('Xxx\$'))
++ endfunction
++ 
++ function Test_globpath()
++   call assert_equal("sautest/autoload/Test104.vim\nsautest/autoload/footest.vim",
++         \ globpath('sautest/autoload', '*.vim'))
++   call assert_equal(['sautest/autoload/Test104.vim', 'sautest/autoload/footest.vim'],
++         \ globpath('sautest/autoload', '*.vim', 0, 1))
++ endfunction
+*** ../vim-8.0.0707/src/testdir/test_exec_while_if.vim	2017-07-11 21:42:35.539081613 +0200
+--- src/testdir/test_exec_while_if.vim	2017-07-11 21:35:19.674303586 +0200
+***************
+*** 0 ****
+--- 1,53 ----
++ " Test for :execute, :while and :if
++ 
++ function Test_exec_while_if()
++   new
++ 
++   let i = 0
++   while i < 12
++     let i = i + 1
++     if has("ebcdic")
++       execute "normal o" . i . "\047"
++     else
++       execute "normal o" . i . "\033"
++     endif
++     if i % 2
++       normal Ax
++       if i == 9
++         break
++       endif
++       if i == 5
++         continue
++       else
++         let j = 9
++         while j > 0
++           if has("ebcdic")
++             execute "normal" j . "a" . j . "\x27"
++           else
++             execute "normal" j . "a" . j . "\x1b"
++           endif
++           let j = j - 1
++         endwhile
++       endif
++     endif
++     if i == 9
++       if has("ebcdic")
++         execute "normal Az\047"
++       else
++         execute "normal Az\033"
++       endif
++     endif
++   endwhile
++   unlet i j
++ 
++   call assert_equal(["",
++         \ "1x999999999888888887777777666666555554444333221",
++         \ "2",
++         \ "3x999999999888888887777777666666555554444333221",
++         \ "4",
++         \ "5x",
++         \ "6",
++         \ "7x999999999888888887777777666666555554444333221",
++         \ "8",
++         \ "9x"], getline(1, 10))
++ endfunction
+*** ../vim-8.0.0707/src/testdir/test_exists_autocmd.vim	2017-07-11 21:42:35.543081584 +0200
+--- src/testdir/test_exists_autocmd.vim	2017-07-11 21:35:19.674303586 +0200
+***************
+*** 0 ****
+--- 1,26 ----
++ " Test that groups and patterns are tested correctly when calling exists() for
++ " autocommands.
++ 
++ function Test_AutoCommands()
++   let results=[]
++   augroup auexists
++   augroup END
++   call assert_true(exists("##BufEnter"))
++   call assert_false(exists("#BufEnter"))
++   au BufEnter * let g:entered=1
++   call assert_true(exists("#BufEnter"))
++   call assert_false(exists("#auexists#BufEnter"))
++   augroup auexists
++   au BufEnter * let g:entered=1
++   augroup END
++   call assert_true(exists("#auexists#BufEnter"))
++   call assert_false(exists("#BufEnter#*.test"))
++   au BufEnter *.test let g:entered=1
++   call assert_true(exists("#BufEnter#*.test"))
++   edit testfile.test
++   call assert_false(exists("#BufEnter#<buffer>"))
++   au BufEnter <buffer> let g:entered=1
++   call assert_true(exists("#BufEnter#<buffer>"))
++   edit testfile2.test
++   call assert_false(exists("#BufEnter#<buffer>"))
++ endfunction
+*** ../vim-8.0.0707/src/testdir/test_getcwd.in	2016-09-05 23:24:17.000000000 +0200
+--- src/testdir/test_getcwd.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,96 ****
+- Tests for getcwd(), haslocaldir(), and :lcd                   vim: set ft=vim :
+- 
+- STARTTEST
+- :so small.vim
+- :" Do all test in a separate window to avoid E211 when we recursively
+- :" delete the Xtopdir directory during cleanup
+- :"
+- :" This will cause a few errors, do it silently.
+- :set visualbell
+- :set nocp viminfo+=nviminfo
+- :"
+- :" On windows a swapfile in Xtopdir prevents it from being cleaned up.
+- :set noswapfile
+- :"
+- :function! GetCwdInfo(win, tab)
+- : let tab_changed = 0
+- : let mod = ":t"
+- : if a:tab > 0 && a:tab != tabpagenr()
+- :   let tab_changed = 1
+- :   exec "tabnext " . a:tab
+- : endif
+- : let bufname = fnamemodify(bufname(winbufnr(a:win)), mod)
+- : if tab_changed
+- :   tabprevious
+- : endif
+- : if a:win == 0 && a:tab == 0
+- :   let dirname = fnamemodify(getcwd(), mod)
+- :   let lflag = haslocaldir()
+- : elseif a:tab == 0
+- :   let dirname = fnamemodify(getcwd(a:win), mod)
+- :   let lflag = haslocaldir(a:win)
+- : else
+- :   let dirname = fnamemodify(getcwd(a:win, a:tab), mod)
+- :   let lflag = haslocaldir(a:win, a:tab)
+- : endif
+- : return bufname . ' ' . dirname . ' ' . lflag
+- :endfunction
+- :" On windows a stale "Xtopdir" directory may exist, remove it so that
+- :" we start from a clean state.
+- :call delete("Xtopdir", "rf")
+- :let r=[]
+- :new
+- :let cwd=getcwd()
+- :let test_out = cwd . '/test.out'
+- :call mkdir('Xtopdir')
+- :cd Xtopdir
+- :call mkdir('Xdir1')
+- :call mkdir('Xdir2')
+- :call mkdir('Xdir3')
+- :new a
+- :new b
+- :new c
+- :3wincmd w
+- :lcd Xdir1
+- :call add(r, GetCwdInfo(0, 0))
+- :wincmd W
+- :call add(r, GetCwdInfo(0, 0))
+- :wincmd W
+- :lcd Xdir3
+- :call add(r, GetCwdInfo(0, 0))
+- :call add(r, GetCwdInfo(bufwinnr("a"), 0))
+- :call add(r, GetCwdInfo(bufwinnr("b"), 0))
+- :call add(r, GetCwdInfo(bufwinnr("c"), 0))
+- :wincmd W
+- :call add(r, GetCwdInfo(bufwinnr("a"), tabpagenr()))
+- :call add(r, GetCwdInfo(bufwinnr("b"), tabpagenr()))
+- :call add(r, GetCwdInfo(bufwinnr("c"), tabpagenr()))
+- :"
+- :tabnew x
+- :new y
+- :new z
+- :3wincmd w
+- :call add(r, GetCwdInfo(0, 0))
+- :wincmd W
+- :lcd Xdir2
+- :call add(r, GetCwdInfo(0, 0))
+- :wincmd W
+- :lcd Xdir3
+- :call add(r, GetCwdInfo(0, 0))
+- :call add(r, GetCwdInfo(bufwinnr("x"), 0))
+- :call add(r, GetCwdInfo(bufwinnr("y"), 0))
+- :call add(r, GetCwdInfo(bufwinnr("z"), 0))
+- :let tp_nr = tabpagenr()
+- :tabrewind
+- :call add(r, GetCwdInfo(3, tp_nr))
+- :call add(r, GetCwdInfo(2, tp_nr))
+- :call add(r, GetCwdInfo(1, tp_nr))
+- :"
+- :call writefile(r, test_out, "a")
+- :q
+- :exec "cd " . cwd
+- :call delete("Xtopdir", "rf")
+- :qa!
+- ENDTEST
+- 
+- 
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test_getcwd.ok	2016-01-17 21:28:04.000000000 +0100
+--- src/testdir/test_getcwd.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,18 ****
+- a Xdir1 1
+- b Xtopdir 0
+- c Xdir3 1
+- a Xdir1 1
+- b Xtopdir 0
+- c Xdir3 1
+- a Xdir1 1
+- b Xtopdir 0
+- c Xdir3 1
+- x Xtopdir 0
+- y Xdir2 1
+- z Xdir3 1
+- x Xtopdir 0
+- y Xdir2 1
+- z Xdir3 1
+- x Xtopdir 0
+- y Xdir2 1
+- z Xdir3 1
+--- 0 ----
+*** ../vim-8.0.0707/src/testdir/test_getcwd.vim	2017-07-11 21:42:35.555081496 +0200
+--- src/testdir/test_getcwd.vim	2017-07-11 21:35:19.678303556 +0200
+***************
+*** 0 ****
+--- 1,91 ----
++ function! GetCwdInfo(win, tab)
++  	let tab_changed = 0
++  	let mod = ":t"
++  	if a:tab > 0 && a:tab != tabpagenr()
++    	let tab_changed = 1
++    	exec "tabnext " . a:tab
++  	endif
++  	let bufname = fnamemodify(bufname(winbufnr(a:win)), mod)
++  	if tab_changed
++    	tabprevious
++  	endif
++  	if a:win == 0 && a:tab == 0
++    	let dirname = fnamemodify(getcwd(), mod)
++    	let lflag = haslocaldir()
++  	elseif a:tab == 0
++    	let dirname = fnamemodify(getcwd(a:win), mod)
++    	let lflag = haslocaldir(a:win)
++  	else
++    	let dirname = fnamemodify(getcwd(a:win, a:tab), mod)
++    	let lflag = haslocaldir(a:win, a:tab)
++  	endif
++  	return bufname . ' ' . dirname . ' ' . lflag
++ endfunction
++ 
++ " Do all test in a separate window to avoid E211 when we recursively
++ " delete the Xtopdir directory during cleanup
++ function SetUp()
++ 	set visualbell
++ 	set nocp viminfo+=nviminfo
++ 
++ 	" On windows a swapfile in Xtopdir prevents it from being cleaned up.
++ 	set noswapfile
++ 
++ 	" On windows a stale "Xtopdir" directory may exist, remove it so that
++ 	" we start from a clean state.
++ 	call delete("Xtopdir", "rf")
++ 	new
++ 	call mkdir('Xtopdir')
++ 	cd Xtopdir
++ 	call mkdir('Xdir1')
++ 	call mkdir('Xdir2')
++ 	call mkdir('Xdir3')
++ endfunction
++ 
++ let g:cwd=getcwd()
++ function TearDown()
++ 	q
++ 	exec "cd " . g:cwd
++ 	call delete("Xtopdir", "rf")
++ endfunction
++ 
++ function Test_GetCwd()
++ 	new a
++ 	new b
++ 	new c
++ 	3wincmd w
++ 	lcd Xdir1
++ 	call assert_equal("a Xdir1 1", GetCwdInfo(0, 0))
++ 	wincmd W
++ 	call assert_equal("b Xtopdir 0", GetCwdInfo(0, 0))
++ 	wincmd W
++ 	lcd Xdir3
++ 	call assert_equal("c Xdir3 1", GetCwdInfo(0, 0))
++ 	call assert_equal("a Xdir1 1", GetCwdInfo(bufwinnr("a"), 0))
++ 	call assert_equal("b Xtopdir 0", GetCwdInfo(bufwinnr("b"), 0))
++ 	call assert_equal("c Xdir3 1", GetCwdInfo(bufwinnr("c"), 0))
++ 	wincmd W
++ 	call assert_equal("a Xdir1 1", GetCwdInfo(bufwinnr("a"), tabpagenr()))
++ 	call assert_equal("b Xtopdir 0", GetCwdInfo(bufwinnr("b"), tabpagenr()))
++ 	call assert_equal("c Xdir3 1", GetCwdInfo(bufwinnr("c"), tabpagenr()))
++ 
++ 	tabnew x
++ 	new y
++ 	new z
++ 	3wincmd w
++ 	call assert_equal("x Xtopdir 0", GetCwdInfo(0, 0))
++ 	wincmd W
++ 	lcd Xdir2
++ 	call assert_equal("y Xdir2 1", GetCwdInfo(0, 0))
++ 	wincmd W
++ 	lcd Xdir3
++ 	call assert_equal("z Xdir3 1", GetCwdInfo(0, 0))
++ 	call assert_equal("x Xtopdir 0", GetCwdInfo(bufwinnr("x"), 0))
++ 	call assert_equal("y Xdir2 1", GetCwdInfo(bufwinnr("y"), 0))
++ 	call assert_equal("z Xdir3 1", GetCwdInfo(bufwinnr("z"), 0))
++ 	let tp_nr = tabpagenr()
++ 	tabrewind
++ 	call assert_equal("x Xtopdir 0", GetCwdInfo(3, tp_nr))
++ 	call assert_equal("y Xdir2 1", GetCwdInfo(2, tp_nr))
++ 	call assert_equal("z Xdir3 1", GetCwdInfo(1, tp_nr))
++ endfunc
+*** ../vim-8.0.0707/src/testdir/test_maparg.vim	2017-07-11 21:42:35.559081467 +0200
+--- src/testdir/test_maparg.vim	2017-07-11 21:35:19.678303556 +0200
+***************
+*** 0 ****
+--- 1,52 ----
++ " Tests for maparg().
++ " Also test utf8 map with a 0x80 byte.
++ if !has("multi_byte")
++   finish
++ endif
++ 
++ function s:SID()     
++   return str2nr(matchstr(expand('<sfile>'), '<SNR>\zs\d\+\ze_SID$'))
++ endfun
++ 
++ function Test_maparg()
++   new
++   set cpo-=<
++   set encoding=utf8
++   " Test maparg() with a string result
++   map foo<C-V> is<F4>foo
++   vnoremap <script> <buffer> <expr> <silent> bar isbar
++   let sid = s:SID()
++   call assert_equal("is<F4>foo", maparg('foo<C-V>'))
++   call assert_equal({'silent': 0, 'noremap': 0, 'lhs': 'foo<C-V>',
++         \ 'mode': ' ', 'nowait': 0, 'expr': 0, 'sid': sid, 'rhs': 'is<F4>foo',
++         \ 'buffer': 0}, maparg('foo<C-V>', '', 0, 1))
++   call assert_equal({'silent': 1, 'noremap': 1, 'lhs': 'bar', 'mode': 'v',
++         \ 'nowait': 0, 'expr': 1, 'sid': sid, 'rhs': 'isbar', 'buffer': 1},
++         \ maparg('bar', '', 0, 1))
++   map <buffer> <nowait> foo bar
++   call assert_equal({'silent': 0, 'noremap': 0, 'lhs': 'foo', 'mode': ' ',
++         \ 'nowait': 1, 'expr': 0, 'sid': sid, 'rhs': 'bar', 'buffer': 1},
++         \ maparg('foo', '', 0, 1))
++ 
++   map abc x<char-114>x
++   call assert_equal(maparg('abc'), "xrx")
++   map abc y<S-char-114>y
++   call assert_equal(maparg('abc'), "yRy")
++ endfunction
++ 
++ function Test_range_map()
++   new
++   " Outside of the range, minimum
++   inoremap <Char-0x1040> a
++   execute "normal a\u1040\<Esc>"
++   " Inside of the range, minimum
++   inoremap <Char-0x103f> b
++   execute "normal a\u103f\<Esc>"
++   " Inside of the range, maximum
++   inoremap <Char-0xf03f> c
++   execute "normal a\uf03f\<Esc>"
++   " Outside of the range, maximum
++   inoremap <Char-0xf040> d
++   execute "normal a\uf040\<Esc>"
++   call assert_equal("abcd", getline(1))
++ endfunction
+*** ../vim-8.0.0707/src/testdir/test_plus_arg_edit.vim	2017-07-11 21:42:35.563081437 +0200
+--- src/testdir/test_plus_arg_edit.vim	2017-07-11 21:35:19.678303556 +0200
+***************
+*** 0 ****
+--- 1,8 ----
++ " Tests for complicated + argument to :edit command
++ function Test_edit()
++   call writefile(["foo|bar"], "Xfile1") 
++   call writefile(["foo/bar"], "Xfile2") 
++   edit +1|s/|/PIPE/|w Xfile1| e Xfile2|1 | s/\//SLASH/|w
++   call assert_equal(["fooPIPEbar"], readfile("Xfile1"))
++   call assert_equal(["fooSLASHbar"], readfile("Xfile2"))
++ endfunction
+*** ../vim-8.0.0707/src/testdir/test_regex_char_classes.vim	2017-07-11 21:42:35.567081408 +0200
+--- src/testdir/test_regex_char_classes.vim	2017-07-11 21:35:19.678303556 +0200
+***************
+*** 0 ****
+--- 1,58 ----
++ " Tests for regexp with backslash and other special characters inside []
++ " Also test backslash for hex/octal numbered character.
++ 
++ function RunSTest(value, calls, expected)
++   new
++   call feedkeys("i" . a:value, "mx")
++   exec a:calls
++   call assert_equal(a:expected, getline(1), printf("wrong result for %s", a:calls))
++   quit!
++ endfunction
++ 
++ function RunXTest(value, search_exp, expected)
++   new
++   call feedkeys("i" . a:value, "mx")
++   call feedkeys("gg" . a:search_exp . "\nx", "mx")
++   call assert_equal(a:expected, getline(1), printf("wrong result for %s", a:search_exp))
++   quit!
++ endfunction
++ 
++ 
++ function Test_x_search()
++   let res = "test text test text"
++   call RunXTest("test \\text test text", "/[\\x]", res)
++   call RunXTest("test \ttext test text", "/[\\t\\]]", res)
++   call RunXTest("test text ]test text", "/[]y]", res)
++   call RunXTest("test ]text test text", "/[\\]]", res)
++   call RunXTest("test text te^st text", "/[y^]", res)
++   call RunXTest("test te$xt test text", "/[$y]", res)
++   call RunXTest("test taext test text", "/[\\x61]", res)
++   call RunXTest("test tbext test text","/[\\x60-\\x64]", res)
++   call RunXTest("test 5text test text","/[\\x785]", res)
++   call RunXTest("testc text test text","/[\\o143]", res)
++   call RunXTest("tesdt text test text","/[\\o140-\\o144]", res)
++   call RunXTest("test7 text test text", "/[\\o417]", res)
++   call RunXTest("test text tBest text", "/\\%x42", res)
++   call RunXTest("test text teCst text", "/\\%o103", res)
++   call RunXTest("test text \<C-V>x00test text", "/[\\x00]", res)
++ endfunction
++ 
++ function Test_s_search()
++   let res = "test text test text"
++   call RunSTest("test te\<C-V>x00xt t\<C-V>x04est t\<C-V>x10ext", "s/[\\x00-\\x10]//g", res)
++   call RunSTest("test \\xyztext test text", "s/[\\x-z]\\+//", res)
++   call RunSTest("test text tev\\uyst text", "s/[\\u-z]\\{2,}//", res)
++   call RunSTest("xx aaaaa xx a", "s/\\(a\\)\\+//", "xx  xx a")
++   call RunSTest("xx aaaaa xx a", "s/\\(a*\\)\\+//", "xx aaaaa xx a")
++   call RunSTest("xx aaaaa xx a", "s/\\(a*\\)*//", "xx aaaaa xx a")
++   call RunSTest("xx aaaaa xx", "s/\\(a\\)\\{2,3}/A/", "xx Aaa xx")
++   call RunSTest("xx aaaaa xx", "s/\\(a\\)\\{-2,3}/A/", "xx Aaaa xx")
++   call RunSTest("xx aaa12aa xx", "s/\\(a\\)*\\(12\\)\\@>/A/", "xx Aaa xx")
++   call RunSTest("xx foobar xbar xx", "s/\\(foo\\)\\@<!bar/A/", "xx foobar xA xx")
++   call RunSTest("xx an file xx", "s/\\(an\\_s\\+\\)\\@<=file/A/", "xx an A xx")
++   call RunSTest("x= 9;", "s/^\\(\\h\\w*\\%(->\\|\\.\\)\\=\\)\\+=/XX/", "XX 9;")
++   call RunSTest("hh= 77;", "s/^\\(\\h\\w*\\%(->\\|\\.\\)\\=\\)\\+=/YY/", "YY 77;")
++   call RunSTest(" aaa ", "s/aaa/xyz/", " xyz ")
++   call RunSTest(" xyz", "s/~/bcd/", " bcd")
++   call RunSTest(" bcdbcdbcd", "s/~\\+/BB/", " BB")
++ endfunction
+*** ../vim-8.0.0707/src/version.c	2017-07-11 18:28:42.409319604 +0200
+--- src/version.c	2017-07-11 21:35:08.762384816 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     708,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+140. You'd rather catch a score on the web than watch the game as
+     it is being played on tv.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

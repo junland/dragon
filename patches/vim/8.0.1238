@@ -1,0 +1,480 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1238
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1238
+Problem:    Incremental search only shows one match.
+Solution:   When 'incsearch' and and 'hlsearch' are both set highlight all
+            matches. (haya14busa, closes #2198)
+Files:      runtime/doc/options.txt, src/ex_getln.c, src/proto/search.pro,
+            src/search.c, src/testdir/test_search.vim
+
+
+*** ../vim-8.0.1237/runtime/doc/options.txt	2017-10-08 17:41:30.084460598 +0200
+--- runtime/doc/options.txt	2017-10-29 16:26:46.071744991 +0100
+  /**1
+***************
+*** 4034,4064 ****
+  	define one.  The default uses a different group for each occasion.
+  	See |highlight-default| for the default highlight groups.
+  
+- 				 *'hlsearch'* *'hls'* *'nohlsearch'* *'nohls'*
+- 'hlsearch' 'hls'	boolean	(default off)
+- 			global
+- 			{not in Vi}
+- 			{not available when compiled without the
+- 			|+extra_search| feature}
+- 	When there is a previous search pattern, highlight all its matches.
+- 	The type of highlighting used can be set with the 'l' occasion in the
+- 	'highlight' option.  This uses the "Search" highlight group by
+- 	default.  Note that only the matching text is highlighted, any offsets
+- 	are not applied.
+- 	See also: 'incsearch' and |:match|.
+- 	When you get bored looking at the highlighted matches, you can turn it
+- 	off with |:nohlsearch|.  This does not change the option value, as
+- 	soon as you use a search command, the highlighting comes back.
+- 	'redrawtime' specifies the maximum time spent on finding matches.
+- 	When the search pattern can match an end-of-line, Vim will try to
+- 	highlight all of the matched text.  However, this depends on where the
+- 	search starts.  This will be the first line in the window or the first
+- 	line below a closed fold.  A match in a previous line which is not
+- 	drawn may not continue in a newly drawn line.
+- 	You can specify whether the highlight status is restored on startup
+- 	with the 'h' flag in 'viminfo' |viminfo-h|.
+- 	NOTE: This option is reset when 'compatible' is set.
+- 
+  						*'history'* *'hi'*
+  'history' 'hi'		number	(Vim default: 50, Vi default: 0,
+  						 set to 200 in |defaults.vim|)
+--- 4130,4135 ----
+***************
+*** 4093,4098 ****
+--- 4164,4194 ----
+  	See |rileft.txt|.
+  	NOTE: This option is reset when 'compatible' is set.
+  
++ 				 *'hlsearch'* *'hls'* *'nohlsearch'* *'nohls'*
++ 'hlsearch' 'hls'	boolean	(default off)
++ 			global
++ 			{not in Vi}
++ 			{not available when compiled without the
++ 			|+extra_search| feature}
++ 	When there is a previous search pattern, highlight all its matches.
++ 	The type of highlighting used can be set with the 'l' occasion in the
++ 	'highlight' option.  This uses the "Search" highlight group by
++ 	default.  Note that only the matching text is highlighted, any offsets
++ 	are not applied.
++ 	See also: 'incsearch' and |:match|.
++ 	When you get bored looking at the highlighted matches, you can turn it
++ 	off with |:nohlsearch|.  This does not change the option value, as
++ 	soon as you use a search command, the highlighting comes back.
++ 	'redrawtime' specifies the maximum time spent on finding matches.
++ 	When the search pattern can match an end-of-line, Vim will try to
++ 	highlight all of the matched text.  However, this depends on where the
++ 	search starts.  This will be the first line in the window or the first
++ 	line below a closed fold.  A match in a previous line which is not
++ 	drawn may not continue in a newly drawn line.
++ 	You can specify whether the highlight status is restored on startup
++ 	with the 'h' flag in 'viminfo' |viminfo-h|.
++ 	NOTE: This option is reset when 'compatible' is set.
++ 
+  						*'icon'* *'noicon'*
+  'icon'			boolean	(default off, on when title can be restored)
+  			global
+***************
+*** 4344,4357 ****
+  	original position when no match is found and when pressing <Esc>.  You
+  	still need to finish the search command with <Enter> to move the
+  	cursor to the match.
+! 	You can use the CTRL-N and CTRL-P keys to move to the next and
+! 	previous match. |c_CTRL-N| |c_CTRL-P|
+  	When compiled with the |+reltime| feature Vim only searches for about
+  	half a second.  With a complicated pattern and/or a lot of text the
+  	match may not be found.  This is to avoid that Vim hangs while you
+  	are typing the pattern.
+  	The highlighting can be set with the 'i' flag in 'highlight'.
+! 	See also: 'hlsearch'.
+  	CTRL-L can be used to add one character from after the current match
+  	to the command line.  If 'ignorecase' and 'smartcase' are set and the
+  	command line has no uppercase characters, the added character is
+--- 4440,4463 ----
+  	original position when no match is found and when pressing <Esc>.  You
+  	still need to finish the search command with <Enter> to move the
+  	cursor to the match.
+! 	You can use the CTRL-G and CTRL-T keys to move to the next and
+! 	previous match. |c_CTRL-G| |c_CTRL-T|
+  	When compiled with the |+reltime| feature Vim only searches for about
+  	half a second.  With a complicated pattern and/or a lot of text the
+  	match may not be found.  This is to avoid that Vim hangs while you
+  	are typing the pattern.
+  	The highlighting can be set with the 'i' flag in 'highlight'.
+! 	When 'hlsearch' is on, all matched strings are highlighted too while typing
+! 	a search command. See also: 'hlsearch'.
+! 	If you don't want turn 'hlsearch' on, but want to highlight all matches
+! 	while searching, you can turn on and off 'hlsearch' with autocmd.
+! 	Example: >
+! 		augroup vimrc-incsearch-highlight
+! 		  autocmd!
+! 		  autocmd CmdlineEnter [/\?] :set hlsearch
+! 		  autocmd CmdlineLeave [/\?] :set nohlsearch
+! 		augroup END
+! <
+  	CTRL-L can be used to add one character from after the current match
+  	to the command line.  If 'ignorecase' and 'smartcase' are set and the
+  	command line has no uppercase characters, the added character is
+*** ../vim-8.0.1237/src/ex_getln.c	2017-10-24 21:49:32.230837763 +0200
+--- src/ex_getln.c	2017-10-29 16:26:46.075744963 +0100
+***************
+*** 1715,1722 ****
+  		if (p_is && !cmd_silent && (firstc == '/' || firstc == '?'))
+  		{
+  		    pos_T  t;
+! 		    int    search_flags = SEARCH_KEEP + SEARCH_NOOF;
+  
+  		    cursor_off();
+  		    out_flush();
+  		    if (c == Ctrl_G)
+--- 1715,1723 ----
+  		if (p_is && !cmd_silent && (firstc == '/' || firstc == '?'))
+  		{
+  		    pos_T  t;
+! 		    int    search_flags = SEARCH_NOOF;
+  
++ 		    save_last_search_pattern();
+  		    cursor_off();
+  		    out_flush();
+  		    if (c == Ctrl_G)
+***************
+*** 1726,1731 ****
+--- 1727,1734 ----
+  		    }
+  		    else
+  			t = match_start;
++ 		    if (!p_hls)
++ 			search_flags += SEARCH_KEEP;
+  		    ++emsg_off;
+  		    i = searchit(curwin, curbuf, &t,
+  				 c == Ctrl_G ? FORWARD : BACKWARD,
+***************
+*** 1777,1782 ****
+--- 1780,1786 ----
+  # endif
+  			old_botline = curwin->w_botline;
+  			update_screen(NOT_VALID);
++ 			restore_last_search_pattern();
+  			redrawcmdline();
+  		    }
+  		    else
+***************
+*** 1934,1945 ****
+--- 1938,1954 ----
+  	    }
+  	    incsearch_postponed = FALSE;
+  	    curwin->w_cursor = search_start;  /* start at old position */
++ 	    save_last_search_pattern();
+  
+  	    /* If there is no command line, don't do anything */
+  	    if (ccline.cmdlen == 0)
++ 	    {
+  		i = 0;
++ 		SET_NO_HLSEARCH(TRUE); /* turn off previous highlight */
++ 	    }
+  	    else
+  	    {
++ 		int search_flags = SEARCH_OPT + SEARCH_NOOF + SEARCH_PEEK;
+  		cursor_off();		/* so the user knows we're busy */
+  		out_flush();
+  		++emsg_off;    /* So it doesn't beep if bad expr */
+***************
+*** 1947,1954 ****
+  		/* Set the time limit to half a second. */
+  		profile_setlimit(500L, &tm);
+  #endif
+  		i = do_search(NULL, firstc, ccline.cmdbuff, count,
+! 			SEARCH_KEEP + SEARCH_OPT + SEARCH_NOOF + SEARCH_PEEK,
+  #ifdef FEAT_RELTIME
+  			&tm, NULL
+  #else
+--- 1956,1965 ----
+  		/* Set the time limit to half a second. */
+  		profile_setlimit(500L, &tm);
+  #endif
++ 		if (!p_hls)
++ 		    search_flags += SEARCH_KEEP;
+  		i = do_search(NULL, firstc, ccline.cmdbuff, count,
+! 			search_flags,
+  #ifdef FEAT_RELTIME
+  			&tm, NULL
+  #else
+***************
+*** 2005,2010 ****
+--- 2016,2022 ----
+  	    save_cmdline(&save_ccline);
+  	    update_screen(SOME_VALID);
+  	    restore_cmdline(&save_ccline);
++ 	    restore_last_search_pattern();
+  
+  	    /* Leave it at the end to make CTRL-R CTRL-W work. */
+  	    if (i != 0)
+*** ../vim-8.0.1237/src/proto/search.pro	2017-06-17 18:44:16.998000950 +0200
+--- src/proto/search.pro	2017-10-29 16:26:46.075744963 +0100
+***************
+*** 5,10 ****
+--- 5,12 ----
+  void save_re_pat(int idx, char_u *pat, int magic);
+  void save_search_patterns(void);
+  void restore_search_patterns(void);
++ void save_last_search_pattern(void);
++ void restore_last_search_pattern(void);
+  void free_search_patterns(void);
+  int ignorecase(char_u *pat);
+  int ignorecase_opt(char_u *pat, int ic_in, int scs);
+*** ../vim-8.0.1237/src/search.c	2017-09-26 12:28:41.546679685 +0200
+--- src/search.c	2017-10-29 16:26:46.075744963 +0100
+***************
+*** 100,110 ****
+  #if defined(FEAT_AUTOCMD) || defined(FEAT_EVAL) || defined(PROTO)
+  /* copy of spats[], for keeping the search patterns while executing autocmds */
+  static struct spat  saved_spats[2];
+! static int	    saved_last_idx = 0;
+  # ifdef FEAT_SEARCH_EXTRA
+  static int	    saved_no_hlsearch = 0;
+  # endif
+- #endif
+  
+  static char_u	    *mr_pattern = NULL;	/* pattern used by search_regcomp() */
+  #ifdef FEAT_RIGHTLEFT
+--- 100,113 ----
+  #if defined(FEAT_AUTOCMD) || defined(FEAT_EVAL) || defined(PROTO)
+  /* copy of spats[], for keeping the search patterns while executing autocmds */
+  static struct spat  saved_spats[2];
+! #endif
+  # ifdef FEAT_SEARCH_EXTRA
++ /* copy of spats[RE_SEARCH], for keeping the search patterns while incremental
++  * searching */
++ static struct spat  saved_last_search_spat;
++ static int	    saved_last_idx = 0;
+  static int	    saved_no_hlsearch = 0;
+  # endif
+  
+  static char_u	    *mr_pattern = NULL;	/* pattern used by search_regcomp() */
+  #ifdef FEAT_RIGHTLEFT
+***************
+*** 329,337 ****
+      {
+  	vim_free(spats[0].pat);
+  	spats[0] = saved_spats[0];
+! #if defined(FEAT_EVAL)
+  	set_vv_searchforward();
+! #endif
+  	vim_free(spats[1].pat);
+  	spats[1] = saved_spats[1];
+  	last_idx = saved_last_idx;
+--- 332,340 ----
+      {
+  	vim_free(spats[0].pat);
+  	spats[0] = saved_spats[0];
+! # if defined(FEAT_EVAL)
+  	set_vv_searchforward();
+! # endif
+  	vim_free(spats[1].pat);
+  	spats[1] = saved_spats[1];
+  	last_idx = saved_last_idx;
+***************
+*** 360,365 ****
+--- 363,400 ----
+  }
+  #endif
+  
++ #ifdef FEAT_SEARCH_EXTRA
++ /*
++  * Save and restore the search pattern for incremental highlight search
++  * feature.
++  *
++  * It's similar but differnt from save_search_patterns() and
++  * restore_search_patterns(), because the search pattern must be restored when
++  * cannceling incremental searching even if it's called inside user functions.
++  */
++     void
++ save_last_search_pattern(void)
++ {
++     saved_last_search_spat = spats[RE_SEARCH];
++     if (spats[RE_SEARCH].pat != NULL)
++ 	saved_last_search_spat.pat = vim_strsave(spats[RE_SEARCH].pat);
++     saved_last_idx = last_idx;
++     saved_no_hlsearch = no_hlsearch;
++ }
++ 
++     void
++ restore_last_search_pattern(void)
++ {
++     vim_free(spats[RE_SEARCH].pat);
++     spats[RE_SEARCH] = saved_last_search_spat;
++ # if defined(FEAT_EVAL)
++     set_vv_searchforward();
++ # endif
++     last_idx = saved_last_idx;
++     SET_NO_HLSEARCH(saved_no_hlsearch);
++ }
++ #endif
++ 
+  /*
+   * Return TRUE when case should be ignored for search pattern "pat".
+   * Uses the 'ignorecase' and 'smartcase' options.
+*** ../vim-8.0.1237/src/testdir/test_search.vim	2017-10-22 14:44:13.927751648 +0200
+--- src/testdir/test_search.vim	2017-10-29 16:26:46.075744963 +0100
+***************
+*** 1,5 ****
+--- 1,7 ----
+  " Test for the search command
+  
++ source shared.vim
++ 
+  func Test_search_cmdline()
+    if !exists('+incsearch')
+      return
+***************
+*** 431,433 ****
+--- 433,550 ----
+    set undolevels&
+    enew!
+  endfunc
++ 
++ func Test_search_cmdline_incsearch_highlight()
++   if !exists('+incsearch')
++     return
++   endif
++   set incsearch hlsearch
++   " need to disable char_avail,
++   " so that expansion of commandline works
++   call test_override("char_avail", 1)
++   new
++   call setline(1, ['aaa  1 the first', '  2 the second', '  3 the third'])
++ 
++   1
++   call feedkeys("/second\<cr>", 'tx')
++   call assert_equal('second', @/)
++   call assert_equal('  2 the second', getline('.'))
++ 
++   " Canceling search won't change @/
++   1
++   let @/ = 'last pattern'
++   call feedkeys("/third\<C-c>", 'tx')
++   call assert_equal('last pattern', @/)
++   call feedkeys("/third\<Esc>", 'tx')
++   call assert_equal('last pattern', @/)
++   call feedkeys("/3\<bs>\<bs>", 'tx')
++   call assert_equal('last pattern', @/)
++   call feedkeys("/third\<c-g>\<c-t>\<Esc>", 'tx')
++   call assert_equal('last pattern', @/)
++ 
++   " clean up
++   set noincsearch nohlsearch
++   bw!
++ endfunc
++ 
++ func Test_search_cmdline_incsearch_highlight_attr()
++   if !exists('+incsearch') || !has('terminal') || has('gui_running')
++     return
++   endif
++   let h = winheight(0)
++   if h < 3
++     return
++   endif
++   let g:buf = term_start([GetVimProg(), '--clean', '-c', 'set noswapfile'], {'term_rows': 3})
++ 
++   " Prepare buffer text
++   let lines = ['abb vim vim vi', 'vimvivim']
++   call term_sendkeys(g:buf, 'i' . join(lines, "\n") . "\<esc>gg0")
++   call term_wait(g:buf, 200)
++   call assert_equal(lines[0], term_getline(g:buf, 1))
++ 
++   " Get attr of normal(a0), incsearch(a1), hlsearch(a2) highlight
++   call term_sendkeys(g:buf, ":set incsearch hlsearch\<cr>")
++   call term_sendkeys(g:buf, '/b')
++   call term_wait(g:buf, 200)
++   let screen_line1 = term_scrape(g:buf, 1)
++   call assert_true(len(screen_line1) > 2)
++   " a0: attr_normal
++   let a0 = screen_line1[0].attr
++   " a1: attr_incsearch
++   let a1 = screen_line1[1].attr
++   " a2: attr_hlsearch
++   let a2 = screen_line1[2].attr
++   call assert_notequal(a0, a1)
++   call assert_notequal(a0, a2)
++   call assert_notequal(a1, a2)
++   call term_sendkeys(g:buf, "\<cr>gg0")
++ 
++   " Test incremental highlight search
++   call term_sendkeys(g:buf, "/vim")
++   call term_wait(g:buf, 200)
++   " Buffer:
++   " abb vim vim vi
++   " vimvivim
++   " Search: /vim
++   let attr_line1 = [a0,a0,a0,a0,a1,a1,a1,a0,a2,a2,a2,a0,a0,a0]
++   let attr_line2 = [a2,a2,a2,a0,a0,a2,a2,a2]
++   call assert_equal(attr_line1, map(term_scrape(g:buf, 1)[:len(attr_line1)-1], 'v:val.attr'))
++   call assert_equal(attr_line2, map(term_scrape(g:buf, 2)[:len(attr_line2)-1], 'v:val.attr'))
++ 
++   " Test <C-g>
++   call term_sendkeys(g:buf, "\<C-g>\<C-g>")
++   call term_wait(g:buf, 200)
++   let attr_line1 = [a0,a0,a0,a0,a2,a2,a2,a0,a2,a2,a2,a0,a0,a0]
++   let attr_line2 = [a1,a1,a1,a0,a0,a2,a2,a2]
++   call assert_equal(attr_line1, map(term_scrape(g:buf, 1)[:len(attr_line1)-1], 'v:val.attr'))
++   call assert_equal(attr_line2, map(term_scrape(g:buf, 2)[:len(attr_line2)-1], 'v:val.attr'))
++ 
++   " Test <C-t>
++   call term_sendkeys(g:buf, "\<C-t>")
++   call term_wait(g:buf, 200)
++   let attr_line1 = [a0,a0,a0,a0,a2,a2,a2,a0,a1,a1,a1,a0,a0,a0]
++   let attr_line2 = [a2,a2,a2,a0,a0,a2,a2,a2]
++   call assert_equal(attr_line1, map(term_scrape(g:buf, 1)[:len(attr_line1)-1], 'v:val.attr'))
++   call assert_equal(attr_line2, map(term_scrape(g:buf, 2)[:len(attr_line2)-1], 'v:val.attr'))
++ 
++   " Type Enter and a1(incsearch highlight) should become a2(hlsearch highlight)
++   call term_sendkeys(g:buf, "\<cr>")
++   call term_wait(g:buf, 200)
++   let attr_line1 = [a0,a0,a0,a0,a2,a2,a2,a0,a2,a2,a2,a0,a0,a0]
++   let attr_line2 = [a2,a2,a2,a0,a0,a2,a2,a2]
++   call assert_equal(attr_line1, map(term_scrape(g:buf, 1)[:len(attr_line1)-1], 'v:val.attr'))
++   call assert_equal(attr_line2, map(term_scrape(g:buf, 2)[:len(attr_line2)-1], 'v:val.attr'))
++ 
++   " Test nohlsearch. a2(hlsearch highlight) should become a0(normal highlight)
++   call term_sendkeys(g:buf, ":1\<cr>")
++   call term_sendkeys(g:buf, ":set nohlsearch\<cr>")
++   call term_sendkeys(g:buf, "/vim")
++   call term_wait(g:buf, 200)
++   let attr_line1 = [a0,a0,a0,a0,a1,a1,a1,a0,a0,a0,a0,a0,a0,a0]
++   let attr_line2 = [a0,a0,a0,a0,a0,a0,a0,a0]
++   call assert_equal(attr_line1, map(term_scrape(g:buf, 1)[:len(attr_line1)-1], 'v:val.attr'))
++   call assert_equal(attr_line2, map(term_scrape(g:buf, 2)[:len(attr_line2)-1], 'v:val.attr'))
++ 
++   bwipe!
++ endfunc
+*** ../vim-8.0.1237/src/version.c	2017-10-29 15:26:39.216867421 +0100
+--- src/version.c	2017-10-29 16:28:25.583042446 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1238,
+  /**/
+
+-- 
+Lose weight, NEVER Diet again with
+                  The "Invisible Weight Loss Patch"
+						(spam e-mail)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

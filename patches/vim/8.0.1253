@@ -1,0 +1,1051 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1253
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1253
+Problem:    Still too many old style tests.
+Solution:   Convert a few more tests to new style. (Yegappan Lakshmanan,
+            closes #2272)
+Files:      src/Makefile, src/testdir/Make_all.mak,
+            src/testdir/Make_amiga.mak, src/testdir/Make_dos.mak,
+            src/testdir/Make_ming.mak, src/testdir/Make_vms.mms,
+            src/testdir/main.aap, src/testdir/test12.in,
+            src/testdir/test12.ok, src/testdir/test40.in,
+            src/testdir/test40.ok, src/testdir/test45.in,
+            src/testdir/test45.ok, src/testdir/test83.in,
+            src/testdir/test83.ok, src/testdir/test_autocmd.vim,
+            src/testdir/test_fold.vim, src/testdir/test_swap.vim,
+            src/testdir/test_tagjump.vim
+
+
+*** ../vim-8.0.1252/src/Makefile	2017-11-02 15:44:07.913903708 +0100
+--- src/Makefile	2017-11-02 20:58:54.169335263 +0100
+***************
+*** 2103,2115 ****
+  	test_listchars \
+  	test_search_mbyte \
+  	test_wordcount \
+! 	test3 test11 test12 test14 test15 test17 \
+  	test29 test30 test36 test37 test39 \
+! 	test40 test42 test44 test45 test48 test49 \
+  	test50 test52 test55 test59 \
+  	test64 test68 test69 \
+! 	test70 test72 test73 test77 \
+! 	test83 test85 test86 test87 test88 \
+  	test94 test95 test99 test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+--- 2103,2115 ----
+  	test_listchars \
+  	test_search_mbyte \
+  	test_wordcount \
+! 	test3 test11 test14 test15 test17 \
+  	test29 test30 test36 test37 test39 \
+! 	test42 test44 test48 test49 \
+  	test50 test52 test55 test59 \
+  	test64 test68 test69 \
+! 	test70 test72 test73 \
+! 	test85 test86 test87 test88 \
+  	test94 test95 test99 test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+*** ../vim-8.0.1252/src/testdir/Make_all.mak	2017-10-26 20:20:27.317598268 +0200
+--- src/testdir/Make_all.mak	2017-11-02 20:58:54.169335263 +0100
+***************
+*** 20,29 ****
+  	test36.out \
+  	test37.out \
+  	test39.out \
+- 	test40.out \
+  	test42.out \
+  	test44.out \
+- 	test45.out \
+  	test48.out \
+  	test55.out \
+  	test64.out \
+--- 20,27 ----
+***************
+*** 58,64 ****
+  
+  # Tests that run on most systems, but not on Amiga and DOS/Windows.
+  SCRIPTS_MORE2 = \
+- 	test12.out \
+  	test49.out
+  
+  
+--- 56,61 ----
+***************
+*** 68,74 ****
+  	test30.out \
+  	test59.out \
+  	test72.out \
+- 	test83.out
+  
+  
+  # Tests specifically for MS-Windows.
+--- 65,70 ----
+***************
+*** 79,85 ****
+  SCRIPTS_GUI =
+  
+  
+! # Tests using runtest.vim.vim.
+  # Keep test_alot*.res as the last one, sort the others.
+  NEW_TESTS = test_arabic.res \
+  	    test_arglist.res \
+--- 75,81 ----
+  SCRIPTS_GUI =
+  
+  
+! # Tests using runtest.vim
+  # Keep test_alot*.res as the last one, sort the others.
+  NEW_TESTS = test_arabic.res \
+  	    test_arglist.res \
+***************
+*** 164,169 ****
+--- 160,166 ----
+  	    test_startup_utf8.res \
+  	    test_stat.res \
+  	    test_substitute.res \
++ 	    test_swap.res \
+  	    test_syntax.res \
+  	    test_system.res \
+  	    test_tab.res \
+*** ../vim-8.0.1252/src/testdir/Make_amiga.mak	2017-10-26 20:20:27.317598268 +0200
+--- src/testdir/Make_amiga.mak	2017-11-02 20:58:54.169335263 +0100
+***************
+*** 13,19 ****
+  # test2		"\\tmp" doesn't work
+  # test10	'errorformat' is different
+  # test11	"cat" doesn't work properly
+- # test12	can't unlink a swap file
+  # test52	only for Win32
+  # test85	no Lua interface
+  # test86, 87	no Python interface
+--- 13,18 ----
+*** ../vim-8.0.1252/src/testdir/Make_dos.mak	2017-10-26 20:20:27.317598268 +0200
+--- src/testdir/Make_dos.mak	2017-11-02 20:58:54.169335263 +0100
+***************
+*** 12,18 ****
+  # Omitted:
+  # test2		"\\tmp" doesn't work.
+  # test10	'errorformat' is different
+- # test12	can't unlink a swap file
+  # test49	fails in various ways
+  # test97	\{ and \$ are not escaped characters.
+  
+--- 12,17 ----
+*** ../vim-8.0.1252/src/testdir/Make_ming.mak	2017-10-26 20:20:27.317598268 +0200
+--- src/testdir/Make_ming.mak	2017-11-02 20:58:54.169335263 +0100
+***************
+*** 31,37 ****
+  # Omitted:
+  # test2		"\\tmp" doesn't work.
+  # test10	'errorformat' is different
+- # test12	can't unlink a swap file
+  # test97	\{ and \$ are not escaped characters
+  
+  SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE1) $(SCRIPTS_MORE4) $(SCRIPTS_WIN32)
+--- 31,36 ----
+*** ../vim-8.0.1252/src/testdir/Make_vms.mms	2017-10-26 20:20:27.317598268 +0200
+--- src/testdir/Make_vms.mms	2017-11-02 20:58:54.169335263 +0100
+***************
+*** 75,87 ****
+  
+  SCRIPT = test1.out test3.out \
+         test14.out test15.out \
+!        test29.out test30.out \
+!        test36.out test37.out test39.out \
+!        test40.out test42.out test44.out test45.out \
+!        test48.out test49.out test55.out \
+         test64.out test68.out test69.out \
+         test72.out test77a.out test88.out \
+!        test94.out test95.out test99.out test108.out\
+         test_autocmd_option.out \
+         test_breakindent.out \
+         test_changelist.out \
+--- 75,87 ----
+  
+  SCRIPT = test1.out test3.out \
+         test14.out test15.out \
+!        test29.out \
+!        test30.out test36.out test37.out test39.out \
+!        test42.out test44.out test48.out test49.out \
+!        test55.out \
+         test64.out test68.out test69.out \
+         test72.out test77a.out test88.out \
+!        test94.out test95.out test99.out test108.out \
+         test_autocmd_option.out \
+         test_breakindent.out \
+         test_changelist.out \
+***************
+*** 107,113 ****
+  #
+  # test72: bug - Vim hangs at :rename (while rename works well otherwise)
+  # test78: bug - Vim dies at :recover Xtest 
+- # test83: ?
+  # test85: no Lua interface
+  # test89: bug - findfile() does not work on VMS (just in the current directory) 
+  # test102: Just ODS-5 supports space and special chars in the filename.
+--- 107,112 ----
+***************
+*** 119,125 ****
+  .ENDIF
+  
+  .IFDEF WANT_UNIX
+! SCRIPT_UNIX = test10.out test12.out test17.out test27.out test49.out test73.out
+  .ENDIF
+  
+  .IFDEF WANT_WIN
+--- 118,124 ----
+  .ENDIF
+  
+  .IFDEF WANT_UNIX
+! SCRIPT_UNIX = test10.out test17.out test27.out test49.out test73.out
+  .ENDIF
+  
+  .IFDEF WANT_WIN
+***************
+*** 146,155 ****
+  SCRIPT_GDIFF = test47.out
+  .ENDIF
+  
+- .IFDEF HAVE_ICONV
+- SCRIPT_ICONV = test83.out
+- .ENDIF
+- 
+  .IFDEF HAVE_LUA
+  SCRIPT_LUA = test85.out
+  .ENDIF
+--- 145,150 ----
+***************
+*** 179,185 ****
+  	-@ if "''F$SEARCH("Xtest.*")'"    .NES. "" then delete/noconfirm/nolog Xtest.*.*
+  
+  all : clean nolog $(START_WITH) $(SCRIPT) $(SCRIPT_GUI) $(SCRIPT_UNIX) $(SCRIPT_WIN) $(SCRIPT_SPELL) $(SCRIPT_ODS5) $(SCRIPT_GZIP) \
+!     $(SCRIPT_GDIFF) $(SCRIPT_MZSCH) $(SCRIPT_ICONV) $(SCRIPT_LUA) $(SCRIPT_PYTHON) nolog 
+  	-@ write sys$output " "
+  	-@ write sys$output "-----------------------------------------------"
+  	-@ write sys$output "                All done"
+--- 174,180 ----
+  	-@ if "''F$SEARCH("Xtest.*")'"    .NES. "" then delete/noconfirm/nolog Xtest.*.*
+  
+  all : clean nolog $(START_WITH) $(SCRIPT) $(SCRIPT_GUI) $(SCRIPT_UNIX) $(SCRIPT_WIN) $(SCRIPT_SPELL) $(SCRIPT_ODS5) $(SCRIPT_GZIP) \
+!     $(SCRIPT_GDIFF) $(SCRIPT_MZSCH) $(SCRIPT_LUA) $(SCRIPT_PYTHON) nolog 
+  	-@ write sys$output " "
+  	-@ write sys$output "-----------------------------------------------"
+  	-@ write sys$output "                All done"
+*** ../vim-8.0.1252/src/testdir/main.aap	2017-10-26 20:20:27.317598268 +0200
+--- src/testdir/main.aap	2017-11-02 20:58:54.169335263 +0100
+***************
+*** 6,17 ****
+  
+  Scripts = test1.out test2.out test3.out test6.out
+  		test11.out
+! 		test12.out  test13.out test14.out test15.out test17.out
+  		test18.out test21.out
+  		test27.out test29.out test30.out
+  		test36.out test37.out
+! 		test39.out test40.out test42.out
+! 		test44.out test45.out test46.out test47.out
+  		test48.out test49.out test74.out
+  
+  ScriptsGUI = test16.out
+--- 6,17 ----
+  
+  Scripts = test1.out test2.out test3.out test6.out
+  		test11.out
+! 		test13.out test14.out test15.out test17.out
+  		test18.out test21.out
+  		test27.out test29.out test30.out
+  		test36.out test37.out
+! 		test39.out test42.out
+! 		test44.out test46.out test47.out
+  		test48.out test49.out test74.out
+  
+  ScriptsGUI = test16.out
+*** ../vim-8.0.1252/src/testdir/test12.in	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test12.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,52 ****
+- Tests for 'directory' option.
+- - ".", in same dir as file
+- - "./dir", in directory relative to file
+- - "dir", in directory relative to current dir
+- 
+- STARTTEST
+- :so small.vim
+- :set nocompatible viminfo+=nviminfo
+- :set dir=.,~
+- :/start of testfile/,/end of testfile/w! Xtest1
+- :" do an ls of the current dir to find the swap file (should not be there)
+- :if has("unix")
+- :  !ls .X*.swp >test.out
+- :else
+- :  r !ls X*.swp >test.out
+- :endif
+- :!echo first line >>test.out
+- :e Xtest1
+- :if has("unix")
+- :" Do an ls of the current dir to find the swap file, remove the leading dot
+- :" to make the result the same for all systems.
+- :  r!ls .X*.swp
+- :  s/\.*X/X/
+- :  .w >>test.out
+- :  undo
+- :else
+- :  !ls X*.swp >>test.out
+- :endif
+- :!echo under Xtest1.swp >>test.out
+- :!mkdir Xtest2
+- :set dir=./Xtest2,.,~
+- :e Xtest1
+- :!ls X*.swp >>test.out
+- :!echo under under >>test.out
+- :!ls Xtest2 >>test.out
+- :!echo under Xtest1.swp >>test.out
+- :!mkdir Xtest.je
+- :/start of testfile/,/end of testfile/w! Xtest2/Xtest3
+- :set dir=Xtest.je,~
+- :e Xtest2/Xtest3
+- :swap
+- :!ls Xtest2 >>test.out
+- :!echo under Xtest3 >>test.out
+- :!ls Xtest.je >>test.out
+- :!echo under Xtest3.swp >>test.out
+- :qa!
+- ENDTEST
+- 
+- start of testfile
+- line 2 Abcdefghij
+- line 3 Abcdefghij
+- end of testfile
+--- 0 ----
+*** ../vim-8.0.1252/src/testdir/test12.ok	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test12.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,10 ****
+- first line
+- Xtest1.swp
+- under Xtest1.swp
+- under under
+- Xtest1.swp
+- under Xtest1.swp
+- Xtest3
+- under Xtest3
+- Xtest3.swp
+- under Xtest3.swp
+--- 0 ----
+*** ../vim-8.0.1252/src/testdir/test40.in	2013-02-14 20:56:45.000000000 +0100
+--- src/testdir/test40.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,63 ****
+- Test for "*Cmd" autocommands
+- 
+- STARTTEST
+- :so small.vim
+- :/^start/,$w! Xxx		" write lines below to Xxx
+- :au BufReadCmd XtestA 0r Xxx|$del
+- :e XtestA			" will read text of Xxd instead
+- :au BufWriteCmd XtestA call append(line("$"), "write")
+- :w				" will append a line to the file
+- :r XtestA			" should not read anything
+- :				" now we have:
+- :				" 1	start of Xxx
+- :				" 2		test40
+- :				" 3	end of Xxx
+- :				" 4	write
+- :au FileReadCmd XtestB '[r Xxx
+- :2r XtestB			" will read Xxx below line 2 instead
+- :				" 1	start of Xxx
+- :				" 2		test40
+- :				" 3	start of Xxx
+- :				" 4		test40
+- :				" 5	end of Xxx
+- :				" 6	end of Xxx
+- :				" 7	write
+- :au FileWriteCmd XtestC '[,']copy $
+- 4GA1
+- :4,5w XtestC			" will copy lines 4 and 5 to the end
+- :r XtestC			" should not read anything
+- :				" 1	start of Xxx
+- :				" 2		test40
+- :				" 3	start of Xxx
+- :				" 4		test401
+- :				" 5	end of Xxx
+- :				" 6	end of Xxx
+- :				" 7	write
+- :				" 8		test401
+- :				" 9	end of Xxx
+- :au FILEAppendCmd XtestD '[,']w! test.out
+- :w >>XtestD			" will write all lines to test.out
+- :$r XtestD			" should not read anything
+- :$w >>test.out			" append "end of Xxx" to test.out
+- :au BufReadCmd XtestE 0r test.out|$del
+- :sp XtestE			" split window with test.out
+- 5Goasdf:"
+- :au BufWriteCmd XtestE w! test.out
+- :wall				" will write other window to test.out
+- :				" 1	start of Xxx
+- :				" 2		test40
+- :				" 3	start of Xxx
+- :				" 4		test401
+- :				" 5	end of Xxx
+- :				" 6	asdf
+- :				" 7	end of Xxx
+- :				" 8	write
+- :				" 9		test401
+- :				" 10	end of Xxx
+- :				" 11	end of Xxx
+- :qa!
+- ENDTEST
+- 
+- start of Xxx
+- 	test40
+- end of Xxx
+--- 0 ----
+*** ../vim-8.0.1252/src/testdir/test40.ok	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test40.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,11 ****
+- start of Xxx
+- 	test40
+- start of Xxx
+- 	test401
+- end of Xxx
+- asdf
+- end of Xxx
+- write
+- 	test401
+- end of Xxx
+- end of Xxx
+--- 0 ----
+*** ../vim-8.0.1252/src/testdir/test45.in	2017-03-16 13:54:03.515491515 +0100
+--- src/testdir/test45.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,92 ****
+- Tests for folding. vim: set ft=vim :
+- 
+- STARTTEST
+- :so small.vim
+- :set belloff=all
+- :" We also need the +syntax feature here.
+- :if !has("syntax")
+-    e! test.ok
+-    w! test.out
+-    qa!
+- :endif
+- :" basic test if a fold can be created, opened, moving to the end and closed
+- /^1
+- zf2j:call append("$", "manual " . getline(foldclosed(".")))
+- zo:call append("$", foldclosed("."))
+- ]z:call append("$", getline("."))
+- zc:call append("$", getline(foldclosed(".")))
+- :" test folding with markers.
+- :set fdm=marker fdl=1 fdc=3
+- /^5
+- :call append("$", "marker " . foldlevel("."))
+- [z:call append("$", foldlevel("."))
+- jo{{ r{jj:call append("$", foldlevel("."))
+- kYpj:call append("$", foldlevel("."))
+- :" test folding with indent
+- :set fdm=indent sw=2
+- /^2 b
+- i  jI    :call append("$", "indent " . foldlevel("."))
+- k:call append("$", foldlevel("."))
+- :set sw&
+- :" test syntax folding
+- :set fdm=syntax fdl=0
+- :syn region Hup start="dd" end="ii" fold contains=Fd1,Fd2,Fd3
+- :syn region Fd1 start="ee" end="ff" fold contained
+- :syn region Fd2 start="gg" end="hh" fold contained
+- :syn region Fd3 start="commentstart" end="commentend" fold contained
+- Gzk:call append("$", "folding " . getline("."))
+- k:call append("$", getline("."))
+- jAcommentstart  Acommentend:set fdl=1
+- 3j:call append("$", getline("."))
+- :set fdl=0
+- zOj:call append("$", getline("."))
+- :" test expression folding
+- :fun Flvl()
+-   let l = getline(v:lnum)
+-   if l =~ "bb$"
+-     return 2
+-   elseif l =~ "gg$"
+-     return "s1"
+-   elseif l =~ "ii$"
+-     return ">2"
+-   elseif l =~ "kk$"
+-     return "0"
+-   endif
+-   return "="
+- endfun
+- :set fdm=expr fde=Flvl()
+- /bb$
+- :call append("$", "expr " . foldlevel("."))
+- /hh$
+- :call append("$", foldlevel("."))
+- /ii$
+- :call append("$", foldlevel("."))
+- /kk$
+- :call append("$", foldlevel("."))
+- :/^last/+1,$w! test.out
+- :delfun Flvl
+- :new
+- iTest fdm=indent and :move bug END
+- line2
+- 	Test fdm=indent START
+- 	line3
+- 	line4
+- :set fdm=indent
+- :1m1
+- 2jzc:m0
+- :%w >> test.out
+- :qa!
+- ENDTEST
+- 
+- 1 aa
+- 2 bb
+- 3 cc
+- 4 dd {{{
+- 5 ee {{{ }}}
+- 6 ff }}}
+- 7 gg
+- 8 hh
+- 9 ii
+- a jj
+- b kk
+- last
+--- 0 ----
+*** ../vim-8.0.1252/src/testdir/test45.ok	2015-04-15 12:31:42.000000000 +0200
+--- src/testdir/test45.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,23 ****
+- manual 1 aa
+- -1
+- 3 cc
+- 1 aa
+- marker 2
+- 1
+- 1
+- 0
+- indent 2
+- 1
+- folding 9 ii
+-     3 cc
+- 7 gg
+- 8 hh
+- expr 2
+- 1
+- 2
+- 0
+- 	Test fdm=indent START
+- 	line3
+- 	line4
+- Test fdm=indent and :move bug END
+- line2
+--- 0 ----
+*** ../vim-8.0.1252/src/testdir/test83.in	2015-08-11 18:30:19.000000000 +0200
+--- src/testdir/test83.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,76 ****
+- Tests for tag search with !_TAG_FILE_ENCODING.
+- 
+- STARTTEST
+- :so mbyte.vim
+- :set enc=utf8
+- :if !has('iconv') || iconv("\x82\x60", "cp932", "utf-8") != "\uff21"
+- : e! test.ok
+- : w! test.out
+- : qa!
+- :endif
+- :
+- :/^text for tags1$/,/^text for tags1$/+1w! Xtags1.txt
+- :/^text for tags2$/,/^text for tags2$/+1w! Xtags2.txt
+- :/^text for tags3$/,/^text for tags3$/+1w! Xtags3.txt
+- :/^tags1$/+1,/^tags1-end$/-1w! Xtags1
+- :
+- ggdG:
+- :
+- :call setline('.', 'Results of test83')
+- :
+- :" case1:
+- :new
+- :set tags=Xtags1
+- :let v:errmsg = ''
+- :tag abcdefghijklmnopqrs
+- :if v:errmsg =~ 'E426:' || getline('.') != 'abcdefghijklmnopqrs'
+- : close
+- : put ='case1: failed'
+- :else
+- : close
+- : put ='case1: ok'
+- :endif
+- :
+- :" case2:
+- :new
+- :set tags=test83-tags2
+- :let v:errmsg = ''
+- :tag /.ＢＣ
+- :if v:errmsg =~ 'E426:' || getline('.') != 'ＡＢＣ'
+- : close
+- : put ='case2: failed'
+- :else
+- : close
+- : put ='case2: ok'
+- :endif
+- :
+- :" case3:
+- :new
+- :set tags=test83-tags3
+- :let v:errmsg = ''
+- :tag abc50
+- :if v:errmsg =~ 'E426:' || getline('.') != 'ＡＢＣ'
+- : close
+- : put ='case3: failed'
+- :else
+- : close
+- : put ='case3: ok'
+- :endif
+- :close
+- :
+- :wq! test.out
+- ENDTEST
+- 
+- text for tags1
+- abcdefghijklmnopqrs
+- 
+- text for tags2
+- ＡＢＣ
+- 
+- text for tags3
+- ＡＢＣ
+- 
+- tags1
+- !_TAG_FILE_ENCODING	utf-8	//
+- abcdefghijklmnopqrs	Xtags1.txt	/abcdefghijklmnopqrs
+- tags1-end
+--- 0 ----
+*** ../vim-8.0.1252/src/testdir/test83.ok	2011-10-12 17:39:03.000000000 +0200
+--- src/testdir/test83.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,4 ****
+- Results of test83
+- case1: ok
+- case2: ok
+- case3: ok
+--- 0 ----
+*** ../vim-8.0.1252/src/testdir/test_autocmd.vim	2017-10-27 00:54:59.142125127 +0200
+--- src/testdir/test_autocmd.vim	2017-11-02 20:58:54.173335238 +0100
+***************
+*** 1,6 ****
+  " Tests for autocommands
+  
+- 
+  func! s:cleanup_buffers() abort
+    for bnr in range(1, bufnr('$'))
+      if bufloaded(bnr) && bufnr('%') != bnr
+--- 1,5 ----
+***************
+*** 917,919 ****
+--- 916,999 ----
+    enew
+    unlet g:bname
+  endfunc
++ 
++ " Test for "*Cmd" autocommands
++ func Test_Cmd_Autocmds()
++   call writefile(['start of Xxx', "\tabc2", 'end of Xxx'], 'Xxx')
++ 
++   enew!
++   au BufReadCmd XtestA 0r Xxx|$del
++   edit XtestA			" will read text of Xxd instead
++   call assert_equal('start of Xxx', getline(1))
++ 
++   au BufWriteCmd XtestA call append(line("$"), "write")
++   write				" will append a line to the file
++   call assert_equal('write', getline('$'))
++   call assert_fails('read XtestA', 'E484')	" should not read anything
++   call assert_equal('write', getline(4))
++ 
++   " now we have:
++   " 1	start of Xxx
++   " 2		abc2
++   " 3	end of Xxx
++   " 4	write
++ 
++   au FileReadCmd XtestB '[r Xxx
++   2r XtestB			" will read Xxx below line 2 instead
++   call assert_equal('start of Xxx', getline(3))
++ 
++   " now we have:
++   " 1	start of Xxx
++   " 2		abc2
++   " 3	start of Xxx
++   " 4		abc2
++   " 5	end of Xxx
++   " 6	end of Xxx
++   " 7	write
++ 
++   au FileWriteCmd XtestC '[,']copy $
++   normal 4GA1
++   4,5w XtestC			" will copy lines 4 and 5 to the end
++   call assert_equal("\tabc21", getline(8))
++   call assert_fails('r XtestC', 'E484')	" should not read anything
++   call assert_equal("end of Xxx", getline(9))
++ 
++   " now we have:
++   " 1	start of Xxx
++   " 2		abc2
++   " 3	start of Xxx
++   " 4		abc21
++   " 5	end of Xxx
++   " 6	end of Xxx
++   " 7	write
++   " 8		abc21
++   " 9	end of Xxx
++ 
++   let g:lines = []
++   au FileAppendCmd XtestD call extend(g:lines, getline(line("'["), line("']")))
++   w >>XtestD			" will add lines to 'lines'
++   call assert_equal(9, len(g:lines))
++   call assert_fails('$r XtestD', 'E484')	" should not read anything
++   call assert_equal(9, line('$'))
++   call assert_equal('end of Xxx', getline('$'))
++ 
++   au BufReadCmd XtestE 0r Xxx|$del
++   sp XtestE			" split window with test.out
++   call assert_equal('end of Xxx', getline(3))
++ 
++   let g:lines = []
++   exe "normal 2Goasdf\<Esc>\<C-W>\<C-W>"
++   au BufWriteCmd XtestE call extend(g:lines, getline(0, '$'))
++   wall				" will write other window to 'lines'
++   call assert_equal(4, len(g:lines), g:lines)
++   call assert_equal('asdf', g:lines[2])
++ 
++   au! BufReadCmd
++   au! BufWriteCmd
++   au! FileReadCmd
++   au! FileWriteCmd
++   au! FileAppendCmd
++   %bwipe!
++   call delete('Xxx')
++   enew!
++ endfunc
+*** ../vim-8.0.1252/src/testdir/test_fold.vim	2017-09-16 17:19:17.699480339 +0200
+--- src/testdir/test_fold.vim	2017-11-02 20:58:54.173335238 +0100
+***************
+*** 460,462 ****
+--- 460,629 ----
+    call assert_equal(3, foldclosedend(2))
+    bwipe!
+  endfunc
++ 
++ " Various fold related tests
++ 
++ " Basic test if a fold can be created, opened, moving to the end and closed
++ func Test_fold_manual()
++   enew!
++   set fdm=manual
++ 
++   let content = ['1 aa', '2 bb', '3 cc']
++   call append(0, content)
++   call cursor(1, 1)
++   normal zf2j
++   call assert_equal('1 aa', getline(foldclosed('.')))
++   normal zo
++   call assert_equal(-1, foldclosed('.'))
++   normal ]z
++   call assert_equal('3 cc', getline('.'))
++   normal zc
++   call assert_equal('1 aa', getline(foldclosed('.')))
++ 
++   set fdm&
++   enew!
++ endfunc
++ 
++ " test folding with markers.
++ func Test_fold_marker()
++   enew!
++   set fdm=marker fdl=1 fdc=3
++ 
++   let content = ['4 dd {{{', '5 ee {{{ }}}', '6 ff }}}']
++   call append(0, content)
++   call cursor(2, 1)
++   call assert_equal(2, foldlevel('.'))
++   normal [z
++   call assert_equal(1, foldlevel('.'))
++   exe "normal jo{{ \<Esc>r{jj"
++   call assert_equal(1, foldlevel('.'))
++   normal kYpj
++   call assert_equal(0, foldlevel('.'))
++ 
++   set fdm& fdl& fdc&
++   enew!
++ endfunc
++ 
++ " test folding with indent
++ func Test_fold_indent()
++   enew!
++   set fdm=indent sw=2
++ 
++   let content = ['1 aa', '2 bb', '3 cc']
++   call append(0, content)
++   call cursor(2, 1)
++   exe "normal i  \<Esc>jI    "
++   call assert_equal(2, foldlevel('.'))
++   normal k
++   call assert_equal(1, foldlevel('.'))
++ 
++   set fdm& sw&
++   enew!
++ endfunc
++ 
++ " test syntax folding
++ func Test_fold_syntax()
++   if !has('syntax')
++     return
++   endif
++ 
++   enew!
++   set fdm=syntax fdl=0
++ 
++   syn region Hup start="dd" end="ii" fold contains=Fd1,Fd2,Fd3
++   syn region Fd1 start="ee" end="ff" fold contained
++   syn region Fd2 start="gg" end="hh" fold contained
++   syn region Fd3 start="commentstart" end="commentend" fold contained
++   let content = ['3 cc', '4 dd {{{', '5 ee {{{ }}}', '{{{{', '6 ff }}}',
++ 	      \ '6 ff }}}', '7 gg', '8 hh', '9 ii']
++   call append(0, content)
++   normal Gzk
++   call assert_equal('9 ii', getline('.'))
++   normal k
++   call assert_equal('3 cc', getline('.'))
++   exe "normal jAcommentstart   \<Esc>Acommentend"
++   set fdl=1
++   normal 3j
++   call assert_equal('7 gg', getline('.'))
++   set fdl=0
++   exe "normal zO\<C-L>j"
++   call assert_equal('8 hh', getline('.'))
++   syn clear Fd1 Fd2 Fd3 Hup
++ 
++   set fdm& fdl&
++   enew!
++ endfunc
++ 
++ func Flvl()
++   let l = getline(v:lnum)
++   if l =~ "bb$"
++     return 2
++   elseif l =~ "gg$"
++     return "s1"
++   elseif l =~ "ii$"
++     return ">2"
++   elseif l =~ "kk$"
++     return "0"
++   endif
++   return "="
++ endfun
++ 
++ " test expression folding
++ func Test_fold_expr()
++   enew!
++   set fdm=expr fde=Flvl()
++ 
++   let content = ['1 aa',
++ 	      \ '2 bb',
++ 	      \ '3 cc',
++ 	      \ '4 dd {{{commentstart  commentend',
++ 	      \ '5 ee {{{ }}}',
++ 	      \ '{{{',
++ 	      \ '6 ff }}}',
++ 	      \ '6 ff }}}',
++ 	      \ '  7 gg',
++ 	      \ '    8 hh',
++ 	      \ '9 ii',
++ 	      \ 'a jj',
++ 	      \ 'b kk']
++   call append(0, content)
++   call cursor(1, 1)
++   exe "normal /bb$\<CR>"
++   call assert_equal(2, foldlevel('.'))
++   exe "normal /hh$\<CR>"
++   call assert_equal(1, foldlevel('.'))
++   exe "normal /ii$\<CR>"
++   call assert_equal(2, foldlevel('.'))
++   exe "normal /kk$\<CR>"
++   call assert_equal(0, foldlevel('.'))
++ 
++   set fdm& fde&
++   enew!
++ endfunc
++ 
++ " Bug with fdm=indent and moving folds
++ " Moving a fold a few times, messes up the folds below the moved fold.
++ " Fixed by 7.4.700
++ func Test_fold_move()
++   enew!
++   set fdm=indent sw=2 fdl=0
++ 
++   let content = ['', '', 'Line1', '  Line2', '  Line3',
++ 	      \ 'Line4', '  Line5', '  Line6',
++ 	      \ 'Line7', '  Line8', '  Line9']
++   call append(0, content)
++   normal zM
++   call cursor(4, 1)
++   move 2
++   move 1
++   call assert_equal(7, foldclosed(7))
++   call assert_equal(8, foldclosedend(7))
++   call assert_equal(0, foldlevel(9))
++   call assert_equal(10, foldclosed(10))
++   call assert_equal(11, foldclosedend(10))
++   call assert_equal('+--  2 lines: Line2', foldtextresult(2))
++   call assert_equal('+--  2 lines: Line8', foldtextresult(10))
++ 
++   set fdm& sw& fdl&
++   enew!
++ endfunc
+*** ../vim-8.0.1252/src/testdir/test_swap.vim	2017-11-02 21:03:51.227509462 +0100
+--- src/testdir/test_swap.vim	2017-11-02 20:58:54.173335238 +0100
+***************
+*** 0 ****
+--- 1,48 ----
++ " Tests for the swap feature
++ 
++ " Tests for 'directory' option.
++ func Test_swap_directory()
++   if !has("unix")
++     return
++   endif
++   let content = ['start of testfile',
++ 	      \ 'line 2 Abcdefghij',
++ 	      \ 'line 3 Abcdefghij',
++ 	      \ 'end of testfile']
++   call writefile(content, 'Xtest1')
++ 
++   "  '.', swap file in the same directory as file
++   set dir=.,~
++ 
++   " Verify that the swap file doesn't exist in the current directory
++   call assert_equal([], glob(".Xtest1*.swp", 1, 1, 1))
++   edit Xtest1
++   let swfname = split(execute("swapname"))[0]
++   call assert_equal([swfname], glob(swfname, 1, 1, 1))
++ 
++   " './dir', swap file in a directory relative to the file
++   set dir=./Xtest2,.,~
++ 
++   call mkdir("Xtest2")
++   edit Xtest1
++   call assert_equal([], glob(swfname, 1, 1, 1))
++   let swfname = "Xtest2/Xtest1.swp"
++   call assert_equal(swfname, split(execute("swapname"))[0])
++   call assert_equal([swfname], glob("Xtest2/*", 1, 1, 1))
++ 
++   " 'dir', swap file in directory relative to the current dir
++   set dir=Xtest.je,~
++ 
++   call mkdir("Xtest.je")
++   call writefile(content, 'Xtest2/Xtest3')
++   edit Xtest2/Xtest3
++   call assert_equal(["Xtest2/Xtest3"], glob("Xtest2/*", 1, 1, 1))
++   let swfname = "Xtest.je/Xtest3.swp"
++   call assert_equal(swfname, split(execute("swapname"))[0])
++   call assert_equal([swfname], glob("Xtest.je/*", 1, 1, 1))
++ 
++   set dir&
++   call delete("Xtest1")
++   call delete("Xtest2", "rf")
++   call delete("Xtest.je", "rf")
++ endfunc
+*** ../vim-8.0.1252/src/testdir/test_tagjump.vim	2017-10-26 20:20:27.321598241 +0200
+--- src/testdir/test_tagjump.vim	2017-11-02 20:58:54.173335238 +0100
+***************
+*** 174,177 ****
+--- 174,232 ----
+    %bwipe!
+  endfunc
+  
++ " Tests for tag search with !_TAG_FILE_ENCODING.
++ " Depends on the test83-tags2 and test83-tags3 files.
++ func Test_tag_file_encoding()
++   if has('vms')
++     return
++   endif
++ 
++   if !has('iconv') || iconv("\x82\x60", "cp932", "utf-8") != "\uff21"
++     return
++   endif
++ 
++   let save_enc = &encoding
++   set encoding=utf8
++ 
++   let content = ['text for tags1', 'abcdefghijklmnopqrs']
++   call writefile(content, 'Xtags1.txt')
++   let content = ['text for tags2', 'ＡＢＣ']
++   call writefile(content, 'Xtags2.txt')
++   let content = ['text for tags3', 'ＡＢＣ']
++   call writefile(content, 'Xtags3.txt')
++   let content = ['!_TAG_FILE_ENCODING	utf-8	//', 'abcdefghijklmnopqrs	Xtags1.txt	/abcdefghijklmnopqrs']
++   call writefile(content, 'Xtags1')
++ 
++   " case1:
++   new
++   set tags=Xtags1
++   tag abcdefghijklmnopqrs
++   call assert_equal('Xtags1.txt', expand('%:t'))
++   call assert_equal('abcdefghijklmnopqrs', getline('.'))
++   close
++ 
++   " case2:
++   new
++   set tags=test83-tags2
++   tag /.ＢＣ
++   call assert_equal('Xtags2.txt', expand('%:t'))
++   call assert_equal('ＡＢＣ', getline('.'))
++   close
++ 
++   " case3:
++   new
++   set tags=test83-tags3
++   tag abc50
++   call assert_equal('Xtags3.txt', expand('%:t'))
++   call assert_equal('ＡＢＣ', getline('.'))
++   close
++ 
++   set tags&
++   let &encoding = save_enc
++   call delete('Xtags1.txt')
++   call delete('Xtags2.txt')
++   call delete('Xtags3.txt')
++   call delete('Xtags1')
++ endfunc
++ 
+  " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.1252/src/version.c	2017-11-02 19:27:31.702785418 +0100
+--- src/version.c	2017-11-02 20:59:34.969084389 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1253,
+  /**/
+
+-- 
+It is illegal for anyone to give lighted cigars to dogs, cats, and other
+domesticated animal kept as pets.
+		[real standing law in Illinois, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

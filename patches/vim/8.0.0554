@@ -1,0 +1,84 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0554
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0554 (after 8.0.0552)
+Problem:    Toupper and tolower don't work properly for Turkish when 'casemap'
+            contains "keepascii". (Bjorn Linse)
+Solution:   When 'casemap' contains "keepascii" use ASCII toupper/tolower.
+Files:      src/charset.c, src/testdir/test_normal.vim
+
+
+*** ../vim-8.0.0553/src/charset.c	2017-04-08 19:12:00.612378409 +0200
+--- src/charset.c	2017-04-09 13:30:46.557743503 +0200
+***************
+*** 1733,1738 ****
+--- 1733,1740 ----
+  	if (enc_latin1like)
+  	    return latin1upper[c];
+      }
++     if (c < 0x80 && (cmp_flags & CMP_KEEPASCII))
++ 	return TOUPPER_ASC(c);
+      return TOUPPER_LOC(c);
+  }
+  
+***************
+*** 1757,1762 ****
+--- 1759,1766 ----
+  	if (enc_latin1like)
+  	    return latin1lower[c];
+      }
++     if (c < 0x80 && (cmp_flags & CMP_KEEPASCII))
++ 	return TOLOWER_ASC(c);
+      return TOLOWER_LOC(c);
+  }
+  #endif
+*** ../vim-8.0.0553/src/testdir/test_normal.vim	2017-04-08 19:39:38.994137997 +0200
+--- src/testdir/test_normal.vim	2017-04-09 13:19:10.254047111 +0200
+***************
+*** 1619,1624 ****
+--- 1619,1635 ----
+        call assert_equal("i\u0131", getline(1))
+        call assert_equal("i\u0131", tolower("iI"))
+  
++       set casemap&
++       call setline(1, 'iI')
++       1normal gUU
++       call assert_equal("II", getline(1))
++       call assert_equal("II", toupper("iI"))
++ 
++       call setline(1, 'iI')
++       1normal guu
++       call assert_equal("ii", getline(1))
++       call assert_equal("ii", tolower("iI"))
++ 
+        lang en_US.UTF-8
+      catch /E197:/
+        " can't use Turkish locale
+*** ../vim-8.0.0553/src/version.c	2017-04-08 19:39:38.994137997 +0200
+--- src/version.c	2017-04-09 13:35:10.756105284 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     554,
+  /**/
+
+-- 
+DINGO:   You must spank her well and after you have spanked her you
+         may deal with her as you like and then ... spank me.
+AMAZING: And spank me!
+STUNNER: And me.
+LOVELY:  And me.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

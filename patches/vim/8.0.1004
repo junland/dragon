@@ -1,0 +1,320 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1004
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1004
+Problem:    Matchstrpos() without a match returns too many items.
+Solution:   Also remove the second item when the position is beyond the end of
+            the string. (Hirohito Higashi)  Use an enum for the type.
+Files:      src/evalfunc.c, src/testdir/test_match.vim
+
+
+*** ../vim-8.0.1003/src/evalfunc.c	2017-08-17 14:39:01.438293834 +0200
+--- src/evalfunc.c	2017-08-27 13:47:53.209838656 +0200
+***************
+*** 7250,7259 ****
+      get_maparg(argvars, rettv, FALSE);
+  }
+  
+! static void find_some_match(typval_T *argvars, typval_T *rettv, int start);
+  
+      static void
+! find_some_match(typval_T *argvars, typval_T *rettv, int type)
+  {
+      char_u	*str = NULL;
+      long	len = 0;
+--- 7250,7266 ----
+      get_maparg(argvars, rettv, FALSE);
+  }
+  
+! typedef enum
+! {
+!     MATCH_END,	    /* matchend() */
+!     MATCH_MATCH,    /* match() */
+!     MATCH_STR,	    /* matchstr() */
+!     MATCH_LIST,	    /* matchlist() */
+!     MATCH_POS	    /* matchstrpos() */
+! } matchtype_T;
+  
+      static void
+! find_some_match(typval_T *argvars, typval_T *rettv, matchtype_T type)
+  {
+      char_u	*str = NULL;
+      long	len = 0;
+***************
+*** 7277,7289 ****
+      p_cpo = (char_u *)"";
+  
+      rettv->vval.v_number = -1;
+!     if (type == 3 || type == 4)
+      {
+! 	/* type 3: return empty list when there are no matches.
+! 	 * type 4: return ["", -1, -1, -1] */
+  	if (rettv_list_alloc(rettv) == FAIL)
+  	    goto theend;
+! 	if (type == 4
+  		&& (list_append_string(rettv->vval.v_list,
+  					    (char_u *)"", 0) == FAIL
+  		    || list_append_number(rettv->vval.v_list,
+--- 7284,7296 ----
+      p_cpo = (char_u *)"";
+  
+      rettv->vval.v_number = -1;
+!     if (type == MATCH_LIST || type == MATCH_POS)
+      {
+! 	/* type MATCH_LIST: return empty list when there are no matches.
+! 	 * type MATCH_POS: return ["", -1, -1, -1] */
+  	if (rettv_list_alloc(rettv) == FAIL)
+  	    goto theend;
+! 	if (type == MATCH_POS
+  		&& (list_append_string(rettv->vval.v_list,
+  					    (char_u *)"", 0) == FAIL
+  		    || list_append_number(rettv->vval.v_list,
+***************
+*** 7298,7304 ****
+  		goto theend;
+  	}
+      }
+!     else if (type == 2)
+      {
+  	rettv->v_type = VAR_STRING;
+  	rettv->vval.v_string = NULL;
+--- 7305,7311 ----
+  		goto theend;
+  	}
+      }
+!     else if (type == MATCH_STR)
+      {
+  	rettv->v_type = VAR_STRING;
+  	rettv->vval.v_string = NULL;
+***************
+*** 7410,7416 ****
+  
+  	if (match)
+  	{
+! 	    if (type == 4)
+  	    {
+  		listitem_T *li1 = rettv->vval.v_list->lv_first;
+  		listitem_T *li2 = li1->li_next;
+--- 7417,7423 ----
+  
+  	if (match)
+  	{
+! 	    if (type == MATCH_POS)
+  	    {
+  		listitem_T *li1 = rettv->vval.v_list->lv_first;
+  		listitem_T *li2 = li1->li_next;
+***************
+*** 7427,7433 ****
+  		if (l != NULL)
+  		    li2->li_tv.vval.v_number = (varnumber_T)idx;
+  	    }
+! 	    else if (type == 3)
+  	    {
+  		int i;
+  
+--- 7434,7440 ----
+  		if (l != NULL)
+  		    li2->li_tv.vval.v_number = (varnumber_T)idx;
+  	    }
+! 	    else if (type == MATCH_LIST)
+  	    {
+  		int i;
+  
+***************
+*** 7447,7453 ****
+  			break;
+  		}
+  	    }
+! 	    else if (type == 2)
+  	    {
+  		/* return matched string */
+  		if (l != NULL)
+--- 7454,7460 ----
+  			break;
+  		}
+  	    }
+! 	    else if (type == MATCH_STR)
+  	    {
+  		/* return matched string */
+  		if (l != NULL)
+***************
+*** 7460,7466 ****
+  		rettv->vval.v_number = idx;
+  	    else
+  	    {
+! 		if (type != 0)
+  		    rettv->vval.v_number =
+  				      (varnumber_T)(regmatch.startp[0] - str);
+  		else
+--- 7467,7473 ----
+  		rettv->vval.v_number = idx;
+  	    else
+  	    {
+! 		if (type != MATCH_END)
+  		    rettv->vval.v_number =
+  				      (varnumber_T)(regmatch.startp[0] - str);
+  		else
+***************
+*** 7472,7483 ****
+  	vim_regfree(regmatch.regprog);
+      }
+  
+!     if (type == 4 && l == NULL)
+  	/* matchstrpos() without a list: drop the second item. */
+  	listitem_remove(rettv->vval.v_list,
+  				       rettv->vval.v_list->lv_first->li_next);
+- 
+- theend:
+      vim_free(tofree);
+      p_cpo = save_cpo;
+  }
+--- 7479,7489 ----
+  	vim_regfree(regmatch.regprog);
+      }
+  
+! theend:
+!     if (type == MATCH_POS && l == NULL && rettv->vval.v_list != NULL)
+  	/* matchstrpos() without a list: drop the second item. */
+  	listitem_remove(rettv->vval.v_list,
+  				       rettv->vval.v_list->lv_first->li_next);
+      vim_free(tofree);
+      p_cpo = save_cpo;
+  }
+***************
+*** 7488,7494 ****
+      static void
+  f_match(typval_T *argvars, typval_T *rettv)
+  {
+!     find_some_match(argvars, rettv, 1);
+  }
+  
+  /*
+--- 7494,7500 ----
+      static void
+  f_match(typval_T *argvars, typval_T *rettv)
+  {
+!     find_some_match(argvars, rettv, MATCH_MATCH);
+  }
+  
+  /*
+***************
+*** 7656,7662 ****
+      static void
+  f_matchend(typval_T *argvars, typval_T *rettv)
+  {
+!     find_some_match(argvars, rettv, 0);
+  }
+  
+  /*
+--- 7662,7668 ----
+      static void
+  f_matchend(typval_T *argvars, typval_T *rettv)
+  {
+!     find_some_match(argvars, rettv, MATCH_END);
+  }
+  
+  /*
+***************
+*** 7665,7671 ****
+      static void
+  f_matchlist(typval_T *argvars, typval_T *rettv)
+  {
+!     find_some_match(argvars, rettv, 3);
+  }
+  
+  /*
+--- 7671,7677 ----
+      static void
+  f_matchlist(typval_T *argvars, typval_T *rettv)
+  {
+!     find_some_match(argvars, rettv, MATCH_LIST);
+  }
+  
+  /*
+***************
+*** 7674,7680 ****
+      static void
+  f_matchstr(typval_T *argvars, typval_T *rettv)
+  {
+!     find_some_match(argvars, rettv, 2);
+  }
+  
+  /*
+--- 7680,7686 ----
+      static void
+  f_matchstr(typval_T *argvars, typval_T *rettv)
+  {
+!     find_some_match(argvars, rettv, MATCH_STR);
+  }
+  
+  /*
+***************
+*** 7683,7689 ****
+      static void
+  f_matchstrpos(typval_T *argvars, typval_T *rettv)
+  {
+!     find_some_match(argvars, rettv, 4);
+  }
+  
+  static void max_min(typval_T *argvars, typval_T *rettv, int domax);
+--- 7689,7695 ----
+      static void
+  f_matchstrpos(typval_T *argvars, typval_T *rettv)
+  {
+!     find_some_match(argvars, rettv, MATCH_POS);
+  }
+  
+  static void max_min(typval_T *argvars, typval_T *rettv, int domax);
+*** ../vim-8.0.1003/src/testdir/test_match.vim	2016-10-16 14:35:44.543696445 +0200
+--- src/testdir/test_match.vim	2017-08-27 13:34:02.211061947 +0200
+***************
+*** 152,164 ****
+  
+  func Test_matchstrpos()
+    call assert_equal(['ing', 4, 7], matchstrpos('testing', 'ing'))
+- 
+    call assert_equal(['ing', 4, 7], matchstrpos('testing', 'ing', 2))
+- 
+    call assert_equal(['', -1, -1], matchstrpos('testing', 'ing', 5))
+! 
+    call assert_equal(['ing', 1, 4, 7], matchstrpos(['vim', 'testing', 'execute'], 'ing'))
+- 
+    call assert_equal(['', -1, -1, -1], matchstrpos(['vim', 'testing', 'execute'], 'img'))
+  endfunc
+  
+--- 152,161 ----
+  
+  func Test_matchstrpos()
+    call assert_equal(['ing', 4, 7], matchstrpos('testing', 'ing'))
+    call assert_equal(['ing', 4, 7], matchstrpos('testing', 'ing', 2))
+    call assert_equal(['', -1, -1], matchstrpos('testing', 'ing', 5))
+!   call assert_equal(['', -1, -1], matchstrpos('testing', 'ing', 8))
+    call assert_equal(['ing', 1, 4, 7], matchstrpos(['vim', 'testing', 'execute'], 'ing'))
+    call assert_equal(['', -1, -1, -1], matchstrpos(['vim', 'testing', 'execute'], 'img'))
+  endfunc
+  
+*** ../vim-8.0.1003/src/version.c	2017-08-27 13:10:04.360022105 +0200
+--- src/version.c	2017-08-27 13:37:36.613712735 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1004,
+  /**/
+
+-- 
+If Pacman had affected us as kids we'd be running around in dark rooms,
+munching pills and listening to repetitive music.
+                       -- Marcus Brigstocke
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

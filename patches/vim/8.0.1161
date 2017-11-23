@@ -1,0 +1,593 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1161
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1161
+Problem:    Popup menu drawing problem when resizing terminal.
+Solution:   Redraw after resizing also when a popup menu is visible. (Ozaki
+            Kiichi, closes #2110)
+Files:      src/popupmnu.c, src/term.c, src/testdir/shared.vim,
+            src/testdir/test_popup.vim
+
+
+*** ../vim-8.0.1160/src/popupmnu.c	2017-09-22 15:20:27.740148617 +0200
+--- src/popupmnu.c	2017-09-29 22:05:53.175959579 +0200
+***************
+*** 64,269 ****
+      win_T	*pvwin;
+  #endif
+  
+! redo:
+!     def_width = PUM_DEF_WIDTH;
+!     max_width = 0;
+!     kind_width = 0;
+!     extra_width = 0;
+!     above_row = 0;
+!     below_row = cmdline_row;
+! 
+!     /* Pretend the pum is already there to avoid that must_redraw is set when
+!      * 'cuc' is on. */
+!     pum_array = (pumitem_T *)1;
+!     validate_cursor_col();
+!     pum_array = NULL;
+  
+!     row = curwin->w_wrow + W_WINROW(curwin);
+  
+  #if defined(FEAT_QUICKFIX)
+!     FOR_ALL_WINDOWS(pvwin)
+! 	if (pvwin->w_p_pvw)
+! 	    break;
+!     if (pvwin != NULL)
+!     {
+! 	if (W_WINROW(pvwin) < W_WINROW(curwin))
+! 	    above_row = W_WINROW(pvwin) + pvwin->w_height;
+! 	else if (W_WINROW(pvwin) > W_WINROW(curwin) + curwin->w_height)
+! 	    below_row = W_WINROW(pvwin);
+!     }
+! #endif
+! 
+!     /*
+!      * Figure out the size and position of the pum.
+!      */
+!     if (size < PUM_DEF_HEIGHT)
+! 	pum_height = size;
+!     else
+! 	pum_height = PUM_DEF_HEIGHT;
+!     if (p_ph > 0 && pum_height > p_ph)
+! 	pum_height = p_ph;
+! 
+!     /* Put the pum below "row" if possible.  If there are few lines decide on
+!      * where there is more room. */
+!     if (row + 2 >= below_row - pum_height
+! 			    && row - above_row > (below_row - above_row) / 2)
+!     {
+! 	/* pum above "row" */
+! 
+! 	/* Leave two lines of context if possible */
+! 	if (curwin->w_wrow - curwin->w_cline_row >= 2)
+! 	    context_lines = 2;
+! 	else
+! 	    context_lines = curwin->w_wrow - curwin->w_cline_row;
+  
+! 	if (row >= size + context_lines)
+! 	{
+! 	    pum_row = row - size - context_lines;
+  	    pum_height = size;
+- 	}
+  	else
+! 	{
+! 	    pum_row = 0;
+! 	    pum_height = row - context_lines;
+! 	}
+  	if (p_ph > 0 && pum_height > p_ph)
+- 	{
+- 	    pum_row += pum_height - p_ph;
+  	    pum_height = p_ph;
+- 	}
+-     }
+-     else
+-     {
+- 	/* pum below "row" */
+  
+! 	/* Leave two lines of context if possible */
+! 	if (curwin->w_cline_row + curwin->w_cline_height - curwin->w_wrow >= 3)
+! 	    context_lines = 3;
+! 	else
+! 	    context_lines = curwin->w_cline_row
+! 				+ curwin->w_cline_height - curwin->w_wrow;
+! 
+! 	pum_row = row + context_lines;
+! 	if (size > below_row - pum_row)
+! 	    pum_height = below_row - pum_row;
+  	else
+! 	    pum_height = size;
+! 	if (p_ph > 0 && pum_height > p_ph)
+! 	    pum_height = p_ph;
+!     }
+! 
+!     /* don't display when we only have room for one line */
+!     if (pum_height < 1 || (pum_height == 1 && size > 1))
+! 	return;
+  
+  #if defined(FEAT_QUICKFIX)
+!     /* If there is a preview window at the above avoid drawing over it. */
+!     if (pvwin != NULL && pum_row < above_row && pum_height > above_row)
+!     {
+! 	pum_row += above_row;
+! 	pum_height -= above_row;
+!     }
+  #endif
+  
+!     /* Compute the width of the widest match and the widest extra. */
+!     for (i = 0; i < size; ++i)
+!     {
+! 	w = vim_strsize(array[i].pum_text);
+! 	if (max_width < w)
+! 	    max_width = w;
+! 	if (array[i].pum_kind != NULL)
+! 	{
+! 	    w = vim_strsize(array[i].pum_kind) + 1;
+! 	    if (kind_width < w)
+! 		kind_width = w;
+! 	}
+! 	if (array[i].pum_extra != NULL)
+! 	{
+! 	    w = vim_strsize(array[i].pum_extra) + 1;
+! 	    if (extra_width < w)
+! 		extra_width = w;
+! 	}
+!     }
+!     pum_base_width = max_width;
+!     pum_kind_width = kind_width;
+  
+!     /* Calculate column */
+  #ifdef FEAT_RIGHTLEFT
+!     if (curwin->w_p_rl)
+! 	col = curwin->w_wincol + curwin->w_width - curwin->w_wcol - 1;
+!     else
+  #endif
+! 	col = curwin->w_wincol + curwin->w_wcol;
+  
+!     /* if there are more items than room we need a scrollbar */
+!     if (pum_height < size)
+!     {
+! 	pum_scrollbar = 1;
+! 	++max_width;
+!     }
+!     else
+! 	pum_scrollbar = 0;
+  
+!     if (def_width < max_width)
+! 	def_width = max_width;
+  
+!     if (((col < Columns - PUM_DEF_WIDTH || col < Columns - max_width)
+  #ifdef FEAT_RIGHTLEFT
+! 		&& !curwin->w_p_rl)
+! 	    || (curwin->w_p_rl && (col > PUM_DEF_WIDTH || col > max_width)
+  #endif
+!        ))
+!     {
+! 	/* align pum column with "col" */
+! 	pum_col = col;
+  
+  #ifdef FEAT_RIGHTLEFT
+! 	if (curwin->w_p_rl)
+! 	    pum_width = pum_col - pum_scrollbar + 1;
+! 	else
+! #endif
+! 	    pum_width = Columns - pum_col - pum_scrollbar;
+! 
+! 	if (pum_width > max_width + kind_width + extra_width + 1
+! 						 && pum_width > PUM_DEF_WIDTH)
+! 	{
+! 	    pum_width = max_width + kind_width + extra_width + 1;
+! 	    if (pum_width < PUM_DEF_WIDTH)
+! 		pum_width = PUM_DEF_WIDTH;
+  	}
+!     }
+!     else if (Columns < def_width)
+!     {
+! 	/* not enough room, will use what we have */
+  #ifdef FEAT_RIGHTLEFT
+! 	if (curwin->w_p_rl)
+! 	    pum_col = Columns - 1;
+! 	else
+  #endif
+! 	    pum_col = 0;
+! 	pum_width = Columns - 1;
+!     }
+!     else
+!     {
+! 	if (max_width > PUM_DEF_WIDTH)
+! 	    max_width = PUM_DEF_WIDTH;	/* truncate */
+! #ifdef FEAT_RIGHTLEFT
+! 	if (curwin->w_p_rl)
+! 	    pum_col = max_width - 1;
+  	else
+  #endif
+! 	    pum_col = Columns - max_width;
+! 	pum_width = max_width - pum_scrollbar;
+!     }
+! 
+!     pum_array = array;
+!     pum_size = size;
+! 
+!     /* Set selected item and redraw.  If the window size changed need to redo
+!      * the positioning.  Limit this to two times, when there is not much
+!      * room the window size will keep changing. */
+!     if (pum_set_selected(selected, redo_count) && ++redo_count <= 2)
+! 	goto redo;
+  }
+  
+  /*
+--- 64,270 ----
+      win_T	*pvwin;
+  #endif
+  
+!     do
+!     {
+! 	def_width = PUM_DEF_WIDTH;
+! 	max_width = 0;
+! 	kind_width = 0;
+! 	extra_width = 0;
+! 	above_row = 0;
+! 	below_row = cmdline_row;
+! 
+! 	/* Pretend the pum is already there to avoid that must_redraw is set
+! 	 * when 'cuc' is on. */
+! 	pum_array = (pumitem_T *)1;
+! 	validate_cursor_col();
+! 	pum_array = NULL;
+  
+! 	row = curwin->w_wrow + W_WINROW(curwin);
+  
+  #if defined(FEAT_QUICKFIX)
+! 	FOR_ALL_WINDOWS(pvwin)
+! 	    if (pvwin->w_p_pvw)
+! 		break;
+! 	if (pvwin != NULL)
+! 	{
+! 	    if (W_WINROW(pvwin) < W_WINROW(curwin))
+! 		above_row = W_WINROW(pvwin) + pvwin->w_height;
+! 	    else if (W_WINROW(pvwin) > W_WINROW(curwin) + curwin->w_height)
+! 		below_row = W_WINROW(pvwin);
+! 	}
+! #endif
+  
+! 	/*
+! 	 * Figure out the size and position of the pum.
+! 	 */
+! 	if (size < PUM_DEF_HEIGHT)
+  	    pum_height = size;
+  	else
+! 	    pum_height = PUM_DEF_HEIGHT;
+  	if (p_ph > 0 && pum_height > p_ph)
+  	    pum_height = p_ph;
+  
+! 	/* Put the pum below "row" if possible.  If there are few lines decide
+! 	 * on where there is more room. */
+! 	if (row + 2 >= below_row - pum_height
+! 				&& row - above_row > (below_row - above_row) / 2)
+! 	{
+! 	    /* pum above "row" */
+! 
+! 	    /* Leave two lines of context if possible */
+! 	    if (curwin->w_wrow - curwin->w_cline_row >= 2)
+! 		context_lines = 2;
+! 	    else
+! 		context_lines = curwin->w_wrow - curwin->w_cline_row;
+! 
+! 	    if (row >= size + context_lines)
+! 	    {
+! 		pum_row = row - size - context_lines;
+! 		pum_height = size;
+! 	    }
+! 	    else
+! 	    {
+! 		pum_row = 0;
+! 		pum_height = row - context_lines;
+! 	    }
+! 	    if (p_ph > 0 && pum_height > p_ph)
+! 	    {
+! 		pum_row += pum_height - p_ph;
+! 		pum_height = p_ph;
+! 	    }
+! 	}
+  	else
+! 	{
+! 	    /* pum below "row" */
+! 
+! 	    /* Leave two lines of context if possible */
+! 	    if (curwin->w_cline_row
+! 				+ curwin->w_cline_height - curwin->w_wrow >= 3)
+! 		context_lines = 3;
+! 	    else
+! 		context_lines = curwin->w_cline_row
+! 				    + curwin->w_cline_height - curwin->w_wrow;
+! 
+! 	    pum_row = row + context_lines;
+! 	    if (size > below_row - pum_row)
+! 		pum_height = below_row - pum_row;
+! 	    else
+! 		pum_height = size;
+! 	    if (p_ph > 0 && pum_height > p_ph)
+! 		pum_height = p_ph;
+! 	}
+! 
+! 	/* don't display when we only have room for one line */
+! 	if (pum_height < 1 || (pum_height == 1 && size > 1))
+! 	    return;
+  
+  #if defined(FEAT_QUICKFIX)
+! 	/* If there is a preview window at the above avoid drawing over it. */
+! 	if (pvwin != NULL && pum_row < above_row && pum_height > above_row)
+! 	{
+! 	    pum_row += above_row;
+! 	    pum_height -= above_row;
+! 	}
+  #endif
+  
+! 	/* Compute the width of the widest match and the widest extra. */
+! 	for (i = 0; i < size; ++i)
+! 	{
+! 	    w = vim_strsize(array[i].pum_text);
+! 	    if (max_width < w)
+! 		max_width = w;
+! 	    if (array[i].pum_kind != NULL)
+! 	    {
+! 		w = vim_strsize(array[i].pum_kind) + 1;
+! 		if (kind_width < w)
+! 		    kind_width = w;
+! 	    }
+! 	    if (array[i].pum_extra != NULL)
+! 	    {
+! 		w = vim_strsize(array[i].pum_extra) + 1;
+! 		if (extra_width < w)
+! 		    extra_width = w;
+! 	    }
+! 	}
+! 	pum_base_width = max_width;
+! 	pum_kind_width = kind_width;
+  
+! 	/* Calculate column */
+  #ifdef FEAT_RIGHTLEFT
+! 	if (curwin->w_p_rl)
+! 	    col = curwin->w_wincol + curwin->w_width - curwin->w_wcol - 1;
+! 	else
+  #endif
+! 	    col = curwin->w_wincol + curwin->w_wcol;
+  
+! 	/* if there are more items than room we need a scrollbar */
+! 	if (pum_height < size)
+! 	{
+! 	    pum_scrollbar = 1;
+! 	    ++max_width;
+! 	}
+! 	else
+! 	    pum_scrollbar = 0;
+  
+! 	if (def_width < max_width)
+! 	    def_width = max_width;
+  
+! 	if (((col < Columns - PUM_DEF_WIDTH || col < Columns - max_width)
+  #ifdef FEAT_RIGHTLEFT
+! 		    && !curwin->w_p_rl)
+! 		|| (curwin->w_p_rl && (col > PUM_DEF_WIDTH || col > max_width)
+  #endif
+! 	   ))
+! 	{
+! 	    /* align pum column with "col" */
+! 	    pum_col = col;
+  
+  #ifdef FEAT_RIGHTLEFT
+! 	    if (curwin->w_p_rl)
+! 		pum_width = pum_col - pum_scrollbar + 1;
+! 	    else
+! #endif
+! 		pum_width = Columns - pum_col - pum_scrollbar;
+! 
+! 	    if (pum_width > max_width + kind_width + extra_width + 1
+! 						     && pum_width > PUM_DEF_WIDTH)
+! 	    {
+! 		pum_width = max_width + kind_width + extra_width + 1;
+! 		if (pum_width < PUM_DEF_WIDTH)
+! 		    pum_width = PUM_DEF_WIDTH;
+! 	    }
+  	}
+! 	else if (Columns < def_width)
+! 	{
+! 	    /* not enough room, will use what we have */
+  #ifdef FEAT_RIGHTLEFT
+! 	    if (curwin->w_p_rl)
+! 		pum_col = Columns - 1;
+! 	    else
+  #endif
+! 		pum_col = 0;
+! 	    pum_width = Columns - 1;
+! 	}
+  	else
++ 	{
++ 	    if (max_width > PUM_DEF_WIDTH)
++ 		max_width = PUM_DEF_WIDTH;	/* truncate */
++ #ifdef FEAT_RIGHTLEFT
++ 	    if (curwin->w_p_rl)
++ 		pum_col = max_width - 1;
++ 	    else
+  #endif
+! 		pum_col = Columns - max_width;
+! 	    pum_width = max_width - pum_scrollbar;
+! 	}
+! 
+! 	pum_array = array;
+! 	pum_size = size;
+! 
+! 	/* Set selected item and redraw.  If the window size changed need to
+! 	 * redo the positioning.  Limit this to two times, when there is not
+! 	 * much room the window size will keep changing. */
+!     } while (pum_set_selected(selected, redo_count) && ++redo_count <= 2);
+  }
+  
+  /*
+*** ../vim-8.0.1160/src/term.c	2017-09-22 14:35:46.596623391 +0200
+--- src/term.c	2017-09-29 22:01:05.709784147 +0200
+***************
+*** 3271,3281 ****
+  		if (pum_visible())
+  		{
+  		    redraw_later(NOT_VALID);
+! 		    ins_compl_show_pum(); /* This includes the redraw. */
+  		}
+- 		else
+  #endif
+! 		    update_screen(NOT_VALID);
+  		if (redrawing())
+  		    setcursor();
+  	    }
+--- 3271,3280 ----
+  		if (pum_visible())
+  		{
+  		    redraw_later(NOT_VALID);
+! 		    ins_compl_show_pum();
+  		}
+  #endif
+! 		update_screen(NOT_VALID);
+  		if (redrawing())
+  		    setcursor();
+  	    }
+*** ../vim-8.0.1160/src/testdir/shared.vim	2017-09-04 20:34:15.122492847 +0200
+--- src/testdir/shared.vim	2017-09-29 22:11:32.861805687 +0200
+***************
+*** 1,5 ****
+--- 1,10 ----
+  " Functions shared by several tests.
+  
++ " Only load this script once.
++ if exists('*WaitFor')
++   finish
++ endif
++ 
+  " Get the name of the Python executable.
+  " Also keeps it in s:python.
+  func PythonProg()
+*** ../vim-8.0.1160/src/testdir/test_popup.vim	2017-06-24 15:39:03.587409087 +0200
+--- src/testdir/test_popup.vim	2017-09-29 22:38:01.027716083 +0200
+***************
+*** 1,5 ****
+--- 1,7 ----
+  " Test for completion menu
+  
++ source shared.vim
++ 
+  let g:months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  let g:setting = ''
+  
+***************
+*** 36,41 ****
+--- 38,44 ----
+  func! Test_popup_complete()
+    new
+    inoremap <f5> <c-r>=ListMonths()<cr>
++   set belloff=all
+  
+    " <C-E> - select original typed text before the completion started
+    call feedkeys("aJu\<f5>\<down>\<c-e>\<esc>", 'tx')
+***************
+*** 212,217 ****
+--- 215,221 ----
+    call feedkeys("aM\<f5>\<enter>\<esc>", 'tx')
+    call assert_equal(["March", "M", "March"], getline(1,4))
+    %d
++   set belloff&
+  endfu
+  
+  
+***************
+*** 513,518 ****
+--- 517,523 ----
+  
+  func Test_completion_respect_bs_option()
+    new
++   set belloff=all
+    let li = ["aaa", "aaa12345", "aaaabcdef", "aaaABC"]
+  
+    set bs=indent,eol
+***************
+*** 528,533 ****
+--- 533,539 ----
+    call feedkeys("A\<C-X>\<C-N>\<C-P>\<BS>\<BS>\<BS>\<Esc>", "tx")
+    call assert_equal('', getline(1))
+  
++   set belloff&
+    bw!
+  endfunc
+  
+***************
+*** 614,619 ****
+--- 620,626 ----
+  
+  func Test_complete_CTRLN_startofbuffer()
+    new
++   set belloff=all
+    call setline(1, [ 'organize(cupboard, 3, 2);',
+          \ 'prioritize(bureau, 8, 7);',
+          \ 'realize(bannister, 4, 4);',
+***************
+*** 624,629 ****
+--- 631,663 ----
+          \ 'railing.moralize(3,9);']
+    call feedkeys("qai\<c-n>\<c-n>.\<esc>3wdW\<cr>q3@a", 'tx')
+    call assert_equal(expected, getline(1,'$'))
++   set belloff&
++   bwipe!
++ endfunc
++ 
++ func Test_popup_and_window_resize()
++   if !has('terminal') || has('gui_running')
++     return
++   endif
++   let h = winheight(0)
++   if h < 15
++     return
++   endif
++   let g:buf = term_start([$VIMPROG, '--clean', '-c', 'set noswapfile'], {'term_rows': h / 3})
++   call term_sendkeys(g:buf, (h / 3 - 1)."o\<esc>G")
++   call term_sendkeys(g:buf, "i\<c-x>")
++   call term_wait(g:buf, 100)
++   call term_sendkeys(g:buf, "\<c-v>")
++   call term_wait(g:buf, 100)
++   call assert_match('^!\s*$', term_getline(g:buf, 1))
++   exe 'resize +' . (h - 1)
++   call term_wait(g:buf, 100)
++   redraw!
++   call WaitFor('"" == term_getline(g:buf, 1)')
++   call assert_equal('', term_getline(g:buf, 1))
++   sleep 100m
++   call WaitFor('"^!" =~ term_getline(g:buf, term_getcursor(g:buf)[0] + 1)')
++   call assert_match('^!\s*$', term_getline(g:buf, term_getcursor(g:buf)[0] + 1))
+    bwipe!
+  endfunc
+  
+*** ../vim-8.0.1160/src/version.c	2017-09-29 21:29:13.305914951 +0200
+--- src/version.c	2017-09-29 22:07:01.919523510 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1161,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+224. You set up your own Web page. You set up a Web page for each
+     of your kids... and your pets.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

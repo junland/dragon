@@ -1,0 +1,498 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.05
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0593
+Problem:    Duplication of code for adding a list or dict return value.
+Solution:   Add rettv_dict_set() and rettv_list_set(). (Yegappan Lakshmanan)
+Files:      src/dict.c, src/eval.c, src/evalfunc.c, src/if_perl.xs, src/list.c,
+            src/proto/dict.pro, src/proto/list.pro
+
+
+*** ../vim-8.0.0592/src/dict.c	2017-03-14 22:17:10.675745424 +0100
+--- src/dict.c	2017-04-30 19:57:42.572312984 +0200
+***************
+*** 59,72 ****
+      if (d == NULL)
+  	return FAIL;
+  
+!     rettv->vval.v_dict = d;
+!     rettv->v_type = VAR_DICT;
+      rettv->v_lock = 0;
+-     ++d->dv_refcount;
+      return OK;
+  }
+  
+  /*
+   * Free a Dictionary, including all non-container items it contains.
+   * Ignores the reference count.
+   */
+--- 59,82 ----
+      if (d == NULL)
+  	return FAIL;
+  
+!     rettv_dict_set(rettv, d);
+      rettv->v_lock = 0;
+      return OK;
+  }
+  
+  /*
++  * Set a dictionary as the return value
++  */
++     void
++ rettv_dict_set(typval_T *rettv, dict_T *d)
++ {
++     rettv->v_type = VAR_DICT;
++     rettv->vval.v_dict = d;
++     if (d != NULL)
++ 	++d->dv_refcount;
++ }
++ 
++ /*
+   * Free a Dictionary, including all non-container items it contains.
+   * Ignores the reference count.
+   */
+***************
+*** 646,656 ****
+  
+      *arg = skipwhite(*arg + 1);
+      if (evaluate)
+!     {
+! 	rettv->v_type = VAR_DICT;
+! 	rettv->vval.v_dict = d;
+! 	++d->dv_refcount;
+!     }
+  
+      return OK;
+  }
+--- 656,662 ----
+  
+      *arg = skipwhite(*arg + 1);
+      if (evaluate)
+! 	rettv_dict_set(rettv, d);
+  
+      return OK;
+  }
+*** ../vim-8.0.0592/src/eval.c	2017-04-30 14:20:53.342830874 +0200
+--- src/eval.c	2017-04-30 19:57:42.576312961 +0200
+***************
+*** 4665,4673 ****
+  			item = item->li_next;
+  		    }
+  		    clear_tv(rettv);
+! 		    rettv->v_type = VAR_LIST;
+! 		    rettv->vval.v_list = l;
+! 		    ++l->lv_refcount;
+  		}
+  		else
+  		{
+--- 4665,4671 ----
+  			item = item->li_next;
+  		    }
+  		    clear_tv(rettv);
+! 		    rettv_list_set(rettv, l);
+  		}
+  		else
+  		{
+***************
+*** 8486,8494 ****
+  
+  		    if (opts != NULL)
+  		    {
+! 			rettv->v_type = VAR_DICT;
+! 			rettv->vval.v_dict = opts;
+! 			++opts->dv_refcount;
+  			done = TRUE;
+  		    }
+  		}
+--- 8484,8490 ----
+  
+  		    if (opts != NULL)
+  		    {
+! 			rettv_dict_set(rettv, opts);
+  			done = TRUE;
+  		    }
+  		}
+*** ../vim-8.0.0592/src/evalfunc.c	2017-04-09 15:03:09.803137655 +0200
+--- src/evalfunc.c	2017-04-30 19:57:42.576312961 +0200
+***************
+*** 3005,3012 ****
+  	    && get_tv_number_chk(&argvars[2], &error)
+  	    && !error)
+      {
+! 	rettv->v_type = VAR_LIST;
+! 	rettv->vval.v_list = NULL;
+      }
+  
+      s = get_tv_string(&argvars[0]);
+--- 3005,3011 ----
+  	    && get_tv_number_chk(&argvars[2], &error)
+  	    && !error)
+      {
+! 	rettv_list_set(rettv, NULL);
+      }
+  
+      s = get_tv_string(&argvars[0]);
+***************
+*** 3909,3920 ****
+  		}
+  	    }
+  	    else if (STRCMP(what, "dict") == 0)
+! 	    {
+! 		rettv->v_type = VAR_DICT;
+! 		rettv->vval.v_dict = pt->pt_dict;
+! 		if (pt->pt_dict != NULL)
+! 		    ++pt->pt_dict->dv_refcount;
+! 	    }
+  	    else if (STRCMP(what, "args") == 0)
+  	    {
+  		rettv->v_type = VAR_LIST;
+--- 3908,3914 ----
+  		}
+  	    }
+  	    else if (STRCMP(what, "dict") == 0)
+! 		rettv_dict_set(rettv, pt->pt_dict);
+  	    else if (STRCMP(what, "args") == 0)
+  	    {
+  		rettv->v_type = VAR_LIST;
+***************
+*** 4214,4222 ****
+  
+  		if (opts != NULL)
+  		{
+! 		    rettv->v_type = VAR_DICT;
+! 		    rettv->vval.v_dict = opts;
+! 		    ++opts->dv_refcount;
+  		    done = TRUE;
+  		}
+  	    }
+--- 4208,4214 ----
+  
+  		if (opts != NULL)
+  		{
+! 		    rettv_dict_set(rettv, opts);
+  		    done = TRUE;
+  		}
+  	    }
+***************
+*** 5372,5379 ****
+  	{
+  	    if (get_tv_number_chk(&argvars[2], &error))
+  	    {
+! 		rettv->v_type = VAR_LIST;
+! 		rettv->vval.v_list = NULL;
+  	    }
+  	    if (argvars[3].v_type != VAR_UNKNOWN
+  				    && get_tv_number_chk(&argvars[3], &error))
+--- 5364,5370 ----
+  	{
+  	    if (get_tv_number_chk(&argvars[2], &error))
+  	    {
+! 		rettv_list_set(rettv, NULL);
+  	    }
+  	    if (argvars[3].v_type != VAR_UNKNOWN
+  				    && get_tv_number_chk(&argvars[3], &error))
+***************
+*** 5429,5436 ****
+  	{
+  	    if (get_tv_number_chk(&argvars[3], &error))
+  	    {
+! 		rettv->v_type = VAR_LIST;
+! 		rettv->vval.v_list = NULL;
+  	    }
+  	    if (argvars[4].v_type != VAR_UNKNOWN
+  				    && get_tv_number_chk(&argvars[4], &error))
+--- 5420,5426 ----
+  	{
+  	    if (get_tv_number_chk(&argvars[3], &error))
+  	    {
+! 		rettv_list_set(rettv, NULL);
+  	    }
+  	    if (argvars[4].v_type != VAR_UNKNOWN
+  				    && get_tv_number_chk(&argvars[4], &error))
+***************
+*** 9152,9160 ****
+  	    list_append(l, li);
+  	    li = ni;
+  	}
+! 	rettv->vval.v_list = l;
+! 	rettv->v_type = VAR_LIST;
+! 	++l->lv_refcount;
+  	l->lv_idx = l->lv_len - l->lv_idx - 1;
+      }
+  }
+--- 9142,9148 ----
+  	    list_append(l, li);
+  	    li = ni;
+  	}
+! 	rettv_list_set(rettv, l);
+  	l->lv_idx = l->lv_len - l->lv_idx - 1;
+      }
+  }
+***************
+*** 10742,10750 ****
+  	     (char_u *)(sort ? N_("sort() argument") : N_("uniq() argument")),
+  									TRUE))
+  	    goto theend;
+! 	rettv->vval.v_list = l;
+! 	rettv->v_type = VAR_LIST;
+! 	++l->lv_refcount;
+  
+  	len = list_len(l);
+  	if (len <= 1)
+--- 10730,10736 ----
+  	     (char_u *)(sort ? N_("sort() argument") : N_("uniq() argument")),
+  									TRUE))
+  	    goto theend;
+! 	rettv_list_set(rettv, l);
+  
+  	len = list_len(l);
+  	if (len <= 1)
+***************
+*** 11832,11839 ****
+      char_u	str[NUMBUFLEN];
+  #endif
+  
+!     rettv->v_type = VAR_LIST;
+!     rettv->vval.v_list = NULL;
+  
+  #if defined(FEAT_SYN_HL) && defined(FEAT_CONCEAL)
+      lnum = get_tv_lnum(argvars);		/* -1 on type error */
+--- 11818,11824 ----
+      char_u	str[NUMBUFLEN];
+  #endif
+  
+!     rettv_list_set(rettv, NULL);
+  
+  #if defined(FEAT_SYN_HL) && defined(FEAT_CONCEAL)
+      lnum = get_tv_lnum(argvars);		/* -1 on type error */
+***************
+*** 11890,11897 ****
+      int		id;
+  #endif
+  
+!     rettv->v_type = VAR_LIST;
+!     rettv->vval.v_list = NULL;
+  
+  #ifdef FEAT_SYN_HL
+      lnum = get_tv_lnum(argvars);		/* -1 on type error */
+--- 11875,11881 ----
+      int		id;
+  #endif
+  
+!     rettv_list_set(rettv, NULL);
+  
+  #ifdef FEAT_SYN_HL
+      lnum = get_tv_lnum(argvars);		/* -1 on type error */
+***************
+*** 12057,12065 ****
+  	    list_append(list, li);
+  	}
+  
+! 	++list->lv_refcount;
+! 	rettv->v_type = VAR_LIST;
+! 	rettv->vval.v_list = list;
+  	list = NULL;
+      }
+      else
+--- 12041,12047 ----
+  	    list_append(list, li);
+  	}
+  
+! 	rettv_list_set(rettv, list);
+  	list = NULL;
+      }
+      else
+***************
+*** 12465,12472 ****
+      static void
+  f_test_null_dict(typval_T *argvars UNUSED, typval_T *rettv)
+  {
+!     rettv->v_type = VAR_DICT;
+!     rettv->vval.v_dict = NULL;
+  }
+  
+  #ifdef FEAT_JOB_CHANNEL
+--- 12447,12453 ----
+      static void
+  f_test_null_dict(typval_T *argvars UNUSED, typval_T *rettv)
+  {
+!     rettv_dict_set(rettv, NULL);
+  }
+  
+  #ifdef FEAT_JOB_CHANNEL
+***************
+*** 12481,12488 ****
+      static void
+  f_test_null_list(typval_T *argvars UNUSED, typval_T *rettv)
+  {
+!     rettv->v_type = VAR_LIST;
+!     rettv->vval.v_list = NULL;
+  }
+  
+      static void
+--- 12462,12468 ----
+      static void
+  f_test_null_list(typval_T *argvars UNUSED, typval_T *rettv)
+  {
+!     rettv_list_set(rettv, NULL);
+  }
+  
+      static void
+*** ../vim-8.0.0592/src/if_perl.xs	2017-03-12 18:23:35.861849968 +0100
+--- src/if_perl.xs	2017-04-30 19:57:42.580312936 +0200
+***************
+*** 1136,1144 ****
+  		}
+  	    }
+  
+! 	    list->lv_refcount++;
+! 	    rettv->v_type	= VAR_LIST;
+! 	    rettv->vval.v_list	= list;
+  	    break;
+  	}
+  	case SVt_PVHV:	/* dictionary */
+--- 1136,1142 ----
+  		}
+  	    }
+  
+! 	    rettv_list_set(rettv, list);
+  	    break;
+  	}
+  	case SVt_PVHV:	/* dictionary */
+***************
+*** 1192,1200 ****
+  		}
+  	    }
+  
+! 	    dict->dv_refcount++;
+! 	    rettv->v_type	= VAR_DICT;
+! 	    rettv->vval.v_dict	= dict;
+  	    break;
+  	}
+  	default:	/* not convertible */
+--- 1190,1196 ----
+  		}
+  	    }
+  
+! 	    rettv_dict_set(rettv, dict);
+  	    break;
+  	}
+  	default:	/* not convertible */
+*** ../vim-8.0.0592/src/list.c	2017-01-10 13:51:05.587236267 +0100
+--- src/list.c	2017-04-30 19:57:42.580312936 +0200
+***************
+*** 97,110 ****
+      if (l == NULL)
+  	return FAIL;
+  
+-     rettv->vval.v_list = l;
+-     rettv->v_type = VAR_LIST;
+      rettv->v_lock = 0;
+!     ++l->lv_refcount;
+      return OK;
+  }
+  
+  /*
+   * Unreference a list: decrement the reference count and free it when it
+   * becomes zero.
+   */
+--- 97,120 ----
+      if (l == NULL)
+  	return FAIL;
+  
+      rettv->v_lock = 0;
+!     rettv_list_set(rettv, l);
+      return OK;
+  }
+  
+  /*
++  * Set a list as the return value
++  */
++     void
++ rettv_list_set(typval_T *rettv, list_T *l)
++ {
++     rettv->v_type = VAR_LIST;
++     rettv->vval.v_list = l;
++     if (l != NULL)
++ 	++l->lv_refcount;
++ }
++ 
++ /*
+   * Unreference a list: decrement the reference count and free it when it
+   * becomes zero.
+   */
+***************
+*** 875,885 ****
+  
+      *arg = skipwhite(*arg + 1);
+      if (evaluate)
+!     {
+! 	rettv->v_type = VAR_LIST;
+! 	rettv->vval.v_list = l;
+! 	++l->lv_refcount;
+!     }
+  
+      return OK;
+  }
+--- 885,891 ----
+  
+      *arg = skipwhite(*arg + 1);
+      if (evaluate)
+! 	rettv_list_set(rettv, l);
+  
+      return OK;
+  }
+*** ../vim-8.0.0592/src/proto/dict.pro	2016-09-12 13:03:59.000000000 +0200
+--- src/proto/dict.pro	2017-04-30 19:57:49.064273923 +0200
+***************
+*** 1,6 ****
+--- 1,7 ----
+  /* dict.c */
+  dict_T *dict_alloc(void);
+  int rettv_dict_alloc(typval_T *rettv);
++ void rettv_dict_set(typval_T *rettv, dict_T *d);
+  void dict_unref(dict_T *d);
+  int dict_free_nonref(int copyID);
+  void dict_free_items(int copyID);
+*** ../vim-8.0.0592/src/proto/list.pro	2016-09-12 13:04:10.000000000 +0200
+--- src/proto/list.pro	2017-04-30 19:57:58.048219864 +0200
+***************
+*** 4,9 ****
+--- 4,10 ----
+  void list_fix_watch(list_T *l, listitem_T *item);
+  list_T *list_alloc(void);
+  int rettv_list_alloc(typval_T *rettv);
++ void rettv_list_set(typval_T *rettv, list_T *l);
+  void list_unref(list_T *l);
+  int list_free_nonref(int copyID);
+  void list_free_items(int copyID);
+*** ../vim-8.0.0592/src/version.c	2017-04-30 19:39:32.650857838 +0200
+--- src/version.c	2017-04-30 20:02:00.302761577 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     593,
+  /**/
+
+-- 
+MONK: ... and the Lord spake, saying, "First shalt thou take out the Holy Pin,
+      then shalt thou count to three, no more, no less.  Three shalt be the
+      number thou shalt count, and the number of the counting shalt be three.
+      Four shalt thou not count, neither count thou two, excepting that thou
+      then proceed to three.  Five is right out.  Once the number three, being
+      the third number, be reached, then lobbest thou thy Holy Hand Grenade of
+      Antioch towards thou foe, who being naughty in my sight, shall snuff it.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

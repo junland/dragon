@@ -1,0 +1,85 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0236
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0236 (after 8.0.0234)
+Problem:    Gcc complains that a variable may be used uninitialized. Confusion
+            between variable and label name. (John Marriott)
+Solution:   Initialize it.  Rename end to end_lnum.
+Files:      src/ops.c
+
+
+*** ../vim-8.0.0235/src/ops.c	2017-01-24 19:55:39.247204591 +0100
+--- src/ops.c	2017-01-24 20:44:19.835493484 +0100
+***************
+*** 3774,3786 ****
+  	 */
+  	if (y_type == MCHAR && y_size == 1)
+  	{
+! 	    linenr_T end;
+  
+  	    if (VIsual_active)
+  	    {
+! 		end = curbuf->b_visual.vi_end.lnum;
+! 		if (end < curbuf->b_visual.vi_start.lnum)
+! 		    end = curbuf->b_visual.vi_start.lnum;
+  	    }
+  
+  	    do {
+--- 3774,3786 ----
+  	 */
+  	if (y_type == MCHAR && y_size == 1)
+  	{
+! 	    linenr_T end_lnum = 0; /* init for gcc */
+  
+  	    if (VIsual_active)
+  	    {
+! 		end_lnum = curbuf->b_visual.vi_end.lnum;
+! 		if (end_lnum < curbuf->b_visual.vi_start.lnum)
+! 		    end_lnum = curbuf->b_visual.vi_start.lnum;
+  	    }
+  
+  	    do {
+***************
+*** 3815,3821 ****
+  		}
+  		if (VIsual_active)
+  		    lnum++;
+! 	    } while (VIsual_active && lnum <= end);
+  
+  	    if (VIsual_active) /* reset lnum to the last visual line */
+  		lnum--;
+--- 3815,3821 ----
+  		}
+  		if (VIsual_active)
+  		    lnum++;
+! 	    } while (VIsual_active && lnum <= end_lnum);
+  
+  	    if (VIsual_active) /* reset lnum to the last visual line */
+  		lnum--;
+*** ../vim-8.0.0235/src/version.c	2017-01-24 20:14:42.755459796 +0100
+--- src/version.c	2017-01-24 20:46:07.678782565 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     236,
+  /**/
+
+-- 
+ARTHUR:  Well, I can't just call you `Man'.
+DENNIS:  Well, you could say `Dennis'.
+ARTHUR:  Well, I didn't know you were called `Dennis.'
+DENNIS:  Well, you didn't bother to find out, did you?
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

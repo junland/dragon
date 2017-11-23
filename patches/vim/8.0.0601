@@ -1,0 +1,58 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0601
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0601
+Problem:    No test coverage for :spellrepall.
+Solution:   Add a test. (Dominique Pelle, closes #1717)
+Files:      src/testdir/test_spell.vim
+
+
+*** ../vim-8.0.0600/src/testdir/test_spell.vim	2017-04-22 23:49:48.442047574 +0200
+--- src/testdir/test_spell.vim	2017-05-23 11:19:00.731380188 +0200
+***************
+*** 27,29 ****
+--- 27,46 ----
+    set nospell
+    bwipe!
+  endfunc
++ 
++ func Test_spellreall()
++   new
++   set spell
++   call assert_fails('spellrepall', 'E752:')
++   call setline(1, ['A speling mistake. The same speling mistake.',
++   \                'Another speling mistake.'])
++   call feedkeys(']s1z=', 'tx')
++   call assert_equal('A spelling mistake. The same speling mistake.', getline(1))
++   call assert_equal('Another speling mistake.', getline(2))
++   spellrepall
++   call assert_equal('A spelling mistake. The same spelling mistake.', getline(1))
++   call assert_equal('Another spelling mistake.', getline(2))
++   call assert_fails('spellrepall', 'E753:')
++   set spell&
++   bwipe!
++ endfunc
+*** ../vim-8.0.0600/src/version.c	2017-05-18 16:23:32.809827877 +0200
+--- src/version.c	2017-05-23 11:23:00.813918615 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     601,
+  /**/
+
+-- 
+Clothes make the man.  Naked people have little or no influence on society.
+                               -- Mark Twain (Samuel Clemens) (1835-1910)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

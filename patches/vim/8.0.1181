@@ -1,0 +1,114 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1181
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1181
+Problem:    Tests using Vim command fail on MS-Windows.
+Solution:   Do not add quotes around the Vim command.
+Files:      src/testdir/Make_dos.mak, src/testdir/Make_ming.mak
+
+
+*** ../vim-8.0.1180/src/testdir/Make_dos.mak	2017-07-29 23:01:53.630564352 +0200
+--- src/testdir/Make_dos.mak	2017-10-07 21:02:46.931961227 +0200
+***************
+*** 118,134 ****
+  newtests: $(NEW_TESTS)
+  
+  .vim.res:
+! 	@echo "$(VIMPROG)" > vimcmd
+  	$(VIMPROG) -u NONE $(NO_INITS) -S runtest.vim $*.vim
+  	@del vimcmd
+  
+  test_gui.res: test_gui.vim
+! 	@echo "$(VIMPROG)" > vimcmd
+  	$(VIMPROG) -u NONE $(NO_INITS) -S runtest.vim $*.vim
+  	@del vimcmd
+  
+  test_gui_init.res: test_gui_init.vim
+! 	@echo "$(VIMPROG)" > vimcmd
+  	$(VIMPROG) -u gui_preinit.vim -U gui_init.vim $(NO_PLUGINS) -S runtest.vim $*.vim
+  	@del vimcmd
+  
+--- 118,134 ----
+  newtests: $(NEW_TESTS)
+  
+  .vim.res:
+! 	@echo $(VIMPROG) > vimcmd
+  	$(VIMPROG) -u NONE $(NO_INITS) -S runtest.vim $*.vim
+  	@del vimcmd
+  
+  test_gui.res: test_gui.vim
+! 	@echo $(VIMPROG) > vimcmd
+  	$(VIMPROG) -u NONE $(NO_INITS) -S runtest.vim $*.vim
+  	@del vimcmd
+  
+  test_gui_init.res: test_gui_init.vim
+! 	@echo $(VIMPROG) > vimcmd
+  	$(VIMPROG) -u gui_preinit.vim -U gui_init.vim $(NO_PLUGINS) -S runtest.vim $*.vim
+  	@del vimcmd
+  
+*** ../vim-8.0.1180/src/testdir/Make_ming.mak	2017-07-29 23:01:53.630564352 +0200
+--- src/testdir/Make_ming.mak	2017-10-07 21:03:06.083855974 +0200
+***************
+*** 120,136 ****
+  newtests: $(NEW_TESTS)
+  
+  .vim.res:
+! 	@echo "$(VIMPROG)" > vimcmd
+  	$(VIMPROG) -u NONE $(NO_INITS) -S runtest.vim $*.vim
+  	@$(DEL) vimcmd
+  
+  test_gui.res: test_gui.vim
+! 	@echo "$(VIMPROG)" > vimcmd
+  	$(VIMPROG) -u NONE $(NO_INITS) -S runtest.vim $<
+  	@$(DEL) vimcmd
+  
+  test_gui_init.res: test_gui_init.vim
+! 	@echo "$(VIMPROG)" > vimcmd
+  	$(VIMPROG) -u gui_preinit.vim -U gui_init.vim $(NO_PLUGINS) -S runtest.vim $<
+  	@$(DEL) vimcmd
+  
+--- 120,136 ----
+  newtests: $(NEW_TESTS)
+  
+  .vim.res:
+! 	@echo $(VIMPROG) > vimcmd
+  	$(VIMPROG) -u NONE $(NO_INITS) -S runtest.vim $*.vim
+  	@$(DEL) vimcmd
+  
+  test_gui.res: test_gui.vim
+! 	@echo $(VIMPROG) > vimcmd
+  	$(VIMPROG) -u NONE $(NO_INITS) -S runtest.vim $<
+  	@$(DEL) vimcmd
+  
+  test_gui_init.res: test_gui_init.vim
+! 	@echo $(VIMPROG) > vimcmd
+  	$(VIMPROG) -u gui_preinit.vim -U gui_init.vim $(NO_PLUGINS) -S runtest.vim $<
+  	@$(DEL) vimcmd
+  
+*** ../vim-8.0.1180/src/version.c	2017-10-07 20:10:10.249555242 +0200
+--- src/version.c	2017-10-07 21:02:17.628122254 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1181,
+  /**/
+
+-- 
+MAN:     You don't frighten us, English pig-dog!  Go and boil your bottoms,
+         son of a silly person.  I blow my nose on you, so-called Arthur-king,
+         you and your silly English K...kaniggets.
+   He puts hands to his ears and blows a raspberry.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

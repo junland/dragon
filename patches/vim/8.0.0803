@@ -1,0 +1,929 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0803
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0803
+Problem:    Terminal window functions not yet implemented.
+Solution:   Implement several functions. Add a first test. (Yasuhiro
+            Matsumoto, closes #1871)
+Files:      runtime/doc/eval.txt, src/Makefile, src/evalfunc.c,
+            src/proto/evalfunc.pro, src/proto/terminal.pro, src/terminal.c,
+            src/testdir/Make_all.mak, src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0802/runtime/doc/eval.txt	2017-07-28 16:46:36.221711738 +0200
+--- runtime/doc/eval.txt	2017-07-29 17:46:29.565023838 +0200
+***************
+*** 2369,2374 ****
+--- 2369,2383 ----
+  tan({expr})			Float	tangent of {expr}
+  tanh({expr})			Float	hyperbolic tangent of {expr}
+  tempname()			String	name for a temporary file
++ term_getattr({attr}, {what}	Number	get the value of attribute {what}
++ term_getjob({buf})		Job	get the job associated with a terminal
++ term_getline({buf}, {row})	String	get a line of text from a terminal
++ term_getsize({buf})		List	get the size of a terminal
++ term_list()			List	get the list of terminal buffers
++ term_scrape({buf}, {row})	List	get row of a terminal screen
++ term_sendkeys({buf}, {keys})	none	send keystrokes to a terminal
++ term_start({cmd}, {options})	Job	open a terminal window and run a job
++ term_wait({buf})		Number  wait for screen to be updated
+  test_alloc_fail({id}, {countdown}, {repeat})
+  				none	make memory allocation fail
+  test_autochdir()		none	enable 'autochdir' during startup
+***************
+*** 7884,7889 ****
+--- 7901,7972 ----
+  		For MS-Windows forward slashes are used when the 'shellslash'
+  		option is set or when 'shellcmdflag' starts with '-'.
+  
++ term_getattr({attr}, {what})				*term_getattr()*
++ 		Given {attr}, a value returned by term_scrape() in the "attr"
++ 		item, return whether {what} is on.  {what} can be one of:
++ 			bold
++ 			italic
++ 			underline
++ 			strike
++ 			reverse
++ 
++ term_getjob({buf})					*term_getjob()*
++ 		Get the Job associated with terminal window {buf}.
++ 		{buf} is used as with |term_getsize()|.
++ 
++ term_getline({buf}, {row})				*term_getline()*
++ 		Get a line of text from the terminal window of {buf}.
++ 		{buf} is used as with |term_getsize()|.
++ 
++ 		The first line has {row} zero.  When {row} is invalid an empty
++ 		string is returned.
++ 
++ term_getsize({buf})					*term_getsize()*
++ 		Get the size of terminal {buf}. Returns a list with two
++ 		numbers: [rows, cols].  This is the size of the terminal, not
++ 		the window containing the terminal.
++ 
++ 		{buf} must be the buffer number of a terminal window. If the
++ 		buffer does not exist or is not a terminal window, an empty
++ 		list is returned.
++ 
++ term_list(})						*term_list()*
++ 		Return a list with the buffer numbers of all buffers for
++ 		terminal windows.
++ 
++ term_scrape({buf}, {row})				*term_scrape()*
++ 		Get the contents of {row} of terminal screen of {buf}.
++ 		For {buf} see |term_getsize()|.
++ 
++ 		The first {row} is zero.  When {row} is invalid an empty list
++ 		is returned.
++ 		
++ 		Return a List containing a Dict for each screen cell: 
++ 		    "chars"	character(s) at the cell
++ 		    "fg"	foreground color as #rrggbb
++ 		    "bg"	background color as #rrggbb
++ 		    "attr"	attributes of the cell, use term_getattr()
++ 		    		to get the individual flags
++ 		    "width"	cell width: 1 or 2
++ 
++ term_sendkeys({buf}, {keys})				*term_sendkeys()*
++ 		Send keystrokes {keys} to terminal {buf}.
++ 		{buf} is used as with |term_getsize()|.
++ 
++ 		{keys} are translated as key sequences. For example, "\<c-x>"
++ 		means the character CTRL-X.
++ 
++ term_start({cmd}, {options})				*term_start()*
++ 		Open a terminal window and run {cmd} in it.
++ 
++ 		Returns the buffer number of the terminal window.
++ 		When opening the window fails zero is returned.
++ 
++ 		{options} are not implemented yet.
++ 
++ term_wait({buf})						*term_wait()*
++ 		Wait for pending updates of {buf} to be handled.
++ 		{buf} is used as with |term_getsize()|.
+  
+  test_alloc_fail({id}, {countdown}, {repeat})		*test_alloc_fail()*
+  		This is for testing: If the memory allocation with {id} is
+*** ../vim-8.0.0802/src/Makefile	2017-07-23 22:01:43.063625375 +0200
+--- src/Makefile	2017-07-29 19:59:19.748206500 +0200
+***************
+*** 2256,2261 ****
+--- 2256,2262 ----
+  	test_tagjump \
+  	test_taglist \
+  	test_tcl \
++ 	test_terminal \
+  	test_textobjects \
+  	test_timers \
+  	test_true_false \
+*** ../vim-8.0.0802/src/evalfunc.c	2017-07-28 16:46:36.217711766 +0200
+--- src/evalfunc.c	2017-07-29 17:51:30.470869468 +0200
+***************
+*** 830,835 ****
+--- 830,846 ----
+      {"tanh",		1, 1, f_tanh},
+  #endif
+      {"tempname",	0, 0, f_tempname},
++ #ifdef FEAT_TERMINAL
++     {"term_getattr",	2, 2, f_term_getattr},
++     {"term_getjob",	1, 1, f_term_getjob},
++     {"term_getline",	2, 2, f_term_getline},
++     {"term_getsize",	1, 1, f_term_getsize},
++     {"term_list",	0, 0, f_term_list},
++     {"term_scrape",	2, 2, f_term_scrape},
++     {"term_sendkeys",	2, 2, f_term_sendkeys},
++     {"term_start",	1, 2, f_term_start},
++     {"term_wait",	1, 1, f_term_wait},
++ #endif
+      {"test_alloc_fail",	3, 3, f_test_alloc_fail},
+      {"test_autochdir",	0, 0, f_test_autochdir},
+      {"test_garbagecollect_now",	0, 0, f_test_garbagecollect_now},
+***************
+*** 1540,1546 ****
+  /*
+   * Get buffer by number or pattern.
+   */
+!     static buf_T *
+  get_buf_tv(typval_T *tv, int curtab_only)
+  {
+      char_u	*name = tv->vval.v_string;
+--- 1551,1557 ----
+  /*
+   * Get buffer by number or pattern.
+   */
+!     buf_T *
+  get_buf_tv(typval_T *tv, int curtab_only)
+  {
+      char_u	*name = tv->vval.v_string;
+*** ../vim-8.0.0802/src/proto/evalfunc.pro	2016-09-12 13:04:01.000000000 +0200
+--- src/proto/evalfunc.pro	2017-07-29 16:07:20.211414078 +0200
+***************
+*** 1,4 ****
+--- 1,5 ----
+  /* evalfunc.c */
++ buf_T* get_buf_tv(typval_T *tv, int curtab_only);
+  char_u *get_function_name(expand_T *xp, int idx);
+  char_u *get_expr_name(expand_T *xp, int idx);
+  int find_internal_func(char_u *name);
+*** ../vim-8.0.0802/src/proto/terminal.pro	2017-07-28 22:29:31.587928642 +0200
+--- src/proto/terminal.pro	2017-07-29 17:00:08.156900039 +0200
+***************
+*** 3,8 ****
+--- 3,9 ----
+  void free_terminal(buf_T *buf);
+  void write_to_term(buf_T *buffer, char_u *msg, channel_T *channel);
+  int terminal_loop(void);
++ void term_job_ended(job_T *job);
+  void term_channel_closed(channel_T *ch);
+  int term_update_window(win_T *wp);
+  int term_is_finished(buf_T *buf);
+***************
+*** 10,13 ****
+--- 11,23 ----
+  int term_get_attr(buf_T *buf, linenr_T lnum, int col);
+  char_u *term_get_status_text(term_T *term);
+  int set_ref_in_term(int copyID);
++ void f_term_getattr(typval_T *argvars, typval_T *rettv);
++ void f_term_getjob(typval_T *argvars, typval_T *rettv);
++ void f_term_getline(typval_T *argvars, typval_T *rettv);
++ void f_term_getsize(typval_T *argvars, typval_T *rettv);
++ void f_term_list(typval_T *argvars, typval_T *rettv);
++ void f_term_start(typval_T *argvars, typval_T *rettv);
++ void f_term_scrape(typval_T *argvars, typval_T *rettv);
++ void f_term_sendkeys(typval_T *argvars, typval_T *rettv);
++ void f_term_wait(typval_T *argvars, typval_T *rettv);
+  /* vim: set ft=c : */
+*** ../vim-8.0.0802/src/terminal.c	2017-07-29 16:01:49.489748199 +0200
+--- src/terminal.c	2017-07-29 19:53:45.682578164 +0200
+***************
+*** 54,67 ****
+   * - support minimal size when 'termsize' is empty?
+   * - implement "term" for job_start(): more job options when starting a
+   *   terminal.
+-  * - implement term_list()			list of buffers with a terminal
+-  * - implement term_getsize(buf)
+-  * - implement term_setsize(buf)
+-  * - implement term_sendkeys(buf, keys)		send keystrokes to a terminal
+-  * - implement term_wait(buf)			wait for screen to be updated
+-  * - implement term_scrape(buf, row)		inspect terminal screen
+-  * - implement term_open(command, options)	open terminal window
+-  * - implement term_getjob(buf)
+   * - when 'encoding' is not utf-8, or the job is using another encoding, setup
+   *   conversions.
+   * - In the GUI use a terminal emulator for :!cmd.
+--- 54,59 ----
+***************
+*** 69,75 ****
+  
+  #include "vim.h"
+  
+! #ifdef FEAT_TERMINAL
+  
+  #ifdef WIN3264
+  # define MIN(x,y) (x < y ? x : y)
+--- 61,67 ----
+  
+  #include "vim.h"
+  
+! #if defined(FEAT_TERMINAL) || defined(PROTO)
+  
+  #ifdef WIN3264
+  # define MIN(x,y) (x < y ? x : y)
+***************
+*** 110,115 ****
+--- 102,108 ----
+      int		tl_dirty_row_end;   /* row below last one to update */
+  
+      garray_T	tl_scrollback;
++     int		tl_scrollback_scrolled;
+  
+      pos_T	tl_cursor;
+      int		tl_cursor_visible;
+***************
+*** 384,392 ****
+   * Return the number of bytes in "buf".
+   */
+      static int
+! term_convert_key(int c, char *buf)
+  {
+!     VTerm	    *vterm = curbuf->b_term->tl_vterm;
+      VTermKey	    key = VTERM_KEY_NONE;
+      VTermModifier   mod = VTERM_MOD_NONE;
+  
+--- 377,385 ----
+   * Return the number of bytes in "buf".
+   */
+      static int
+! term_convert_key(term_T *term, int c, char *buf)
+  {
+!     VTerm	    *vterm = term->tl_vterm;
+      VTermKey	    key = VTERM_KEY_NONE;
+      VTermModifier   mod = VTERM_MOD_NONE;
+  
+***************
+*** 517,522 ****
+--- 510,585 ----
+  }
+  
+  /*
++  * Send keys to terminal.
++  */
++     static int
++ send_keys_to_term(term_T *term, int c, int typed)
++ {
++     char	msg[KEY_BUF_LEN];
++     size_t	len;
++     static int	mouse_was_outside = FALSE;
++     int		dragging_outside = FALSE;
++ 
++     /* Catch keys that need to be handled as in Normal mode. */
++     switch (c)
++     {
++ 	case NUL:
++ 	case K_ZERO:
++ 	    if (typed)
++ 		stuffcharReadbuff(c);
++ 	    return FAIL;
++ 
++ 	case K_IGNORE:
++ 	    return FAIL;
++ 
++ 	case K_LEFTDRAG:
++ 	case K_MIDDLEDRAG:
++ 	case K_RIGHTDRAG:
++ 	case K_X1DRAG:
++ 	case K_X2DRAG:
++ 	    dragging_outside = mouse_was_outside;
++ 	    /* FALLTHROUGH */
++ 	case K_LEFTMOUSE:
++ 	case K_LEFTMOUSE_NM:
++ 	case K_LEFTRELEASE:
++ 	case K_LEFTRELEASE_NM:
++ 	case K_MIDDLEMOUSE:
++ 	case K_MIDDLERELEASE:
++ 	case K_RIGHTMOUSE:
++ 	case K_RIGHTRELEASE:
++ 	case K_X1MOUSE:
++ 	case K_X1RELEASE:
++ 	case K_X2MOUSE:
++ 	case K_X2RELEASE:
++ 	    if (mouse_row < W_WINROW(curwin)
++ 		    || mouse_row >= (W_WINROW(curwin) + curwin->w_height)
++ 		    || mouse_col < W_WINCOL(curwin)
++ 		    || mouse_col >= W_ENDCOL(curwin)
++ 		    || dragging_outside)
++ 	    {
++ 		/* click outside the current window */
++ 		if (typed)
++ 		{
++ 		    stuffcharReadbuff(c);
++ 		    mouse_was_outside = TRUE;
++ 		}
++ 		return FAIL;
++ 	    }
++     }
++     if (typed)
++ 	mouse_was_outside = FALSE;
++ 
++     /* Convert the typed key to a sequence of bytes for the job. */
++     len = term_convert_key(term, c, msg);
++     if (len > 0)
++ 	/* TODO: if FAIL is returned, stop? */
++ 	channel_send(term->tl_job->jv_channel, PART_IN,
++ 						 (char_u *)msg, (int)len, NULL);
++ 
++     return OK;
++ }
++ 
++ /*
+   * Wait for input and send it to the job.
+   * Return when the start of a CTRL-W command is typed or anything else that
+   * should be handled as a Normal mode command.
+***************
+*** 526,536 ****
+      int
+  terminal_loop(void)
+  {
+-     char	buf[KEY_BUF_LEN];
+      int		c;
+-     size_t	len;
+-     static int	mouse_was_outside = FALSE;
+-     int		dragging_outside = FALSE;
+      int		termkey = 0;
+  
+      if (curbuf->b_term->tl_vterm == NULL || !term_job_running(curbuf->b_term))
+--- 589,595 ----
+***************
+*** 576,633 ****
+  		return OK;
+  	    }
+  	}
+  
+! 	/* Catch keys that need to be handled as in Normal mode. */
+! 	switch (c)
+! 	{
+! 	    case NUL:
+! 	    case K_ZERO:
+! 		stuffcharReadbuff(c);
+! 		return OK;
+! 
+! 	    case K_IGNORE: continue;
+  
+! 	    case K_LEFTDRAG:
+! 	    case K_MIDDLEDRAG:
+! 	    case K_RIGHTDRAG:
+! 	    case K_X1DRAG:
+! 	    case K_X2DRAG:
+! 		dragging_outside = mouse_was_outside;
+! 		/* FALLTHROUGH */
+! 	    case K_LEFTMOUSE:
+! 	    case K_LEFTMOUSE_NM:
+! 	    case K_LEFTRELEASE:
+! 	    case K_LEFTRELEASE_NM:
+! 	    case K_MIDDLEMOUSE:
+! 	    case K_MIDDLERELEASE:
+! 	    case K_RIGHTMOUSE:
+! 	    case K_RIGHTRELEASE:
+! 	    case K_X1MOUSE:
+! 	    case K_X1RELEASE:
+! 	    case K_X2MOUSE:
+! 	    case K_X2RELEASE:
+! 		if (mouse_row < W_WINROW(curwin)
+! 			|| mouse_row >= (W_WINROW(curwin) + curwin->w_height)
+! 			|| mouse_col < W_WINCOL(curwin)
+! 			|| mouse_col >= W_ENDCOL(curwin)
+! 			|| dragging_outside)
+! 		{
+! 		    /* click outside the current window */
+! 		    stuffcharReadbuff(c);
+! 		    mouse_was_outside = TRUE;
+! 		    return OK;
+! 		}
+  	}
+! 	mouse_was_outside = FALSE;
+! 
+! 	/* Convert the typed key to a sequence of bytes for the job. */
+! 	len = term_convert_key(c, buf);
+! 	if (len > 0)
+! 	    /* TODO: if FAIL is returned, stop? */
+! 	    channel_send(curbuf->b_term->tl_job->jv_channel, PART_IN,
+! 						(char_u *)buf, (int)len, NULL);
+      }
+-     return FAIL;
+  }
+  
+      static void
+--- 635,673 ----
+  		return OK;
+  	    }
+  	}
++ 	if (send_keys_to_term(curbuf->b_term, c, TRUE) != OK)
++ 	    return OK;
++     }
++     return FAIL;
++ }
+  
+! /*
+!  * Called when a job has finished.
+!  */
+!     void
+! term_job_ended(job_T *job)
+! {
+!     term_T *term;
+!     int	    did_one = FALSE;
+  
+!     for (term = first_term; term != NULL; term = term->tl_next)
+! 	if (term->tl_job == job)
+! 	{
+! 	    vim_free(term->tl_title);
+! 	    term->tl_title = NULL;
+! 	    vim_free(term->tl_status_text);
+! 	    term->tl_status_text = NULL;
+! 	    redraw_buf_and_status_later(term->tl_buffer, VALID);
+! 	    did_one = TRUE;
+  	}
+!     if (did_one)
+! 	redraw_statuslines();
+!     if (curbuf->b_term != NULL)
+!     {
+! 	if (curbuf->b_term->tl_job == job)
+! 	    maketitle();
+! 	update_cursor(curbuf->b_term, TRUE);
+      }
+  }
+  
+      static void
+***************
+*** 789,794 ****
+--- 829,835 ----
+  	line->sb_cols = len;
+  	line->sb_cells = p;
+  	++term->tl_scrollback.ga_len;
++ 	++term->tl_scrollback_scrolled;
+      }
+      return 0; /* ignored */
+  }
+***************
+*** 916,921 ****
+--- 957,963 ----
+  
+  /*
+   * Called when a channel has been closed.
++  * If this was a channel for a terminal window then finish it up.
+   */
+      void
+  term_channel_closed(channel_T *ch)
+***************
+*** 1080,1087 ****
+  	attr |= HL_STANDOUT;
+      if (cell->attrs.reverse)
+  	attr |= HL_INVERSE;
+-     if (cell->attrs.strike)
+- 	attr |= HL_UNDERLINE;
+  
+  #ifdef FEAT_GUI
+      if (gui.in_use)
+--- 1122,1127 ----
+***************
+*** 1384,1391 ****
+--- 1424,1738 ----
+      return abort;
+  }
+  
++ /*
++  * "term_getattr(attr, name)" function
++  */
++     void
++ f_term_getattr(typval_T *argvars, typval_T *rettv)
++ {
++     int	    attr;
++     size_t  i;
++     char_u  *name;
++ 
++     static struct {
++ 	char	    *name;
++ 	int	    attr;
++     } attrs[] = {
++ 	{"bold",      HL_BOLD},
++ 	{"italic",    HL_ITALIC},
++ 	{"underline", HL_UNDERLINE},
++ 	{"strike",    HL_STANDOUT},
++ 	{"reverse",   HL_INVERSE},
++     };
++ 
++     attr = get_tv_number(&argvars[0]);
++     name = get_tv_string_chk(&argvars[1]);
++     if (name == NULL)
++ 	return;
++ 
++     for (i = 0; i < sizeof(attrs)/sizeof(attrs[0]); ++i)
++ 	if (STRCMP(name, attrs[i].name) == 0)
++ 	{
++ 	    rettv->vval.v_number = (attr & attrs[i].attr) != 0 ? 1 : 0;
++ 	    break;
++ 	}
++ }
++ 
++ /*
++  * Get the buffer from the first argument in "argvars".
++  * Returns NULL when the buffer is not for a terminal window.
++  */
++     static buf_T *
++ term_get_buf(typval_T *argvars)
++ {
++     buf_T *buf;
++ 
++     (void)get_tv_number(&argvars[0]);	    /* issue errmsg if type error */
++     ++emsg_off;
++     buf = get_buf_tv(&argvars[0], FALSE);
++     --emsg_off;
++     if (buf->b_term == NULL)
++ 	return NULL;
++     return buf;
++ }
++ 
++ /*
++  * "term_getjob(buf)" function
++  */
++     void
++ f_term_getjob(typval_T *argvars, typval_T *rettv)
++ {
++     buf_T	*buf = term_get_buf(argvars);
++ 
++     rettv->v_type = VAR_JOB;
++     rettv->vval.v_job = NULL;
++     if (buf == NULL)
++ 	return;
++ 
++     rettv->vval.v_job = buf->b_term->tl_job;
++     if (rettv->vval.v_job != NULL)
++ 	++rettv->vval.v_job->jv_refcount;
++ }
++ 
++ /*
++  * "term_getline(buf, row)" function
++  */
++     void
++ f_term_getline(typval_T *argvars, typval_T *rettv)
++ {
++     buf_T	    *buf = term_get_buf(argvars);
++     term_T	    *term;
++     int		    row;
++ 
++     rettv->v_type = VAR_STRING;
++     if (buf == NULL)
++ 	return;
++     term = buf->b_term;
++     row = (int)get_tv_number(&argvars[1]);
++ 
++     if (term->tl_vterm == NULL)
++     {
++ 	linenr_T lnum = row + term->tl_scrollback_scrolled + 1;
++ 
++ 	/* vterm is finished, get the text from the buffer */
++ 	if (lnum > 0 && lnum <= buf->b_ml.ml_line_count)
++ 	    rettv->vval.v_string = vim_strsave(ml_get_buf(buf, lnum, FALSE));
++     }
++     else
++     {
++ 	VTermScreen	*screen = vterm_obtain_screen(term->tl_vterm);
++ 	VTermRect	rect;
++ 	int		len;
++ 	char_u		*p;
++ 
++ 	len = term->tl_cols * MB_MAXBYTES + 1;
++ 	p = alloc(len);
++ 	if (p == NULL)
++ 	    return;
++ 	rettv->vval.v_string = p;
++ 
++ 	rect.start_col = 0;
++ 	rect.end_col = term->tl_cols;
++ 	rect.start_row = row;
++ 	rect.end_row = row + 1;
++ 	p[vterm_screen_get_text(screen, (char *)p, len, rect)] = NUL;
++     }
++ }
++ 
++ /*
++  * "term_getsize(buf)" function
++  */
++     void
++ f_term_getsize(typval_T *argvars, typval_T *rettv)
++ {
++     buf_T	*buf = term_get_buf(argvars);
++     list_T	*l;
++ 
++     if (rettv_list_alloc(rettv) == FAIL)
++ 	return;
++     if (buf == NULL)
++ 	return;
++ 
++     l = rettv->vval.v_list;
++     list_append_number(l, buf->b_term->tl_rows);
++     list_append_number(l, buf->b_term->tl_cols);
++ }
++ 
++ /*
++  * "term_list()" function
++  */
++     void
++ f_term_list(typval_T *argvars UNUSED, typval_T *rettv)
++ {
++     term_T	*tp;
++     list_T	*l;
++ 
++     if (rettv_list_alloc(rettv) == FAIL || first_term == NULL)
++ 	return;
++ 
++     l = rettv->vval.v_list;
++     for (tp = first_term; tp != NULL; tp = tp->tl_next)
++ 	if (tp != NULL && tp->tl_buffer != NULL)
++ 	    if (list_append_number(l,
++ 				   (varnumber_T)tp->tl_buffer->b_fnum) == FAIL)
++ 		return;
++ }
++ 
++ /*
++  * "term_scrape(buf, row)" function
++  */
++     void
++ f_term_scrape(typval_T *argvars, typval_T *rettv)
++ {
++     buf_T	    *buf = term_get_buf(argvars);
++     VTermScreen	    *screen = NULL;
++     VTermPos	    pos;
++     list_T	    *l;
++     term_T	    *term;
++ 
++     if (rettv_list_alloc(rettv) == FAIL)
++ 	return;
++     if (buf == NULL)
++ 	return;
++     term = buf->b_term;
++     if (term->tl_vterm != NULL)
++ 	screen = vterm_obtain_screen(term->tl_vterm);
++ 
++     l = rettv->vval.v_list;
++     pos.row = (int)get_tv_number(&argvars[1]);
++     for (pos.col = 0; pos.col < term->tl_cols; )
++     {
++ 	dict_T		*dcell;
++ 	VTermScreenCell cell;
++ 	char_u		rgb[8];
++ 	char_u		mbs[MB_MAXBYTES * VTERM_MAX_CHARS_PER_CELL + 1];
++ 	int		off = 0;
++ 	int		i;
++ 
++ 	if (screen == NULL)
++ 	{
++ 	    linenr_T lnum = pos.row + term->tl_scrollback_scrolled;
++ 	    sb_line_T *line;
++ 
++ 	    /* vterm has finished, get the cell from scrollback */
++ 	    if (lnum < 0 || lnum >= term->tl_scrollback.ga_len)
++ 		break;
++ 	    line = (sb_line_T *)term->tl_scrollback.ga_data + lnum;
++ 	    if (pos.col >= line->sb_cols)
++ 		break;
++ 	    cell = line->sb_cells[pos.col];
++ 	}
++ 	else if (vterm_screen_get_cell(screen, pos, &cell) == 0)
++ 	    break;
++ 	dcell = dict_alloc();
++ 	list_append_dict(l, dcell);
++ 
++ 	for (i = 0; i < VTERM_MAX_CHARS_PER_CELL; ++i)
++ 	{
++ 	    if (cell.chars[i] == 0)
++ 		break;
++ 	    off += (*utf_char2bytes)((int)cell.chars[i], mbs + off);
++ 	}
++ 	mbs[off] = NUL;
++ 	dict_add_nr_str(dcell, "chars", 0, mbs);
++ 
++ 	vim_snprintf((char *)rgb, 8, "#%02x%02x%02x",
++ 				     cell.fg.red, cell.fg.green, cell.fg.blue);
++ 	dict_add_nr_str(dcell, "fg", 0, rgb);
++ 	vim_snprintf((char *)rgb, 8, "#%02x%02x%02x",
++ 				     cell.bg.red, cell.bg.green, cell.bg.blue);
++ 	dict_add_nr_str(dcell, "bg", 0, rgb);
++ 
++ 	dict_add_nr_str(dcell, "attr", cell2attr(&cell), NULL);
++ 	dict_add_nr_str(dcell, "width", cell.width, NULL);
++ 
++ 	++pos.col;
++ 	if (cell.width == 2)
++ 	    ++pos.col;
++     }
++ }
++ 
++ /*
++  * "term_sendkeys(buf, keys)" function
++  */
++     void
++ f_term_sendkeys(typval_T *argvars, typval_T *rettv)
++ {
++     buf_T	*buf = term_get_buf(argvars);
++     char_u	*msg;
++     term_T	*term;
++ 
++     rettv->v_type = VAR_UNKNOWN;
++     if (buf == NULL)
++ 	return;
++ 
++     msg = get_tv_string_chk(&argvars[1]);
++     if (msg == NULL)
++ 	return;
++     term = buf->b_term;
++     if (term->tl_vterm == NULL)
++ 	return;
++ 
++     while (*msg != NUL)
++     {
++ 	send_keys_to_term(term, PTR2CHAR(msg), FALSE);
++ 	msg += MB_PTR2LEN(msg);
++     }
++ 
++     /* TODO: only update once in a while. */
++     update_screen(0);
++     if (buf == curbuf)
++ 	update_cursor(term, TRUE);
++ }
++ 
++ /*
++  * "term_start(command, options)" function
++  */
++     void
++ f_term_start(typval_T *argvars, typval_T *rettv)
++ {
++     char_u	*cmd = get_tv_string_chk(&argvars[0]);
++     exarg_T	ea;
++ 
++     if (cmd == NULL)
++ 	return;
++     ea.arg = cmd;
++     ex_terminal(&ea);
++ 
++     if (curbuf->b_term != NULL)
++ 	rettv->vval.v_number = curbuf->b_fnum;
++ }
++ 
++ /*
++  * "term_wait" function
++  */
++     void
++ f_term_wait(typval_T *argvars, typval_T *rettv UNUSED)
++ {
++     buf_T	*buf = term_get_buf(argvars);
++ 
++     if (buf == NULL)
++ 	return;
++ 
++     /* Get the job status, this will detect a job that finished. */
++     if (buf->b_term->tl_job != NULL)
++ 	(void)job_status(buf->b_term->tl_job);
++ 
++     /* Check for any pending channel I/O. */
++     vpeekc_any();
++     ui_delay(10L, FALSE);
++ 
++     /* Flushing messages on channels is hopefully sufficient.
++      * TODO: is there a better way? */
++     parse_queued_messages();
++ }
++ 
+  # ifdef WIN3264
+  
++ /**************************************
++  * 2. MS-Windows implementation.
++  */
++ 
+  #define WINPTY_SPAWN_FLAG_AUTO_SHUTDOWN 1ul
+  #define WINPTY_SPAWN_FLAG_EXIT_AFTER_SHUTDOWN 2ull
+  
+***************
+*** 1404,1413 ****
+  LPCWSTR (*winpty_error_msg)(void*);
+  BOOL (*winpty_set_size)(void*, int, int, void*);
+  
+- /**************************************
+-  * 2. MS-Windows implementation.
+-  */
+- 
+  #define WINPTY_DLL "winpty.dll"
+  
+  static HINSTANCE hWinPtyDLL = NULL;
+--- 1751,1756 ----
+*** ../vim-8.0.0802/src/testdir/Make_all.mak	2017-07-23 22:01:43.063625375 +0200
+--- src/testdir/Make_all.mak	2017-07-29 16:19:40.806199178 +0200
+***************
+*** 197,202 ****
+--- 197,203 ----
+  	    test_syntax.res \
+  	    test_system.res \
+  	    test_tcl.res \
++ 	    test_terminal.res \
+  	    test_textobjects.res \
+  	    test_undo.res \
+  	    test_usercommands.res \
+*** ../vim-8.0.0802/src/testdir/test_terminal.vim	2017-07-29 20:05:33.993555291 +0200
+--- src/testdir/test_terminal.vim	2017-07-29 19:49:09.604538308 +0200
+***************
+*** 0 ****
+--- 1,67 ----
++ " Tests for the terminal window.
++ 
++ if !exists('*term_start')
++   finish
++ endif
++ 
++ source shared.vim
++ 
++ func Test_terminal_basic()
++   let buf = term_start(&shell)
++ 
++   let termlist = term_list()
++   call assert_equal(1, len(termlist))
++   call assert_equal(buf, termlist[0])
++ 
++   let g:job = term_getjob(buf)
++   call assert_equal(v:t_job, type(g:job))
++ 
++   call term_sendkeys(buf, "exit\r")
++   call WaitFor('job_status(g:job) == "dead"')
++   call assert_equal('dead', job_status(g:job))
++ 
++   exe buf . 'bwipe'
++   unlet g:job
++ endfunc
++ 
++ func Check_123(buf)
++   let l = term_scrape(a:buf, 0)
++   call assert_true(len(l) > 0)
++   call assert_equal('1', l[0].chars)
++   call assert_equal('2', l[1].chars)
++   call assert_equal('3', l[2].chars)
++   call assert_equal('#00e000', l[0].fg)
++   if &background == 'light'
++     call assert_equal('#ffffff', l[0].bg)
++   else
++     call assert_equal('#000000', l[0].bg)
++   endif
++ 
++   let l = term_getline(a:buf, 0)
++   call assert_equal('123', l)
++ endfunc
++ 
++ func Test_terminal_scrape()
++   if has('win32')
++     let cmd = 'cmd /c "cls && color 2 && echo 123"'
++   else
++     call writefile(["\<Esc>[32m123"], 'Xtext')
++     let cmd = "cat Xtext"
++   endif
++   let buf = term_start(cmd)
++ 
++   let termlist = term_list()
++   call assert_equal(1, len(termlist))
++   call assert_equal(buf, termlist[0])
++ 
++   call term_wait(buf)
++   call Check_123(buf)
++ 
++   " Must still work after the job ended.
++   let g:job = term_getjob(buf)
++   call WaitFor('job_status(g:job) == "dead"')
++   call term_wait(buf)
++   call Check_123(buf)
++ 
++   exe buf . 'bwipe'
++ endfunc
+*** ../vim-8.0.0802/src/version.c	2017-07-29 16:01:49.489748199 +0200
+--- src/version.c	2017-07-29 16:08:54.822746982 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     803,
+  /**/
+
+-- 
+   GALAHAD turns back.  We see from his POV the lovely ZOOT standing by him
+   smiling enchantingly and a number of equally delectable GIRLIES draped
+   around in the seductively poulticed room.  They look at him smilingly and
+   wave.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

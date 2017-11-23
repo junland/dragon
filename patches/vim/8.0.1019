@@ -1,0 +1,100 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1019
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1019
+Problem:    Pasting in virtual edit happens in the wrong place.
+Solution:   Do not adjust coladd when after the end of the line (closes #2015)
+Files:      src/testdir/test_virtualedit.vim, src/misc2.c
+
+
+*** ../vim-8.0.1018/src/testdir/test_virtualedit.vim	2017-08-19 15:05:16.048003367 +0200
+--- src/testdir/test_virtualedit.vim	2017-08-30 16:54:03.193586676 +0200
+***************
+*** 1,7 ****
+  " Tests for 'virtualedit'.
+  
+  func Test_yank_move_change()
+!   split
+    call setline(1, [
+  	\ "func foo() error {",
+  	\ "\tif n, err := bar();",
+--- 1,7 ----
+  " Tests for 'virtualedit'.
+  
+  func Test_yank_move_change()
+!   new
+    call setline(1, [
+  	\ "func foo() error {",
+  	\ "\tif n, err := bar();",
+***************
+*** 29,31 ****
+--- 29,43 ----
+    set virtualedit=
+    set ts=8
+  endfunc
++ 
++ func Test_paste_end_of_line()
++   new
++   set virtualedit=all
++   call setline(1, ['456', '123'])
++   normal! gg0"ay$
++   exe "normal! 2G$lllA\<C-O>:normal! \"agP\r"
++   call assert_equal('123456', getline(2))
++ 
++   bwipe!
++   set virtualedit=
++ endfunc
+*** ../vim-8.0.1018/src/misc2.c	2017-08-26 22:02:45.869432874 +0200
+--- src/misc2.c	2017-08-30 16:58:26.111766905 +0200
+***************
+*** 607,617 ****
+  	if (oldcoladd > win->w_cursor.col)
+  	{
+  	    win->w_cursor.coladd = oldcoladd - win->w_cursor.col;
+! 	    if (win->w_cursor.col < len && win->w_cursor.coladd > 0)
+  	    {
+  		int cs, ce;
+  
+- 		/* check that coladd is not more than the char width */
+  		getvcol(win, &win->w_cursor, &cs, NULL, &ce);
+  		if (win->w_cursor.coladd > ce - cs)
+  		    win->w_cursor.coladd = ce - cs;
+--- 607,620 ----
+  	if (oldcoladd > win->w_cursor.col)
+  	{
+  	    win->w_cursor.coladd = oldcoladd - win->w_cursor.col;
+! 
+! 	    /* Make sure that coladd is not more than the char width.
+! 	     * Not for the last character, coladd is then used when the cursor
+! 	     * is actually after the last character. */
+! 	    if (win->w_cursor.col + 1 < len && win->w_cursor.coladd > 0)
+  	    {
+  		int cs, ce;
+  
+  		getvcol(win, &win->w_cursor, &cs, NULL, &ce);
+  		if (win->w_cursor.coladd > ce - cs)
+  		    win->w_cursor.coladd = ce - cs;
+*** ../vim-8.0.1018/src/version.c	2017-08-30 15:57:29.692981323 +0200
+--- src/version.c	2017-08-30 16:53:35.061781601 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1019,
+  /**/
+
+-- 
+Have you heard about the new Beowulf cluster? It's so fast, it executes
+an infinite loop in 6 seconds.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

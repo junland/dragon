@@ -1,0 +1,155 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0421
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0421
+Problem:    Diff mode is displayed wrong when adding a line at the end of a
+            buffer.
+Solution:   Adjust marks in diff mode. (James McCoy, closes #1329)
+Files:      src/misc1.c, src/ops.c, src/testdir/test_diffmode.vim
+
+
+*** ../vim-8.0.0420/src/misc1.c	2017-02-25 14:59:29.910090402 +0100
+--- src/misc1.c	2017-03-05 18:01:34.499758386 +0100
+***************
+*** 1427,1434 ****
+  	/* Postpone calling changed_lines(), because it would mess up folding
+  	 * with markers.
+  	 * Skip mark_adjust when adding a line after the last one, there can't
+! 	 * be marks there. */
+! 	if (curwin->w_cursor.lnum + 1 < curbuf->b_ml.ml_line_count)
+  	    mark_adjust(curwin->w_cursor.lnum + 1, (linenr_T)MAXLNUM, 1L, 0L);
+  	did_append = TRUE;
+      }
+--- 1427,1438 ----
+  	/* Postpone calling changed_lines(), because it would mess up folding
+  	 * with markers.
+  	 * Skip mark_adjust when adding a line after the last one, there can't
+! 	 * be marks there. But still needed in diff mode. */
+! 	if (curwin->w_cursor.lnum + 1 < curbuf->b_ml.ml_line_count
+! #ifdef FEAT_DIFF
+! 		|| curwin->w_p_diff
+! #endif
+! 	    )
+  	    mark_adjust(curwin->w_cursor.lnum + 1, (linenr_T)MAXLNUM, 1L, 0L);
+  	did_append = TRUE;
+      }
+***************
+*** 2863,2870 ****
+  appended_lines_mark(linenr_T lnum, long count)
+  {
+      /* Skip mark_adjust when adding a line after the last one, there can't
+!      * be marks there. */
+!     if (lnum + count < curbuf->b_ml.ml_line_count)
+  	mark_adjust(lnum + 1, (linenr_T)MAXLNUM, count, 0L);
+      changed_lines(lnum + 1, 0, lnum + 1, count);
+  }
+--- 2867,2878 ----
+  appended_lines_mark(linenr_T lnum, long count)
+  {
+      /* Skip mark_adjust when adding a line after the last one, there can't
+!      * be marks there. But it's still needed in diff mode. */
+!     if (lnum + count < curbuf->b_ml.ml_line_count
+! #ifdef FEAT_DIFF
+! 	    || curwin->w_p_diff
+! #endif
+! 	)
+  	mark_adjust(lnum + 1, (linenr_T)MAXLNUM, count, 0L);
+      changed_lines(lnum + 1, 0, lnum + 1, count);
+  }
+*** ../vim-8.0.0420/src/ops.c	2017-02-04 21:34:27.293529871 +0100
+--- src/ops.c	2017-03-05 18:01:54.271606363 +0100
+***************
+*** 3927,3935 ****
+  		    curbuf->b_op_start.lnum++;
+  	    }
+  	    /* Skip mark_adjust when adding lines after the last one, there
+! 	     * can't be marks there. */
+  	    if (curbuf->b_op_start.lnum + (y_type == MCHAR) - 1 + nr_lines
+! 						 < curbuf->b_ml.ml_line_count)
+  		mark_adjust(curbuf->b_op_start.lnum + (y_type == MCHAR),
+  					     (linenr_T)MAXLNUM, nr_lines, 0L);
+  
+--- 3927,3939 ----
+  		    curbuf->b_op_start.lnum++;
+  	    }
+  	    /* Skip mark_adjust when adding lines after the last one, there
+! 	     * can't be marks there. But still needed in diff mode. */
+  	    if (curbuf->b_op_start.lnum + (y_type == MCHAR) - 1 + nr_lines
+! 						 < curbuf->b_ml.ml_line_count
+! #ifdef FEAT_DIFF
+! 						 || curwin->w_p_diff
+! #endif
+! 						 )
+  		mark_adjust(curbuf->b_op_start.lnum + (y_type == MCHAR),
+  					     (linenr_T)MAXLNUM, nr_lines, 0L);
+  
+***************
+*** 6311,6317 ****
+  
+  /*
+   * Routine to export any final X selection we had to the environment
+!  * so that the text is still available after vim has exited. X selections
+   * only exist while the owning application exists, so we write to the
+   * permanent (while X runs) store CUT_BUFFER0.
+   * Dump the CLIPBOARD selection if we own it (it's logically the more
+--- 6315,6321 ----
+  
+  /*
+   * Routine to export any final X selection we had to the environment
+!  * so that the text is still available after Vim has exited. X selections
+   * only exist while the owning application exists, so we write to the
+   * permanent (while X runs) store CUT_BUFFER0.
+   * Dump the CLIPBOARD selection if we own it (it's logically the more
+*** ../vim-8.0.0420/src/testdir/test_diffmode.vim	2017-02-26 19:59:55.578563703 +0100
+--- src/testdir/test_diffmode.vim	2017-03-05 17:57:11.533780674 +0100
+***************
+*** 347,349 ****
+--- 347,369 ----
+    call assert_fails('norm do', 'E21:')
+    %bwipe!
+  endfunc
++ 
++ func Test_diff_lastline()
++   enew!
++   only!
++   call setline(1, ['This is a ', 'line with five ', 'rows'])
++   diffthis
++   botright vert new
++   call setline(1, ['This is', 'a line with ', 'four rows'])
++   diffthis
++   1
++   call feedkeys("Je a\<CR>", 'tx')
++   call feedkeys("Je a\<CR>", 'tx')
++   let w1lines = winline()
++   wincmd w
++   $
++   let w2lines = winline()
++   call assert_equal(w2lines, w1lines)
++   bwipe!
++   bwipe!
++ endfunc
+*** ../vim-8.0.0420/src/version.c	2017-03-05 17:43:10.624245543 +0100
+--- src/version.c	2017-03-05 17:56:47.981961829 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     421,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+60. As your car crashes through the guardrail on a mountain road, your first
+    instinct is to search for the "back" button.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

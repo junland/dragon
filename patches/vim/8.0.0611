@@ -1,0 +1,83 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0611
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0611
+Problem:    When t_u7 is sent a few characters in the second screen line are
+            overwritten and not redrawn later. (Rastislav Barlik)
+Solution:   Move redrawing the screen to after overwriting the characters.
+Files:      src/main.c, src/term.c.
+
+
+*** ../vim-8.0.0610/src/main.c	2017-04-18 18:51:30.063844106 +0200
+--- src/main.c	2017-06-04 15:41:15.230362973 +0200
+***************
+*** 783,788 ****
+--- 783,793 ----
+      if (params.n_commands > 0)
+  	exe_commands(&params);
+  
++ #if defined(FEAT_TERMRESPONSE) && defined(FEAT_MBYTE)
++     /* Must be done before redrawing, puts a few characters on the screen. */
++     may_req_ambiguous_char_width();
++ #endif
++ 
+      RedrawingDisabled = 0;
+      redraw_all_later(NOT_VALID);
+      no_wait_return = FALSE;
+***************
+*** 796,804 ****
+       * argument doesn't make it appear in the shell Vim was started from. */
+      may_req_termresponse();
+  
+- # if defined(FEAT_MBYTE)
+-     may_req_ambiguous_char_width();
+- # endif
+      may_req_bg_color();
+  #endif
+  
+--- 801,806 ----
+*** ../vim-8.0.0610/src/term.c	2017-06-04 15:37:42.179841016 +0200
+--- src/term.c	2017-06-04 15:43:08.493576778 +0200
+***************
+*** 3333,3341 ****
+--- 3333,3345 ----
+  	 out_str(T_U7);
+  	 u7_status = U7_SENT;
+  	 out_flush();
++ 
++ 	 /* This overwrites a few characters on the screen, a redraw is needed
++ 	  * after this. Clear them out for now. */
+  	 term_windgoto(1, 0);
+  	 out_str((char_u *)"  ");
+  	 term_windgoto(0, 0);
++ 
+  	 /* check for the characters now, otherwise they might be eaten by
+  	  * get_keystroke() */
+  	 out_flush();
+*** ../vim-8.0.0610/src/version.c	2017-06-04 15:37:42.179841016 +0200
+--- src/version.c	2017-06-04 15:43:19.377501214 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     611,
+  /**/
+
+-- 
+If someone questions your market projections, simply point out that your
+target market is "People who are nuts" and "People who will buy any damn
+thing".  Nobody is going to tell you there aren't enough of those people
+to go around.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

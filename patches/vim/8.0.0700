@@ -1,0 +1,87 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0700
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0700
+Problem:    Segfault with QuitPre autocommand closes the window. (Marek)
+Solution:   Check that the window pointer is still valid. (Christian Brabandt,
+            closes #1817)
+Files:      src/testdir/test_tabpage.vim, src/ex_docmd.c
+
+
+*** ../vim-8.0.0699/src/testdir/test_tabpage.vim	2017-01-29 14:48:06.288454957 +0100
+--- src/testdir/test_tabpage.vim	2017-07-08 14:36:17.721701643 +0200
+***************
+*** 473,477 ****
+--- 473,495 ----
+    endwhile
+  endfunc
+  
++ func Test_close_on_quitpre()
++   " This once caused a crash
++   new
++   only
++   set bufhidden=delete
++   au QuitPre <buffer> close
++   tabnew tab1
++   tabnew tab2
++   1tabn
++   q!
++   call assert_equal(1, tabpagenr())
++   call assert_equal(2, tabpagenr('$'))
++   " clean up
++   while tabpagenr('$') > 1
++     bwipe!
++   endwhile
++   1b
++ endfunc
+  
+  " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.0699/src/ex_docmd.c	2017-07-07 11:53:29.507876589 +0200
+--- src/ex_docmd.c	2017-07-08 14:39:02.288419126 +0200
+***************
+*** 7271,7278 ****
+      apply_autocmds(EVENT_QUITPRE, NULL, NULL, FALSE, curbuf);
+      /* Refuse to quit when locked or when the buffer in the last window is
+       * being closed (can only happen in autocommands). */
+!     if (curbuf_locked() || (wp->w_buffer->b_nwindows == 1
+! 						&& wp->w_buffer->b_locked > 0))
+  	return;
+  #endif
+  
+--- 7271,7281 ----
+      apply_autocmds(EVENT_QUITPRE, NULL, NULL, FALSE, curbuf);
+      /* Refuse to quit when locked or when the buffer in the last window is
+       * being closed (can only happen in autocommands). */
+!     if (curbuf_locked()
+! # ifdef FEAT_WINDOWS
+! 	    || !win_valid(wp)
+! # endif
+! 	    || (wp->w_buffer->b_nwindows == 1 && wp->w_buffer->b_locked > 0))
+  	return;
+  #endif
+  
+*** ../vim-8.0.0699/src/version.c	2017-07-08 14:29:14.624978815 +0200
+--- src/version.c	2017-07-08 14:39:31.880188599 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     700,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+126. You brag to all of your friends about your date Saturday night...but
+     you don't tell them it was only in a chat room.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

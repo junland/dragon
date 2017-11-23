@@ -1,0 +1,799 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1209
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1209
+Problem:    Still too many old style tests.
+Solution:   Convert a few more tests to new style. (Yegappan Lakshmanan,
+            closes #2230)
+Files:      src/Makefile, src/testdir/Make_all.mak, src/testdir/Make_ming.mak,
+            src/testdir/Make_amiga.mak, src/testdir/Make_dos.mak,
+            src/testdir/Makefile, src/testdir/Make_vms.mms,
+            src/testdir/main.aap, src/testdir/test34.in,
+            src/testdir/test34.ok, src/testdir/test54.in,
+            src/testdir/test54.ok, src/testdir/test8.in, src/testdir/test8.ok,
+            src/testdir/test_autocmd.vim, src/testdir/test_autoformat_join.in,
+            src/testdir/test_autoformat_join.ok, src/testdir/test_join.vim,
+            src/testdir/test_user_func.vim
+
+
+*** ../vim-8.0.1208/src/Makefile	2017-10-12 21:28:53.965436379 +0200
+--- src/Makefile	2017-10-22 14:13:00.728515822 +0200
+***************
+*** 2088,2096 ****
+  run_message_test: $(MESSAGE_TEST_TARGET)
+  	$(VALGRIND) ./$(MESSAGE_TEST_TARGET) || exit 1; echo $* passed;
+  
+! # Run individual OLD style test, assuming that Vim was already compiled.
+  test1 \
+- 	test_autoformat_join \
+  	test_changelist \
+  	test_close_count \
+  	test_erasebackword \
+--- 2089,2097 ----
+  run_message_test: $(MESSAGE_TEST_TARGET)
+  	$(VALGRIND) ./$(MESSAGE_TEST_TARGET) || exit 1; echo $* passed;
+  
+! # Run individual OLD style test.
+! # These do not depend on the executable, compile it when needed.
+  test1 \
+  	test_changelist \
+  	test_close_count \
+  	test_erasebackword \
+***************
+*** 2100,2119 ****
+  	test_listchars \
+  	test_search_mbyte \
+  	test_wordcount \
+! 	test3 test8 \
+! 	test11 test12 test14 test15 test17 test19 \
+  	test20 test25 test28 test29 \
+! 	test30 test32 test34 test36 test37 test38 test39 \
+  	test40 test42 test44 test45 test48 test49 \
+! 	test50 test52 test54 test55 test59 \
+  	test64 test66 test68 test69 \
+  	test70 test72 test73 test77 test79 \
+  	test83 test85 test86 test87 test88 \
+! 	test94 test95 test99 \
+! 	test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+! # Run individual NEW style test, assuming that Vim was already compiled.
+  test_arglist \
+  	test_arabic \
+  	test_assert \
+--- 2101,2119 ----
+  	test_listchars \
+  	test_search_mbyte \
+  	test_wordcount \
+! 	test3 test11 test12 test14 test15 test17 test19 \
+  	test20 test25 test28 test29 \
+! 	test30 test32 test36 test37 test38 test39 \
+  	test40 test42 test44 test45 test48 test49 \
+! 	test50 test52 test55 test59 \
+  	test64 test66 test68 test69 \
+  	test70 test72 test73 test77 test79 \
+  	test83 test85 test86 test87 test88 \
+! 	test94 test95 test99 test108:
+  	cd testdir; rm -f $@.out; $(MAKE) -f Makefile $@.out VIMPROG=../$(VIMTARGET) $(GUI_TESTARG) SCRIPTSOURCE=../$(SCRIPTSOURCE)
+  
+! # Run individual NEW style test.
+! # These do not depend on the executable, compile it when needed.
+  test_arglist \
+  	test_arabic \
+  	test_assert \
+*** ../vim-8.0.1208/src/testdir/Make_all.mak	2017-10-12 21:28:53.969436351 +0200
+--- src/testdir/Make_all.mak	2017-10-22 14:14:30.059914553 +0200
+***************
+*** 14,27 ****
+  # Tests that run on all systems.
+  SCRIPTS_ALL = \
+  	test3.out \
+- 	test8.out \
+  	test14.out \
+  	test15.out \
+  	test19.out \
+  	test20.out \
+  	test28.out \
+  	test29.out \
+- 	test34.out \
+  	test36.out \
+  	test37.out \
+  	test38.out \
+--- 14,25 ----
+***************
+*** 44,50 ****
+  	test95.out \
+  	test99.out \
+  	test108.out \
+- 	test_autoformat_join.out \
+  	test_changelist.out \
+  	test_close_count.out \
+  	test_erasebackword.out \
+--- 42,47 ----
+***************
+*** 72,82 ****
+  	test49.out
+  
+  
+- # Tests that run on most systems, but not MingW and Cygwin.
+- SCRIPTS_MORE3 = \
+- 	test54.out
+- 
+- 
+  # Tests that run on most systems, but not on VMS
+  SCRIPTS_MORE4 = \
+  	test17.out \
+--- 69,74 ----
+***************
+*** 187,192 ****
+--- 179,185 ----
+  	    test_textobjects.res \
+  	    test_undo.res \
+  	    test_usercommands.res \
++ 	    test_user_func.res \
+  	    test_viminfo.res \
+  	    test_vimscript.res \
+  	    test_visual.res \
+*** ../vim-8.0.1208/src/testdir/Make_ming.mak	2017-10-12 21:28:53.969436351 +0200
+--- src/testdir/Make_ming.mak	2017-10-22 14:08:57.146153816 +0200
+***************
+*** 4,11 ****
+  #
+  # Author: Bill McCarthy
+  #
+- # Note that test54 has been removed until it is fixed.
+- #
+  # Requires a set of Unix tools: echo, diff, etc.
+  
+  ifneq (sh.exe, $(SHELL))
+--- 4,9 ----
+***************
+*** 35,41 ****
+  # test10	'errorformat' is different
+  # test12	can't unlink a swap file
+  # test25	uses symbolic link
+- # test54	doesn't work yet
+  # test97	\{ and \$ are not escaped characters
+  
+  SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE1) $(SCRIPTS_MORE4) $(SCRIPTS_WIN32)
+--- 33,38 ----
+*** ../vim-8.0.1208/src/testdir/Make_amiga.mak	2016-02-25 21:05:17.000000000 +0100
+--- src/testdir/Make_amiga.mak	2017-10-22 14:15:05.043679001 +0200
+***************
+*** 19,25 ****
+  # test85	no Lua interface
+  # test86, 87	no Python interface
+  
+! SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE3) $(SCRIPTS_MORE4)
+  
+  # Must run test1 first to create small.vim.
+  $(SCRIPTS) $(SCRIPTS_GUI) $(NEW_TESTS): $(SCRIPTS_FIRST)
+--- 19,25 ----
+  # test85	no Lua interface
+  # test86, 87	no Python interface
+  
+! SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE4)
+  
+  # Must run test1 first to create small.vim.
+  $(SCRIPTS) $(SCRIPTS_GUI) $(NEW_TESTS): $(SCRIPTS_FIRST)
+*** ../vim-8.0.1208/src/testdir/Make_dos.mak	2017-10-07 21:05:14.371150972 +0200
+--- src/testdir/Make_dos.mak	2017-10-22 14:15:27.135530238 +0200
+***************
+*** 17,23 ****
+  # test49	fails in various ways
+  # test97	\{ and \$ are not escaped characters.
+  
+! SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE1) $(SCRIPTS_MORE3) $(SCRIPTS_MORE4)
+  
+  TEST_OUTFILES = $(SCRIPTS_FIRST) $(SCRIPTS) $(SCRIPTS_WIN32) $(SCRIPTS_GUI)
+  DOSTMP = dostmp
+--- 17,23 ----
+  # test49	fails in various ways
+  # test97	\{ and \$ are not escaped characters.
+  
+! SCRIPTS = $(SCRIPTS_ALL) $(SCRIPTS_MORE1) $(SCRIPTS_MORE4)
+  
+  TEST_OUTFILES = $(SCRIPTS_FIRST) $(SCRIPTS) $(SCRIPTS_WIN32) $(SCRIPTS_GUI)
+  DOSTMP = dostmp
+*** ../vim-8.0.1208/src/testdir/Makefile	2017-10-07 20:03:19.323835305 +0200
+--- src/testdir/Makefile	2017-10-22 14:16:12.819222545 +0200
+***************
+*** 24,30 ****
+  SCRIPTS = $(SCRIPTS_ALL) \
+  	  $(SCRIPTS_MORE1) \
+  	  $(SCRIPTS_MORE2) \
+- 	  $(SCRIPTS_MORE3) \
+  	  $(SCRIPTS_MORE4)
+  
+  SCRIPTS_BENCH = bench_re_freeze.out
+--- 24,29 ----
+*** ../vim-8.0.1208/src/testdir/Make_vms.mms	2017-10-12 21:28:53.969436351 +0200
+--- src/testdir/Make_vms.mms	2017-10-22 14:08:57.146153816 +0200
+***************
+*** 74,87 ****
+  .SUFFIXES : .out .in
+  
+  SCRIPT = test1.out test3.out \
+-        test8.out  \
+         test14.out test15.out \
+         test19.out test20.out \
+         test28.out test29.out test30.out test32.out \
+!        test34.out test36.out test37.out \
+         test38.out test39.out test40.out test42.out \
+         test44.out test45.out \
+!        test48.out test49.out test54.out \
+         test55.out \
+         test64.out \
+         test66.out test68.out test69.out \
+--- 74,86 ----
+  .SUFFIXES : .out .in
+  
+  SCRIPT = test1.out test3.out \
+         test14.out test15.out \
+         test19.out test20.out \
+         test28.out test29.out test30.out test32.out \
+!        test36.out test37.out \
+         test38.out test39.out test40.out test42.out \
+         test44.out test45.out \
+!        test48.out test49.out \
+         test55.out \
+         test64.out \
+         test66.out test68.out test69.out \
+***************
+*** 92,98 ****
+         test95.out test99.out \
+         test108.out\
+         test_autocmd_option.out \
+-        test_autoformat_join.out \
+         test_breakindent.out \
+         test_changelist.out \
+         test_close_count.out \
+--- 91,96 ----
+*** ../vim-8.0.1208/src/testdir/main.aap	2017-10-12 21:28:53.969436351 +0200
+--- src/testdir/main.aap	2017-10-22 14:08:57.146153816 +0200
+***************
+*** 5,16 ****
+  VimProg ?= ../vim
+  
+  Scripts = test1.out test2.out test3.out test6.out
+! 		test8.out test11.out
+  		test12.out  test13.out test14.out test15.out test17.out
+  		test18.out test19.out test20.out test21.out
+  		test25.out test27.out
+  		test28.out test29.out test30.out test32.out
+! 		test34.out test36.out test37.out
+  		test38.out test39.out test40.out test42.out
+  		test44.out test45.out test46.out test47.out
+  		test48.out test49.out test74.out
+--- 5,16 ----
+  VimProg ?= ../vim
+  
+  Scripts = test1.out test2.out test3.out test6.out
+! 		test11.out
+  		test12.out  test13.out test14.out test15.out test17.out
+  		test18.out test19.out test20.out test21.out
+  		test25.out test27.out
+  		test28.out test29.out test30.out test32.out
+! 		test36.out test37.out
+  		test38.out test39.out test40.out test42.out
+  		test44.out test45.out test46.out test47.out
+  		test48.out test49.out test74.out
+*** ../vim-8.0.1208/src/testdir/test34.in	2013-11-11 04:10:13.000000000 +0100
+--- src/testdir/test34.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,87 ****
+- Test for user functions.
+- Also test an <expr> mapping calling a function.
+- Also test that a builtin function cannot be replaced.
+- Also test for regression when calling arbitrary expression.
+- 
+- STARTTEST
+- :so small.vim
+- :function Table(title, ...)
+- :  let ret = a:title
+- :  let idx = 1
+- :  while idx <= a:0
+- :    exe "let ret = ret . a:" . idx
+- :    let idx = idx + 1
+- :  endwhile
+- :  return ret
+- :endfunction
+- :function Compute(n1, n2, divname)
+- :  if a:n2 == 0
+- :    return "fail"
+- :  endif
+- :  exe "let g:" . a:divname . " = ". a:n1 / a:n2
+- :  return "ok"
+- :endfunction
+- :func Expr1()
+- :  normal! v
+- :  return "111"
+- :endfunc
+- :func Expr2()
+- :  call search('XX', 'b')
+- :  return "222"
+- :endfunc
+- :func ListItem()
+- :  let g:counter += 1
+- :  return g:counter . '. '
+- :endfunc
+- :func ListReset()
+- :  let g:counter = 0
+- :  return ''
+- :endfunc
+- :func FuncWithRef(a)
+- :  unlet g:FuncRef
+- :  return a:a
+- :endfunc
+- :let g:FuncRef=function("FuncWithRef")
+- :let counter = 0
+- :inoremap <expr> ( ListItem()
+- :inoremap <expr> [ ListReset()
+- :imap <expr> + Expr1()
+- :imap <expr> * Expr2()
+- :let retval = "nop"
+- /^here
+- C=Table("xxx", 4, "asdf")
+-  =Compute(45, 0, "retval")
+-  =retval
+-  =Compute(45, 5, "retval")
+-  =retval
+-  =g:FuncRef(333)
+- 
+- XX+-XX
+- ---*---
+- (one
+- (two
+- [(one again:call append(line('$'), max([1, 2, 3]))
+- :call extend(g:, {'max': function('min')})
+- :call append(line('$'), max([1, 2, 3]))
+- :try
+- :    " Regression: the first line below used to throw ?E110: Missing ')'?
+- :    " Second is here just to prove that this line is correct when not skipping
+- :    " rhs of &&.
+- :    $put =(0&&(function('tr'))(1, 2, 3))
+- :    $put =(1&&(function('tr'))(1, 2, 3))
+- :catch
+- :    $put ='!!! Unexpected exception:'
+- :    $put =v:exception
+- :endtry
+- :$-9,$w! test.out
+- :delfunc Table
+- :delfunc Compute
+- :delfunc Expr1
+- :delfunc Expr2
+- :delfunc ListItem
+- :delfunc ListReset
+- :unlet retval counter
+- :q!
+- ENDTEST
+- 
+- here
+--- 0 ----
+*** ../vim-8.0.1208/src/testdir/test34.ok	2013-11-11 04:10:13.000000000 +0100
+--- src/testdir/test34.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,10 ****
+- xxx4asdf fail nop ok 9 333
+- XX111-XX
+- ---222---
+- 1. one
+- 2. two
+- 1. one again
+- 3
+- 3
+- 0
+- 1
+--- 0 ----
+*** ../vim-8.0.1208/src/testdir/test54.in	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test54.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,22 ****
+- Some tests for buffer-local autocommands
+- 
+- STARTTEST
+- :so small.vim
+- :e xx
+- :if has("vms")
+- : !del test.out.*
+- : au BufLeave <buffer> :!write sys$output "buffer-local autommand in %" > test.out
+- :else
+- : !rm -f test.out
+- : au BufLeave <buffer> :!echo buffer-local autommand in %>> test.out
+- :endif
+- :e somefile           " here, autocommand for xx shall write test.out 
+- :                     " but autocommand shall not apply to buffer named <buffer>
+- :bwipe xx             " here, autocommand shall be auto-deleted
+- :e xx                 " nothing shall be written
+- :e somefile           " nothing shall be written
+- :qa!
+- ENDTEST
+- 
+- start of test file xx
+- end of test file xx
+--- 0 ----
+*** ../vim-8.0.1208/src/testdir/test54.ok	2010-05-15 13:04:10.000000000 +0200
+--- src/testdir/test54.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1 ****
+- buffer-local autommand in xx
+--- 0 ----
+*** ../vim-8.0.1208/src/testdir/test8.in	2013-07-24 15:55:09.000000000 +0200
+--- src/testdir/test8.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,46 ****
+- Test for BufWritePre autocommand that deletes or unloads the buffer.
+- Test for BufUnload autocommand that unloads all other buffers.
+- 
+- STARTTEST
+- :so small.vim
+- :au BufWritePre Xxx1 bunload
+- :au BufWritePre Xxx2 bwipe
+- /^start of
+- A1:.,/end of/w! Xxx1  " write test file Xxx1
+- $r2:.,/end of/w! Xxx2   " write test file Xxx2
+- :e! Xxx2                " edit Xxx2
+- :bdel test8.in		" delete this file from the buffer list
+- :e Xxx1                 " edit Xxx1
+- :w                      " write it, will unload it and give an error msg
+- :w! test.out            " Write contents of this file
+- :e! Xxx2                " start editing Xxx2
+- :bwipe test.out         " remove test.out from the buffer list
+- :w                      " write it, will delete the buffer and give an error msg
+- :w >>test.out           " Append contents of this file
+- :au! BufWritePre
+- :func CloseAll()
+-   let i = 0
+-   while i <= bufnr('$')
+-     if i != bufnr('%') && bufloaded(i)
+-       exe  i . "bunload"
+-     endif
+-     let i += 1
+-   endwhile
+- endfunc
+- :func WriteToOut()
+-   edit! test.out
+-   $put ='VimLeave done'
+-   write
+- endfunc
+- :set viminfo='100,nviminfo
+- :au BufUnload * call CloseAll()
+- :au VimLeave * call WriteToOut()
+- :e small.vim
+- :sp mbyte.vim
+- :q
+- :qa!
+- ENDTEST
+- 
+- start of Xxx
+- 	test
+- end of Xxx
+--- 0 ----
+*** ../vim-8.0.1208/src/testdir/test8.ok	2013-07-24 15:40:16.000000000 +0200
+--- src/testdir/test8.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,7 ****
+- start of Xxx2
+- 	test
+- end of Xxx
+- start of Xxx1
+- 	test
+- end of Xxx
+- VimLeave done
+--- 0 ----
+*** ../vim-8.0.1208/src/testdir/test_autocmd.vim	2017-10-19 18:35:46.094557713 +0200
+--- src/testdir/test_autocmd.vim	2017-10-22 14:08:57.146153816 +0200
+***************
+*** 773,778 ****
+--- 773,779 ----
+  
+    call delete('Xxx1')
+    call delete('Xxx2')
++   call delete('test.out')
+    %bwipe
+    au! BufLeave
+  
+***************
+*** 809,817 ****
+    au! CmdlineLeave / let g:left = expand('<afile>')
+    let g:entered = 0
+    let g:left = 0
+!   call feedkeys("/hello<CR>", 'xt')
+    call assert_equal('/', g:entered)
+    call assert_equal('/', g:left)
+    au! CmdlineEnter
+    au! CmdlineLeave
+  endfunc
+--- 810,902 ----
+    au! CmdlineLeave / let g:left = expand('<afile>')
+    let g:entered = 0
+    let g:left = 0
+!   new
+!   call setline(1, 'hello')
+!   call feedkeys("/hello\<CR>", 'xt')
+    call assert_equal('/', g:entered)
+    call assert_equal('/', g:left)
++   bwipe!
+    au! CmdlineEnter
+    au! CmdlineLeave
+  endfunc
++ 
++ " Test for BufWritePre autocommand that deletes or unloads the buffer.
++ func Test_BufWritePre()
++   %bwipe
++   au BufWritePre Xxx1 bunload
++   au BufWritePre Xxx2 bwipe
++ 
++   call writefile(['start of Xxx1', 'test', 'end of Xxx1'], 'Xxx1')
++   call writefile(['start of Xxx2', 'test', 'end of Xxx2'], 'Xxx2')
++ 
++   edit Xtest
++   e! Xxx2
++   bdel Xtest
++   e Xxx1
++   " write it, will unload it and give an error msg
++   call assert_fails('w', 'E203')
++   call assert_equal('Xxx2', bufname('%'))
++   edit Xtest
++   e! Xxx2
++   bwipe Xtest
++   " write it, will delete the buffer and give an error msg
++   call assert_fails('w', 'E203')
++   call assert_equal('Xxx1', bufname('%'))
++   au! BufWritePre
++   call delete('Xxx1')
++   call delete('Xxx2')
++ endfunc
++ 
++ " Test for BufUnload autocommand that unloads all the other buffers
++ func Test_bufunload_all()
++   call writefile(['Test file Xxx1'], 'Xxx1')"
++   call writefile(['Test file Xxx2'], 'Xxx2')"
++ 
++   let content = [
++ 	      \ "func UnloadAllBufs()",
++ 	      \ "  let i = 1",
++ 	      \ "  while i <= bufnr('$')",
++ 	      \ "    if i != bufnr('%') && bufloaded(i)",
++ 	      \ "      exe  i . 'bunload'",
++ 	      \ "    endif",
++ 	      \ "    let i += 1",
++ 	      \ "  endwhile",
++ 	      \ "endfunc",
++ 	      \ "au BufUnload * call UnloadAllBufs()",
++ 	      \ "au VimLeave * call writefile(['Test Finished'], 'Xout')",
++ 	      \ "edit Xxx1",
++ 	      \ "split Xxx2",
++ 	      \ "q"]
++   call writefile(content, 'Xtest')
++ 
++   call delete('Xout')
++   call system(v:progpath. ' --clean -N --not-a-term -S Xtest')
++   call assert_true(filereadable('Xout'))
++ 
++   call delete('Xxx1')
++   call delete('Xxx2')
++   call delete('Xtest')
++   call delete('Xout')
++ endfunc
++ 
++ " Some tests for buffer-local autocommands
++ func Test_buflocal_autocmd()
++   let g:bname = ''
++   edit xx
++   au BufLeave <buffer> let g:bname = expand("%")
++   " here, autocommand for xx should trigger.
++   " but autocommand shall not apply to buffer named <buffer>.
++   edit somefile
++   call assert_equal('xx', g:bname)
++   let g:bname = ''
++   " here, autocommand shall be auto-deleted
++   bwipe xx
++   " autocmd should not trigger
++   edit xx
++   call assert_equal('', g:bname)
++   " autocmd should not trigger
++   edit somefile
++   call assert_equal('', g:bname)
++   enew
++   unlet g:bname
++ endfunc
+*** ../vim-8.0.1208/src/testdir/test_autoformat_join.in	2015-08-11 18:30:19.000000000 +0200
+--- src/testdir/test_autoformat_join.in	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,23 ****
+- Tests for setting the '[,'] marks when joining lines.
+- 
+- STARTTEST
+- :so small.vim
+- :/^\t\t/
+- 0gqj:
+- :let a=string(getpos("'[")).'/'.string(getpos("']"))
+- :/^This line/;'}-join
+- :let b=string(getpos("'[")).'/'.string(getpos("']"))
+- :$put ='First test: Start/End '.string(a)
+- :$put ='Second test: Start/End '.string(b)
+- :/^\t\t/,$wq! test.out
+- ENDTEST
+- 
+- 
+- 		O sodales, ludite, vos qui
+- attamen consulite per voster honur. Tua pulchra facies me fay planszer milies
+- 
+- This line.
+- Should be joined with the next line
+- and with this line
+- 
+- Results:
+--- 0 ----
+*** ../vim-8.0.1208/src/testdir/test_autoformat_join.ok	2014-04-29 12:00:35.000000000 +0200
+--- src/testdir/test_autoformat_join.ok	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,8 ****
+- 		O sodales, ludite, vos qui attamen consulite per voster honur.
+- Tua pulchra facies me fay planszer milies
+- 
+- This line.  Should be joined with the next line and with this line
+- 
+- Results:
+- First test: Start/End '[0, 16, 1, 0]/[0, 17, 1, 0]'
+- Second test: Start/End '[0, 19, 11, 0]/[0, 19, 67, 0]'
+--- 0 ----
+*** ../vim-8.0.1208/src/testdir/test_join.vim	2016-03-08 14:37:16.000000000 +0100
+--- src/testdir/test_join.vim	2017-10-22 14:08:57.146153816 +0200
+***************
+*** 11,13 ****
+--- 11,35 ----
+    call assert_equal('one two three four', getline(1))
+    quit!
+  endfunc
++ 
++ " Tests for setting the '[,'] marks when joining lines.
++ func Test_join_marks()
++   enew
++   call append(0, [
++ 	      \ "\t\tO sodales, ludite, vos qui",
++ 	      \ "attamen consulite per voster honur. Tua pulchra " .
++ 	      \ "facies me fay planszer milies",
++ 	      \ "",
++ 	      \ "This line.",
++ 	      \ "Should be joined with the next line",
++ 	      \ "and with this line"])
++ 
++   normal gg0gqj
++   call assert_equal([0, 1, 1, 0], getpos("'["))
++   call assert_equal([0, 2, 1, 0], getpos("']"))
++ 
++   /^This line/;'}-join
++   call assert_equal([0, 4, 11, 0], getpos("'["))
++   call assert_equal([0, 4, 67, 0], getpos("']"))
++   enew!
++ endfunc
+*** ../vim-8.0.1208/src/testdir/test_user_func.vim	2017-10-22 14:19:54.405729080 +0200
+--- src/testdir/test_user_func.vim	2017-10-22 14:08:57.146153816 +0200
+***************
+*** 0 ****
+--- 1,96 ----
++ " Test for user functions.
++ " Also test an <expr> mapping calling a function.
++ " Also test that a builtin function cannot be replaced.
++ " Also test for regression when calling arbitrary expression.
++ 
++ func Table(title, ...)
++   let ret = a:title
++   let idx = 1
++   while idx <= a:0
++     exe "let ret = ret . a:" . idx
++     let idx = idx + 1
++   endwhile
++   return ret
++ endfunc
++ 
++ func Compute(n1, n2, divname)
++   if a:n2 == 0
++     return "fail"
++   endif
++   exe "let g:" . a:divname . " = ". a:n1 / a:n2
++   return "ok"
++ endfunc
++ 
++ func Expr1()
++   silent! normal! v
++   return "111"
++ endfunc
++ 
++ func Expr2()
++   call search('XX', 'b')
++   return "222"
++ endfunc
++ 
++ func ListItem()
++   let g:counter += 1
++   return g:counter . '. '
++ endfunc
++ 
++ func ListReset()
++   let g:counter = 0
++   return ''
++ endfunc
++ 
++ func FuncWithRef(a)
++   unlet g:FuncRef
++   return a:a
++ endfunc
++ 
++ func Test_user_func()
++   let g:FuncRef=function("FuncWithRef")
++   let g:counter = 0
++   inoremap <expr> ( ListItem()
++   inoremap <expr> [ ListReset()
++   imap <expr> + Expr1()
++   imap <expr> * Expr2()
++   let g:retval = "nop"
++ 
++   call assert_equal('xxx4asdf', Table("xxx", 4, "asdf"))
++   call assert_equal('fail', Compute(45, 0, "retval"))
++   call assert_equal('nop', g:retval)
++   call assert_equal('ok', Compute(45, 5, "retval"))
++   call assert_equal(9, g:retval)
++   call assert_equal(333, g:FuncRef(333))
++ 
++   enew
++ 
++   normal oXX+-XX
++   call assert_equal('XX111-XX', getline('.'))
++   normal o---*---
++   call assert_equal('---222---', getline('.'))
++   normal o(one
++   call assert_equal('1. one', getline('.'))
++   normal o(two
++   call assert_equal('2. two', getline('.'))
++   normal o[(one again
++   call assert_equal('1. one again', getline('.'))
++ 
++   call assert_equal(3, max([1, 2, 3]))
++   call assert_fails("call extend(g:, {'max': function('min')})", 'E704')
++   call assert_equal(3, max([1, 2, 3]))
++ 
++   " Regression: the first line below used to throw ?E110: Missing ')'?
++   " Second is here just to prove that this line is correct when not skipping
++   " rhs of &&.
++   call assert_equal(0, (0 && (function('tr'))(1, 2, 3)))
++   call assert_equal(1, (1 && (function('tr'))(1, 2, 3)))
++ 
++   delfunc Table
++   delfunc Compute
++   delfunc Expr1
++   delfunc Expr2
++   delfunc ListItem
++   delfunc ListReset
++   unlet g:retval g:counter
++   enew!
++ endfunc
+*** ../vim-8.0.1208/src/version.c	2017-10-22 14:22:12.112800118 +0200
+--- src/version.c	2017-10-22 14:22:55.540504395 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1209,
+  /**/
+
+-- 
+DENNIS:  Listen -- strange women lying in ponds distributing swords is no
+         basis for a system of government.  Supreme executive power derives
+         from a mandate from the masses, not from some farcical aquatic
+         ceremony.
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

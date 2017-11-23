@@ -1,0 +1,60 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0340
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0340
+Problem:    Not checking return valud of dict_add(). (Coverity)
+Solution:   Handle a failure.
+Files:      src/buffer.c
+
+
+*** ../vim-8.0.0339/src/buffer.c	2017-02-17 16:31:16.913294195 +0100
+--- src/buffer.c	2017-02-19 13:52:25.754064669 +0100
+***************
+*** 888,895 ****
+  	di->di_tv.v_type = VAR_NUMBER;
+  	di->di_tv.v_lock = VAR_FIXED;
+  	di->di_tv.vval.v_number = 0;
+! 	dict_add(buf->b_vars, di);
+! 	buf->b_changedtick = &di->di_tv.vval.v_number;
+      }
+      else
+  #endif
+--- 888,900 ----
+  	di->di_tv.v_type = VAR_NUMBER;
+  	di->di_tv.v_lock = VAR_FIXED;
+  	di->di_tv.vval.v_number = 0;
+! 	if (dict_add(buf->b_vars, di) == OK)
+! 	    buf->b_changedtick = &di->di_tv.vval.v_number;
+! 	else
+! 	{
+! 	    vim_free(di);
+! 	    buf->b_changedtick = &buf->b_ct_val;
+! 	}
+      }
+      else
+  #endif
+*** ../vim-8.0.0339/src/version.c	2017-02-18 23:11:57.345793837 +0100
+--- src/version.c	2017-02-19 13:54:17.857256347 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     340,
+  /**/
+
+-- 
+The only way the average employee can speak to an executive is by taking a
+second job as a golf caddie.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

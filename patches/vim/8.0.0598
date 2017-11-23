@@ -1,0 +1,48 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0598
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0598
+Problem:    Building with gcc 7.1 yields new warnings.
+Solution:   Initialize result. (John Marriott)
+Files:      src/ex_docmd.c
+
+
+*** ../vim-8.0.0597/src/ex_docmd.c	2017-04-20 21:55:23.319604249 +0200
+--- src/ex_docmd.c	2017-05-16 09:34:37.110702484 +0200
+***************
+*** 10890,10895 ****
+--- 10890,10898 ----
+  		result = strbuf;
+  		break;
+  #endif
++ 	default:
++ 		result = (char_u *)""; /* avoid gcc warning */
++ 		break;
+  	}
+  
+  	resultlen = (int)STRLEN(result);	/* length of new string */
+*** ../vim-8.0.0597/src/version.c	2017-05-15 08:45:00.508812501 +0200
+--- src/version.c	2017-05-16 09:32:39.591416435 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     598,
+  /**/
+
+-- 
+The chat program is in public domain.  This is not the GNU public license.
+If it breaks then you get to keep both pieces.
+		-- Copyright notice for the chat program
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

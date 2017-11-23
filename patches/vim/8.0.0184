@@ -1,0 +1,110 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0184
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0184
+Problem:    When in Ex mode and an error is caught by try-catch, Vim still
+            exits with a non-zero exit code.
+Solution:   Don't set ex_exitval when inside a try-catch. (partly by Christian
+            Brabandt)
+Files:      src/message.c, src/testdir/test_system.vim
+
+
+*** ../vim-8.0.0183/src/message.c	2016-12-01 15:34:04.087413921 +0100
+--- src/message.c	2017-01-14 18:41:43.735026080 +0100
+***************
+*** 578,585 ****
+  	return TRUE;
+  
+      called_emsg = TRUE;
+-     if (emsg_silent == 0)
+- 	ex_exitval = 1;
+  
+      /*
+       * If "emsg_severe" is TRUE: When an error exception is to be thrown,
+--- 578,583 ----
+***************
+*** 642,647 ****
+--- 640,647 ----
+  	    return TRUE;
+  	}
+  
++ 	ex_exitval = 1;
++ 
+  	/* Reset msg_silent, an error causes messages to be switched back on. */
+  	msg_silent = 0;
+  	cmd_silent = FALSE;
+*** ../vim-8.0.0183/src/testdir/test_system.vim	2017-01-08 14:14:34.732591613 +0100
+--- src/testdir/test_system.vim	2017-01-14 19:15:58.686163819 +0100
+***************
+*** 46,48 ****
+--- 46,85 ----
+  
+    call assert_fails('call system("wc -l", 99999)', 'E86:')
+  endfunction
++ 
++ function! Test_system_exmode()
++   let cmd=" -es -u NONE -c 'source Xscript' +q; echo $?"
++   " Need to put this in a script, "catch" isn't found after an unknown
++   " function.
++   call writefile(['try', 'call doesnotexist()', 'catch', 'endtry'], 'Xscript')
++   let a = system(v:progpath . cmd)
++   call assert_equal('0', a[0])
++   call assert_equal(0, v:shell_error)
++ 
++   " Error before try does set error flag.
++   call writefile(['call nosuchfunction()', 'try', 'call doesnotexist()', 'catch', 'endtry'], 'Xscript')
++   let a = system(v:progpath . cmd)
++   call assert_notequal('0', a[0])
++ 
++   let cmd=" -es -u NONE -c 'source Xscript' +q"
++   let a = system(v:progpath . cmd)
++   call assert_notequal(0, v:shell_error)
++ 
++   let cmd=" -es -u NONE -c 'call doesnotexist()' +q; echo $?"
++   let a = system(v:progpath. cmd)
++   call assert_notequal(0, a[0])
++ 
++   let cmd=" -es -u NONE -c 'call doesnotexist()' +q"
++   let a = system(v:progpath. cmd)
++   call assert_notequal(0, v:shell_error)
++ 
++   let cmd=" -es -u NONE -c 'call doesnotexist()|let a=1' +q; echo $?"
++   let a = system(v:progpath. cmd)
++   call assert_notequal(0, a[0])
++ 
++   let cmd=" -es -u NONE -c 'call doesnotexist()|let a=1' +q"
++   let a = system(v:progpath. cmd)
++   call assert_notequal(0, v:shell_error)
++ 
++   call delete('Xscript')
++ endfunc
+*** ../vim-8.0.0183/src/version.c	2017-01-14 17:04:33.950973940 +0100
+--- src/version.c	2017-01-14 19:17:26.177613410 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     184,
+  /**/
+
+-- 
+       We're knights of the Round Table
+       Our shows are formidable
+       But many times
+       We're given rhymes
+       That are quite unsingable
+       We're opera mad in Camelot
+       We sing from the diaphragm a lot.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

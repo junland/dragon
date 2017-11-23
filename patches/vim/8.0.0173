@@ -1,0 +1,150 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0173
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0173
+Problem:    When compiling with EBCDIC defined the build fails. (Yaroslav
+            Kuzmin)
+Solution:   Move sortFunctions() to the right file.  Avoid warning for
+            redefining __SUSV3.
+Files:      src/eval.c, src/evalfunc.c, src/os_unixx.h
+
+
+*** ../vim-8.0.0172/src/eval.c	2017-01-08 20:50:47.433486722 +0100
+--- src/eval.c	2017-01-12 20:01:14.091069684 +0100
+***************
+*** 242,255 ****
+  static void list_one_var_a(char_u *prefix, char_u *name, int type, char_u *string, int *first);
+  static char_u *find_option_end(char_u **arg, int *opt_flags);
+  
+- #ifdef EBCDIC
+- static int compare_func_name(const void *s1, const void *s2);
+- static void sortFunctions();
+- #endif
+- 
+  /* for VIM_VERSION_ defines */
+  #include "version.h"
+  
+  /*
+   * Initialize the global and v: variables.
+   */
+--- 242,279 ----
+  static void list_one_var_a(char_u *prefix, char_u *name, int type, char_u *string, int *first);
+  static char_u *find_option_end(char_u **arg, int *opt_flags);
+  
+  /* for VIM_VERSION_ defines */
+  #include "version.h"
+  
++ 
++ #if defined(EBCDIC) || defined(PROTO)
++ /*
++  * Compare struct fst by function name.
++  */
++     static int
++ compare_func_name(const void *s1, const void *s2)
++ {
++     struct fst *p1 = (struct fst *)s1;
++     struct fst *p2 = (struct fst *)s2;
++ 
++     return STRCMP(p1->f_name, p2->f_name);
++ }
++ 
++ /*
++  * Sort the function table by function name.
++  * The sorting of the table above is ASCII dependant.
++  * On machines using EBCDIC we have to sort it.
++  */
++     static void
++ sortFunctions(void)
++ {
++     int		funcCnt = (int)(sizeof(functions) / sizeof(struct fst)) - 1;
++ 
++     qsort(functions, (size_t)funcCnt, sizeof(struct fst), compare_func_name);
++ }
++ #endif
++ 
++ 
+  /*
+   * Initialize the global and v: variables.
+   */
+*** ../vim-8.0.0172/src/evalfunc.c	2017-01-10 16:12:11.732767042 +0100
+--- src/evalfunc.c	2017-01-12 20:00:30.007425122 +0100
+***************
+*** 923,956 ****
+  
+  #endif /* FEAT_CMDL_COMPL */
+  
+- #if defined(EBCDIC) || defined(PROTO)
+- /*
+-  * Compare struct fst by function name.
+-  */
+-     static int
+- compare_func_name(const void *s1, const void *s2)
+- {
+-     struct fst *p1 = (struct fst *)s1;
+-     struct fst *p2 = (struct fst *)s2;
+- 
+-     return STRCMP(p1->f_name, p2->f_name);
+- }
+- 
+- /*
+-  * Sort the function table by function name.
+-  * The sorting of the table above is ASCII dependant.
+-  * On machines using EBCDIC we have to sort it.
+-  */
+-     static void
+- sortFunctions(void)
+- {
+-     int		funcCnt = (int)(sizeof(functions) / sizeof(struct fst)) - 1;
+- 
+-     qsort(functions, (size_t)funcCnt, sizeof(struct fst), compare_func_name);
+- }
+- #endif
+- 
+- 
+  /*
+   * Find internal function in table above.
+   * Return index, or -1 if not found
+--- 923,928 ----
+*** ../vim-8.0.0172/src/os_unixx.h	2016-12-03 16:40:44.432532400 +0100
+--- src/os_unixx.h	2017-01-12 20:04:26.285520714 +0100
+***************
+*** 113,119 ****
+  
+  /* shared library access */
+  #if defined(HAVE_DLFCN_H) && defined(USE_DLOPEN)
+! # ifdef __MVS__
+      /* needed to define RTLD_LAZY (Anthony Giorgio) */
+  #  define __SUSV3
+  # endif
+--- 113,119 ----
+  
+  /* shared library access */
+  #if defined(HAVE_DLFCN_H) && defined(USE_DLOPEN)
+! # if defined(__MVS__) && !defined (__SUSV3)
+      /* needed to define RTLD_LAZY (Anthony Giorgio) */
+  #  define __SUSV3
+  # endif
+*** ../vim-8.0.0172/src/version.c	2017-01-11 22:40:16.169863576 +0100
+--- src/version.c	2017-01-12 20:05:47.480866643 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     173,
+  /**/
+
+-- 
+Did you hear about the new 3 million dollar West Virginia State Lottery?
+The winner gets 3 dollars a year for a million years.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

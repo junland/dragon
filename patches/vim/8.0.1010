@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1010
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1010 (after 8.0.1009)
+Problem:    Build failure without termresponse feature.
+Solution:   Add #ifdef.
+Files:      src/term.c
+
+
+*** ../vim-8.0.1009/src/term.c	2017-08-28 22:43:00.774266657 +0200
+--- src/term.c	2017-08-28 22:59:30.628320769 +0200
+***************
+*** 3780,3787 ****
+--- 3780,3791 ----
+      int
+  blink_state_is_inverted()
+  {
++ #ifdef FEAT_TERMRESPONSE
+      return rbm_status == STATUS_GOT && rcs_status == STATUS_GOT
+  		&& initial_cursor_blink != initial_cursor_shape_blink;
++ #else
++     return FALSE;
++ #endif
+  }
+  
+  /*
+*** ../vim-8.0.1009/src/version.c	2017-08-28 22:43:00.778266633 +0200
+--- src/version.c	2017-08-28 23:00:22.480005881 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1010,
+  /**/
+
+-- 
+Apparently, 1 in 5 people in the world are Chinese.  And there are 5
+people in my family, so it must be one of them.  It's either my mum
+or my dad.  Or my older brother Colin.  Or my younger brother
+Ho-Cha-Chu.  But I think it's Colin.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

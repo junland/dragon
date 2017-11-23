@@ -1,0 +1,67 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0694
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0694
+Problem:    Building in shadow directory does not work.  Running Vim fails.
+Solution:   Add the new libvterm directory.  Add missing change in command
+            list.
+Files:      src/Makefile, src/ex_cmds.h
+
+
+*** ../vim-8.0.0693/src/Makefile	2017-07-07 11:53:29.499876650 +0200
+--- src/Makefile	2017-07-07 12:17:13.273050367 +0200
+***************
+*** 2810,2816 ****
+  
+  shadow:	runtime pixmaps
+  	$(MKDIR_P) $(SHADOWDIR)
+! 	cd $(SHADOWDIR); ln -s ../*.[chm] ../*.in ../*.sh ../*.xs ../*.xbm ../gui_gtk_res.xml ../toolcheck ../proto ../vimtutor ../gvimtutor ../install-sh .
+  	mkdir $(SHADOWDIR)/auto
+  	cd $(SHADOWDIR)/auto; ln -s ../../auto/configure .
+  	$(MKDIR_P) $(SHADOWDIR)/po
+--- 2810,2816 ----
+  
+  shadow:	runtime pixmaps
+  	$(MKDIR_P) $(SHADOWDIR)
+! 	cd $(SHADOWDIR); ln -s ../*.[chm] ../*.in ../*.sh ../*.xs ../*.xbm ../gui_gtk_res.xml ../toolcheck ../proto ../libvterm ../vimtutor ../gvimtutor ../install-sh .
+  	mkdir $(SHADOWDIR)/auto
+  	cd $(SHADOWDIR)/auto; ln -s ../../auto/configure .
+  	$(MKDIR_P) $(SHADOWDIR)/po
+*** ../vim-8.0.0693/src/ex_cmds.h	2017-06-28 22:26:49.566720272 +0200
+--- src/ex_cmds.h	2017-07-02 20:16:04.549007530 +0200
+***************
+*** 1483,1488 ****
+--- 1483,1491 ----
+  EX(CMD_tearoff,		"tearoff",	ex_tearoff,
+  			NEEDARG|EXTRA|TRLBAR|NOTRLCOM|CMDWIN,
+  			ADDR_LINES),
++ EX(CMD_terminal,	"terminal",	ex_terminal,
++ 			RANGE|NOTADR|EXTRA|TRLBAR|CMDWIN,
++ 			ADDR_OTHER),
+  EX(CMD_tfirst,		"tfirst",	ex_tag,
+  			RANGE|NOTADR|BANG|TRLBAR|ZEROR,
+  			ADDR_LINES),
+*** ../vim-8.0.0693/src/version.c	2017-07-07 11:53:29.527876436 +0200
+--- src/version.c	2017-07-07 12:22:07.014809862 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     694,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+117. You are more comfortable typing in html.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

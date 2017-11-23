@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1157
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1157
+Problem:    Compiler warning on MS-Windows.
+Solution:   Add type cast. (Yasuhiro Matsomoto)
+Files:      src/main.c
+
+
+*** ../vim-8.0.1156/src/main.c	2017-09-26 19:10:33.494859477 +0200
+--- src/main.c	2017-09-27 21:44:05.024182440 +0200
+***************
+*** 2573,2579 ****
+  	     * Note that the message is shown on a Cygwin terminal (e.g.
+  	     * mintty) which encoding is based on $LC_ALL or etc., not the
+  	     * current codepage used by normal Win32 console programs. */
+! 	    tofree = s = enc_locale_env(NULL);
+  	    if (s == NULL)
+  		s = "utf-8";	/* Use "utf-8" by default. */
+  	    (void)bind_textdomain_codeset(VIMPACKAGE, s);
+--- 2573,2579 ----
+  	     * Note that the message is shown on a Cygwin terminal (e.g.
+  	     * mintty) which encoding is based on $LC_ALL or etc., not the
+  	     * current codepage used by normal Win32 console programs. */
+! 	    tofree = s = (char *)enc_locale_env(NULL);
+  	    if (s == NULL)
+  		s = "utf-8";	/* Use "utf-8" by default. */
+  	    (void)bind_textdomain_codeset(VIMPACKAGE, s);
+*** ../vim-8.0.1156/src/version.c	2017-09-27 21:42:04.368920973 +0200
+--- src/version.c	2017-09-27 21:45:42.963583156 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1157,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+212. Your Internet group window has more icons than your Accessories window.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,143 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0268
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0268
+Problem:    May get ml_get error when :luado deletes lines or switches to
+            another buffer. (Nikolai Pavlov, issue #1421)
+Solution:   Check the buffer and line every time.
+Files:      src/if_lua.c, src/testdir/test_lua.vim, src/Makefile,
+            src/testdir/Make_all.mak
+
+
+*** ../vim-8.0.0267/src/if_lua.c	2016-08-28 18:08:52.000000000 +0200
+--- src/if_lua.c	2017-01-29 22:43:46.955461526 +0100
+***************
+*** 1716,1721 ****
+--- 1716,1723 ----
+      const char *s = (const char *) eap->arg;
+      luaL_Buffer b;
+      size_t len;
++     buf_T *was_curbuf = curbuf;
++ 
+      if (lua_init() == FAIL) return;
+      if (u_save(eap->line1 - 1, eap->line2 + 1) == FAIL)
+      {
+***************
+*** 1739,1744 ****
+--- 1741,1750 ----
+      lua_replace(L, -2); /* function -> body */
+      for (l = eap->line1; l <= eap->line2; l++)
+      {
++ 	/* Check the line number, the command my have deleted lines. */
++ 	if (l > curbuf->b_ml.ml_line_count)
++ 	    break;
++ 
+  	lua_pushvalue(L, -1); /* function */
+  	luaV_pushline(L, curbuf, l); /* current line as arg */
+  	lua_pushinteger(L, l); /* current line number as arg */
+***************
+*** 1747,1752 ****
+--- 1753,1761 ----
+  	    luaV_emsg(L);
+  	    break;
+  	}
++ 	/* Catch the command switching to another buffer. */
++ 	if (curbuf != was_curbuf)
++ 	    break;
+  	if (lua_isstring(L, -1)) /* update line? */
+  	{
+  #ifdef HAVE_SANDBOX
+*** ../vim-8.0.0267/src/testdir/test_lua.vim	2017-01-29 22:47:41.069920545 +0100
+--- src/testdir/test_lua.vim	2017-01-29 22:39:50.273018239 +0100
+***************
+*** 0 ****
+--- 1,22 ----
++ " Tests for Lua.
++ " TODO: move tests from test85.in here.
++ 
++ if !has('lua')
++   finish
++ endif
++ 
++ func Test_luado()
++   new
++   call setline(1, ['one', 'two', 'three'])
++   luado vim.command("%d_")
++   bwipe!
++ 
++   " Check switching to another buffer does not trigger ml_get error.
++   new
++   let wincount = winnr('$')
++   call setline(1, ['one', 'two', 'three'])
++   luado vim.command("new")
++   call assert_equal(wincount + 1, winnr('$'))
++   bwipe!
++   bwipe!
++ endfunc
+*** ../vim-8.0.0267/src/Makefile	2017-01-29 21:30:48.332627641 +0100
+--- src/Makefile	2017-01-29 22:41:27.012382108 +0100
+***************
+*** 2147,2152 ****
+--- 2147,2153 ----
+  	test_langmap \
+  	test_largefile \
+  	test_lispwords \
++ 	test_lua \
+  	test_man \
+  	test_mapping \
+  	test_marks \
+*** ../vim-8.0.0267/src/testdir/Make_all.mak	2017-01-29 21:30:48.332627641 +0100
+--- src/testdir/Make_all.mak	2017-01-29 22:41:41.152289112 +0100
+***************
+*** 164,169 ****
+--- 164,170 ----
+  	    test_job_fails.res \
+  	    test_json.res \
+  	    test_langmap.res \
++ 	    test_lua.res \
+  	    test_man.res \
+  	    test_marks.res \
+  	    test_matchadd_conceal.res \
+***************
+*** 172,179 ****
+  	    test_nested_function.res \
+  	    test_netbeans.res \
+  	    test_normal.res \
+- 	    test_paste.res \
+  	    test_packadd.res \
+  	    test_perl.res \
+  	    test_profile.res \
+  	    test_python2.res \
+--- 173,180 ----
+  	    test_nested_function.res \
+  	    test_netbeans.res \
+  	    test_normal.res \
+  	    test_packadd.res \
++ 	    test_paste.res \
+  	    test_perl.res \
+  	    test_profile.res \
+  	    test_python2.res \
+*** ../vim-8.0.0267/src/version.c	2017-01-29 21:49:45.673012259 +0100
+--- src/version.c	2017-01-29 22:41:07.388511166 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     268,
+  /**/
+
+-- 
+Time flies like an arrow.
+Fruit flies like a banana.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,54 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0648
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0648
+Problem:    Possible use of NULL pointer if buflist_new() returns NULL.
+            (Coverity)
+Solution:   Check for NULL pointer in set_bufref().
+Files:      src/buffer.c
+
+
+*** ../vim-8.0.0647/src/buffer.c	2017-06-05 16:01:53.917848222 +0200
+--- src/buffer.c	2017-06-19 20:30:44.065352985 +0200
+***************
+*** 372,378 ****
+  set_bufref(bufref_T *bufref, buf_T *buf)
+  {
+      bufref->br_buf = buf;
+!     bufref->br_fnum = buf->b_fnum;
+      bufref->br_buf_free_count = buf_free_count;
+  }
+  
+--- 372,378 ----
+  set_bufref(bufref_T *bufref, buf_T *buf)
+  {
+      bufref->br_buf = buf;
+!     bufref->br_fnum = buf == NULL ? 0 : buf->b_fnum;
+      bufref->br_buf_free_count = buf_free_count;
+  }
+  
+*** ../vim-8.0.0647/src/version.c	2017-06-18 22:40:36.532444606 +0200
+--- src/version.c	2017-06-19 20:31:57.628847889 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     648,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+44. Your friends no longer send you e-mail...they just log on to your IRC
+    channel.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

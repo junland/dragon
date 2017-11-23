@@ -1,0 +1,152 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0549
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0549
+Problem:    No test for the 8g8 command.
+Solution:   Add a test. (Dominique Pelle, closes #1615)
+Files:      src/testdir/test_normal.vim
+
+
+*** ../vim-8.0.0548/src/testdir/test_normal.vim	2017-03-29 19:48:07.499210857 +0200
+--- src/testdir/test_normal.vim	2017-04-07 20:06:45.348900975 +0200
+***************
+*** 844,850 ****
+    norm! j
+    call assert_equal('52', getline('.'))
+  
+!   " zA on a opened fold when foldenale is not set
+    50
+    set nofoldenable
+    norm! zA
+--- 844,850 ----
+    norm! j
+    call assert_equal('52', getline('.'))
+  
+!   " zA on a opened fold when foldenable is not set
+    50
+    set nofoldenable
+    norm! zA
+***************
+*** 906,912 ****
+    norm! j
+    call assert_equal('55', getline('.'))
+  
+!   " 2) do not close fold under curser
+    51
+    set nofoldenable
+    norm! zx
+--- 906,912 ----
+    norm! j
+    call assert_equal('55', getline('.'))
+  
+!   " 2) do not close fold under cursor
+    51
+    set nofoldenable
+    norm! zx
+***************
+*** 1772,1789 ****
+    if !has("multi_byte")
+      return
+    endif
+    " Test for g8
+    new
+!   call append(0, 'abcdefghijklmnopqrstuvwxyzäüö')
+!   let a=execute(':norm! 1gg$g8')
+!   call assert_equal('c3 b6 ', a[1:])
+  
+-   " Test for gp gP
+-   call append(1, range(1,10))
+    " clean up
+    bw!
+  endfunc
+  
+  fun! Test_normal35_g_cmd4()
+    " Test for g<
+    " Cannot capture its output,
+--- 1772,1831 ----
+    if !has("multi_byte")
+      return
+    endif
++ 
+    " Test for g8
+    new
+!   let a=execute(':norm! 1G0g8')
+!   call assert_equal("\nNUL", a)
+! 
+!   call setline(1, 'abcdefghijklmnopqrstuvwxyzäüö')
+!   let a=execute(':norm! 1G$g8')
+!   call assert_equal("\nc3 b6 ", a)
+! 
+!   call setline(1, "a\u0302")
+!   let a=execute(':norm! 1G0g8')
+!   call assert_equal("\n61 + cc 82 ", a)
+  
+    " clean up
+    bw!
+  endfunc
+  
++ func Test_normal_8g8()
++   if !has("multi_byte")
++     return
++   endif
++   new
++ 
++   " Test 8g8 which finds invalid utf8 at or after the cursor.
++ 
++   " With invalid byte.
++   call setline(1, "___\xff___")
++   norm! 1G08g8g
++   call assert_equal([0, 1, 4, 0, 1], getcurpos())
++ 
++   " With invalid byte before the cursor.
++   call setline(1, "___\xff___")
++   norm! 1G$h8g8g
++   call assert_equal([0, 1, 6, 0, 9], getcurpos())
++ 
++   " With truncated sequence.
++   call setline(1, "___\xE2\x82___")
++   norm! 1G08g8g
++   call assert_equal([0, 1, 4, 0, 1], getcurpos())
++ 
++   " With overlong sequence.
++   call setline(1, "___\xF0\x82\x82\xAC___")
++   norm! 1G08g8g
++   call assert_equal([0, 1, 4, 0, 1], getcurpos())
++ 
++   " With valid utf8.
++   call setline(1, "café")
++   norm! 1G08g8
++   call assert_equal([0, 1, 1, 0, 1], getcurpos())
++ 
++   bw!
++ endfunc
++ 
+  fun! Test_normal35_g_cmd4()
+    " Test for g<
+    " Cannot capture its output,
+*** ../vim-8.0.0548/src/version.c	2017-04-07 19:50:08.695049295 +0200
+--- src/version.c	2017-04-07 20:06:11.765109021 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     549,
+  /**/
+
+-- 
+   They now pass three KNIGHTS impaled to a tree.  With their feet off the
+   ground,  with one lance through the lot of them, they are skewered up
+   like a barbecue.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

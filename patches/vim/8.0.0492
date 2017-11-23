@@ -1,0 +1,727 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0492
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0492
+Problem:    A failing client-server request can make Vim hang.
+Solution:   Add a timeout argument to functions that wait.
+Files:      src/evalfunc.c, src/if_xcmdsrv.c, src/proto/if_xcmdsrv.pro,
+            src/main.c, src/os_mswin.c, src/proto/os_mswin.pro,
+            src/vim.h, runtime/doc/eval.txt, src/testdir/test_clientserver.vim
+
+
+*** ../vim-8.0.0491/src/evalfunc.c	2017-03-18 19:41:45.900072865 +0100
+--- src/evalfunc.c	2017-03-19 20:52:20.393531213 +0100
+***************
+*** 739,748 ****
+      {"reltimefloat",	1, 1, f_reltimefloat},
+  #endif
+      {"reltimestr",	1, 1, f_reltimestr},
+!     {"remote_expr",	2, 3, f_remote_expr},
+      {"remote_foreground", 1, 1, f_remote_foreground},
+      {"remote_peek",	1, 2, f_remote_peek},
+!     {"remote_read",	1, 1, f_remote_read},
+      {"remote_send",	2, 3, f_remote_send},
+      {"remote_startserver", 1, 1, f_remote_startserver},
+      {"remove",		2, 3, f_remove},
+--- 739,748 ----
+      {"reltimefloat",	1, 1, f_reltimefloat},
+  #endif
+      {"reltimestr",	1, 1, f_reltimestr},
+!     {"remote_expr",	2, 4, f_remote_expr},
+      {"remote_foreground", 1, 1, f_remote_foreground},
+      {"remote_peek",	1, 2, f_remote_peek},
+!     {"remote_read",	1, 2, f_remote_read},
+      {"remote_send",	2, 3, f_remote_send},
+      {"remote_startserver", 1, 1, f_remote_startserver},
+      {"remove",		2, 3, f_remove},
+***************
+*** 8515,8520 ****
+--- 8515,8521 ----
+      char_u	*keys;
+      char_u	*r = NULL;
+      char_u	buf[NUMBUFLEN];
++     int		timeout = 0;
+  # ifdef WIN32
+      HWND	w;
+  # else
+***************
+*** 8528,8543 ****
+      if (check_connection() == FAIL)
+  	return;
+  # endif
+  
+      server_name = get_tv_string_chk(&argvars[0]);
+      if (server_name == NULL)
+  	return;		/* type error; errmsg already given */
+      keys = get_tv_string_buf(&argvars[1], buf);
+  # ifdef WIN32
+!     if (serverSendToVim(server_name, keys, &r, &w, expr, TRUE) < 0)
+  # else
+!     if (serverSendToVim(X_DISPLAY, server_name, keys, &r, &w, expr, 0, TRUE)
+! 									  < 0)
+  # endif
+      {
+  	if (r != NULL)
+--- 8529,8547 ----
+      if (check_connection() == FAIL)
+  	return;
+  # endif
++     if (argvars[2].v_type != VAR_UNKNOWN
++ 	    && argvars[3].v_type != VAR_UNKNOWN)
++ 	timeout = get_tv_number(&argvars[3]);
+  
+      server_name = get_tv_string_chk(&argvars[0]);
+      if (server_name == NULL)
+  	return;		/* type error; errmsg already given */
+      keys = get_tv_string_buf(&argvars[1], buf);
+  # ifdef WIN32
+!     if (serverSendToVim(server_name, keys, &r, &w, expr, timeout, TRUE) < 0)
+  # else
+!     if (serverSendToVim(X_DISPLAY, server_name, keys, &r, &w, expr, timeout,
+! 								  0, TRUE) < 0)
+  # endif
+      {
+  	if (r != NULL)
+***************
+*** 8555,8567 ****
+  	char_u		str[30];
+  	char_u		*idvar;
+  
+- 	sprintf((char *)str, PRINTF_HEX_LONG_U, (long_u)w);
+- 	v.di_tv.v_type = VAR_STRING;
+- 	v.di_tv.vval.v_string = vim_strsave(str);
+  	idvar = get_tv_string_chk(&argvars[2]);
+! 	if (idvar != NULL)
+  	    set_var(idvar, &v.di_tv, FALSE);
+! 	vim_free(v.di_tv.vval.v_string);
+      }
+  }
+  #endif
+--- 8559,8573 ----
+  	char_u		str[30];
+  	char_u		*idvar;
+  
+  	idvar = get_tv_string_chk(&argvars[2]);
+! 	if (idvar != NULL && *idvar != NUL)
+! 	{
+! 	    sprintf((char *)str, PRINTF_HEX_LONG_U, (long_u)w);
+! 	    v.di_tv.v_type = VAR_STRING;
+! 	    v.di_tv.vval.v_string = vim_strsave(str);
+  	    set_var(idvar, &v.di_tv, FALSE);
+! 	    vim_free(v.di_tv.vval.v_string);
+! 	}
+      }
+  }
+  #endif
+***************
+*** 8633,8639 ****
+  	rettv->vval.v_number = -1;
+      else
+      {
+! 	s = serverGetReply((HWND)n, FALSE, FALSE, FALSE);
+  	rettv->vval.v_number = (s != NULL);
+      }
+  # else
+--- 8639,8645 ----
+  	rettv->vval.v_number = -1;
+      else
+      {
+! 	s = serverGetReply((HWND)n, FALSE, FALSE, FALSE, 0);
+  	rettv->vval.v_number = (s != NULL);
+      }
+  # else
+***************
+*** 8670,8686 ****
+  
+      if (serverid != NULL && !check_restricted() && !check_secure())
+      {
+  # ifdef WIN32
+  	/* The server's HWND is encoded in the 'id' parameter */
+  	long_u		n = 0;
+  
+  	sscanf((char *)serverid, SCANF_HEX_LONG_U, &n);
+  	if (n != 0)
+! 	    r = serverGetReply((HWND)n, FALSE, TRUE, TRUE);
+  	if (r == NULL)
+  # else
+! 	if (check_connection() == FAIL || serverReadReply(X_DISPLAY,
+! 		serverStrToWin(serverid), &r, FALSE) < 0)
+  # endif
+  	    EMSG(_("E277: Unable to read a server reply"));
+      }
+--- 8676,8698 ----
+  
+      if (serverid != NULL && !check_restricted() && !check_secure())
+      {
++ 	int timeout = 0;
++ 
++ 	if (argvars[1].v_type != VAR_UNKNOWN)
++ 	    timeout = get_tv_number(&argvars[1]);
++ 
+  # ifdef WIN32
+  	/* The server's HWND is encoded in the 'id' parameter */
+  	long_u		n = 0;
+  
+  	sscanf((char *)serverid, SCANF_HEX_LONG_U, &n);
+  	if (n != 0)
+! 	    r = serverGetReply((HWND)n, FALSE, TRUE, TRUE, timeout);
+  	if (r == NULL)
+  # else
+! 	if (check_connection() == FAIL
+! 		|| serverReadReply(X_DISPLAY, serverStrToWin(serverid),
+! 						       &r, FALSE, timeout) < 0)
+  # endif
+  	    EMSG(_("E277: Unable to read a server reply"));
+      }
+*** ../vim-8.0.0491/src/if_xcmdsrv.c	2017-03-18 19:41:45.900072865 +0100
+--- src/if_xcmdsrv.c	2017-03-19 20:45:35.012499137 +0100
+***************
+*** 373,378 ****
+--- 373,379 ----
+      char_u	**result,		/* Result of eval'ed expression */
+      Window	*server,		/* Actual ID of receiving app */
+      Bool	asExpr,			/* Interpret as keystrokes or expr ? */
++     int		timeout,		/* seconds to wait or zero */
+      Bool	localLoop,		/* Throw away everything but result */
+      int		silent)			/* don't complain about no server */
+  {
+***************
+*** 485,491 ****
+      pending.nextPtr = pendingCommands;
+      pendingCommands = &pending;
+  
+!     ServerWait(dpy, w, WaitForPend, &pending, localLoop, 600);
+  
+      /*
+       * Unregister the information about the pending command
+--- 486,493 ----
+      pending.nextPtr = pendingCommands;
+      pendingCommands = &pending;
+  
+!     ServerWait(dpy, w, WaitForPend, &pending, localLoop,
+! 						  timeout > 0 ? timeout : 600);
+  
+      /*
+       * Unregister the information about the pending command
+***************
+*** 790,795 ****
+--- 792,798 ----
+  
+  /*
+   * Wait for replies from id (win)
++  * When "timeout" is non-zero wait up to this many seconds.
+   * Return 0 and the malloc'ed string when a reply is available.
+   * Return -1 if the window becomes invalid while waiting.
+   */
+***************
+*** 798,810 ****
+      Display	*dpy,
+      Window	win,
+      char_u	**str,
+!     int		localLoop)
+  {
+      int		len;
+      char_u	*s;
+      struct	ServerReply *p;
+  
+!     ServerWait(dpy, win, WaitForReply, &win, localLoop, -1);
+  
+      if ((p = ServerReplyFind(win, SROP_Find)) != NULL && p->strings.ga_len > 0)
+      {
+--- 801,815 ----
+      Display	*dpy,
+      Window	win,
+      char_u	**str,
+!     int		localLoop,
+!     int		timeout)
+  {
+      int		len;
+      char_u	*s;
+      struct	ServerReply *p;
+  
+!     ServerWait(dpy, win, WaitForReply, &win, localLoop,
+! 						   timeout > 0 ? timeout : -1);
+  
+      if ((p = ServerReplyFind(win, SROP_Find)) != NULL && p->strings.ga_len > 0)
+      {
+*** ../vim-8.0.0491/src/proto/if_xcmdsrv.pro	2016-09-12 13:04:09.000000000 +0200
+--- src/proto/if_xcmdsrv.pro	2017-03-19 20:45:03.084732948 +0100
+***************
+*** 1,11 ****
+  /* if_xcmdsrv.c */
+  int serverRegisterName(Display *dpy, char_u *name);
+  void serverChangeRegisteredWindow(Display *dpy, Window newwin);
+! int serverSendToVim(Display *dpy, char_u *name, char_u *cmd, char_u **result, Window *server, int asExpr, int localLoop, int silent);
+  char_u *serverGetVimNames(Display *dpy);
+  Window serverStrToWin(char_u *str);
+  int serverSendReply(char_u *name, char_u *str);
+! int serverReadReply(Display *dpy, Window win, char_u **str, int localLoop);
+  int serverPeekReply(Display *dpy, Window win, char_u **str);
+  void serverEventProc(Display *dpy, XEvent *eventPtr, int immediate);
+  void server_parse_messages(void);
+--- 1,11 ----
+  /* if_xcmdsrv.c */
+  int serverRegisterName(Display *dpy, char_u *name);
+  void serverChangeRegisteredWindow(Display *dpy, Window newwin);
+! int serverSendToVim(Display *dpy, char_u *name, char_u *cmd, char_u **result, Window *server, int asExpr, int timeout, int localLoop, int silent);
+  char_u *serverGetVimNames(Display *dpy);
+  Window serverStrToWin(char_u *str);
+  int serverSendReply(char_u *name, char_u *str);
+! int serverReadReply(Display *dpy, Window win, char_u **str, int localLoop, int timeout);
+  int serverPeekReply(Display *dpy, Window win, char_u **str);
+  void serverEventProc(Display *dpy, XEvent *eventPtr, int immediate);
+  void server_parse_messages(void);
+*** ../vim-8.0.0491/src/main.c	2017-03-18 18:15:12.681524375 +0100
+--- src/main.c	2017-03-19 20:52:58.173254682 +0100
+***************
+*** 3791,3800 ****
+  	    }
+  	    else
+  		ret = serverSendToVim(xterm_dpy, sname, *serverStr,
+! 						    NULL, &srv, 0, 0, silent);
+  # else
+  	    /* Win32 always works? */
+! 	    ret = serverSendToVim(sname, *serverStr, NULL, &srv, 0, silent);
+  # endif
+  	    if (ret < 0)
+  	    {
+--- 3791,3800 ----
+  	    }
+  	    else
+  		ret = serverSendToVim(xterm_dpy, sname, *serverStr,
+! 						  NULL, &srv, 0, 0, 0, silent);
+  # else
+  	    /* Win32 always works? */
+! 	    ret = serverSendToVim(sname, *serverStr, NULL, &srv, 0, 0, silent);
+  # endif
+  	    if (ret < 0)
+  	    {
+***************
+*** 3854,3864 ****
+  		while (memchr(done, 0, numFiles) != NULL)
+  		{
+  # ifdef WIN32
+! 		    p = serverGetReply(srv, NULL, TRUE, TRUE);
+  		    if (p == NULL)
+  			break;
+  # else
+! 		    if (serverReadReply(xterm_dpy, srv, &p, TRUE) < 0)
+  			break;
+  # endif
+  		    j = atoi((char *)p);
+--- 3854,3864 ----
+  		while (memchr(done, 0, numFiles) != NULL)
+  		{
+  # ifdef WIN32
+! 		    p = serverGetReply(srv, NULL, TRUE, TRUE, 0);
+  		    if (p == NULL)
+  			break;
+  # else
+! 		    if (serverReadReply(xterm_dpy, srv, &p, TRUE, -1) < 0)
+  			break;
+  # endif
+  		    j = atoi((char *)p);
+***************
+*** 3885,3896 ****
+  # ifdef WIN32
+  	    /* Win32 always works? */
+  	    if (serverSendToVim(sname, (char_u *)argv[i + 1],
+! 						    &res, NULL, 1, FALSE) < 0)
+  # else
+  	    if (xterm_dpy == NULL)
+  		mch_errmsg(_("No display: Send expression failed.\n"));
+  	    else if (serverSendToVim(xterm_dpy, sname, (char_u *)argv[i + 1],
+! 						 &res, NULL, 1, 1, FALSE) < 0)
+  # endif
+  	    {
+  		if (res != NULL && *res != NUL)
+--- 3885,3896 ----
+  # ifdef WIN32
+  	    /* Win32 always works? */
+  	    if (serverSendToVim(sname, (char_u *)argv[i + 1],
+! 						  &res, NULL, 1, 0, FALSE) < 0)
+  # else
+  	    if (xterm_dpy == NULL)
+  		mch_errmsg(_("No display: Send expression failed.\n"));
+  	    else if (serverSendToVim(xterm_dpy, sname, (char_u *)argv[i + 1],
+! 					       &res, NULL, 1, 0, 1, FALSE) < 0)
+  # endif
+  	    {
+  		if (res != NULL && *res != NUL)
+*** ../vim-8.0.0491/src/os_mswin.c	2017-03-18 21:22:42.503765361 +0100
+--- src/os_mswin.c	2017-03-19 20:51:53.601727325 +0100
+***************
+*** 2401,2406 ****
+--- 2401,2407 ----
+      char_u	 **result,		/* Result of eval'ed expression */
+      void	 *ptarget,		/* HWND of server */
+      int		 asExpr,		/* Expression or keys? */
++     int		 timeout,		/* timeout in seconds or zero */
+      int		 silent)		/* don't complain about no server */
+  {
+      HWND	target;
+***************
+*** 2444,2450 ****
+  	return -1;
+  
+      if (asExpr)
+! 	retval = serverGetReply(target, &retcode, TRUE, TRUE);
+  
+      if (result == NULL)
+  	vim_free(retval);
+--- 2445,2451 ----
+  	return -1;
+  
+      if (asExpr)
+! 	retval = serverGetReply(target, &retcode, TRUE, TRUE, timeout);
+  
+      if (result == NULL)
+  	vim_free(retval);
+***************
+*** 2521,2534 ****
+   * if "wait" is TRUE block until a message arrives (or the server exits).
+   */
+      char_u *
+! serverGetReply(HWND server, int *expr_res, int remove, int wait)
+  {
+      int		i;
+      char_u	*reply;
+      reply_T	*rep;
+      int		did_process = FALSE;
+  
+      /* When waiting, loop until the message waiting for is received. */
+      for (;;)
+      {
+  	/* Reset this here, in case a message arrives while we are going
+--- 2522,2538 ----
+   * if "wait" is TRUE block until a message arrives (or the server exits).
+   */
+      char_u *
+! serverGetReply(HWND server, int *expr_res, int remove, int wait, int timeout)
+  {
+      int		i;
+      char_u	*reply;
+      reply_T	*rep;
+      int		did_process = FALSE;
++     time_t	start;
++     time_t	now;
+  
+      /* When waiting, loop until the message waiting for is received. */
++     time(&start);
+      for (;;)
+      {
+  	/* Reset this here, in case a message arrives while we are going
+***************
+*** 2584,2589 ****
+--- 2588,2597 ----
+  #ifdef FEAT_TIMERS
+  	    check_due_timer();
+  #endif
++ 	    time(&now);
++ 	    if (timeout > 0 && (now - start) >= timeout)
++ 		break;
++ 
+  	    /* Wait for a SendMessage() call to us.  This could be the reply
+  	     * we are waiting for.  Use a timeout of a second, to catch the
+  	     * situation that the server died unexpectedly. */
+*** ../vim-8.0.0491/src/proto/os_mswin.pro	2016-10-12 14:19:55.754357695 +0200
+--- src/proto/os_mswin.pro	2017-03-19 20:55:50.259994775 +0100
+***************
+*** 43,51 ****
+  void serverSetName(char_u *name);
+  char_u *serverGetVimNames(void);
+  int serverSendReply(char_u *name, char_u *reply);
+! int serverSendToVim(char_u *name, char_u *cmd, char_u **result, void *ptarget, int asExpr, int silent);
+  void serverForeground(char_u *name);
+! char_u *serverGetReply(HWND server, int *expr_res, int remove, int wait);
+  void serverProcessPendingMessages(void);
+  char *charset_id2name(int id);
+  char *quality_id2name(DWORD id);
+--- 43,51 ----
+  void serverSetName(char_u *name);
+  char_u *serverGetVimNames(void);
+  int serverSendReply(char_u *name, char_u *reply);
+! int serverSendToVim(char_u *name, char_u *cmd, char_u **result, void *ptarget, int asExpr, int timeout, int silent);
+  void serverForeground(char_u *name);
+! char_u *serverGetReply(HWND server, int *expr_res, int remove, int wait, int timeout);
+  void serverProcessPendingMessages(void);
+  char *charset_id2name(int id);
+  char *quality_id2name(DWORD id);
+*** ../vim-8.0.0491/src/vim.h	2017-03-16 17:23:26.839815753 +0100
+--- src/vim.h	2017-03-19 20:55:40.456066595 +0100
+***************
+*** 2506,2512 ****
+  #  define ELAPSED_INIT(v) v = GetTickCount()
+  #  define ELAPSED_FUNC(v) elapsed(v)
+  #  define ELAPSED_TYPE DWORD
+!     long elapsed(DWORD start_tick);
+  # endif
+  #endif
+  
+--- 2506,2514 ----
+  #  define ELAPSED_INIT(v) v = GetTickCount()
+  #  define ELAPSED_FUNC(v) elapsed(v)
+  #  define ELAPSED_TYPE DWORD
+! #   ifndef PROTO
+!      long elapsed(DWORD start_tick);
+! #   endif
+  # endif
+  #endif
+  
+*** ../vim-8.0.0491/runtime/doc/eval.txt	2017-03-18 19:41:45.904072837 +0100
+--- runtime/doc/eval.txt	2017-03-19 20:40:19.934806870 +0100
+***************
+*** 6302,6316 ****
+  		{only available when compiled with the |+reltime| feature}
+  
+  							*remote_expr()* *E449*
+! remote_expr({server}, {string} [, {idvar}])
+  		Send the {string} to {server}.  The string is sent as an
+  		expression and the result is returned after evaluation.
+  		The result must be a String or a |List|.  A |List| is turned
+  		into a String by joining the items with a line break in
+  		between (not at the end), like with join(expr, "\n").
+! 		If {idvar} is present, it is taken as the name of a
+! 		variable and a {serverid} for later use with
+  		remote_read() is stored there.
+  		See also |clientserver| |RemoteReply|.
+  		This function is not available in the |sandbox|.
+  		{only available when compiled with the |+clientserver| feature}
+--- 6320,6336 ----
+  		{only available when compiled with the |+reltime| feature}
+  
+  							*remote_expr()* *E449*
+! remote_expr({server}, {string} [, {idvar} [, {timeout}]])
+  		Send the {string} to {server}.  The string is sent as an
+  		expression and the result is returned after evaluation.
+  		The result must be a String or a |List|.  A |List| is turned
+  		into a String by joining the items with a line break in
+  		between (not at the end), like with join(expr, "\n").
+! 		If {idvar} is present and not empty, it is taken as the name
+! 		of a variable and a {serverid} for later use with
+  		remote_read() is stored there.
++ 		If {timeout} is given the read times out after this many
++ 		seconds.  Otherwise a timeout of 600 seconds is used.
+  		See also |clientserver| |RemoteReply|.
+  		This function is not available in the |sandbox|.
+  		{only available when compiled with the |+clientserver| feature}
+***************
+*** 6349,6357 ****
+  			:let repl = ""
+  			:echo "PEEK: ".remote_peek(id, "repl").": ".repl
+  
+! remote_read({serverid})				*remote_read()*
+  		Return the oldest available reply from {serverid} and consume
+! 		it.  It blocks until a reply is available.
+  		See also |clientserver|.
+  		This function is not available in the |sandbox|.
+  		{only available when compiled with the |+clientserver| feature}
+--- 6369,6378 ----
+  			:let repl = ""
+  			:echo "PEEK: ".remote_peek(id, "repl").": ".repl
+  
+! remote_read({serverid}, [{timeout}])			*remote_read()*
+  		Return the oldest available reply from {serverid} and consume
+! 		it.  Unless a {timeout} in seconds is given, it blocks until a
+! 		reply is available.
+  		See also |clientserver|.
+  		This function is not available in the |sandbox|.
+  		{only available when compiled with the |+clientserver| feature}
+*** ../vim-8.0.0491/src/testdir/test_clientserver.vim	2017-03-18 20:45:01.288381154 +0100
+--- src/testdir/test_clientserver.vim	2017-03-19 21:16:35.586870697 +0100
+***************
+*** 6,27 ****
+  
+  source shared.vim
+  
+- let s:where = 0
+- func Abort(id)
+-   call assert_report('Test timed out at ' . s:where)
+-   call FinishTesting()
+- endfunc
+- 
+  func Test_client_server()
+    let cmd = GetVimCommand()
+    if cmd == ''
+      return
+    endif
+  
+-   " Some of these commands may hang when failing.
+-   call timer_start(10000, 'Abort')
+- 
+-   let s:where = 1
+    let name = 'XVIMTEST'
+    let cmd .= ' --servername ' . name
+    let g:job = job_start(cmd, {'stoponexit': 'kill', 'out_io': 'null'})
+--- 6,17 ----
+***************
+*** 30,91 ****
+      call assert_report('Cannot run the Vim server')
+      return
+    endif
+-   let s:where = 2
+  
+    " Takes a short while for the server to be active.
+    call WaitFor('serverlist() =~ "' . name . '"')
+    call assert_match(name, serverlist())
+-   let s:where = 3
+  
+    call remote_foreground(name)
+-   let s:where = 4
+  
+    call remote_send(name, ":let testvar = 'yes'\<CR>")
+!   let s:where = 5
+!   call WaitFor('remote_expr("' . name . '", "testvar") == "yes"')
+!   let s:where = 6
+!   call assert_equal('yes', remote_expr(name, "testvar"))
+!   let s:where = 7
+  
+    if has('unix') && has('gui') && !has('gui_running')
+      " Running in a terminal and the GUI is avaiable: Tell the server to open
+      " the GUI and check that the remote command still works.
+      " Need to wait for the GUI to start up, otherwise the send hangs in trying
+      " to send to the terminal window.
+!     call remote_send(name, ":gui -f\<CR>")
+!     let s:where = 8
+!     sleep 500m
+      call remote_send(name, ":let testvar = 'maybe'\<CR>")
+!     let s:where = 9
+!     call WaitFor('remote_expr("' . name . '", "testvar") == "maybe"')
+!     let s:where = 10
+!     call assert_equal('maybe', remote_expr(name, "testvar"))
+!     let s:where = 11
+    endif
+  
+    call assert_fails('call remote_send("XXX", ":let testvar = ''yes''\<CR>")', 'E241')
+-   let s:where = 12
+  
+    " Expression evaluated locally.
+    if v:servername == ''
+      call remote_startserver('MYSELF')
+!     let s:where = 13
+!     call assert_equal('MYSELF', v:servername)
+    endif
+    let g:testvar = 'myself'
+    call assert_equal('myself', remote_expr(v:servername, 'testvar'))
+-   let s:where = 14
+  
+    call remote_send(name, ":call server2client(expand('<client>'), 'got it')\<CR>", 'g:myserverid')
+!   let s:where = 15
+!   call assert_equal('got it', remote_read(g:myserverid))
+!   let s:where = 16
+  
+    call remote_send(name, ":call server2client(expand('<client>'), 'another')\<CR>", 'g:myserverid')
+-   let s:where = 151
+    let peek_result = 'nothing'
+    let r = remote_peek(g:myserverid, 'peek_result')
+-   let s:where = 161
+    " unpredictable whether the result is already avaialble.
+    if r > 0
+      call assert_equal('another', peek_result)
+--- 20,72 ----
+      call assert_report('Cannot run the Vim server')
+      return
+    endif
+  
+    " Takes a short while for the server to be active.
+    call WaitFor('serverlist() =~ "' . name . '"')
+    call assert_match(name, serverlist())
+  
+    call remote_foreground(name)
+  
+    call remote_send(name, ":let testvar = 'yes'\<CR>")
+!   call WaitFor('remote_expr("' . name . '", "testvar", "", 1) == "yes"')
+!   call assert_equal('yes', remote_expr(name, "testvar", "", 2))
+  
+    if has('unix') && has('gui') && !has('gui_running')
+      " Running in a terminal and the GUI is avaiable: Tell the server to open
+      " the GUI and check that the remote command still works.
+      " Need to wait for the GUI to start up, otherwise the send hangs in trying
+      " to send to the terminal window.
+!     if has('gui_athena') || has('gui_motif')
+!       " For those GUIs, ignore the 'failed to create input context' error.
+!       call remote_send(name, ":call test_ignore_error('E285') | gui -f\<CR>")
+!     else
+!       call remote_send(name, ":gui -f\<CR>")
+!     endif
+!     " Wait for the server to be up and answering requests.
+!     call WaitFor('remote_expr("' . name . '", "v:version", "", 1) != ""')
+! 
+      call remote_send(name, ":let testvar = 'maybe'\<CR>")
+!     call WaitFor('remote_expr("' . name . '", "testvar", "", 1) == "maybe"')
+!     call assert_equal('maybe', remote_expr(name, "testvar", "", 2))
+    endif
+  
+    call assert_fails('call remote_send("XXX", ":let testvar = ''yes''\<CR>")', 'E241')
+  
+    " Expression evaluated locally.
+    if v:servername == ''
+      call remote_startserver('MYSELF')
+!     " May get MYSELF1 when running the test again.
+!     call assert_match('MYSELF', v:servername)
+    endif
+    let g:testvar = 'myself'
+    call assert_equal('myself', remote_expr(v:servername, 'testvar'))
+  
+    call remote_send(name, ":call server2client(expand('<client>'), 'got it')\<CR>", 'g:myserverid')
+!   call assert_equal('got it', remote_read(g:myserverid, 2))
+  
+    call remote_send(name, ":call server2client(expand('<client>'), 'another')\<CR>", 'g:myserverid')
+    let peek_result = 'nothing'
+    let r = remote_peek(g:myserverid, 'peek_result')
+    " unpredictable whether the result is already avaialble.
+    if r > 0
+      call assert_equal('another', peek_result)
+***************
+*** 96,111 ****
+    endif
+    let g:peek_result = 'empty'
+    call WaitFor('remote_peek(g:myserverid, "g:peek_result") > 0')
+-   let s:where = 171
+    call assert_equal('another', g:peek_result)
+!   let s:where = 181
+!   call assert_equal('another', remote_read(g:myserverid))
+!   let s:where = 191
+  
+    call remote_send(name, ":qa!\<CR>")
+-   let s:where = 17
+    call WaitFor('job_status(g:job) == "dead"')
+-   let s:where = 18
+    if job_status(g:job) != 'dead'
+      call assert_report('Server did not exit')
+      call job_stop(g:job, 'kill')
+--- 77,87 ----
+    endif
+    let g:peek_result = 'empty'
+    call WaitFor('remote_peek(g:myserverid, "g:peek_result") > 0')
+    call assert_equal('another', g:peek_result)
+!   call assert_equal('another', remote_read(g:myserverid, 2))
+  
+    call remote_send(name, ":qa!\<CR>")
+    call WaitFor('job_status(g:job) == "dead"')
+    if job_status(g:job) != 'dead'
+      call assert_report('Server did not exit')
+      call job_stop(g:job, 'kill')
+*** ../vim-8.0.0491/src/version.c	2017-03-19 21:01:09.721654997 +0100
+--- src/version.c	2017-03-19 21:04:48.628052187 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     492,
+  /**/
+
+-- 
+Keep America beautiful.  Swallow your beer cans.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

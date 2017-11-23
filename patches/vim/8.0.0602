@@ -1,0 +1,111 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0602
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0602
+Problem:    When gF fails to edit the file the cursor still moves to the found
+            line number.
+Solution:   Check the return value of do_ecmd(). (Michael Hwang)
+Files:      src/normal.c, src/testdir/test_gf.vim
+
+
+*** ../vim-8.0.0601/src/normal.c	2017-04-20 18:54:46.272771934 +0200
+--- src/normal.c	2017-05-24 09:45:42.883485129 +0200
+***************
+*** 6250,6258 ****
+  	if (curbufIsChanged() && curbuf->b_nwindows <= 1 && !P_HID(curbuf))
+  	    (void)autowrite(curbuf, FALSE);
+  	setpcmark();
+! 	(void)do_ecmd(0, ptr, NULL, NULL, ECMD_LAST,
+! 				       P_HID(curbuf) ? ECMD_HIDE : 0, curwin);
+! 	if (cap->nchar == 'F' && lnum >= 0)
+  	{
+  	    curwin->w_cursor.lnum = lnum;
+  	    check_cursor_lnum();
+--- 6250,6258 ----
+  	if (curbufIsChanged() && curbuf->b_nwindows <= 1 && !P_HID(curbuf))
+  	    (void)autowrite(curbuf, FALSE);
+  	setpcmark();
+! 	if (do_ecmd(0, ptr, NULL, NULL, ECMD_LAST,
+! 				   P_HID(curbuf) ? ECMD_HIDE : 0, curwin) == OK
+! 		&& cap->nchar == 'F' && lnum >= 0)
+  	{
+  	    curwin->w_cursor.lnum = lnum;
+  	    check_cursor_lnum();
+*** ../vim-8.0.0601/src/testdir/test_gf.vim	2016-09-07 20:37:01.000000000 +0200
+--- src/testdir/test_gf.vim	2017-05-24 09:44:38.255878156 +0200
+***************
+*** 1,7 ****
+  
+  " This is a test if a URL is recognized by "gf", with the cursor before and
+  " after the "://".  Also test ":\\".
+! function! Test_gf_url()
+    enew!
+    call append(0, [
+        \ "first test for URL://machine.name/tmp/vimtest2a and other text",
+--- 1,7 ----
+  
+  " This is a test if a URL is recognized by "gf", with the cursor before and
+  " after the "://".  Also test ":\\".
+! func Test_gf_url()
+    enew!
+    call append(0, [
+        \ "first test for URL://machine.name/tmp/vimtest2a and other text",
+***************
+*** 30,33 ****
+  
+    set isf&vim
+    enew!
+! endfunction
+--- 30,54 ----
+  
+    set isf&vim
+    enew!
+! endfunc
+! 
+! func Test_gF()
+!   new
+!   call setline(1, ['111', '222', '333', '444'])
+!   w! Xfile
+!   close
+!   new
+!   call setline(1, ['one', 'Xfile:3', 'three'])
+!   2
+!   call assert_fails('normal gF', 'E37:')
+!   call assert_equal(2, getcurpos()[1])
+!   w! Xfile2
+!   normal gF
+!   call assert_equal('Xfile', bufname('%'))
+!   call assert_equal(3, getcurpos()[1])
+! 
+!   call delete('Xfile')
+!   call delete('Xfile2')
+!   bwipe Xfile
+!   bwipe Xfile2
+! endfunc
+*** ../vim-8.0.0601/src/version.c	2017-05-23 11:31:05.802965969 +0200
+--- src/version.c	2017-05-24 09:36:05.198998339 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     602,
+  /**/
+
+-- 
+BODY:        I'm not dead!
+CART DRIVER: 'Ere.  He says he's not dead.
+LARGE MAN:   Yes he is.
+BODY:        I'm not!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

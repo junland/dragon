@@ -1,0 +1,81 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1331
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1331
+Problem:    Possible crash when window can be zero lines high. (Joseph
+            Dornisch)
+Solution:   Only set w_fraction if the window is at least two lines high.
+Files:      src/window.c
+
+
+*** ../vim-8.0.1330/src/window.c	2017-10-28 21:08:38.995456898 +0200
+--- src/window.c	2017-11-22 22:18:47.942739477 +0100
+***************
+*** 1081,1088 ****
+  
+      /* Set w_fraction now so that the cursor keeps the same relative
+       * vertical position. */
+!     if (oldwin->w_height > 0)
+! 	set_fraction(oldwin);
+      wp->w_fraction = oldwin->w_fraction;
+  
+      if (flags & WSP_VERT)
+--- 1081,1087 ----
+  
+      /* Set w_fraction now so that the cursor keeps the same relative
+       * vertical position. */
+!     set_fraction(oldwin);
+      wp->w_fraction = oldwin->w_fraction;
+  
+      if (flags & WSP_VERT)
+***************
+*** 5682,5692 ****
+  
+  /*
+   * Set wp->w_fraction for the current w_wrow and w_height.
+   */
+      void
+  set_fraction(win_T *wp)
+  {
+!     wp->w_fraction = ((long)wp->w_wrow * FRACTION_MULT
+  				    + wp->w_height / 2) / (long)wp->w_height;
+  }
+  
+--- 5681,5693 ----
+  
+  /*
+   * Set wp->w_fraction for the current w_wrow and w_height.
++  * Has no effect when the window is less than two lines.
+   */
+      void
+  set_fraction(win_T *wp)
+  {
+!     if (wp->w_height > 1)
+! 	wp->w_fraction = ((long)wp->w_wrow * FRACTION_MULT
+  				    + wp->w_height / 2) / (long)wp->w_height;
+  }
+  
+*** ../vim-8.0.1330/src/version.c	2017-11-21 18:11:23.661015826 +0100
+--- src/version.c	2017-11-22 22:18:24.686876741 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1331,
+  /**/
+
+-- 
+How To Keep A Healthy Level Of Insanity:
+12. Sing along at the opera.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

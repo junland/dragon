@@ -1,0 +1,171 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0296
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0296
+Problem:    Bracketed paste can only append, not insert.
+Solution:   When the cursor is in the first column insert the text.
+Files:      src/normal.c, src/testdir/test_paste.vim,  runtime/doc/term.txt
+
+
+*** ../vim-8.0.0295/src/normal.c	2017-02-01 15:03:25.679840157 +0100
+--- src/normal.c	2017-02-02 22:07:18.421078322 +0100
+***************
+*** 9079,9086 ****
+  		    beginline(BL_WHITE|BL_FIX);
+  		break;
+  
+  	    case 'a':	/* "a"ppend is like "i"nsert on the next character. */
+- 	    case K_PS:	/* bracketed paste works like "a"ppend */
+  #ifdef FEAT_VIRTUALEDIT
+  		/* increment coladd when in virtual space, increment the
+  		 * column otherwise, also to append after an unprintable char */
+--- 9079,9091 ----
+  		    beginline(BL_WHITE|BL_FIX);
+  		break;
+  
++ 	    case K_PS:	/* Bracketed paste works like "a"ppend, unless the
++ 			   cursor is in the first column, then it inserts. */
++ 		if (curwin->w_cursor.col == 0)
++ 		    break;
++ 		/*FALLTHROUGH*/
++ 
+  	    case 'a':	/* "a"ppend is like "i"nsert on the next character. */
+  #ifdef FEAT_VIRTUALEDIT
+  		/* increment coladd when in virtual space, increment the
+  		 * column otherwise, also to append after an unprintable char */
+*** ../vim-8.0.0295/src/testdir/test_paste.vim	2017-01-25 21:36:11.626471765 +0100
+--- src/testdir/test_paste.vim	2017-02-02 22:19:29.839954877 +0100
+***************
+*** 8,25 ****
+  
+  func Test_paste_normal_mode()
+    new
+    call setline(1, ['a', 'b', 'c'])
+!   2
+    call feedkeys("\<Esc>[200~foo\<CR>bar\<Esc>[201~", 'xt')
+!   call assert_equal('bfoo', getline(2))
+!   call assert_equal('bar', getline(3))
+    call assert_equal('c', getline(4))
+  
+    normal .
+    call assert_equal('barfoo', getline(3))
+!   call assert_equal('bar', getline(4))
+    call assert_equal('c', getline(5))
+    bwipe!
+  endfunc
+  
+  func Test_paste_insert_mode()
+--- 8,43 ----
+  
+  func Test_paste_normal_mode()
+    new
++   " In first column text is inserted
+    call setline(1, ['a', 'b', 'c'])
+!   call cursor(2, 1)
+    call feedkeys("\<Esc>[200~foo\<CR>bar\<Esc>[201~", 'xt')
+!   call assert_equal('foo', getline(2))
+!   call assert_equal('barb', getline(3))
+    call assert_equal('c', getline(4))
+  
++   " When repeating text is appended
+    normal .
+    call assert_equal('barfoo', getline(3))
+!   call assert_equal('barb', getline(4))
+    call assert_equal('c', getline(5))
+    bwipe!
++ 
++   " In second column text is appended
++   call setline(1, ['a', 'bbb', 'c'])
++   call cursor(2, 2)
++   call feedkeys("\<Esc>[200~foo\<CR>bar\<Esc>[201~", 'xt')
++   call assert_equal('bbfoo', getline(2))
++   call assert_equal('barb', getline(3))
++   call assert_equal('c', getline(4))
++ 
++   " In last column text is appended
++   call setline(1, ['a', 'bbb', 'c'])
++   call cursor(2, 3)
++   call feedkeys("\<Esc>[200~foo\<CR>bar\<Esc>[201~", 'xt')
++   call assert_equal('bbbfoo', getline(2))
++   call assert_equal('bar', getline(3))
++   call assert_equal('c', getline(4))
+  endfunc
+  
+  func Test_paste_insert_mode()
+*** ../vim-8.0.0295/runtime/doc/term.txt	2017-01-21 20:04:17.570757762 +0100
+--- runtime/doc/term.txt	2017-02-02 22:10:44.115650386 +0100
+***************
+*** 95,105 ****
+  terminal is then expected to put 't_PS' before pasted text and 't_PE' after
+  pasted text.  This way Vim can separate text that is pasted from characters
+  that are typed.  The pasted text is handled like when the middle mouse button
+! is used.
+  
+  Note that in some situations Vim will not recognize the bracketed paste and
+  you will get the raw text.  In other situations Vim will only get the first
+! pasted character and drop the rest, e.g. when using the "r" command.
+  
+  							*cs7-problem*
+  Note: If the terminal settings are changed after running Vim, you might have
+--- 95,115 ----
+  terminal is then expected to put 't_PS' before pasted text and 't_PE' after
+  pasted text.  This way Vim can separate text that is pasted from characters
+  that are typed.  The pasted text is handled like when the middle mouse button
+! is used, it is inserted literally and not interpreted as commands.
+! 
+! When the cursor is in the first column, the pasted text will be inserted
+! before it.  Otherwise the pasted text is appended after the cursor position.
+! This means one cannot paste after the first column.  Unfortunately Vim does
+! not have a way to tell where the mouse pointer was.
+  
+  Note that in some situations Vim will not recognize the bracketed paste and
+  you will get the raw text.  In other situations Vim will only get the first
+! pasted character and drop the rest, e.g. when using the "r" command.  If you
+! have a problem with this, disable bracketed paste by putting this in your
+! .vimrc: >
+! 	set t_BE=
+! If this is done while Vim is running the 't_BD' will be sent to the terminal
+! to disable bracketed paste.
+  
+  							*cs7-problem*
+  Note: If the terminal settings are changed after running Vim, you might have
+***************
+*** 414,420 ****
+  	t_KK	<k8>		keypad 8		 *<k8>*	*t_KK* *'t_KK'*
+  	t_KL	<k9>		keypad 9		 *<k9>*	*t_KL* *'t_KL'*
+  		<Mouse>		leader of mouse code		*<Mouse>*
+! 	t_PS	start of brackted paste |xterm-bracketed-paste|   *t_PS* 't_PS'
+  	t_PE	end of bracketed paste |xterm-bracketed-paste|    *t_PE* 't_PE'
+  
+  Note about t_so and t_mr: When the termcap entry "so" is not present the
+--- 424,430 ----
+  	t_KK	<k8>		keypad 8		 *<k8>*	*t_KK* *'t_KK'*
+  	t_KL	<k9>		keypad 9		 *<k9>*	*t_KL* *'t_KL'*
+  		<Mouse>		leader of mouse code		*<Mouse>*
+! 	t_PS	start of bracketed paste |xterm-bracketed-paste|  *t_PS* 't_PS'
+  	t_PE	end of bracketed paste |xterm-bracketed-paste|    *t_PE* 't_PE'
+  
+  Note about t_so and t_mr: When the termcap entry "so" is not present the
+*** ../vim-8.0.0295/src/version.c	2017-02-01 23:17:30.909975952 +0100
+--- src/version.c	2017-02-02 22:12:14.879011783 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     296,
+  /**/
+
+-- 
+Every person is responsible for the choices he makes.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

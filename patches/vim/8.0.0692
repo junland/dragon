@@ -1,0 +1,95 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0692
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0692
+Problem:    Using CTRL-G with 'incsearch' and ? goes in the wrong direction.
+            (Ramel Eshed)
+Solution:   Adjust search_start. (Christian Brabandt)
+Files:      src/ex_getln.c, src/testdir/test_search.vim
+
+
+*** ../vim-8.0.0691/src/ex_getln.c	2017-06-29 22:23:01.991688996 +0200
+--- src/ex_getln.c	2017-07-01 22:50:42.764857833 +0200
+***************
+*** 1708,1713 ****
+--- 1708,1721 ----
+  			    search_start = t;
+  			    (void)decl(&search_start);
+  			}
++ 			else if (c == Ctrl_G && firstc == '?')
++ 			{
++ 			    /* move just after the current match, so that
++ 			     * when nv_search finishes the cursor will be
++ 			     * put back on the match */
++ 			    search_start = t;
++ 			    (void)incl(&search_start);
++ 			}
+  			if (LT_POS(t, search_start) && c == Ctrl_G)
+  			{
+  			    /* wrap around */
+*** ../vim-8.0.0691/src/testdir/test_search.vim	2017-06-29 22:23:01.991688996 +0200
+--- src/testdir/test_search.vim	2017-07-01 22:49:40.009316001 +0200
+***************
+*** 322,324 ****
+--- 322,358 ----
+    call test_override("char_avail", 0)
+    bw!
+  endfunc
++ 
++ func Test_search_cmdline4()
++   if !exists('+incsearch')
++     return
++   endif
++   " need to disable char_avail,
++   " so that expansion of commandline works
++   call test_override("char_avail", 1)
++   new
++   call setline(1, ['  1 the first', '  2 the second', '  3 the third'])
++   set incsearch
++   $
++   call feedkeys("?the\<c-g>\<cr>", 'tx')
++   call assert_equal('  3 the third', getline('.'))
++   $
++   call feedkeys("?the\<c-g>\<c-g>\<cr>", 'tx')
++   call assert_equal('  1 the first', getline('.'))
++   $
++   call feedkeys("?the\<c-g>\<c-g>\<c-g>\<cr>", 'tx')
++   call assert_equal('  2 the second', getline('.'))
++   $
++   call feedkeys("?the\<c-t>\<cr>", 'tx')
++   call assert_equal('  1 the first', getline('.'))
++   $
++   call feedkeys("?the\<c-t>\<c-t>\<cr>", 'tx')
++   call assert_equal('  3 the third', getline('.'))
++   $
++   call feedkeys("?the\<c-t>\<c-t>\<c-t>\<cr>", 'tx')
++   call assert_equal('  2 the second', getline('.'))
++   " clean up
++   set noincsearch
++   call test_override("char_avail", 0)
++   bw!
++ endfunc
+*** ../vim-8.0.0691/src/version.c	2017-06-29 22:33:07.007322558 +0200
+--- src/version.c	2017-07-01 22:51:39.132446240 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     692,
+  /**/
+
+-- 
+From "know your smileys":
+ [:-)	Frankenstein's monster
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

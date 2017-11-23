@@ -1,0 +1,68 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0524
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0524 (after 8.0.0518)
+Problem:    Folds are messed up when 'encodin' is "utf-8".
+Solution:   Also set the fold character when it's not multi-byte.
+Files:      src/screen.c, src/testdir/test_display.vim
+
+
+*** ../vim-8.0.0523/src/screen.c	2017-03-29 17:30:23.168136866 +0200
+--- src/screen.c	2017-03-29 20:37:12.349673955 +0200
+***************
+*** 2700,2706 ****
+--- 2700,2709 ----
+                  ScreenLines[off + col] = 0x80; /* avoid storing zero */
+  	    }
+  	    else
++ 	    {
+  		ScreenLinesUC[off + col] = 0;
++ 		ScreenLines[off + col] = fill_fold;
++ 	    }
+  	    col++;
+  	}
+  	else
+*** ../vim-8.0.0523/src/testdir/test_display.vim	2017-03-29 14:40:38.342357669 +0200
+--- src/testdir/test_display.vim	2017-03-29 20:35:30.006287985 +0200
+***************
+*** 54,59 ****
+--- 54,69 ----
+          \ "  14                                    \u2502",
+          \ ]
+    call assert_equal(expect, lines)
++ 
++   set fillchars=fold:-,vert:\|
++   let lines=ScreenLines([1,3], winwidth(0)+1)
++   let expect=[
++         \ "  1                                     |",
++         \ "+ +-- 12 lines: 2". repeat("-", 23). "|",
++         \ "  14                                    |",
++         \ ]
++   call assert_equal(expect, lines)
++ 
+    set foldtext& fillchars& foldmethod& fdc&
+    bw!
+  endfunc
+*** ../vim-8.0.0523/src/version.c	2017-03-29 19:48:07.499210857 +0200
+--- src/version.c	2017-03-29 20:38:40.809143273 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     524,
+  /**/
+
+-- 
+You are Dead.  Do you wish to restart, load, or quit?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

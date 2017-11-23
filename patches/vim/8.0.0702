@@ -1,0 +1,167 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0702
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0702
+Problem:    An error in a timer can make Vim unusable.
+Solution:   Don't set the error flag or exception from a timer.  Stop a timer
+            if it causes an error 3 out of 3 times.  Discard an exception
+            caused inside a timer.
+Files:      src/ex_cmds2.c, src/structs.h, src/testdir/test_timers.vim,
+            runtime/doc/eval.txt
+
+
+*** ../vim-8.0.0701/src/ex_cmds2.c	2017-07-07 14:50:40.919158114 +0200
+--- src/ex_cmds2.c	2017-07-08 22:25:28.836619866 +0200
+***************
+*** 1197,1207 ****
+      long	current_id = last_timer_id;
+  # ifdef WIN3264
+      LARGE_INTEGER   fr;
+  
+!     /* Don't run any timers while exiting. */
+!     if (exiting)
+  	return next_due;
+  
+      QueryPerformanceFrequency(&fr);
+  # endif
+      profile_start(&now);
+--- 1197,1209 ----
+      long	current_id = last_timer_id;
+  # ifdef WIN3264
+      LARGE_INTEGER   fr;
++ # endif
+  
+!     /* Don't run any timers while exiting or dealing with an error. */
+!     if (exiting || aborting())
+  	return next_due;
+  
++ # ifdef WIN3264
+      QueryPerformanceFrequency(&fr);
+  # endif
+      profile_start(&now);
+***************
+*** 1216,1224 ****
+--- 1218,1230 ----
+  	{
+  	    int save_timer_busy = timer_busy;
+  	    int save_vgetc_busy = vgetc_busy;
++ 	    int did_emsg_save = did_emsg;
++ 	    int called_emsg_save = called_emsg;
++ 	    int did_throw_save = did_throw;
+  
+  	    timer_busy = timer_busy > 0 || vgetc_busy > 0;
+  	    vgetc_busy = 0;
++ 	    called_emsg = FALSE;
+  	    timer->tr_firing = TRUE;
+  	    timer_callback(timer);
+  	    timer->tr_firing = FALSE;
+***************
+*** 1226,1235 ****
+  	    did_one = TRUE;
+  	    timer_busy = save_timer_busy;
+  	    vgetc_busy = save_vgetc_busy;
+  
+  	    /* Only fire the timer again if it repeats and stop_timer() wasn't
+  	     * called while inside the callback (tr_id == -1). */
+! 	    if (timer->tr_repeat != 0 && timer->tr_id != -1)
+  	    {
+  		profile_setlimit(timer->tr_interval, &timer->tr_due);
+  		this_due = GET_TIMEDIFF(timer, now);
+--- 1232,1250 ----
+  	    did_one = TRUE;
+  	    timer_busy = save_timer_busy;
+  	    vgetc_busy = save_vgetc_busy;
++ 	    if (called_emsg)
++ 	    {
++ 		++timer->tr_emsg_count;
++ 		if (!did_throw_save && current_exception != NULL)
++ 		    discard_current_exception();
++ 	    }
++ 	    did_emsg = did_emsg_save;
++ 	    called_emsg = called_emsg_save;
+  
+  	    /* Only fire the timer again if it repeats and stop_timer() wasn't
+  	     * called while inside the callback (tr_id == -1). */
+! 	    if (timer->tr_repeat != 0 && timer->tr_id != -1
+! 		    && timer->tr_emsg_count < 3)
+  	    {
+  		profile_setlimit(timer->tr_interval, &timer->tr_due);
+  		this_due = GET_TIMEDIFF(timer, now);
+*** ../vim-8.0.0701/src/structs.h	2017-07-07 11:53:29.507876589 +0200
+--- src/structs.h	2017-07-08 17:24:30.875940359 +0200
+***************
+*** 3243,3248 ****
+--- 3243,3249 ----
+      long	tr_interval;	    /* msec */
+      char_u	*tr_callback;	    /* allocated */
+      partial_T	*tr_partial;
++     int		tr_emsg_count;
+  #endif
+  };
+  
+*** ../vim-8.0.0701/src/testdir/test_timers.vim	2017-06-24 16:03:02.751998272 +0200
+--- src/testdir/test_timers.vim	2017-07-08 17:53:08.022644231 +0200
+***************
+*** 189,192 ****
+--- 189,210 ----
+    call assert_equal('hello', g:val)
+  endfunc
+  
++ func FuncWithError(timer)
++   let g:call_count += 1
++   if g:call_count == 4
++     return
++   endif
++   doesnotexist
++ endfunc
++ 
++ func Test_timer_errors()
++   let g:call_count = 0
++   let timer = timer_start(10, 'FuncWithError', {'repeat': -1})
++   " Timer will be stopped after failing 3 out of 3 times.
++   call WaitFor('g:call_count == 3')
++   sleep 50m
++   call assert_equal(3, g:call_count)
++ endfunc
++ 
++ 
+  " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.0701/runtime/doc/eval.txt	2017-06-28 21:26:24.122302194 +0200
+--- runtime/doc/eval.txt	2017-07-08 22:33:53.324688990 +0200
+***************
+*** 8009,8014 ****
+--- 8017,8026 ----
+  		   "repeat"	Number of times to repeat calling the
+  				callback.  -1 means forever.  When not present
+  				the callback will be called once.
++ 				If the timer causes an error three times in a
++ 				row the repeat is cancelled.  This avoids that
++ 				Vim becomes unusable because of all the error
++ 				messages.
+  
+  		Example: >
+  			func MyHandler(timer)
+*** ../vim-8.0.0701/src/version.c	2017-07-08 17:03:15.373760938 +0200
+--- src/version.c	2017-07-08 22:31:58.817580630 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     702,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+128. You can access the Net -- via your portable and cellular phone.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

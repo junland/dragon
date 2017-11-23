@@ -1,0 +1,171 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0756
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0756
+Problem:    Cannot build libvterm with MSVC.
+Solution:   Add an MSVC Makefile to libvterm. (Yasuhiro Matsumoto, closes
+            #1865)
+Files:      src/INSTALLpc.txt, src/Make_mvc.mak, src/libvterm/Makefile.msc
+
+
+*** ../vim-8.0.0755/src/INSTALLpc.txt	2017-07-22 16:14:39.272915812 +0200
+--- src/INSTALLpc.txt	2017-07-23 17:02:34.966370589 +0200
+***************
+*** 706,722 ****
+  13. Building with Terminal support
+  ==================================
+  
+! Vim with Terminal support can be built with MinGW or Cygwin.
+! Terminal support require winpty which provide following two files.
+  
+      winpty.dll
+      winpty-agent.dll
+  
+! You can download following page:
+  
+      https://github.com/rprichard/winpty
+  
+! It don't need header files or libraries. Just put them on your PATH.
+  
+  
+  14. Windows 3.1x
+--- 706,725 ----
+  13. Building with Terminal support
+  ==================================
+  
+! Vim with Terminal support can be built with either MSVC, or MinGW or Cygwin.
+! This uses the included libvterm and winpty.  No extra header files or
+! libraries are needed for building.
+! 
+! Running Vim with terminal support requires the following two winpty files:
+  
+      winpty.dll
+      winpty-agent.dll
+  
+! You can download them from the following page:
+  
+      https://github.com/rprichard/winpty
+  
+! Just put the DLL files somewhere in your PATH.
+  
+  
+  14. Windows 3.1x
+*** ../vim-8.0.0755/src/Make_mvc.mak	2017-07-19 11:28:10.306714031 +0200
+--- src/Make_mvc.mak	2017-07-23 16:57:39.436451850 +0200
+***************
+*** 36,41 ****
+--- 36,43 ----
+  #	  is yes)
+  #	Global IME support: GIME=yes (requires GUI=yes)
+  #
++ #       Terminal support: TERMINAL=yes (default is no)
++ #
+  #	Lua interface:
+  #	  LUA=[Path to Lua directory]
+  #	  DYNAMIC_LUA=yes (to load the Lua DLL dynamically)
+***************
+*** 354,360 ****
+  !if "$(TERMINAL)" == "yes"
+  TERMINAL_OBJ   = $(OBJDIR)/terminal.obj
+  TERMINAL_DEFS  = -DFEAT_TERMINAL
+! TERMINAL_SRC	= terminal.c
+  !endif
+  
+  !ifndef NETBEANS
+--- 356,363 ----
+  !if "$(TERMINAL)" == "yes"
+  TERMINAL_OBJ   = $(OBJDIR)/terminal.obj
+  TERMINAL_DEFS  = -DFEAT_TERMINAL
+! TERMINAL_SRC   = terminal.c
+! VTERM_LIB      = libvterm/vterm.lib
+  !endif
+  
+  !ifndef NETBEANS
+***************
+*** 1130,1136 ****
+  LINKARGS1 = $(linkdebug) $(conflags)
+  LINKARGS2 = $(CON_LIB) $(GUI_LIB) $(NODEFAULTLIB) $(LIBC) $(OLE_LIB) user32.lib \
+  		$(LUA_LIB) $(MZSCHEME_LIB) $(PERL_LIB) $(PYTHON_LIB) $(PYTHON3_LIB) $(RUBY_LIB) \
+! 		$(TCL_LIB) $(NETBEANS_LIB) $(XPM_LIB) $(LINK_PDB)
+  
+  # Report link time code generation progress if used. 
+  !ifdef NODEBUG
+--- 1133,1139 ----
+  LINKARGS1 = $(linkdebug) $(conflags)
+  LINKARGS2 = $(CON_LIB) $(GUI_LIB) $(NODEFAULTLIB) $(LIBC) $(OLE_LIB) user32.lib \
+  		$(LUA_LIB) $(MZSCHEME_LIB) $(PERL_LIB) $(PYTHON_LIB) $(PYTHON3_LIB) $(RUBY_LIB) \
+! 		$(TCL_LIB) $(NETBEANS_LIB) $(VTERM_LIB) $(XPM_LIB) $(LINK_PDB)
+  
+  # Report link time code generation progress if used. 
+  !ifdef NODEBUG
+***************
+*** 1544,1548 ****
+--- 1547,1555 ----
+  .c.i:
+  	$(CC) $(CFLAGS) /P /C $<
+  
++ libvterm/vterm.lib :
++ 	cd libvterm
++ 	$(MAKE) /NOLOGO -f Makefile.msc
++ 	cd ..
+  
+  # vim: set noet sw=8 ts=8 sts=0 wm=0 tw=0:
+*** ../vim-8.0.0755/src/libvterm/Makefile.msc	2017-07-23 17:10:45.234914170 +0200
+--- src/libvterm/Makefile.msc	2017-07-23 16:57:39.440451822 +0200
+***************
+*** 0 ****
+--- 1,30 ----
++ OBJS = \
++ 	src\encoding.c \
++ 	src\keyboard.c \
++ 	src\mouse.c \
++ 	src\parser.c \
++ 	src\pen.c \
++ 	src\screen.c \
++ 	src\state.c \
++ 	src\unicode.c \
++ 	src\vterm.c
++ 
++ OBJS = \
++ 	src\encoding.obj \
++ 	src\keyboard.obj \
++ 	src\mouse.obj \
++ 	src\parser.obj \
++ 	src\pen.obj \
++ 	src\screen.obj \
++ 	src\state.obj \
++ 	src\unicode.obj \
++ 	src\vterm.obj
++ 
++ all : vterm.lib
++ 
++ 
++ .c.obj :
++ 	cl /DINLINE= /Iinclude /Fo$@ /c $<
++ 
++ vterm.lib : $(OBJS)
++ 	lib /OUT:$@ $(OBJS)
+*** ../vim-8.0.0755/src/version.c	2017-07-23 16:45:05.677761126 +0200
+--- src/version.c	2017-07-23 16:59:21.163735416 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     756,
+  /**/
+
+-- 
+Don't be humble ... you're not that great.
+                      -- Golda Meir
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

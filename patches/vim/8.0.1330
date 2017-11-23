@@ -1,0 +1,302 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1330
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1330
+Problem:    MS-Windows: job in terminal can't get back to Vim.
+Solution:   set VIM_SERVERNAME in the environment. (Yasuhiro Matsumoto, closes
+            #2360)
+Files:      runtime/doc/terminal.txt, src/os_win32.c, src/proto/os_win32.pro,
+            src/terminal.c, src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.1329/runtime/doc/terminal.txt	2017-11-12 18:00:36.412643584 +0100
+--- runtime/doc/terminal.txt	2017-11-21 17:58:36.295992596 +0100
+***************
+*** 1,4 ****
+! *terminal.txt*	For Vim version 8.0.  Last change: 2017 Nov 12
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+--- 1,4 ----
+! *terminal.txt*	For Vim version 8.0.  Last change: 2017 Nov 17
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+***************
+*** 106,111 ****
+--- 106,115 ----
+  options specifically for the window and buffer.  Example: >
+     au BufWinEnter * if &buftype == 'terminal' | setlocal bufhidden=hide | endif
+  
++ Mouse events (click and drag) are passed to the terminal.  Mouse move events
++ are only passed when Vim itself is receiving them.  For a terminal that is
++ when 'balloonevalterm' is enabled.
++ 
+  
+  Size and color ~
+  							*terminal-size-color*
+***************
+*** 335,340 ****
+--- 339,347 ----
+  version, rename to winpty32.dll and winpty64.dll to match the way Vim was
+  build.
+  
++ Environment variables are used to pass information to the running job:
++     VIM_SERVERNAME	v:servername
++ 
+  ==============================================================================
+  2. Remote testing					*terminal-testing*
+  
+*** ../vim-8.0.1329/src/os_win32.c	2017-11-18 22:13:04.749908702 +0100
+--- src/os_win32.c	2017-11-21 18:07:52.439878906 +0100
+***************
+*** 5034,5043 ****
+   * environment argument of vim_create_process().
+   */
+      void
+! win32_build_env(dict_T *env, garray_T *gap)
+  {
+      hashitem_T	*hi;
+!     int		todo = (int)env->dv_hashtab.ht_used;
+      LPVOID	base = GetEnvironmentStringsW();
+  
+      /* for last \0 */
+--- 5034,5043 ----
+   * environment argument of vim_create_process().
+   */
+      void
+! win32_build_env(dict_T *env, garray_T *gap, int is_terminal)
+  {
+      hashitem_T	*hi;
+!     long_u	todo = env != NULL ? env->dv_hashtab.ht_used : 0;
+      LPVOID	base = GetEnvironmentStringsW();
+  
+      /* for last \0 */
+***************
+*** 5062,5096 ****
+  	*((WCHAR*)gap->ga_data + gap->ga_len++) = L'\0';
+      }
+  
+!     for (hi = env->dv_hashtab.ht_array; todo > 0; ++hi)
+      {
+! 	if (!HASHITEM_EMPTY(hi))
+  	{
+! 	    typval_T *item = &dict_lookup(hi)->di_tv;
+! 	    WCHAR   *wkey = enc_to_utf16((char_u *)hi->hi_key, NULL);
+! 	    WCHAR   *wval = enc_to_utf16(get_tv_string(item), NULL);
+! 	    --todo;
+! 	    if (wkey != NULL && wval != NULL)
+  	    {
+! 		size_t	n;
+! 		size_t	lkey = wcslen(wkey);
+! 		size_t	lval = wcslen(wval);
+! 
+! 		if (ga_grow(gap, (int)(lkey + lval + 2)) != OK)
+! 		    continue;
+! 		for (n = 0; n < lkey; n++)
+! 		    *((WCHAR*)gap->ga_data + gap->ga_len++) = wkey[n];
+! 		*((WCHAR*)gap->ga_data + gap->ga_len++) = L'=';
+! 		for (n = 0; n < lval; n++)
+! 		    *((WCHAR*)gap->ga_data + gap->ga_len++) = wval[n];
+! 		*((WCHAR*)gap->ga_data + gap->ga_len++) = L'\0';
+  	    }
+- 	    if (wkey != NULL) vim_free(wkey);
+- 	    if (wval != NULL) vim_free(wval);
+  	}
+      }
+  
+!     *((WCHAR*)gap->ga_data + gap->ga_len++) = L'\0';
+  }
+  
+      void
+--- 5062,5117 ----
+  	*((WCHAR*)gap->ga_data + gap->ga_len++) = L'\0';
+      }
+  
+!     if (env != NULL)
+      {
+! 	for (hi = env->dv_hashtab.ht_array; todo > 0; ++hi)
+  	{
+! 	    if (!HASHITEM_EMPTY(hi))
+  	    {
+! 		typval_T *item = &dict_lookup(hi)->di_tv;
+! 		WCHAR   *wkey = enc_to_utf16((char_u *)hi->hi_key, NULL);
+! 		WCHAR   *wval = enc_to_utf16(get_tv_string(item), NULL);
+! 		--todo;
+! 		if (wkey != NULL && wval != NULL)
+! 		{
+! 		    size_t	n;
+! 		    size_t	lkey = wcslen(wkey);
+! 		    size_t	lval = wcslen(wval);
+! 
+! 		    if (ga_grow(gap, (int)(lkey + lval + 2)) != OK)
+! 			continue;
+! 		    for (n = 0; n < lkey; n++)
+! 			*((WCHAR*)gap->ga_data + gap->ga_len++) = wkey[n];
+! 		    *((WCHAR*)gap->ga_data + gap->ga_len++) = L'=';
+! 		    for (n = 0; n < lval; n++)
+! 			*((WCHAR*)gap->ga_data + gap->ga_len++) = wval[n];
+! 		    *((WCHAR*)gap->ga_data + gap->ga_len++) = L'\0';
+! 		}
+! 		if (wkey != NULL) vim_free(wkey);
+! 		if (wval != NULL) vim_free(wval);
+  	    }
+  	}
+      }
+  
+! # ifdef FEAT_CLIENTSERVER
+!     if (is_terminal)
+!     {
+! 	char_u	*servername = get_vim_var_str(VV_SEND_SERVER);
+! 	size_t	lval = STRLEN(servername);
+! 	size_t	n;
+! 
+! 	if (ga_grow(gap, (int)(14 + lval + 2)) == OK)
+! 	{
+! 	    for (n = 0; n < 15; n++)
+! 		*((WCHAR*)gap->ga_data + gap->ga_len++) =
+! 		    (WCHAR)"VIM_SERVERNAME="[n];
+! 	    for (n = 0; n < lval; n++)
+! 		*((WCHAR*)gap->ga_data + gap->ga_len++) =
+! 		    (WCHAR)servername[n];
+! 	    *((WCHAR*)gap->ga_data + gap->ga_len++) = L'\0';
+! 	}
+!     }
+! # endif
+  }
+  
+      void
+***************
+*** 5133,5139 ****
+      }
+  
+      if (options->jo_env != NULL)
+! 	win32_build_env(options->jo_env, &ga);
+  
+      ZeroMemory(&pi, sizeof(pi));
+      ZeroMemory(&si, sizeof(si));
+--- 5154,5160 ----
+      }
+  
+      if (options->jo_env != NULL)
+! 	win32_build_env(options->jo_env, &ga, FALSE);
+  
+      ZeroMemory(&pi, sizeof(pi));
+      ZeroMemory(&si, sizeof(si));
+*** ../vim-8.0.1329/src/proto/os_win32.pro	2017-10-30 21:56:18.619439283 +0100
+--- src/proto/os_win32.pro	2017-11-21 17:58:36.299992537 +0100
+***************
+*** 67,71 ****
+  void set_alist_count(void);
+  void fix_arg_enc(void);
+  int mch_setenv(char *var, char *value, int x);
+! void win32_build_env(dict_T *l, garray_T *gap);
+  /* vim: set ft=c : */
+--- 67,71 ----
+  void set_alist_count(void);
+  void fix_arg_enc(void);
+  int mch_setenv(char *var, char *value, int x);
+! void win32_build_env(dict_T *l, garray_T *gap, int is_terminal);
+  /* vim: set ft=c : */
+*** ../vim-8.0.1329/src/terminal.c	2017-11-21 14:47:51.526423044 +0100
+--- src/terminal.c	2017-11-21 17:58:36.299992537 +0100
+***************
+*** 3424,3435 ****
+  	return FAIL;
+      if (opt->jo_cwd != NULL)
+  	cwd_wchar = enc_to_utf16(opt->jo_cwd, NULL);
+!     if (opt->jo_env != NULL)
+!     {
+! 	ga_init2(&ga_env, (int)sizeof(char*), 20);
+! 	win32_build_env(opt->jo_env, &ga_env);
+! 	env_wchar = ga_env.ga_data;
+!     }
+  
+      job = job_alloc();
+      if (job == NULL)
+--- 3424,3433 ----
+  	return FAIL;
+      if (opt->jo_cwd != NULL)
+  	cwd_wchar = enc_to_utf16(opt->jo_cwd, NULL);
+! 
+!     ga_init2(&ga_env, (int)sizeof(char*), 20);
+!     win32_build_env(opt->jo_env, &ga_env, TRUE);
+!     env_wchar = ga_env.ga_data;
+  
+      job = job_alloc();
+      if (job == NULL)
+***************
+*** 3531,3538 ****
+  failed:
+      if (argvar->v_type == VAR_LIST)
+  	vim_free(ga_cmd.ga_data);
+!     if (opt->jo_env != NULL)
+! 	vim_free(ga_env.ga_data);
+      vim_free(cmd_wchar);
+      vim_free(cwd_wchar);
+      if (spawn_config != NULL)
+--- 3529,3535 ----
+  failed:
+      if (argvar->v_type == VAR_LIST)
+  	vim_free(ga_cmd.ga_data);
+!     vim_free(ga_env.ga_data);
+      vim_free(cmd_wchar);
+      vim_free(cwd_wchar);
+      if (spawn_config != NULL)
+*** ../vim-8.0.1329/src/testdir/test_terminal.vim	2017-11-21 14:47:51.526423044 +0100
+--- src/testdir/test_terminal.vim	2017-11-21 17:58:36.299992537 +0100
+***************
+*** 434,439 ****
+--- 434,460 ----
+    call delete('Xdir', 'rf')
+  endfunc
+  
++ func Test_terminal_servername()
++   if !has('clientserver')
++     return
++   endif
++   let g:buf = Run_shell_in_terminal({})
++   " Wait for the shell to display a prompt
++   call WaitFor('term_getline(g:buf, 1) != ""')
++   if has('win32')
++     call term_sendkeys(g:buf, "echo %VIM_SERVERNAME%\r")
++   else
++     call term_sendkeys(g:buf, "echo $VIM_SERVERNAME\r")
++   endif
++   call term_wait(g:buf)
++   call Stop_shell_in_terminal(g:buf)
++   call WaitFor('getline(2) == v:servername')
++   call assert_equal(v:servername, getline(2))
++ 
++   exe g:buf . 'bwipe'
++   unlet g:buf
++ endfunc
++ 
+  func Test_terminal_env()
+    let g:buf = Run_shell_in_terminal({'env': {'TESTENV': 'correct'}})
+    " Wait for the shell to display a prompt
+*** ../vim-8.0.1329/src/version.c	2017-11-21 15:14:46.486930852 +0100
+--- src/version.c	2017-11-21 18:00:13.102540676 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1330,
+  /**/
+
+-- 
+For a moment, nothing happened.
+Then, after a second or so, nothing continued to happen.
+		-- Douglas Adams, "The Hitchhiker's Guide to the Galaxy"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

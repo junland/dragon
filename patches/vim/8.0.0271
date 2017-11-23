@@ -1,0 +1,130 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0271
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0271
+Problem:    May get ml_get error when :tcldo deletes lines or switches to
+            another buffer. (Nikolai Pavlov, closes #1421)
+Solution:   Check the buffer and line every time.
+Files:      src/if_tcl.c, src/testdir/test_tcl.vim, src/Makefile,
+            src/testdir/Make_all.mak
+
+
+*** ../vim-8.0.0270/src/if_tcl.c	2016-08-29 22:42:20.000000000 +0200
+--- src/if_tcl.c	2017-01-29 23:21:43.316383771 +0100
+***************
+*** 1958,1963 ****
+--- 1958,1964 ----
+      char	var_line[VARNAME_SIZE];
+      linenr_T	first_line = 0;
+      linenr_T	last_line = 0;
++     buf_T	*was_curbuf = curbuf;
+  
+      rs = eap->line1;
+      re = eap->line2;
+***************
+*** 1979,1984 ****
+--- 1980,1987 ----
+      }
+      while (err == TCL_OK  &&  rs <= re)
+      {
++ 	if ((linenr_T)rs > curbuf->b_ml.ml_line_count)
++ 	    break;
+  	line = (char *)ml_get_buf(curbuf, (linenr_T)rs, FALSE);
+  	if (!line)
+  	{
+***************
+*** 1994,2000 ****
+  #if (TCL_MAJOR_VERSION == 8 && TCL_MINOR_VERSION >= 5) || TCL_MAJOR_VERSION > 8
+  	    || Tcl_LimitExceeded(tclinfo.interp)
+  #endif
+! 	   )
+  	    break;
+  	line = (char *)Tcl_GetVar(tclinfo.interp, var_line, 0);
+  	if (line)
+--- 1997,2003 ----
+  #if (TCL_MAJOR_VERSION == 8 && TCL_MINOR_VERSION >= 5) || TCL_MAJOR_VERSION > 8
+  	    || Tcl_LimitExceeded(tclinfo.interp)
+  #endif
+! 	    || curbuf != was_curbuf)
+  	    break;
+  	line = (char *)Tcl_GetVar(tclinfo.interp, var_line, 0);
+  	if (line)
+*** ../vim-8.0.0270/src/testdir/test_tcl.vim	2017-01-29 23:25:37.694827578 +0100
+--- src/testdir/test_tcl.vim	2017-01-29 23:18:53.717509633 +0100
+***************
+*** 0 ****
+--- 1,23 ----
++ " Tests for the Tcl interface.
++ 
++ if !has('tcl')
++   finish
++ end
++ 
++ function Test_tcldo()
++   " Check deleting lines does not trigger ml_get error.
++   new
++   call setline(1, ['one', 'two', 'three'])
++   tcldo ::vim::command %d_
++   bwipe!
++ 
++   " Check switching to another buffer does not trigger ml_get error.
++   new
++   let wincount = winnr('$')
++   call setline(1, ['one', 'two', 'three'])
++   tcldo ::vim::command new
++   call assert_equal(wincount + 1, winnr('$'))
++   bwipe!
++   bwipe!
++ endfunc
++ 
+*** ../vim-8.0.0270/src/Makefile	2017-01-29 22:48:26.401622036 +0100
+--- src/Makefile	2017-01-29 23:17:06.830219093 +0100
+***************
+*** 2198,2203 ****
+--- 2198,2204 ----
+  	test_tabpage \
+  	test_tagcase \
+  	test_tagjump \
++ 	test_tcl \
+  	test_textobjects \
+  	test_timers \
+  	test_true_false \
+*** ../vim-8.0.0270/src/testdir/Make_all.mak	2017-01-29 22:48:26.401622036 +0100
+--- src/testdir/Make_all.mak	2017-01-29 23:17:27.982078705 +0100
+***************
+*** 193,198 ****
+--- 193,199 ----
+  	    test_substitute.res \
+  	    test_syntax.res \
+  	    test_system.res \
++ 	    test_tcl.res \
+  	    test_textobjects.res \
+  	    test_undo.res \
+  	    test_usercommands.res \
+*** ../vim-8.0.0270/src/version.c	2017-01-29 23:11:21.176512814 +0100
+--- src/version.c	2017-01-29 23:18:07.213818309 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     271,
+  /**/
+
+-- 
+ARTHUR:   Ni!
+BEDEVERE: Nu!
+ARTHUR:   No.  Ni!  More like this. "Ni"!
+BEDEVERE: Ni, ni, ni!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

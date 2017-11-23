@@ -1,0 +1,48 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0828
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0828
+Problem:    Coverity: may dereference NULL pointer.
+Solution:   Bail out if calloc_state() returns NULL.
+Files:      src/regexp_nfa.c
+
+
+*** ../vim-8.0.0827/src/regexp_nfa.c	2017-06-17 20:08:16.312896717 +0200
+--- src/regexp_nfa.c	2017-08-01 15:13:46.740114564 +0200
+***************
+*** 3527,3533 ****
+--- 3527,3537 ----
+  	    {
+  		/* NFA_ZEND -> NFA_END_PATTERN -> NFA_SKIP -> what follows. */
+  		skip = alloc_state(NFA_SKIP, NULL, NULL);
++ 		if (skip == NULL)
++ 		    goto theend;
+  		zend = alloc_state(NFA_ZEND, s1, NULL);
++ 		if (zend == NULL)
++ 		    goto theend;
+  		s1->out= skip;
+  		patch(e.out, zend);
+  		PUSH(frag(s, list1(&skip->out)));
+*** ../vim-8.0.0827/src/version.c	2017-08-01 15:08:03.654720026 +0200
+--- src/version.c	2017-08-01 15:12:49.720543867 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     828,
+  /**/
+
+-- 
+"Shoot for the moon. Even if you miss, you'll land among the stars."
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

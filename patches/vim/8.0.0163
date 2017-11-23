@@ -1,0 +1,57 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0163
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0163
+Problem:    Ruby 2.4 no longer supports rb_cFixnum.
+Solution:   move rb_cFixnum into an #ifdef. (Kazuki Sakamoto, closes #1365)
+Files:      src/if_ruby.c
+
+
+*** ../vim-8.0.0162/src/if_ruby.c	2016-08-29 22:42:20.000000000 +0200
+--- src/if_ruby.c	2017-01-09 21:08:18.425187068 +0100
+***************
+*** 514,522 ****
+  {
+      {"rb_assoc_new", (RUBY_PROC*)&dll_rb_assoc_new},
+      {"rb_cFalseClass", (RUBY_PROC*)&dll_rb_cFalseClass},
+-     {"rb_cFixnum", (RUBY_PROC*)&dll_rb_cFixnum},
+  # if defined(USE_RUBY_INTEGER)
+      {"rb_cInteger", (RUBY_PROC*)&dll_rb_cInteger},
+  # endif
+  # if defined(DYNAMIC_RUBY_VER) && DYNAMIC_RUBY_VER >= 20
+      {"rb_cFloat", (RUBY_PROC*)&dll_rb_cFloat},
+--- 514,523 ----
+  {
+      {"rb_assoc_new", (RUBY_PROC*)&dll_rb_assoc_new},
+      {"rb_cFalseClass", (RUBY_PROC*)&dll_rb_cFalseClass},
+  # if defined(USE_RUBY_INTEGER)
+      {"rb_cInteger", (RUBY_PROC*)&dll_rb_cInteger},
++ # else
++     {"rb_cFixnum", (RUBY_PROC*)&dll_rb_cFixnum},
+  # endif
+  # if defined(DYNAMIC_RUBY_VER) && DYNAMIC_RUBY_VER >= 20
+      {"rb_cFloat", (RUBY_PROC*)&dll_rb_cFloat},
+*** ../vim-8.0.0162/src/version.c	2017-01-09 20:30:23.902717531 +0100
+--- src/version.c	2017-01-09 21:09:41.572549830 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     163,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+237. You tattoo your email address on your forehead.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

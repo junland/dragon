@@ -1,0 +1,63 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0245
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0245
+Problem:    The generated zh_CN.cp936.po message file is not encoded properly.
+Solution:   Instead of using zh_CN.po as input, use zh_CN.UTF-8.po.
+Files:      src/po/Makefile
+
+
+*** ../vim-8.0.0244/src/po/Makefile	2014-06-12 17:45:19.000000000 +0200
+--- src/po/Makefile	2017-01-27 19:58:38.136318803 +0100
+***************
+*** 232,243 ****
+  	iconv -f iso-8859-2 -t cp1250 sk.po | \
+  		sed -e 's/charset=ISO-8859-2/charset=cp1250/' -e 's/# Original translations/# Generated from sk.po, DO NOT EDIT/' > sk.cp1250.po
+  
+! # Convert zh_CN.po to create zh_CN.cp936.po.
+! # set 'charset' to gbk to avoid that msfmt generates a warning
+! zh_CN.cp936.po: zh_CN.po
+  	rm -f zh_CN.cp936.po
+! 	iconv -f gb2312 -t cp936 zh_CN.po | \
+! 		sed -e 's/charset=gb2312/charset=gbk/' -e 's/# Original translations/# Generated from zh_CN.po, DO NOT EDIT/' > zh_CN.cp936.po
+  
+  # Convert ko.UTF-8.po to create ko.po.
+  ko.po: ko.UTF-8.po
+--- 232,244 ----
+  	iconv -f iso-8859-2 -t cp1250 sk.po | \
+  		sed -e 's/charset=ISO-8859-2/charset=cp1250/' -e 's/# Original translations/# Generated from sk.po, DO NOT EDIT/' > sk.cp1250.po
+  
+! # Convert zh_CN.UTF-8.po to create zh_CN.cp936.po.
+! # Set 'charset' to gbk to avoid that msfmt generates a warning.
+! # This used to convert from zh_CN.po, but that results in a conversion error.
+! zh_CN.cp936.po: zh_CN.UTF-8.po
+  	rm -f zh_CN.cp936.po
+! 	iconv -f UTF-8 -t cp936 zh_CN.UTF-8.po | \
+! 		sed -e 's/charset=utf-8/charset=gbk/' -e 's/# Original translations/# Generated from zh_CN.po, DO NOT EDIT/' > zh_CN.cp936.po
+  
+  # Convert ko.UTF-8.po to create ko.po.
+  ko.po: ko.UTF-8.po
+*** ../vim-8.0.0244/src/version.c	2017-01-27 20:03:13.466483257 +0100
+--- src/version.c	2017-01-27 20:35:36.977554352 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     245,
+  /**/
+
+-- 
+Q:   How many hardware engineers does it take to change a lightbulb?
+A:   None.  We'll fix it in software.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

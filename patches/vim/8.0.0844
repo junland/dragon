@@ -1,0 +1,89 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0844
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0844
+Problem:    Wrong function prototype because of missing static.
+Solution:   Add "static".
+Files:      src/os_win32.c, src/proto/os_win32.pro
+
+
+*** ../vim-8.0.0843/src/os_win32.c	2017-08-02 22:07:08.450378993 +0200
+--- src/os_win32.c	2017-08-02 23:17:26.620063130 +0200
+***************
+*** 111,116 ****
+--- 111,117 ----
+  typedef int HINSTANCE;
+  typedef int HWND;
+  typedef int INPUT_RECORD;
++ typedef int INT;
+  typedef int KEY_EVENT_RECORD;
+  typedef int LOGFONT;
+  typedef int LPBOOL;
+***************
+*** 657,669 ****
+      return NULL;
+  }
+  
+!     int
+  null_libintl_putenv(const char *envstring UNUSED)
+  {
+      return 0;
+  }
+  
+!     int
+  null_libintl_wputenv(const wchar_t *envstring UNUSED)
+  {
+      return 0;
+--- 658,670 ----
+      return NULL;
+  }
+  
+!     static int
+  null_libintl_putenv(const char *envstring UNUSED)
+  {
+      return 0;
+  }
+  
+!     static int
+  null_libintl_wputenv(const wchar_t *envstring UNUSED)
+  {
+      return 0;
+*** ../vim-8.0.0843/src/proto/os_win32.pro	2017-08-02 22:07:08.450378993 +0200
+--- src/proto/os_win32.pro	2017-08-02 23:17:29.120045009 +0200
+***************
+*** 4,11 ****
+  void *get_dll_import_func(HINSTANCE hInst, const char *funcname);
+  int dyn_libintl_init(void);
+  void dyn_libintl_end(void);
+- int null_libintl_putenv(const char *envstring);
+- int null_libintl_wputenv(const wchar_t *envstring);
+  void PlatformId(void);
+  void mch_setmouse(int on);
+  void mch_update_cursor(void);
+--- 4,9 ----
+*** ../vim-8.0.0843/src/version.c	2017-08-02 23:13:23.681824049 +0200
+--- src/version.c	2017-08-02 23:17:48.587903905 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     844,
+  /**/
+
+-- 
+`When any government, or any church for that matter, undertakes to say to
+ its subjects, "This you may not read, this you must not see, this you are
+ forbidden to know," the end result is tyranny and oppression no matter how
+ holy the motives' -- Robert A Heinlein, "If this goes on --"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

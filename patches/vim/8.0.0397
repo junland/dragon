@@ -1,0 +1,73 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0397
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0397 (after 8.0.0392)
+Problem:    Cannot build with the viminfo feature but without the eval
+            feature.
+Solution:   Adjust #ifdef. (John Marriott)
+Files:      src/message.c, src/misc2.c
+
+
+*** ../vim-8.0.0396/src/message.c	2017-03-01 18:30:30.578978886 +0100
+--- src/message.c	2017-03-01 20:34:27.574287509 +0100
+***************
+*** 539,545 ****
+      return FALSE;
+  }
+  
+! #ifdef FEAT_EVAL
+  static garray_T ignore_error_list = GA_EMPTY;
+  
+      void
+--- 539,545 ----
+      return FALSE;
+  }
+  
+! #if defined(FEAT_EVAL) || defined(PROTO)
+  static garray_T ignore_error_list = GA_EMPTY;
+  
+      void
+*** ../vim-8.0.0396/src/misc2.c	2017-02-23 17:59:17.148505954 +0100
+--- src/misc2.c	2017-03-01 20:34:46.306144896 +0100
+***************
+*** 2099,2105 ****
+      return s;
+  }
+  
+! #if defined(FEAT_VIMINFO) || defined(PROTO)
+  /*
+   * Make a copy of string "p" and add it to "gap".
+   * When out of memory nothing changes.
+--- 2099,2105 ----
+      return s;
+  }
+  
+! #if defined(FEAT_VIMINFO) || defined(FEAT_EVAL) || defined(PROTO)
+  /*
+   * Make a copy of string "p" and add it to "gap".
+   * When out of memory nothing changes.
+*** ../vim-8.0.0396/src/version.c	2017-03-01 20:32:40.143105301 +0100
+--- src/version.c	2017-03-01 20:36:18.945439499 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     397,
+  /**/
+
+-- 
+Micro$oft: where do you want to go today?
+    Linux: where do you want to go tomorrow?
+  FreeBSD: are you guys coming, or what?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

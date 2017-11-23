@@ -1,0 +1,537 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0620
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0620
+Problem:    Since we only support GTK versions that have it, the ckeck for
+            HAVE_GTK_MULTIHEAD is no longer needed.
+Solution:   Remove HAVE_GTK_MULTIHEAD. (Kazunobu Kuriyama)
+Files:      src/config.h.in, src/configure.ac, src/auto/configure,
+            src/gui_beval.c, src/gui_gtk_x11.c, src/mbyte.c
+
+
+*** ../vim-8.0.0619/src/config.h.in	2017-03-16 15:13:41.924472198 +0100
+--- src/config.h.in	2017-06-05 15:01:10.374799667 +0200
+***************
+*** 398,406 ****
+  /* Define if you use KDE and want KDE Toolbar support. */
+  #undef FEAT_KDETOOLBAR
+  
+- /* Define if GTK+ multihead support is available (requires GTK+ >= 2.1.1). */
+- #undef HAVE_GTK_MULTIHEAD
+- 
+  /* Define if your X has own locale library */
+  #undef X_LOCALE
+  
+--- 398,403 ----
+*** ../vim-8.0.0619/src/configure.ac	2017-04-28 15:45:42.380360266 +0200
+--- src/configure.ac	2017-06-05 15:01:10.374799667 +0200
+***************
+*** 2606,2615 ****
+      fi
+    fi
+    if test "x$GUITYPE" = "xGTK"; then
+-     if test "$gtk_minor_version" = 1 -a "0$gtk_micro_version" -ge 1 \
+- 	|| test "0$gtk_minor_version" -ge 2; then
+-       AC_DEFINE(HAVE_GTK_MULTIHEAD)
+-     fi
+      dnl
+      dnl if GTK exists, then check for GNOME.
+      dnl
+--- 2606,2611 ----
+***************
+*** 2658,2664 ****
+        SKIP_MOTIF=YES
+        GUITYPE=GTK
+        AC_SUBST(GTK_LIBNAME)
+-       AC_DEFINE(HAVE_GTK_MULTIHEAD)
+        AC_DEFINE(USE_GTK3)
+      fi
+    fi
+--- 2654,2659 ----
+*** ../vim-8.0.0619/src/auto/configure	2017-04-28 15:45:42.384360243 +0200
+--- src/auto/configure	2017-06-05 15:03:50.265709807 +0200
+***************
+*** 8997,9007 ****
+      fi
+    fi
+    if test "x$GUITYPE" = "xGTK"; then
+-     if test "$gtk_minor_version" = 1 -a "0$gtk_micro_version" -ge 1 \
+- 	|| test "0$gtk_minor_version" -ge 2; then
+-       $as_echo "#define HAVE_GTK_MULTIHEAD 1" >>confdefs.h
+- 
+-     fi
+                  if test -z "$SKIP_GNOME"; then
+      {
+  
+--- 8997,9002 ----
+***************
+*** 9294,9301 ****
+        SKIP_MOTIF=YES
+        GUITYPE=GTK
+  
+-       $as_echo "#define HAVE_GTK_MULTIHEAD 1" >>confdefs.h
+- 
+        $as_echo "#define USE_GTK3 1" >>confdefs.h
+  
+      fi
+--- 9289,9294 ----
+*** ../vim-8.0.0619/src/gui_beval.c	2017-03-16 17:23:26.823815869 +0100
+--- src/gui_beval.c	2017-06-05 15:01:10.374799667 +0200
+***************
+*** 1177,1184 ****
+  	int		x_offset = EVAL_OFFSET_X;
+  	int		y_offset = EVAL_OFFSET_Y;
+  	PangoLayout	*layout;
+! # ifdef HAVE_GTK_MULTIHEAD
+! #  if GTK_CHECK_VERSION(3,22,2)
+  	GdkRectangle rect;
+  	GdkMonitor * const mon = gdk_display_get_monitor_at_window(
+  		gtk_widget_get_display(beval->balloonShell),
+--- 1177,1183 ----
+  	int		x_offset = EVAL_OFFSET_X;
+  	int		y_offset = EVAL_OFFSET_Y;
+  	PangoLayout	*layout;
+! # if GTK_CHECK_VERSION(3,22,2)
+  	GdkRectangle rect;
+  	GdkMonitor * const mon = gdk_display_get_monitor_at_window(
+  		gtk_widget_get_display(beval->balloonShell),
+***************
+*** 1187,1203 ****
+  
+  	screen_w = rect.width;
+  	screen_h = rect.height;
+! #  else
+  	GdkScreen	*screen;
+  
+  	screen = gtk_widget_get_screen(beval->target);
+  	gtk_window_set_screen(GTK_WINDOW(beval->balloonShell), screen);
+  	screen_w = gdk_screen_get_width(screen);
+  	screen_h = gdk_screen_get_height(screen);
+- #  endif
+- # else
+- 	screen_w = gdk_screen_width();
+- 	screen_h = gdk_screen_height();
+  # endif
+  # if !GTK_CHECK_VERSION(3,0,0)
+  	gtk_widget_ensure_style(beval->balloonShell);
+--- 1186,1198 ----
+  
+  	screen_w = rect.width;
+  	screen_h = rect.height;
+! # else
+  	GdkScreen	*screen;
+  
+  	screen = gtk_widget_get_screen(beval->target);
+  	gtk_window_set_screen(GTK_WINDOW(beval->balloonShell), screen);
+  	screen_w = gdk_screen_get_width(screen);
+  	screen_h = gdk_screen_get_height(screen);
+  # endif
+  # if !GTK_CHECK_VERSION(3,0,0)
+  	gtk_widget_ensure_style(beval->balloonShell);
+*** ../vim-8.0.0619/src/gui_gtk_x11.c	2017-03-12 20:09:59.460468432 +0100
+--- src/gui_gtk_x11.c	2017-06-05 15:01:10.374799667 +0200
+***************
+*** 102,113 ****
+  /*
+   * Easy-to-use macro for multihead support.
+   */
+! #ifdef HAVE_GTK_MULTIHEAD
+! # define GET_X_ATOM(atom)	gdk_x11_atom_to_xatom_for_display( \
+  				    gtk_widget_get_display(gui.mainwin), atom)
+- #else
+- # define GET_X_ATOM(atom)	((Atom)(atom))
+- #endif
+  
+  /* Selection type distinguishers */
+  enum
+--- 102,109 ----
+  /*
+   * Easy-to-use macro for multihead support.
+   */
+! #define GET_X_ATOM(atom)	gdk_x11_atom_to_xatom_for_display( \
+  				    gtk_widget_get_display(gui.mainwin), atom)
+  
+  /* Selection type distinguishers */
+  enum
+***************
+*** 2846,2852 ****
+  	/*
+  	 * Cannot handle "XLib-only" windows with gtk event routines, we'll
+  	 * have to change the "server" registration to that of the main window
+! 	 * If we have not registered a name yet, remember the window
+  	 */
+  # if GTK_CHECK_VERSION(3,0,0)
+  	serverChangeRegisteredWindow(GDK_WINDOW_XDISPLAY(mainwin_win),
+--- 2842,2848 ----
+  	/*
+  	 * Cannot handle "XLib-only" windows with gtk event routines, we'll
+  	 * have to change the "server" registration to that of the main window
+! 	 * If we have not registered a name yet, remember the window.
+  	 */
+  # if GTK_CHECK_VERSION(3,0,0)
+  	serverChangeRegisteredWindow(GDK_WINDOW_XDISPLAY(mainwin_win),
+***************
+*** 2884,2899 ****
+      char	blank_data[] = { 0x0 };
+  #endif
+  
+! #ifdef HAVE_GTK_MULTIHEAD
+! # if GTK_CHECK_VERSION(3,12,0)
+      {
+  	GdkWindow * const win = gtk_widget_get_window(gui.mainwin);
+  	GdkScreen * const scrn = gdk_window_get_screen(win);
+  	root_window = gdk_screen_get_root_window(scrn);
+      }
+! # else
+      root_window = gtk_widget_get_root_window(gui.mainwin);
+- # endif
+  #endif
+  
+      /* Create a pseudo blank pointer, which is in fact one pixel by one pixel
+--- 2880,2893 ----
+      char	blank_data[] = { 0x0 };
+  #endif
+  
+! #if GTK_CHECK_VERSION(3,12,0)
+      {
+  	GdkWindow * const win = gtk_widget_get_window(gui.mainwin);
+  	GdkScreen * const scrn = gdk_window_get_screen(win);
+  	root_window = gdk_screen_get_root_window(scrn);
+      }
+! #else
+      root_window = gtk_widget_get_root_window(gui.mainwin);
+  #endif
+  
+      /* Create a pseudo blank pointer, which is in fact one pixel by one pixel
+***************
+*** 2932,2938 ****
+      return cursor;
+  }
+  
+- #ifdef HAVE_GTK_MULTIHEAD
+      static void
+  mainwin_screen_changed_cb(GtkWidget  *widget,
+  			  GdkScreen  *previous_screen UNUSED,
+--- 2926,2931 ----
+***************
+*** 2945,2966 ****
+       * Recreate the invisible mouse cursor.
+       */
+      if (gui.blank_pointer != NULL)
+! # if GTK_CHECK_VERSION(3,0,0)
+  	g_object_unref(G_OBJECT(gui.blank_pointer));
+! # else
+  	gdk_cursor_unref(gui.blank_pointer);
+! # endif
+  
+      gui.blank_pointer = create_blank_pointer();
+  
+! # if GTK_CHECK_VERSION(3,0,0)
+      if (gui.pointer_hidden && gtk_widget_get_window(gui.drawarea) != NULL)
+  	gdk_window_set_cursor(gtk_widget_get_window(gui.drawarea),
+  		gui.blank_pointer);
+! # else
+      if (gui.pointer_hidden && gui.drawarea->window != NULL)
+  	gdk_window_set_cursor(gui.drawarea->window, gui.blank_pointer);
+! # endif
+  
+      /*
+       * Create a new PangoContext for this screen, and initialize it
+--- 2938,2959 ----
+       * Recreate the invisible mouse cursor.
+       */
+      if (gui.blank_pointer != NULL)
+! #if GTK_CHECK_VERSION(3,0,0)
+  	g_object_unref(G_OBJECT(gui.blank_pointer));
+! #else
+  	gdk_cursor_unref(gui.blank_pointer);
+! #endif
+  
+      gui.blank_pointer = create_blank_pointer();
+  
+! #if GTK_CHECK_VERSION(3,0,0)
+      if (gui.pointer_hidden && gtk_widget_get_window(gui.drawarea) != NULL)
+  	gdk_window_set_cursor(gtk_widget_get_window(gui.drawarea),
+  		gui.blank_pointer);
+! #else
+      if (gui.pointer_hidden && gui.drawarea->window != NULL)
+  	gdk_window_set_cursor(gui.drawarea->window, gui.blank_pointer);
+! #endif
+  
+      /*
+       * Create a new PangoContext for this screen, and initialize it
+***************
+*** 2978,2984 ****
+  	gui_set_shellsize(FALSE, FALSE, RESIZE_BOTH);
+      }
+  }
+- #endif /* HAVE_GTK_MULTIHEAD */
+  
+  /*
+   * After the drawing area comes up, we calculate all colors and create the
+--- 2971,2976 ----
+***************
+*** 3907,3918 ****
+  	GtkWidget *plug;
+  
+  	/* Use GtkSocket from another app. */
+- #ifdef HAVE_GTK_MULTIHEAD
+  	plug = gtk_plug_new_for_display(gdk_display_get_default(),
+  					gtk_socket_id);
+- #else
+- 	plug = gtk_plug_new(gtk_socket_id);
+- #endif
+  #if GTK_CHECK_VERSION(3,0,0)
+  	if (plug != NULL && gtk_plug_get_socket_window(GTK_PLUG(plug)) != NULL)
+  #else
+--- 3899,3906 ----
+***************
+*** 3972,3981 ****
+      gtk_signal_connect(GTK_OBJECT(gui.mainwin), "realize",
+  		       GTK_SIGNAL_FUNC(&mainwin_realize), NULL);
+  #endif
+! #ifdef HAVE_GTK_MULTIHEAD
+!     g_signal_connect(G_OBJECT(gui.mainwin), "screen_changed",
+  		     G_CALLBACK(&mainwin_screen_changed_cb), NULL);
+! #endif
+      gui.accel_group = gtk_accel_group_new();
+      gtk_window_add_accel_group(GTK_WINDOW(gui.mainwin), gui.accel_group);
+  
+--- 3960,3969 ----
+      gtk_signal_connect(GTK_OBJECT(gui.mainwin), "realize",
+  		       GTK_SIGNAL_FUNC(&mainwin_realize), NULL);
+  #endif
+! 
+!     g_signal_connect(G_OBJECT(gui.mainwin), "screen-changed",
+  		     G_CALLBACK(&mainwin_screen_changed_cb), NULL);
+! 
+      gui.accel_group = gtk_accel_group_new();
+      gtk_window_add_accel_group(GTK_WINDOW(gui.mainwin), gui.accel_group);
+  
+***************
+*** 4992,4999 ****
+      void
+  gui_mch_get_screen_dimensions(int *screen_w, int *screen_h)
+  {
+! #ifdef HAVE_GTK_MULTIHEAD
+! # if GTK_CHECK_VERSION(3,22,2)
+      GdkRectangle rect;
+      GdkMonitor * const mon = gdk_display_get_monitor_at_window(
+  	    gtk_widget_get_display(gui.mainwin),
+--- 4980,4986 ----
+      void
+  gui_mch_get_screen_dimensions(int *screen_w, int *screen_h)
+  {
+! #if GTK_CHECK_VERSION(3,22,2)
+      GdkRectangle rect;
+      GdkMonitor * const mon = gdk_display_get_monitor_at_window(
+  	    gtk_widget_get_display(gui.mainwin),
+***************
+*** 5001,5008 ****
+      gdk_monitor_get_geometry(mon, &rect);
+  
+      *screen_w = rect.width;
+      *screen_h = rect.height - p_ghr;
+! # else
+      GdkScreen* screen;
+  
+      if (gui.mainwin != NULL && gtk_widget_has_screen(gui.mainwin))
+--- 4988,4997 ----
+      gdk_monitor_get_geometry(mon, &rect);
+  
+      *screen_w = rect.width;
++     /* Subtract 'guiheadroom' from the height to allow some room for the
++      * window manager (task list and window title bar). */
+      *screen_h = rect.height - p_ghr;
+! #else
+      GdkScreen* screen;
+  
+      if (gui.mainwin != NULL && gtk_widget_has_screen(gui.mainwin))
+***************
+*** 5011,5023 ****
+  	screen = gdk_screen_get_default();
+  
+      *screen_w = gdk_screen_get_width(screen);
+-     *screen_h = gdk_screen_get_height(screen) - p_ghr;
+- # endif
+- #else
+-     *screen_w = gdk_screen_width();
+      /* Subtract 'guiheadroom' from the height to allow some room for the
+       * window manager (task list and window title bar). */
+!     *screen_h = gdk_screen_height() - p_ghr;
+  #endif
+  
+      /*
+--- 5000,5008 ----
+  	screen = gdk_screen_get_default();
+  
+      *screen_w = gdk_screen_get_width(screen);
+      /* Subtract 'guiheadroom' from the height to allow some room for the
+       * window manager (task list and window title bar). */
+!     *screen_h = gdk_screen_get_height(screen) - p_ghr;
+  #endif
+  
+      /*
+***************
+*** 6335,6357 ****
+      void
+  gui_mch_beep(void)
+  {
+- #ifdef HAVE_GTK_MULTIHEAD
+      GdkDisplay *display;
+  
+! # if GTK_CHECK_VERSION(3,0,0)
+      if (gui.mainwin != NULL && gtk_widget_get_realized(gui.mainwin))
+! # else
+      if (gui.mainwin != NULL && GTK_WIDGET_REALIZED(gui.mainwin))
+! # endif
+  	display = gtk_widget_get_display(gui.mainwin);
+      else
+  	display = gdk_display_get_default();
+  
+      if (display != NULL)
+  	gdk_display_beep(display);
+- #else
+-     gdk_beep();
+- #endif
+  }
+  
+      void
+--- 6320,6338 ----
+      void
+  gui_mch_beep(void)
+  {
+      GdkDisplay *display;
+  
+! #if GTK_CHECK_VERSION(3,0,0)
+      if (gui.mainwin != NULL && gtk_widget_get_realized(gui.mainwin))
+! #else
+      if (gui.mainwin != NULL && GTK_WIDGET_REALIZED(gui.mainwin))
+! #endif
+  	display = gtk_widget_get_display(gui.mainwin);
+      else
+  	display = gdk_display_get_default();
+  
+      if (display != NULL)
+  	gdk_display_beep(display);
+  }
+  
+      void
+***************
+*** 6698,6713 ****
+      void
+  gui_mch_flush(void)
+  {
+! #ifdef HAVE_GTK_MULTIHEAD
+! # if GTK_CHECK_VERSION(3,0,0)
+      if (gui.mainwin != NULL && gtk_widget_get_realized(gui.mainwin))
+- # else
+-     if (gui.mainwin != NULL && GTK_WIDGET_REALIZED(gui.mainwin))
+- # endif
+- 	gdk_display_flush(gtk_widget_get_display(gui.mainwin));
+  #else
+!     gdk_flush(); /* historical misnomer: calls XSync(), not XFlush() */
+  #endif
+  }
+  
+  /*
+--- 6679,6690 ----
+      void
+  gui_mch_flush(void)
+  {
+! #if GTK_CHECK_VERSION(3,0,0)
+      if (gui.mainwin != NULL && gtk_widget_get_realized(gui.mainwin))
+  #else
+!     if (gui.mainwin != NULL && GTK_WIDGET_REALIZED(gui.mainwin))
+  #endif
++ 	gdk_display_flush(gtk_widget_get_display(gui.mainwin));
+  }
+  
+  /*
+***************
+*** 7298,7309 ****
+  	    id = mshape_ids[shape];
+  	else
+  	    return;
+- # ifdef HAVE_GTK_MULTIHEAD
+  	c = gdk_cursor_new_for_display(
+  		gtk_widget_get_display(gui.drawarea), (GdkCursorType)id);
+- # else
+- 	c = gdk_cursor_new((GdkCursorType)id);
+- # endif
+  # if GTK_CHECK_VERSION(3,0,0)
+  	gdk_window_set_cursor(gtk_widget_get_window(gui.drawarea), c);
+  # else
+--- 7275,7282 ----
+*** ../vim-8.0.0619/src/mbyte.c	2017-03-12 20:09:59.476468319 +0100
+--- src/mbyte.c	2017-06-05 15:01:10.378799639 +0200
+***************
+*** 5304,5320 ****
+  {
+      GdkEventKey *event;
+  
+- #  ifdef HAVE_GTK_MULTIHEAD
+      event = (GdkEventKey *)gdk_event_new(GDK_KEY_PRESS);
+! #   if GTK_CHECK_VERSION(3,0,0)
+      g_object_ref(gtk_widget_get_window(gui.drawarea));
+  					/* unreffed by gdk_event_free() */
+- #   else
+-     g_object_ref(gui.drawarea->window); /* unreffed by gdk_event_free() */
+- #   endif
+  #  else
+!     event = (GdkEventKey *)g_malloc0((gulong)sizeof(GdkEvent));
+!     event->type = GDK_KEY_PRESS;
+  #  endif
+  #  if GTK_CHECK_VERSION(3,0,0)
+      event->window = gtk_widget_get_window(gui.drawarea);
+--- 5304,5315 ----
+  {
+      GdkEventKey *event;
+  
+      event = (GdkEventKey *)gdk_event_new(GDK_KEY_PRESS);
+! #  if GTK_CHECK_VERSION(3,0,0)
+      g_object_ref(gtk_widget_get_window(gui.drawarea));
+  					/* unreffed by gdk_event_free() */
+  #  else
+!     g_object_ref(gui.drawarea->window); /* unreffed by gdk_event_free() */
+  #  endif
+  #  if GTK_CHECK_VERSION(3,0,0)
+      event->window = gtk_widget_get_window(gui.drawarea);
+***************
+*** 5337,5347 ****
+      event->send_event = FALSE;
+      gtk_im_context_filter_keypress(xic, event);
+  
+- #  ifdef HAVE_GTK_MULTIHEAD
+      gdk_event_free((GdkEvent *)event);
+- #  else
+-     g_free(event);
+- #  endif
+  }
+  
+      void
+--- 5332,5338 ----
+*** ../vim-8.0.0619/src/version.c	2017-06-05 13:31:52.507499986 +0200
+--- src/version.c	2017-06-05 15:05:36.796983146 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     620,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+5. You find yourself brainstorming for new subjects to search.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

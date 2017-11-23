@@ -1,0 +1,235 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0486
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0486
+Problem:    Crash and endless loop when closing windows in a SessionLoadPost
+            autocommand.
+Solution:   Check for valid tabpage.  (partly neovim #6308)
+Files:      src/testdir/test_autocmd.vim, src/fileio.c, src/proto/window.pro,
+            src/window.c
+
+
+*** ../vim-8.0.0485/src/testdir/test_autocmd.vim	2017-03-19 16:09:41.157653918 +0100
+--- src/testdir/test_autocmd.vim	2017-03-19 16:12:55.492239467 +0100
+***************
+*** 345,347 ****
+--- 345,410 ----
+    call delete('Xdir', 'd')
+    au! BufEnter
+  endfunc
++ 
++ " Closing a window might cause an endless loop
++ " E814 for older Vims
++ function Test_autocmd_bufwipe_in_SessLoadPost()
++   tabnew
++   set noswapfile
++   let g:bufnr=bufnr('%')
++   mksession!
++ 
++   let content=['set nocp noswapfile',
++         \ 'let v:swapchoice="e"',
++         \ 'augroup test_autocmd_sessionload',
++         \ 'autocmd!',
++         \ 'autocmd SessionLoadPost * 4bw!',
++         \ 'augroup END'
++         \ ]
++   call writefile(content, 'Xvimrc')
++   let a=system(v:progpath. ' -u Xvimrc --noplugins -S Session.vim')
++   call assert_match('E814', a)
++ 
++   unlet! g:bufnr
++   set swapfile
++   for file in ['Session.vim', 'Xvimrc']
++     call delete(file)
++   endfor
++ endfunc
++ 
++ " SEGV occurs in older versions.
++ function Test_autocmd_bufwipe_in_SessLoadPost2()
++   tabnew
++   set noswapfile
++   let g:bufnr=bufnr('%')
++   mksession!
++ 
++   let content = ['set nocp noswapfile',
++       \ 'function! DeleteInactiveBufs()',
++       \ '  tabfirst',
++       \ '  let tabblist = []',
++       \ '  for i in range(1, tabpagenr(''$''))',
++       \ '    call extend(tabblist, tabpagebuflist(i))',
++       \ '  endfor',
++       \ '  for b in range(1, bufnr(''$''))',
++       \ '    if bufexists(b) && buflisted(b) && (index(tabblist, b) == -1 || bufname(b) =~# ''^$'')',
++       \ '      exec ''bwipeout '' . b',
++       \ '    endif',
++       \ '  endfor',
++       \ 'call append("1", "SessionLoadPost DONE")',
++       \ 'endfunction',
++       \ 'au SessionLoadPost * call DeleteInactiveBufs()']
++   call writefile(content, 'Xvimrc')
++   let a=system(v:progpath. ' -u Xvimrc --noplugins -S Session.vim')
++   " this probably only matches on unix
++   if has("unix")
++     call assert_notmatch('Caught deadly signal SEGV', a)
++   endif
++   call assert_match('SessionLoadPost DONE', a)
++ 
++   unlet! g:bufnr
++   set swapfile
++   for file in ['Session.vim', 'Xvimrc']
++     call delete(file)
++   endfor
++ endfunc
+*** ../vim-8.0.0485/src/fileio.c	2017-03-16 17:23:26.823815869 +0100
+--- src/fileio.c	2017-03-19 16:16:23.954716288 +0100
+***************
+*** 9033,9038 ****
+--- 9033,9043 ----
+  	win_remove(curwin, NULL);
+  	aucmd_win_used = FALSE;
+  	last_status(FALSE);	    /* may need to remove last status line */
++ 
++ 	if (!valid_tabpage_win(curtab))
++ 	    /* no valid window in current tabpage */
++ 	    close_tabpage(curtab);
++ 
+  	restore_snapshot(SNAP_AUCMD_IDX, FALSE);
+  	(void)win_comp_pos();   /* recompute window positions */
+  	unblock_autocmds();
+*** ../vim-8.0.0485/src/proto/window.pro	2016-09-12 13:04:23.000000000 +0200
+--- src/proto/window.pro	2017-03-19 16:15:41.091029969 +0100
+***************
+*** 26,31 ****
+--- 26,33 ----
+  int may_open_tabpage(void);
+  int make_tabpages(int maxcount);
+  int valid_tabpage(tabpage_T *tpc);
++ int valid_tabpage_win(tabpage_T *tpc);
++ void close_tabpage(tabpage_T *tpc);
+  tabpage_T *find_tabpage(int n);
+  int tabpage_index(tabpage_T *ftp);
+  void goto_tabpage(int n);
+*** ../vim-8.0.0485/src/window.c	2017-03-18 23:11:00.287000094 +0100
+--- src/window.c	2017-03-19 17:05:27.709065597 +0100
+***************
+*** 2107,2113 ****
+  }
+  
+  /*
+!  * close all windows for buffer 'buf'
+   */
+      void
+  close_windows(
+--- 2107,2113 ----
+  }
+  
+  /*
+!  * Close all windows for buffer "buf".
+   */
+      void
+  close_windows(
+***************
+*** 2131,2137 ****
+  #endif
+  		)
+  	{
+! 	    win_close(wp, FALSE);
+  
+  	    /* Start all over, autocommands may change the window layout. */
+  	    wp = firstwin;
+--- 2131,2140 ----
+  #endif
+  		)
+  	{
+! 	    if (win_close(wp, FALSE) == FAIL)
+! 		/* If closing the window fails give up, to avoid looping
+! 		 * forever. */
+! 		break;
+  
+  	    /* Start all over, autocommands may change the window layout. */
+  	    wp = firstwin;
+***************
+*** 3759,3764 ****
+--- 3762,3819 ----
+  }
+  
+  /*
++  * Return TRUE when "tpc" points to a valid tab page and at least one window is
++  * valid.
++  */
++     int
++ valid_tabpage_win(tabpage_T *tpc)
++ {
++     tabpage_T	*tp;
++     win_T	*wp;
++ 
++     FOR_ALL_TABPAGES(tp)
++     {
++ 	if (tp == tpc)
++ 	{
++ 	    FOR_ALL_WINDOWS_IN_TAB(tp, wp)
++ 	    {
++ 		if (win_valid_any_tab(wp))
++ 		    return TRUE;
++ 	    }
++ 	    return FALSE;
++ 	}
++     }
++     /* shouldn't happen */
++     return FALSE;
++ }
++ 
++ /*
++  * Close tabpage "tab", assuming it has no windows in it.
++  * There must be another tabpage or this will crash.
++  */
++     void
++ close_tabpage(tabpage_T *tab)
++ {
++     tabpage_T	*ptp;
++ 
++     if (tab == first_tabpage)
++     {
++ 	first_tabpage = tab->tp_next;
++ 	ptp = first_tabpage;
++     }
++     else
++     {
++ 	for (ptp = first_tabpage; ptp != NULL && ptp->tp_next != tab;
++ 							    ptp = ptp->tp_next)
++ 	    ;
++ 	ptp->tp_next = tab->tp_next;
++     }
++ 
++     goto_tabpage_tp(ptp, FALSE, FALSE);
++     free_tabpage(tab);
++ }
++ 
++ /*
+   * Find tab page "n" (first one is 1).  Returns NULL when not found.
+   */
+      tabpage_T *
+*** ../vim-8.0.0485/src/version.c	2017-03-19 16:09:41.157653918 +0100
+--- src/version.c	2017-03-19 17:08:47.315564870 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     486,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+165. You have a web page burned into your glasses
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

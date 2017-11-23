@@ -1,0 +1,70 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1172
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1172
+Problem:    When E734 is given option is still set.
+Solution:   Assign NULL to "s". (Christian Brabandt)
+Files:      src/eval.c, src/testdir/test_assign.vim
+
+
+*** ../vim-8.0.1171/src/eval.c	2017-09-17 23:02:17.172074424 +0200
+--- src/eval.c	2017-10-02 19:24:40.484889352 +0200
+***************
+*** 1704,1710 ****
+--- 1704,1713 ----
+  						       &stringval, opt_flags);
+  		if ((opt_type == 1 && *op == '.')
+  			|| (opt_type == 0 && *op != '.'))
++ 		{
+  		    EMSG2(_(e_letwrong), op);
++ 		    s = NULL;  /* don't set the value */
++ 		}
+  		else
+  		{
+  		    if (opt_type == 1)  /* number */
+*** ../vim-8.0.1171/src/testdir/test_assign.vim	2017-02-23 15:19:59.409451193 +0100
+--- src/testdir/test_assign.vim	2017-10-02 19:28:43.387371570 +0200
+***************
+*** 29,31 ****
+--- 29,45 ----
+    let &t_xx = ""
+    call assert_fails('let x = &t_xx', 'E15')
+  endfunc
++ 
++ func Test_let_option_error()
++   let _w = &tw
++   let &tw = 80
++   call assert_fails('let &tw .= 1', 'E734')
++   call assert_equal(80, &tw)
++   let &tw = _w
++ 
++   let _w = &fillchars
++   let &fillchars = "vert:|"
++   call assert_fails('let &fillchars += "diff:-"', 'E734')
++   call assert_equal("vert:|", &fillchars)
++   let &fillchars = _w
++ endfunc
+*** ../vim-8.0.1171/src/version.c	2017-10-01 16:59:13.863141636 +0200
+--- src/version.c	2017-10-02 19:26:15.712294305 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1172,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+248. You sign your letters with your e-mail address instead of your name.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

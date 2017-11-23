@@ -1,0 +1,309 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0312
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0312
+Problem:    When a json message arrives in pieces, the start is dropped and
+            the decoding fails.
+Solution:   Do not drop the start when it is still needed. (Kay Zheng)  Add a
+            test.  Reset the timeout when something is received.
+Files:      src/channel.c, src/testdir/test_channel.vim, src/structs.h,
+            src/testdir/test_channel_pipe.py
+
+
+*** ../vim-8.0.0311/src/channel.c	2017-01-14 17:04:33.950973940 +0100
+--- src/channel.c	2017-02-06 21:52:01.086150732 +0100
+***************
+*** 1840,1878 ****
+      return OK;
+  }
+  
+      static int
+  channel_fill(js_read_T *reader)
+  {
+      channel_T	*channel = (channel_T *)reader->js_cookie;
+      ch_part_T	part = reader->js_cookie_arg;
+      char_u	*next = channel_get(channel, part);
+!     int		unused;
+!     int		len;
+      char_u	*p;
+  
+      if (next == NULL)
+  	return FALSE;
+  
+!     unused = reader->js_end - reader->js_buf - reader->js_used;
+!     if (unused > 0)
+      {
+  	/* Prepend unused text. */
+! 	len = (int)STRLEN(next);
+! 	p = alloc(unused + len + 1);
+  	if (p == NULL)
+  	{
+  	    vim_free(next);
+  	    return FALSE;
+  	}
+! 	mch_memmove(p, reader->js_buf + reader->js_used, unused);
+! 	mch_memmove(p + unused, next, len + 1);
+  	vim_free(next);
+  	next = p;
+      }
+  
+      vim_free(reader->js_buf);
+      reader->js_buf = next;
+-     reader->js_used = 0;
+      return TRUE;
+  }
+  
+--- 1840,1881 ----
+      return OK;
+  }
+  
++ /*
++  * Try to fill the buffer of "reader".
++  * Returns FALSE when nothing was added.
++  */
+      static int
+  channel_fill(js_read_T *reader)
+  {
+      channel_T	*channel = (channel_T *)reader->js_cookie;
+      ch_part_T	part = reader->js_cookie_arg;
+      char_u	*next = channel_get(channel, part);
+!     int		keeplen;
+!     int		addlen;
+      char_u	*p;
+  
+      if (next == NULL)
+  	return FALSE;
+  
+!     keeplen = reader->js_end - reader->js_buf;
+!     if (keeplen > 0)
+      {
+  	/* Prepend unused text. */
+! 	addlen = (int)STRLEN(next);
+! 	p = alloc(keeplen + addlen + 1);
+  	if (p == NULL)
+  	{
+  	    vim_free(next);
+  	    return FALSE;
+  	}
+! 	mch_memmove(p, reader->js_buf, keeplen);
+! 	mch_memmove(p + keeplen, next, addlen + 1);
+  	vim_free(next);
+  	next = p;
+      }
+  
+      vim_free(reader->js_buf);
+      reader->js_buf = next;
+      return TRUE;
+  }
+  
+***************
+*** 1952,1967 ****
+      }
+  
+      if (status == OK)
+! 	chanpart->ch_waiting = FALSE;
+      else if (status == MAYBE)
+      {
+! 	if (!chanpart->ch_waiting)
+  	{
+! 	    /* First time encountering incomplete message, set a deadline of
+! 	     * 100 msec. */
+! 	    ch_log(channel, "Incomplete message - wait for more");
+  	    reader.js_used = 0;
+! 	    chanpart->ch_waiting = TRUE;
+  #ifdef WIN32
+  	    chanpart->ch_deadline = GetTickCount() + 100L;
+  #else
+--- 1955,1974 ----
+      }
+  
+      if (status == OK)
+! 	chanpart->ch_wait_len = 0;
+      else if (status == MAYBE)
+      {
+! 	size_t buflen = STRLEN(reader.js_buf);
+! 
+! 	if (chanpart->ch_wait_len < buflen)
+  	{
+! 	    /* First time encountering incomplete message or after receiving
+! 	     * more (but still incomplete): set a deadline of 100 msec. */
+! 	    ch_logn(channel,
+! 		    "Incomplete message (%d bytes) - wait 100 msec for more",
+! 		    buflen);
+  	    reader.js_used = 0;
+! 	    chanpart->ch_wait_len = buflen;
+  #ifdef WIN32
+  	    chanpart->ch_deadline = GetTickCount() + 100L;
+  #else
+***************
+*** 1992,1998 ****
+  	    if (timeout)
+  	    {
+  		status = FAIL;
+! 		chanpart->ch_waiting = FALSE;
+  	    }
+  	    else
+  	    {
+--- 1999,2006 ----
+  	    if (timeout)
+  	    {
+  		status = FAIL;
+! 		chanpart->ch_wait_len = 0;
+! 		ch_log(channel, "timed out");
+  	    }
+  	    else
+  	    {
+***************
+*** 2006,2012 ****
+      {
+  	ch_error(channel, "Decoding failed - discarding input");
+  	ret = FALSE;
+! 	chanpart->ch_waiting = FALSE;
+      }
+      else if (reader.js_buf[reader.js_used] != NUL)
+      {
+--- 2014,2020 ----
+      {
+  	ch_error(channel, "Decoding failed - discarding input");
+  	ret = FALSE;
+! 	chanpart->ch_wait_len = 0;
+      }
+      else if (reader.js_buf[reader.js_used] != NUL)
+      {
+***************
+*** 3369,3375 ****
+  	    /* Wait for up to the timeout.  If there was an incomplete message
+  	     * use the deadline for that. */
+  	    timeout = timeout_arg;
+! 	    if (chanpart->ch_waiting)
+  	    {
+  #ifdef WIN32
+  		timeout = chanpart->ch_deadline - GetTickCount() + 1;
+--- 3377,3383 ----
+  	    /* Wait for up to the timeout.  If there was an incomplete message
+  	     * use the deadline for that. */
+  	    timeout = timeout_arg;
+! 	    if (chanpart->ch_wait_len > 0)
+  	    {
+  #ifdef WIN32
+  		timeout = chanpart->ch_deadline - GetTickCount() + 1;
+***************
+*** 3389,3395 ****
+  		{
+  		    /* Something went wrong, channel_parse_json() didn't
+  		     * discard message.  Cancel waiting. */
+! 		    chanpart->ch_waiting = FALSE;
+  		    timeout = timeout_arg;
+  		}
+  		else if (timeout > timeout_arg)
+--- 3397,3403 ----
+  		{
+  		    /* Something went wrong, channel_parse_json() didn't
+  		     * discard message.  Cancel waiting. */
+! 		    chanpart->ch_wait_len = 0;
+  		    timeout = timeout_arg;
+  		}
+  		else if (timeout > timeout_arg)
+*** ../vim-8.0.0311/src/testdir/test_channel.vim	2017-01-08 13:38:53.028502710 +0100
+--- src/testdir/test_channel.vim	2017-02-06 21:55:37.572539457 +0100
+***************
+*** 1141,1147 ****
+  
+    let dict = {'thisis': 'dict: '}
+    func dict.outHandler(chan, msg) dict
+!     let g:Ch_outmsg = self.thisis . a:msg
+    endfunc
+    func dict.errHandler(chan, msg) dict
+      let g:Ch_errmsg = self.thisis . a:msg
+--- 1141,1151 ----
+  
+    let dict = {'thisis': 'dict: '}
+    func dict.outHandler(chan, msg) dict
+!     if type(a:msg) == v:t_string
+!       let g:Ch_outmsg = self.thisis . a:msg
+!     else
+!       let g:Ch_outobj = a:msg
+!     endif
+    endfunc
+    func dict.errHandler(chan, msg) dict
+      let g:Ch_errmsg = self.thisis . a:msg
+***************
+*** 1161,1166 ****
+--- 1165,1176 ----
+      call assert_equal("dict: hello", g:Ch_outmsg)
+      call WaitFor('g:Ch_errmsg != ""')
+      call assert_equal("dict: there", g:Ch_errmsg)
++ 
++     " Receive a json object split in pieces
++     unlet! g:Ch_outobj
++     call ch_sendraw(job, "echosplit [0, {\"one\": 1,| \"tw|o\": 2, \"three\": 3|}]\n")
++     call WaitFor('exists("g:Ch_outobj")')
++     call assert_equal({'one': 1, 'two': 2, 'three': 3}, g:Ch_outobj)
+    finally
+      call job_stop(job)
+    endtry
+*** ../vim-8.0.0311/src/structs.h	2017-02-02 22:59:22.583226973 +0100
+--- src/structs.h	2017-02-06 21:47:04.116363189 +0100
+***************
+*** 1563,1571 ****
+      jsonq_T	ch_json_head;	/* header for circular json read queue */
+      int		ch_block_id;	/* ID that channel_read_json_block() is
+  				   waiting for */
+!     /* When ch_waiting is TRUE use ch_deadline to wait for incomplete message
+!      * to be complete. */
+!     int		ch_waiting;
+  #ifdef WIN32
+      DWORD	ch_deadline;
+  #else
+--- 1563,1573 ----
+      jsonq_T	ch_json_head;	/* header for circular json read queue */
+      int		ch_block_id;	/* ID that channel_read_json_block() is
+  				   waiting for */
+!     /* When ch_wait_len is non-zero use ch_deadline to wait for incomplete
+!      * message to be complete. The value is the length of the incomplete
+!      * message when the deadline was set.  If it gets longer (something was
+!      * received) the deadline is reset. */
+!     size_t	ch_wait_len;
+  #ifdef WIN32
+      DWORD	ch_deadline;
+  #else
+*** ../vim-8.0.0311/src/testdir/test_channel_pipe.py	2016-06-05 16:01:21.000000000 +0200
+--- src/testdir/test_channel_pipe.py	2017-02-06 21:12:08.116049258 +0100
+***************
+*** 29,34 ****
+--- 29,39 ----
+          if typed.startswith("echo "):
+              print(typed[5:-1])
+              sys.stdout.flush()
++         if typed.startswith("echosplit "):
++             for part in typed[10:-1].split('|'):
++                 sys.stdout.write(part)
++                 sys.stdout.flush()
++                 time.sleep(0.05)
+          if typed.startswith("double "):
+              print(typed[7:-1] + "\nAND " + typed[7:-1])
+              sys.stdout.flush()
+*** ../vim-8.0.0311/src/version.c	2017-02-05 21:14:26.743355267 +0100
+--- src/version.c	2017-02-06 21:14:41.890894810 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     312,
+  /**/
+
+-- 
+If you only have a hammer, you tend to see every problem as a nail.
+If you only have MS-Windows, you tend to solve every problem by rebooting.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

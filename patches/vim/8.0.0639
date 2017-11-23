@@ -1,0 +1,82 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0639
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0639
+Problem:    The cursor position is set to the last position in a new commit
+            message.
+Solution:   Don't set the position if the filetype matches "commit".
+            (Christian Brabandt)
+Files:      runtime/defaults.vim
+
+
+*** ../vim-8.0.0638/runtime/defaults.vim	2017-04-15 15:37:09.646798989 +0200
+--- runtime/defaults.vim	2017-06-13 16:10:28.547314228 +0200
+***************
+*** 1,7 ****
+  " The default vimrc file.
+  "
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last change:	2017 Apr 12
+  "
+  " This is loaded if no vimrc file was found.
+  " Except when Vim is run with "-u NONE" or "-C".
+--- 1,7 ----
+  " The default vimrc file.
+  "
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last change:	2017 Jun 13
+  "
+  " This is loaded if no vimrc file was found.
+  " Except when Vim is run with "-u NONE" or "-C".
+***************
+*** 106,117 ****
+      au!
+  
+      " When editing a file, always jump to the last known cursor position.
+!     " Don't do it when the position is invalid or when inside an event handler
+!     " (happens when dropping a file on gvim).
+      autocmd BufReadPost *
+!       \ if line("'\"") >= 1 && line("'\"") <= line("$") |
+!       \   exe "normal! g`\"" |
+!       \ endif
+  
+    augroup END
+  
+--- 106,118 ----
+      au!
+  
+      " When editing a file, always jump to the last known cursor position.
+!     " Don't do it when the position is invalid, when inside an event handler
+!     " (happens when dropping a file on gvim) and for a commit message (it's
+!     " likely a different one than last time).
+      autocmd BufReadPost *
+!       \ if line("'\"") >= 1 && line("'\"") <= line("$") && &ft !~# 'commit'
+!       \ |   exe "normal! g`\""
+!       \ | endif
+  
+    augroup END
+  
+*** ../vim-8.0.0638/src/version.c	2017-06-13 15:22:08.966768971 +0200
+--- src/version.c	2017-06-13 16:06:33.940872610 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     639,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+31. You code your homework in HTML and give your instructor the URL.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,182 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0818
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0818
+Problem:    Cannot get the cursor position of a terminal.
+Solution:   Add term_getcursor().
+Files:      runtime/doc/eval.txt, src/evalfunc.c, src/terminal.c,
+            src/proto/terminal.pro
+
+
+*** ../vim-8.0.0817/runtime/doc/eval.txt	2017-07-30 18:19:24.116358017 +0200
+--- runtime/doc/eval.txt	2017-07-30 18:24:20.906242151 +0200
+***************
+*** 2370,2375 ****
+--- 2370,2376 ----
+  tanh({expr})			Float	hyperbolic tangent of {expr}
+  tempname()			String	name for a temporary file
+  term_getattr({attr}, {what}	Number	get the value of attribute {what}
++ term_getcursor({buf})		List	get the cursor position of a terminal
+  term_getjob({buf})		Job	get the job associated with a terminal
+  term_getline({buf}[, {row}])	String	get a line of text from a terminal
+  term_getsize({buf})		List	get the size of a terminal
+***************
+*** 7902,7907 ****
+--- 7911,7929 ----
+  			strike
+  			reverse
+  
++ term_getcursor({buf})					*term_getcursor()*
++ 		Get the cusor position of terminal {buf}. Returns a list with
++ 		three numbers: [rows, cols, visible].  "rows" and "cols" are
++ 		zero based.  "visible" is one when the cursor is visible, zero
++ 		when it is hidden.
++ 		
++ 		This is the cursor position of the terminal itself, not of the
++ 		Vim window.
++ 
++ 		{buf} must be the buffer number of a terminal window. If the
++ 		buffer does not exist or is not a terminal window, an empty
++ 		list is returned.
++ 
+  term_getjob({buf})					*term_getjob()*
+  		Get the Job associated with terminal window {buf}.
+  		{buf} is used as with |term_getsize()|.
+*** ../vim-8.0.0817/src/evalfunc.c	2017-07-30 18:19:24.116358017 +0200
+--- src/evalfunc.c	2017-07-30 18:25:32.793729591 +0200
+***************
+*** 832,837 ****
+--- 832,838 ----
+      {"tempname",	0, 0, f_tempname},
+  #ifdef FEAT_TERMINAL
+      {"term_getattr",	2, 2, f_term_getattr},
++     {"term_getcursor",	1, 1, f_term_getcursor},
+      {"term_getjob",	1, 1, f_term_getjob},
+      {"term_getline",	1, 2, f_term_getline},
+      {"term_getsize",	1, 1, f_term_getsize},
+*** ../vim-8.0.0817/src/terminal.c	2017-07-30 18:19:24.116358017 +0200
+--- src/terminal.c	2017-07-30 18:23:51.354452849 +0200
+***************
+*** 53,59 ****
+   *      :term <24x80> <close> vim notes.txt
+   * - To set BS correctly, check get_stty(); Pass the fd of the pty.
+   * - do not store terminal window in viminfo.  Or prefix term:// ?
+-  * - add term_getcursor() - return cursor position: [row, col, visible]
+   * - add a character in :ls output
+   * - add 't' to mode()
+   * - when closing window and job has not ended, make terminal hidden?
+--- 53,58 ----
+***************
+*** 1637,1642 ****
+--- 1636,1659 ----
+  }
+  
+  /*
++  * Get the buffer from the first argument in "argvars".
++  * Returns NULL when the buffer is not for a terminal window.
++  */
++     static buf_T *
++ term_get_buf(typval_T *argvars)
++ {
++     buf_T *buf;
++ 
++     (void)get_tv_number(&argvars[0]);	    /* issue errmsg if type error */
++     ++emsg_off;
++     buf = get_buf_tv(&argvars[0], FALSE);
++     --emsg_off;
++     if (buf == NULL || buf->b_term == NULL)
++ 	return NULL;
++     return buf;
++ }
++ 
++ /*
+   * "term_getattr(attr, name)" function
+   */
+      void
+***************
+*** 1671,1691 ****
+  }
+  
+  /*
+!  * Get the buffer from the first argument in "argvars".
+!  * Returns NULL when the buffer is not for a terminal window.
+   */
+!     static buf_T *
+! term_get_buf(typval_T *argvars)
+  {
+!     buf_T *buf;
+  
+!     (void)get_tv_number(&argvars[0]);	    /* issue errmsg if type error */
+!     ++emsg_off;
+!     buf = get_buf_tv(&argvars[0], FALSE);
+!     --emsg_off;
+!     if (buf == NULL || buf->b_term == NULL)
+! 	return NULL;
+!     return buf;
+  }
+  
+  /*
+--- 1688,1710 ----
+  }
+  
+  /*
+!  * "term_getcursor(buf)" function
+   */
+!     void
+! f_term_getcursor(typval_T *argvars, typval_T *rettv)
+  {
+!     buf_T	*buf = term_get_buf(argvars);
+!     list_T	*l;
+  
+!     if (rettv_list_alloc(rettv) == FAIL)
+! 	return;
+!     if (buf == NULL)
+! 	return;
+! 
+!     l = rettv->vval.v_list;
+!     list_append_number(l, buf->b_term->tl_cursor_pos.row);
+!     list_append_number(l, buf->b_term->tl_cursor_pos.col);
+!     list_append_number(l, buf->b_term->tl_cursor_visible);
+  }
+  
+  /*
+*** ../vim-8.0.0817/src/proto/terminal.pro	2017-07-30 16:51:35.622144012 +0200
+--- src/proto/terminal.pro	2017-07-30 18:25:37.713694511 +0200
+***************
+*** 16,21 ****
+--- 16,22 ----
+  char_u *term_get_status_text(term_T *term);
+  int set_ref_in_term(int copyID);
+  void f_term_getattr(typval_T *argvars, typval_T *rettv);
++ void f_term_getcursor(typval_T *argvars, typval_T *rettv);
+  void f_term_getjob(typval_T *argvars, typval_T *rettv);
+  void f_term_getline(typval_T *argvars, typval_T *rettv);
+  void f_term_getsize(typval_T *argvars, typval_T *rettv);
+*** ../vim-8.0.0817/src/version.c	2017-07-30 18:19:24.120357988 +0200
+--- src/version.c	2017-07-30 18:25:14.161862439 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     818,
+  /**/
+
+-- 
+       "To whoever finds this note -
+       I have been imprisoned by my father who wishes me to marry
+       against my will.  Please please please please come and rescue me.
+       I am in the tall tower of Swamp Castle."
+   SIR LAUNCELOT's eyes light up with holy inspiration.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

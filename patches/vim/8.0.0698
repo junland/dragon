@@ -1,0 +1,154 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0698
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0698
+Problem:    When a timer uses ":pyeval" or another Python command and it
+            happens to be triggered while exiting a Crash may happen.
+            (Ricky Zhou)
+Solution:   Avoid running a Python command after python_end() was called.
+            Do not trigger timers while exiting.  (closes #1824)
+Files:      src/if_python.c, src/if_python3.c, src/ex_cmds2.c
+
+
+*** ../vim-8.0.0697/src/if_python.c	2017-01-28 15:58:45.348197250 +0100
+--- src/if_python.c	2017-07-07 14:38:58.636443739 +0200
+***************
+*** 779,784 ****
+--- 779,785 ----
+  
+  static int initialised = 0;
+  #define PYINITIALISED initialised
++ static int python_end_called = FALSE;
+  
+  #define DESTRUCTOR_FINISH(self) self->ob_type->tp_free((PyObject*)self);
+  
+***************
+*** 878,883 ****
+--- 879,885 ----
+      if (recurse != 0)
+  	return;
+  
++     python_end_called = TRUE;
+      ++recurse;
+  
+  #ifdef DYNAMIC_PYTHON
+***************
+*** 1040,1045 ****
+--- 1042,1049 ----
+      }
+      ++recursive;
+  #endif
++     if (python_end_called)
++ 	return;
+  
+  #if defined(MACOS) && !defined(MACOS_X_UNIX)
+      GetPort(&oldPort);
+***************
+*** 1568,1574 ****
+  	    (rangeinitializer) init_range_eval,
+  	    (runner) run_eval,
+  	    (void *) rettv);
+!     switch(rettv->v_type)
+      {
+  	case VAR_DICT: ++rettv->vval.v_dict->dv_refcount; break;
+  	case VAR_LIST: ++rettv->vval.v_list->lv_refcount; break;
+--- 1572,1578 ----
+  	    (rangeinitializer) init_range_eval,
+  	    (runner) run_eval,
+  	    (void *) rettv);
+!     switch (rettv->v_type)
+      {
+  	case VAR_DICT: ++rettv->vval.v_dict->dv_refcount; break;
+  	case VAR_LIST: ++rettv->vval.v_list->lv_refcount; break;
+*** ../vim-8.0.0697/src/if_python3.c	2017-01-28 15:58:45.348197250 +0100
+--- src/if_python3.c	2017-07-07 14:46:21.049114965 +0200
+***************
+*** 733,740 ****
+  #endif /* DYNAMIC_PYTHON3 */
+  
+  static int py3initialised = 0;
+- 
+  #define PYINITIALISED py3initialised
+  
+  #define DESTRUCTOR_FINISH(self) Py_TYPE(self)->tp_free((PyObject*)self)
+  
+--- 733,740 ----
+  #endif /* DYNAMIC_PYTHON3 */
+  
+  static int py3initialised = 0;
+  #define PYINITIALISED py3initialised
++ static int python_end_called = FALSE;
+  
+  #define DESTRUCTOR_FINISH(self) Py_TYPE(self)->tp_free((PyObject*)self)
+  
+***************
+*** 817,822 ****
+--- 817,823 ----
+      if (recurse != 0)
+  	return;
+  
++     python_end_called = TRUE;
+      ++recurse;
+  
+  #ifdef DYNAMIC_PYTHON3
+***************
+*** 938,943 ****
+--- 939,947 ----
+      PyObject		*cmdbytes;
+      PyGILState_STATE	pygilstate;
+  
++     if (python_end_called)
++ 	goto theend;
++ 
+  #if defined(MACOS) && !defined(MACOS_X_UNIX)
+      GetPort(&oldPort);
+      /* Check if the Python library is available */
+*** ../vim-8.0.0697/src/ex_cmds2.c	2017-06-27 14:43:51.203020467 +0200
+--- src/ex_cmds2.c	2017-07-07 14:45:32.265482186 +0200
+***************
+*** 1183,1188 ****
+--- 1183,1189 ----
+  /*
+   * Call timers that are due.
+   * Return the time in msec until the next timer is due.
++  * Returns -1 if there are no pending timers.
+   */
+      long
+  check_due_timer(void)
+***************
+*** 1197,1202 ****
+--- 1198,1207 ----
+  # ifdef WIN3264
+      LARGE_INTEGER   fr;
+  
++     /* Don't run any timers while exiting. */
++     if (exiting)
++ 	return next_due;
++ 
+      QueryPerformanceFrequency(&fr);
+  # endif
+      profile_start(&now);
+*** ../vim-8.0.0697/src/version.c	2017-07-07 13:32:10.866905242 +0200
+--- src/version.c	2017-07-07 14:44:58.941733011 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     698,
+  /**/
+
+-- 
+Would you care for a drink?   I mean, if it were, like,
+disabled and you had to look after it?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

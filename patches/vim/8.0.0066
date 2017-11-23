@@ -1,0 +1,158 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0066
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0066
+Problem:    when calling an operator function when 'linebreak' is set, it is
+            internally reset before calling the operator function.
+Solution:   Restore 'linebreak' before calling op_function(). (Christian
+            Brabandt)
+Files:      src/normal.c, src/testdir/test_normal.vim
+
+
+*** ../vim-8.0.0065/src/normal.c	2016-11-04 21:22:33.323268841 +0100
+--- src/normal.c	2016-11-05 21:54:33.644438077 +0100
+***************
+*** 1995,2000 ****
+--- 1995,2005 ----
+  	    break;
+  
+  	case OP_FUNCTION:
++ #ifdef FEAT_LINEBREAK
++ 	    /* Restore linebreak, so that when the user edits it looks as
++ 	     * before. */
++ 	    curwin->w_p_lbr = lbr_saved;
++ #endif
+  	    op_function(oap);		/* call 'operatorfunc' */
+  	    break;
+  
+*** ../vim-8.0.0065/src/testdir/test_normal.vim	2016-11-05 19:53:57.049752758 +0100
+--- src/testdir/test_normal.vim	2016-11-05 21:50:29.141989667 +0100
+***************
+*** 35,42 ****
+    let @@ = reg_save
+  endfunc
+  
+! func! IsWindows()
+!   return has("win32") || has("win64") || has("win95")
+  endfunc
+  
+  fun! Test_normal00_optrans()
+--- 35,54 ----
+    let @@ = reg_save
+  endfunc
+  
+! func! OpfuncDummy(type, ...)
+!   " for testing operatorfunc
+!   let g:opt=&linebreak
+! 
+!   if a:0  " Invoked from Visual mode, use gv command.
+!     silent exe "normal! gvy"
+!   elseif a:type == 'line'
+!     silent exe "normal! '[V']y"
+!   else
+!     silent exe "normal! `[v`]y"
+!   endif
+!   " Create a new dummy window
+!   new
+!   let g:bufnr=bufnr('%')
+  endfunc
+  
+  fun! Test_normal00_optrans()
+***************
+*** 147,153 ****
+  func! Test_normal04_filter()
+    " basic filter test
+    " only test on non windows platform
+!   if IsWindows()
+      return
+    endif
+    call Setup_NewWindow()
+--- 159,165 ----
+  func! Test_normal04_filter()
+    " basic filter test
+    " only test on non windows platform
+!   if has('win32')
+      return
+    endif
+    call Setup_NewWindow()
+***************
+*** 210,216 ****
+  func! Test_normal06_formatprg()
+    " basic test for formatprg
+    " only test on non windows platform
+!   if IsWindows()
+      return
+    else
+      " uses sed to number non-empty lines
+--- 222,228 ----
+  func! Test_normal06_formatprg()
+    " basic test for formatprg
+    " only test on non windows platform
+!   if has('win32')
+      return
+    else
+      " uses sed to number non-empty lines
+***************
+*** 328,334 ****
+--- 340,373 ----
+    " clean up
+    unmap <buffer> ,,
+    set opfunc=
++   unlet! g:a
++   bw!
++ endfunc
++ 
++ func! Test_normal09a_operatorfunc()
++   " Test operatorfunc
++   call Setup_NewWindow()
++   " Add some spaces for counting
++   50,60s/$/  /
++   unlet! g:opt
++   set linebreak
++   nmap <buffer><silent> ,, :set opfunc=OpfuncDummy<CR>g@
++   50
++   norm ,,j
++   exe "bd!" g:bufnr
++   call assert_true(&linebreak)
++   call assert_equal(g:opt, &linebreak)
++   set nolinebreak
++   norm ,,j
++   exe "bd!" g:bufnr
++   call assert_false(&linebreak)
++   call assert_equal(g:opt, &linebreak)
++ 
++   " clean up
++   unmap <buffer> ,,
++   set opfunc=
+    bw!
++   unlet! g:opt
+  endfunc
+  
+  func! Test_normal10_expand()
+*** ../vim-8.0.0065/src/version.c	2016-11-05 20:13:29.146451807 +0100
+--- src/version.c	2016-11-05 21:53:05.184999344 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     66,
+  /**/
+
+-- 
+While it's true that many normal people whould prefer not to _date_ an
+engineer, most normal people harbor an intense desire to _mate_ with them,
+thus producing engineerlike children who will have high-paying jobs long
+before losing their virginity.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

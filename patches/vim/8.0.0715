@@ -1,0 +1,194 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0715
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0715
+Problem:    Writing to the wrong buffer if the buffer that a channel writes to
+            was closed.
+Solution:   Do not write to a buffer that was unloaded.
+Files:      src/channel.c, src/testdir/test_channel.vim,
+            src/testdir/test_channel_write.py
+
+
+*** ../vim-8.0.0714/src/channel.c	2017-04-30 19:39:32.642857885 +0200
+--- src/channel.c	2017-07-15 16:56:16.393253261 +0200
+***************
+*** 1438,1443 ****
+--- 1438,1444 ----
+      if (!bufref_valid(&in_part->ch_bufref) || buf->b_ml.ml_mfp == NULL)
+      {
+  	/* buffer was wiped out or unloaded */
++ 	ch_log(channel, "input buffer has been wiped out");
+  	in_part->ch_bufref.br_buf = NULL;
+  	return;
+      }
+***************
+*** 2338,2344 ****
+      int		save_write_to = buffer->b_write_to_channel;
+      chanpart_T  *ch_part = &channel->ch_part[part];
+      int		save_p_ma = buffer->b_p_ma;
+!     int		empty = (buffer->b_ml.ml_flags & ML_EMPTY);
+  
+      if (!buffer->b_p_ma && !ch_part->ch_nomodifiable)
+      {
+--- 2339,2345 ----
+      int		save_write_to = buffer->b_write_to_channel;
+      chanpart_T  *ch_part = &channel->ch_part[part];
+      int		save_p_ma = buffer->b_p_ma;
+!     int		empty = (buffer->b_ml.ml_flags & ML_EMPTY) ? 1 : 0;
+  
+      if (!buffer->b_p_ma && !ch_part->ch_nomodifiable)
+      {
+***************
+*** 2359,2371 ****
+      }
+  
+      /* Append to the buffer */
+!     ch_logn(channel, "appending line %d to buffer", (int)lnum + 1);
+  
+      buffer->b_p_ma = TRUE;
+      curbuf = buffer;
+      u_sync(TRUE);
+      /* ignore undo failure, undo is not very useful here */
+!     ignored = u_save(lnum, lnum + 1 + (empty ? 1 : 0));
+  
+      if (empty)
+      {
+--- 2360,2373 ----
+      }
+  
+      /* Append to the buffer */
+!     ch_logn(channel, "appending line %d to buffer", (int)lnum + 1 - empty);
+  
+      buffer->b_p_ma = TRUE;
+      curbuf = buffer;
++     curwin->w_buffer = curbuf;
+      u_sync(TRUE);
+      /* ignore undo failure, undo is not very useful here */
+!     ignored = u_save(lnum - empty, lnum + 1);
+  
+      if (empty)
+      {
+***************
+*** 2377,2382 ****
+--- 2379,2385 ----
+  	ml_append(lnum, msg, 0, FALSE);
+      appended_lines_mark(lnum, 1L);
+      curbuf = save_curbuf;
++     curwin->w_buffer = curbuf;
+      if (ch_part->ch_nomodifiable)
+  	buffer->b_p_ma = FALSE;
+      else
+***************
+*** 2483,2491 ****
+      }
+  
+      buffer = ch_part->ch_bufref.br_buf;
+!     if (buffer != NULL && !bufref_valid(&ch_part->ch_bufref))
+      {
+! 	/* buffer was wiped out */
+  	ch_part->ch_bufref.br_buf = NULL;
+  	buffer = NULL;
+      }
+--- 2486,2496 ----
+      }
+  
+      buffer = ch_part->ch_bufref.br_buf;
+!     if (buffer != NULL && (!bufref_valid(&ch_part->ch_bufref)
+! 					       || buffer->b_ml.ml_mfp == NULL))
+      {
+! 	/* buffer was wiped out or unloaded */
+! 	ch_logs(channel, "%s buffer has been wiped out", part_names[part]);
+  	ch_part->ch_bufref.br_buf = NULL;
+  	buffer = NULL;
+      }
+*** ../vim-8.0.0714/src/testdir/test_channel.vim	2017-03-18 20:18:42.063950224 +0100
+--- src/testdir/test_channel.vim	2017-07-15 16:53:53.326335870 +0200
+***************
+*** 739,744 ****
+--- 739,776 ----
+    call Run_test_pipe_to_buffer(1, 0, 1)
+  endfunc
+  
++ func Test_close_output_buffer()
++   if !has('job')
++     return
++   endif
++   enew!
++   let test_lines = ['one', 'two']
++   call setline(1, test_lines)
++   call ch_log('Test_close_output_buffer()')
++   let options = {'out_io': 'buffer'}
++   let options['out_name'] = 'buffer-output'
++   let options['out_msg'] = 0
++   split buffer-output
++   let job = job_start(s:python . " test_channel_write.py", options)
++   call assert_equal("run", job_status(job))
++   try
++     call WaitFor('line("$") == 3')
++     call assert_equal(3, line('$'))
++     quit!
++     sleep 100m
++     " Make sure the write didn't happen to the wrong buffer.
++     call assert_equal(test_lines, getline(1, line('$')))
++     call assert_equal(-1, bufwinnr('buffer-output'))
++     sbuf buffer-output
++     call assert_notequal(-1, bufwinnr('buffer-output'))
++     sleep 100m
++     close  " no more writes
++     bwipe!
++   finally
++     call job_stop(job)
++   endtry
++ endfunc
++ 
+  func Run_test_pipe_err_to_buffer(use_name, nomod, do_msg)
+    if !has('job')
+      return
+*** ../vim-8.0.0714/src/testdir/test_channel_write.py	2017-07-15 17:01:01.203098057 +0200
+--- src/testdir/test_channel_write.py	2017-07-15 16:21:21.357095968 +0200
+***************
+*** 0 ****
+--- 1,18 ----
++ #!/usr/bin/python
++ #
++ # Program that writes a number to stdout repeatedly
++ #
++ # This requires Python 2.6 or later.
++ 
++ from __future__ import print_function
++ import sys
++ import time
++ 
++ if __name__ == "__main__":
++ 
++     done = 0
++     while done < 10:
++         done = done + 1
++         print(done)
++         sys.stdout.flush()
++         time.sleep(0.05)  # sleep 50 msec
+*** ../vim-8.0.0714/src/version.c	2017-07-15 15:21:33.176248349 +0200
+--- src/version.c	2017-07-15 16:01:19.910218741 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     715,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+160. You get in the elevator and double-click the button for the floor
+     you want.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

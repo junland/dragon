@@ -1,0 +1,54 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0185
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0185 (after 8.0.0184)
+Problem:    The system() test fails on MS-Windows.
+Solution:   Skip the test on MS-Windows.
+Files:      src/testdir/test_system.vim
+
+
+*** ../vim-8.0.0184/src/testdir/test_system.vim	2017-01-14 19:24:48.654828136 +0100
+--- src/testdir/test_system.vim	2017-01-14 19:37:00.270198712 +0100
+***************
+*** 48,53 ****
+--- 48,57 ----
+  endfunction
+  
+  function! Test_system_exmode()
++   if !has('unix')
++     return
++   endif
++ 
+    let cmd=" -es -u NONE -c 'source Xscript' +q; echo $?"
+    " Need to put this in a script, "catch" isn't found after an unknown
+    " function.
+*** ../vim-8.0.0184/src/version.c	2017-01-14 19:24:48.654828136 +0100
+--- src/version.c	2017-01-14 19:37:57.389837923 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     185,
+  /**/
+
+-- 
+       In war we're tough and able.
+       Quite indefatigable
+       Between our quests
+       We sequin vests
+       And impersonate Clark Gable
+       It's a busy life in Camelot.
+       I have to push the pram a lot.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

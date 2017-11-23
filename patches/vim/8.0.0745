@@ -1,0 +1,83 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0745
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0745
+Problem:    multi-byte characters in a terminal window are not displayed
+            properly.
+Solution:   Set the unused screen characters. (Yasuhiro Matsumoto, closes
+            #1857)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0744/src/terminal.c	2017-07-22 18:04:04.309865751 +0200
+--- src/terminal.c	2017-07-22 18:11:26.918664144 +0200
+***************
+*** 46,51 ****
+--- 46,52 ----
+   *   - Display the scrollback buffer (but with attributes).
+   *     Make the buffer not modifiable, drop attributes when making changes.
+   * - when closing window and job has not ended, make terminal hidden?
++  * - don't allow exiting Vim when a terminal is still running a job
+   * - use win_del_lines() to make scroll-up efficient.
+   * - command line completion for :terminal
+   * - add test for giving error for invalid 'termsize' value.
+***************
+*** 629,637 ****
+--- 630,644 ----
+  		{
+  #if defined(FEAT_MBYTE)
+  		    if (enc_utf8 && c >= 0x80)
++ 		    {
++ 			ScreenLines[off] = ' ';
+  			ScreenLinesUC[off] = c;
++ 		    }
+  		    else
++ 		    {
+  			ScreenLines[off] = c;
++ 			ScreenLinesUC[off] = NUL;
++ 		    }
+  #else
+  		    ScreenLines[off] = c;
+  #endif
+***************
+*** 643,649 ****
+  		++off;
+  		if (cell.width == 2)
+  		{
+! 		    ScreenLines[off] = ' ';
+  		    ScreenLinesUC[off] = NUL;
+  		    ++pos.col;
+  		    ++off;
+--- 650,656 ----
+  		++off;
+  		if (cell.width == 2)
+  		{
+! 		    ScreenLines[off] = NUL;
+  		    ScreenLinesUC[off] = NUL;
+  		    ++pos.col;
+  		    ++off;
+*** ../vim-8.0.0744/src/version.c	2017-07-22 18:04:04.313865722 +0200
+--- src/version.c	2017-07-22 18:13:41.525691150 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     745,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+205. You're constantly yelling at your spouse, family, roommate, whatever,
+     for using the phone for stupid things...like talking.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

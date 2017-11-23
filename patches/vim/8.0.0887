@@ -1,0 +1,46 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0887
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0887
+Problem:    Can create a logfile in the sandbox.
+Solution:   Disable ch_logfile() in the sandbox. (Yasuhiro Matsumoto)
+Files:      src/evalfunc.c
+
+
+*** ../vim-8.0.0886/src/evalfunc.c	2017-08-06 19:06:59.579629273 +0200
+--- src/evalfunc.c	2017-08-07 20:44:51.121610581 +0200
+***************
+*** 1930,1935 ****
+--- 1930,1938 ----
+      char_u *opt = (char_u *)"";
+      char_u buf[NUMBUFLEN];
+  
++     /* Don't open a file in restricted mode. */
++     if (check_restricted() || check_secure())
++ 	return;
+      fname = get_tv_string(&argvars[0]);
+      if (argvars[1].v_type == VAR_STRING)
+  	opt = get_tv_string_buf(&argvars[1], buf);
+*** ../vim-8.0.0886/src/version.c	2017-08-07 20:38:38.596341530 +0200
+--- src/version.c	2017-08-07 20:46:27.792901981 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     887,
+  /**/
+
+-- 
+Compilation process failed successfully.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

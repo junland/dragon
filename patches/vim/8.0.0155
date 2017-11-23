@@ -1,0 +1,57 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0155
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0155
+Problem:    When sorting zero elements a NULL pointer is passed to qsort(),
+            which ubsan warns for.
+Solution:   Don't call qsort() if there are no elements. (Dominique Pelle)
+Files:      src/syntax.c
+
+
+*** ../vim-8.0.0154/src/syntax.c	2017-01-02 21:37:38.033792277 +0100
+--- src/syntax.c	2017-01-08 17:45:30.101248846 +0100
+***************
+*** 6704,6711 ****
+  	}
+      }
+  
+!     /* sort on total time */
+!     qsort(ga.ga_data, (size_t)ga.ga_len, sizeof(time_entry_T),
+  							 syn_compare_syntime);
+  
+      MSG_PUTS_TITLE(_("  TOTAL      COUNT  MATCH   SLOWEST     AVERAGE   NAME               PATTERN"));
+--- 6704,6713 ----
+  	}
+      }
+  
+!     /* Sort on total time. Skip if there are no items to avoid passing NULL
+!      * pointer to qsort(). */
+!     if (ga.ga_len > 1)
+! 	qsort(ga.ga_data, (size_t)ga.ga_len, sizeof(time_entry_T),
+  							 syn_compare_syntime);
+  
+      MSG_PUTS_TITLE(_("  TOTAL      COUNT  MATCH   SLOWEST     AVERAGE   NAME               PATTERN"));
+*** ../vim-8.0.0154/src/version.c	2017-01-08 14:14:34.732591613 +0100
+--- src/version.c	2017-01-08 17:36:21.825412583 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     155,
+  /**/
+
+-- 
+If evolution theories are correct, humans will soon grow a third
+hand for operating the mouse.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

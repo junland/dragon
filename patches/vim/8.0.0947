@@ -1,0 +1,54 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0947
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0947
+Problem:    When in Insert mode and using CTRL-O CTRL-W CTRL-W to move to a
+            termainal window, get in a weird Insert mode.
+Solution:   Don't go to Insert mode in a terminal window. (closes #1977)
+Files:      src/normal.c
+
+*** ../vim-8.0.0946/src/normal.c	2017-08-06 14:57:44.943764519 +0200
+--- src/normal.c	2017-08-16 21:00:55.116615894 +0200
+***************
+*** 1308,1313 ****
+--- 1308,1319 ----
+      }
+  #endif
+  
++ #ifdef FEAT_TERMINAL
++     /* don't go to Insert mode from Terminal-Job mode */
++     if (term_use_loop())
++ 	restart_edit = 0;
++ #endif
++ 
+      /*
+       * May restart edit(), if we got here with CTRL-O in Insert mode (but not
+       * if still inside a mapping that started in Visual mode).
+*** ../vim-8.0.0946/src/version.c	2017-08-14 23:40:41.544323211 +0200
+--- src/version.c	2017-08-16 21:06:37.986469017 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     947,
+  /**/
+
+
+-- 
+ARTHUR: It is I, Arthur, son of Uther Pendragon, from the castle of Camelot.
+        King of all Britons, defeator of the Saxons, sovereign of all England!
+   [Pause]
+SOLDIER: Get away!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,73 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0154
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0154 (after 8.0.0151)
+Problem:    system() test fails on OS/X.
+Solution:   Deal with leading spaces.
+Files:      src/testdir/test_system.vim
+
+
+*** ../vim-8.0.0153/src/testdir/test_system.vim	2017-01-08 13:55:03.701304016 +0100
+--- src/testdir/test_system.vim	2017-01-08 14:13:31.681061408 +0100
+***************
+*** 19,31 ****
+    call assert_equal('123',   system('cat', '123'))
+    call assert_equal(['123'], systemlist('cat', '123'))
+    call assert_equal(["as\<NL>df"], systemlist('cat', ["as\<NL>df"]))
+    new Xdummy
+    call setline(1, ['asdf', "pw\<NL>er", 'xxxx'])
+!   call assert_equal("3\n",  system('wc -l', bufnr('%')))
+  
+    let out = systemlist('wc -l', bufnr('%'))
+    " On Windows we may get a trailing CR.
+    if out != ["3\r"]
+      call assert_equal(['3'],  out)
+    endif
+  
+--- 19,39 ----
+    call assert_equal('123',   system('cat', '123'))
+    call assert_equal(['123'], systemlist('cat', '123'))
+    call assert_equal(["as\<NL>df"], systemlist('cat', ["as\<NL>df"]))
++ 
+    new Xdummy
+    call setline(1, ['asdf', "pw\<NL>er", 'xxxx'])
+!   let out = system('wc -l', bufnr('%'))
+!   " On OS/X we get leading spaces
+!   let out = substitute(out, '^ *', '', '')
+!   call assert_equal("3\n", out)
+  
+    let out = systemlist('wc -l', bufnr('%'))
+    " On Windows we may get a trailing CR.
+    if out != ["3\r"]
++     " On OS/X we get leading spaces
++     if type(out) == v:t_list
++       let out[0] = substitute(out[0], '^ *', '', '')
++     endif
+      call assert_equal(['3'],  out)
+    endif
+  
+*** ../vim-8.0.0153/src/version.c	2017-01-08 13:55:03.701304016 +0100
+--- src/version.c	2017-01-08 14:12:18.345607926 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     154,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+219. Your spouse has his or her lawyer deliver the divorce papers...
+     via e-mail.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

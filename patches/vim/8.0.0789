@@ -1,0 +1,69 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0789
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0789
+Problem:    When splitting a terminal window where the terminal follows the
+            size of the window doesn't work.
+Solution:   Use the size of the smallest window. (Yasuhiro Matsumoto, closes
+            #1885)
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0788/src/terminal.c	2017-07-28 13:51:24.845526358 +0200
+--- src/terminal.c	2017-07-28 14:14:25.447847132 +0200
+***************
+*** 927,934 ****
+      if ((!term->tl_rows_fixed && term->tl_rows != wp->w_height)
+  	    || (!term->tl_cols_fixed && term->tl_cols != wp->w_width))
+      {
+! 	int rows = term->tl_rows_fixed ? term->tl_rows : wp->w_height;
+! 	int cols = term->tl_cols_fixed ? term->tl_cols : wp->w_width;
+  
+  	vterm_set_size(vterm, rows, cols);
+  	ch_logn(term->tl_job->jv_channel, "Resizing terminal to %d lines",
+--- 927,948 ----
+      if ((!term->tl_rows_fixed && term->tl_rows != wp->w_height)
+  	    || (!term->tl_cols_fixed && term->tl_cols != wp->w_width))
+      {
+! 	int	rows = term->tl_rows_fixed ? term->tl_rows : wp->w_height;
+! 	int	cols = term->tl_cols_fixed ? term->tl_cols : wp->w_width;
+! 	win_T	*twp;
+! 
+! 	FOR_ALL_WINDOWS(twp)
+! 	{
+! 	    /* When more than one window shows the same terminal, use the
+! 	     * smallest size. */
+! 	    if (twp->w_buffer == term->tl_buffer)
+! 	    {
+! 		if (!term->tl_rows_fixed && rows > twp->w_height)
+! 		    rows = twp->w_height;
+! 		if (!term->tl_cols_fixed && cols > twp->w_width)
+! 		    cols = twp->w_width;
+! 	    }
+! 	}
+  
+  	vterm_set_size(vterm, rows, cols);
+  	ch_logn(term->tl_job->jv_channel, "Resizing terminal to %d lines",
+*** ../vim-8.0.0788/src/version.c	2017-07-28 13:51:24.845526358 +0200
+--- src/version.c	2017-07-28 14:15:48.743259589 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     789,
+  /**/
+
+-- 
+This is an airconditioned room, do not open Windows.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

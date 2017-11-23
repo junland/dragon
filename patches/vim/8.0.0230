@@ -1,0 +1,56 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0230
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0230 (after 8.0.0210)
+Problem:    When using bracketed paste line breaks are not respected.
+Solution:   Turn CR characters into a line break if the text is being
+            inserted. (closes #1404)
+Files:      src/edit.c
+
+
+*** ../vim-8.0.0229/src/edit.c	2017-01-21 20:04:17.562757816 +0100
+--- src/edit.c	2017-01-24 17:16:08.243680946 +0100
+***************
+*** 9498,9504 ****
+  		case PASTE_INSERT:
+  		    if (stop_arrow() == OK)
+  		    {
+! 			ins_char_bytes(buf, idx);
+  			AppendToRedobuffLit(buf, idx);
+  		    }
+  		    break;
+--- 9498,9508 ----
+  		case PASTE_INSERT:
+  		    if (stop_arrow() == OK)
+  		    {
+! 			c = buf[0];
+! 			if (idx == 1 && (c == CAR || c == K_KENTER || c == NL))
+! 			    ins_eol(c);
+! 			else
+! 			    ins_char_bytes(buf, idx);
+  			AppendToRedobuffLit(buf, idx);
+  		    }
+  		    break;
+*** ../vim-8.0.0229/src/version.c	2017-01-24 17:48:32.466675400 +0100
+--- src/version.c	2017-01-24 17:49:59.214096136 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     230,
+  /**/
+
+-- 
+Shit makes the flowers grow and that's beautiful
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

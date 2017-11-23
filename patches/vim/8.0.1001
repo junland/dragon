@@ -1,0 +1,55 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1001
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1001
+Problem:    Setting 'encoding' makes 'printheader' invalid.
+Solution:   Do not translate the default value of 'printheader'. (Yasuhiro
+            Matsumoto, closes #2026)
+Files:      src/option.c
+
+
+*** ../vim-8.0.1000/src/option.c	2017-08-20 16:11:45.223461107 +0200
+--- src/option.c	2017-08-26 22:28:38.395123333 +0200
+***************
+*** 2196,2202 ****
+      {"printheader", "pheader",  P_STRING|P_VI_DEF|P_GETTEXT,
+  #ifdef FEAT_PRINTER
+  			    (char_u *)&p_header, PV_NONE,
+! 			    {(char_u *)N_("%<%f%h%m%=Page %N"), (char_u *)0L}
+  #else
+  			    (char_u *)NULL, PV_NONE,
+  			    {(char_u *)NULL, (char_u *)0L}
+--- 2196,2204 ----
+      {"printheader", "pheader",  P_STRING|P_VI_DEF|P_GETTEXT,
+  #ifdef FEAT_PRINTER
+  			    (char_u *)&p_header, PV_NONE,
+! 			    /* untranslated to avoid problems when 'encoding'
+! 			     * is changed */
+! 			    {(char_u *)"%<%f%h%m%=Page %N", (char_u *)0L}
+  #else
+  			    (char_u *)NULL, PV_NONE,
+  			    {(char_u *)NULL, (char_u *)0L}
+*** ../vim-8.0.1000/src/version.c	2017-08-26 22:02:45.873432847 +0200
+--- src/version.c	2017-08-26 22:29:42.854697001 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1001,
+  /**/
+
+-- 
+How To Keep A Healthy Level Of Insanity:
+2. Page yourself over the intercom. Don't disguise your voice.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

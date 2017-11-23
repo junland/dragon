@@ -1,0 +1,88 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0568
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0568
+Problem:    "1gd" may hang.
+Solution:   Don't get stuck in one position. (Christian Brabandt, closes #1643)
+Files:      src/testdir/test_goto.vim, src/normal.c
+
+
+*** ../vim-8.0.0567/src/testdir/test_goto.vim	2016-12-03 15:13:16.415147422 +0100
+--- src/testdir/test_goto.vim	2017-04-20 18:35:04.512173611 +0200
+***************
+*** 288,290 ****
+--- 288,311 ----
+    set nocursorline
+  endfunc
+  
++ func Test_gd_local_block()
++   let lines = [
++ 	\ '  int main()',
++ 	\ '{',
++ 	\ '  char *a = "NOT NULL";',
++ 	\ '  if(a)',
++ 	\ '  {',
++ 	\ '    char *b = a;',
++ 	\ '    printf("%s\n", b);',
++ 	\ '  }',
++ 	\ '  else',
++ 	\ '  {',
++ 	\ '    char *b = "NULL";',
++ 	\ '    return b;',
++ 	\ '  }',
++ 	\ '',
++ 	\ '  return 0;',
++ 	\ '}',
++   \ ]
++   call XTest_goto_decl('1gd', lines, 11, 11)
++ endfunc
+*** ../vim-8.0.0567/src/normal.c	2017-03-16 17:23:26.827815840 +0100
+--- src/normal.c	2017-04-20 18:47:09.035633462 +0200
+***************
+*** 4371,4377 ****
+--- 4371,4382 ----
+  	    if ((pos = findmatchlimit(NULL, '}', FM_FORWARD,
+  		     (int)(old_pos.lnum - curwin->w_cursor.lnum + 1))) != NULL
+  		    && pos->lnum < old_pos.lnum)
++ 	    {
++ 		/* There can't be a useful match before the end of this block.
++ 		 * Skip to the end. */
++ 		curwin->w_cursor = *pos;
+  		continue;
++ 	    }
+  	}
+  
+  	if (t == FAIL)
+***************
+*** 8311,8316 ****
+--- 8316,8322 ----
+  	break;
+  #endif
+  
++     /* "g<": show scrollback text */
+      case '<':
+  	show_sb_text();
+  	break;
+*** ../vim-8.0.0567/src/version.c	2017-04-18 18:51:30.063844106 +0200
+--- src/version.c	2017-04-20 18:36:30.811632413 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     568,
+  /**/
+
+-- 
+Individualists unite!
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

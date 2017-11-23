@@ -1,0 +1,96 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0829
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0829
+Problem:    A job running in a terminal window cannot easily communicate with
+            the Vim it is running in.
+Solution:   Pass v:servername in an environment variable. (closes #1908)
+Files:      src/os_unix.c
+
+
+*** ../vim-8.0.0828/src/os_unix.c	2017-08-01 15:08:03.654720026 +0200
+--- src/os_unix.c	2017-08-01 17:10:06.901901967 +0200
+***************
+*** 4094,4099 ****
+--- 4094,4102 ----
+  #endif
+  
+  #if !defined(USE_SYSTEM) || defined(FEAT_JOB_CHANNEL)
++ /*
++  * Set the environment for a child process.
++  */
+      static void
+  set_child_environment(long rows, long columns, char *term)
+  {
+***************
+*** 4105,4110 ****
+--- 4108,4114 ----
+      static char	envbuf_Lines[20];
+      static char	envbuf_Columns[20];
+      static char	envbuf_Colors[20];
++     static char	envbuf_Servername[60];
+  # endif
+      long	colors =
+  #  ifdef FEAT_GUI
+***************
+*** 4112,4118 ****
+  #  endif
+  	    t_colors;
+  
+-     /* Simulate to have a dumb terminal (for now) */
+  # ifdef HAVE_SETENV
+      setenv("TERM", term, 1);
+      sprintf((char *)envbuf, "%ld", rows);
+--- 4116,4121 ----
+***************
+*** 4123,4132 ****
+--- 4126,4137 ----
+      setenv("COLUMNS", (char *)envbuf, 1);
+      sprintf((char *)envbuf, "%ld", colors);
+      setenv("COLORS", (char *)envbuf, 1);
++     setenv("VIM_SERVERNAME", serverName == NULL ? "" : (char *)serverName, 1);
+  # else
+      /*
+       * Putenv does not copy the string, it has to remain valid.
+       * Use a static array to avoid losing allocated memory.
++      * This won't work well when running multiple children...
+       */
+      vim_snprintf(envbuf_Term, sizeof(envbuf_Term), "TERM=%s", term);
+      putenv(envbuf_Term);
+***************
+*** 4139,4144 ****
+--- 4144,4152 ----
+      putenv(envbuf_Columns);
+      vim_snprintf(envbuf_Colors, sizeof(envbuf_Colors), "COLORS=%ld", colors);
+      putenv(envbuf_Colors);
++     vim_snprintf(envbuf_Servername, sizeof(envbuf_Servername),
++ 	    "VIM_SERVERNAME=%s", serverName == NULL ? "" : (char *)serverName);
++     putenv(envbuf_Servername);
+  # endif
+  }
+  
+*** ../vim-8.0.0828/src/version.c	2017-08-01 15:14:20.691859562 +0200
+--- src/version.c	2017-08-01 16:32:59.897770738 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     829,
+  /**/
+
+-- 
+A real patriot is the fellow who gets a parking ticket and rejoices
+that the system works.
+
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,187 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0396
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0396
+Problem:    'balloonexpr' only works synchronously.
+Solution:   Add balloon_show(). (Jusufadis Bakamovic, closes #1449)
+Files:      runtime/doc/eval.txt, src/evalfunc.c, src/os_unix.c,
+            src/os_win32.c
+
+
+*** ../vim-8.0.0395/runtime/doc/eval.txt	2017-03-01 15:07:01.345621994 +0100
+--- runtime/doc/eval.txt	2017-03-01 19:42:10.566755873 +0100
+***************
+*** 1980,1998 ****
+  arglistid([{winnr} [, {tabnr}]]) Number	argument list id
+  argv({nr})			String	{nr} entry of the argument list
+  argv()				List	the argument list
+! assert_equal({exp}, {act} [, {msg}])     none  assert {exp} is equal to {act}
+! assert_exception({error} [, {msg}])      none  assert {error} is in v:exception
+! assert_fails({cmd} [, {error}])          none  assert {cmd} fails
+! assert_false({actual} [, {msg}])         none  assert {actual} is false
+  assert_inrange({lower}, {upper}, {actual} [, {msg}])
+  				none	assert {actual} is inside the range
+! assert_match({pat}, {text} [, {msg}])    none  assert {pat} matches {text}
+  assert_notequal({exp}, {act} [, {msg}])  none  assert {exp} is not equal {act}
+  assert_notmatch({pat}, {text} [, {msg}]) none  assert {pat} not matches {text}
+! assert_true({actual} [, {msg}])          none  assert {actual} is true
+  asin({expr})			Float	arc sine of {expr}
+  atan({expr})			Float	arc tangent of {expr}
+  atan2({expr1}, {expr2})		Float	arc tangent of {expr1} / {expr2}
+  browse({save}, {title}, {initdir}, {default})
+  				String	put up a file requester
+  browsedir({title}, {initdir})	String	put up a directory requester
+--- 1981,2000 ----
+  arglistid([{winnr} [, {tabnr}]]) Number	argument list id
+  argv({nr})			String	{nr} entry of the argument list
+  argv()				List	the argument list
+! assert_equal({exp}, {act} [, {msg}])  none  assert {exp} is equal to {act}
+! assert_exception({error} [, {msg}])   none  assert {error} is in v:exception
+! assert_fails({cmd} [, {error}])	      none  assert {cmd} fails
+! assert_false({actual} [, {msg}])      none  assert {actual} is false
+  assert_inrange({lower}, {upper}, {actual} [, {msg}])
+  				none	assert {actual} is inside the range
+! assert_match({pat}, {text} [, {msg}])	 none  assert {pat} matches {text}
+  assert_notequal({exp}, {act} [, {msg}])  none  assert {exp} is not equal {act}
+  assert_notmatch({pat}, {text} [, {msg}]) none  assert {pat} not matches {text}
+! assert_true({actual} [, {msg}])		 none  assert {actual} is true
+  asin({expr})			Float	arc sine of {expr}
+  atan({expr})			Float	arc tangent of {expr}
+  atan2({expr1}, {expr2})		Float	arc tangent of {expr1} / {expr2}
++ balloon_show({msg})		none	show {msg} inside the balloon
+  browse({save}, {title}, {initdir}, {default})
+  				String	put up a file requester
+  browsedir({title}, {initdir})	String	put up a directory requester
+***************
+*** 2618,2623 ****
+--- 2620,2644 ----
+  <			2.356194
+  		{only available when compiled with the |+float| feature}
+  
++ balloon_show({msg})                                     *balloon_show()*
++                 Show {msg} inside the balloon.
++                 Example: >
++ 			func GetBalloonContent()
++ 			   " initiate getting the content
++ 			   return ''
++ 			endfunc
++ 			set balloonexpr=GetBalloonContent()
++ 
++ 			func BalloonCallback(result)
++                           call balloon_show(a:result)
++ 			endfunc
++ <
++ 		The intended use is that fetching the content of the balloon
++ 		is initiated from 'balloonexpr'.  It will invoke an
++ 		asynchronous method, in which a callback invokes
++ 		balloon_show().  The 'balloonexpr' itself can return an
++ 		empty string or a placeholder.
++                 {only available when compiled with the +beval feature}
+  
+  							*browse()*
+  browse({save}, {title}, {initdir}, {default})
+*** ../vim-8.0.0395/src/evalfunc.c	2017-03-01 15:07:01.341622020 +0100
+--- src/evalfunc.c	2017-03-01 19:44:58.649444654 +0100
+***************
+*** 58,63 ****
+--- 58,66 ----
+  static void f_atan(typval_T *argvars, typval_T *rettv);
+  static void f_atan2(typval_T *argvars, typval_T *rettv);
+  #endif
++ #ifdef FEAT_BEVAL
++ static void f_balloon_show(typval_T *argvars, typval_T *rettv);
++ #endif
+  static void f_browse(typval_T *argvars, typval_T *rettv);
+  static void f_browsedir(typval_T *argvars, typval_T *rettv);
+  static void f_bufexists(typval_T *argvars, typval_T *rettv);
+***************
+*** 484,489 ****
+--- 487,495 ----
+      {"atan",		1, 1, f_atan},
+      {"atan2",		2, 2, f_atan2},
+  #endif
++ #ifdef FEAT_BEVAL
++     {"balloon_show",	1, 1, f_balloon_show},
++ #endif
+      {"browse",		4, 4, f_browse},
+      {"browsedir",	2, 2, f_browsedir},
+      {"bufexists",	1, 1, f_bufexists},
+***************
+*** 1362,1367 ****
+--- 1368,1384 ----
+  }
+  #endif
+  
++ /*
++  * "balloon_show()" function
++  */
++ #ifdef FEAT_BEVAL
++     static void
++ f_balloon_show(typval_T *argvars, typval_T *rettv UNUSED)
++ {
++     gui_mch_post_balloon(balloonEval, get_tv_string_chk(&argvars[0]));
++ }
++ #endif
++ 
+  /*
+   * "browse(save, title, initdir, default)" function
+   */
+*** ../vim-8.0.0395/src/os_unix.c	2017-01-17 16:45:00.170121773 +0100
+--- src/os_unix.c	2017-03-01 20:13:17.772268535 +0100
+***************
+*** 467,472 ****
+--- 467,478 ----
+  	if ((wait_time < 0 || wait_time > 100L) && channel_any_readahead())
+  	    wait_time = 10L;
+  #endif
++ #ifdef FEAT_BEVAL
++ 	if (p_beval && wait_time > 100L)
++ 	    /* The 'balloonexpr' may indirectly invoke a callback while waiting
++ 	     * for a character, need to check often. */
++ 	    wait_time = 100L;
++ #endif
+  
+  	/*
+  	 * We want to be interrupted by the winch signal
+*** ../vim-8.0.0395/src/os_win32.c	2017-02-05 15:10:47.747484014 +0100
+--- src/os_win32.c	2017-03-01 20:13:44.668060956 +0100
+***************
+*** 1467,1472 ****
+--- 1467,1478 ----
+  		    dwWaitTime = 10;
+  	    }
+  #endif
++ #ifdef FEAT_BEVAL
++ 	    if (p_beval && dwWaitTime > 100)
++ 		/* The 'balloonexpr' may indirectly invoke a callback while
++ 		 * waiting for a character, need to check often. */
++ 		dwWaitTime = 100;
++ #endif
+  #ifdef FEAT_MZSCHEME
+  	    if (mzthreads_allowed() && p_mzq > 0
+  				    && (msec < 0 || (long)dwWaitTime > p_mzq))
+*** ../vim-8.0.0395/src/version.c	2017-03-01 18:30:30.578978886 +0100
+--- src/version.c	2017-03-01 20:25:00.366724336 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     396,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+36. You miss more than five meals a week downloading the latest games from
+    Apogee.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

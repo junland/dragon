@@ -1,0 +1,265 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0177
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0177
+Problem:    When opening a buffer on a directory and inside a try/catch then
+            the BufEnter event is not triggered.
+Solution:   Return NOTDONE from readfile() for a directory and deal with the
+            three possible return values. (Justin M. Keyes, closes #1375,
+            closes #1353)
+Files:      src/buffer.c, src/ex_cmds.c, src/ex_docmd.c, src/fileio.c,
+            src/memline.c, src/testdir/test_autocmd.vim
+
+
+*** ../vim-8.0.0176/src/buffer.c	2016-12-01 17:48:24.910803059 +0100
+--- src/buffer.c	2017-01-13 21:51:38.871157464 +0100
+***************
+*** 113,128 ****
+  	 * it can be changed there. */
+  	if (!readonlymode && !bufempty())
+  	    changed();
+! 	else if (retval != FAIL)
+  	    unchanged(curbuf, FALSE);
+  
+  #ifdef FEAT_AUTOCMD
+  # ifdef FEAT_EVAL
+! 	apply_autocmds_retval(EVENT_STDINREADPOST, NULL, NULL, FALSE,
+  							curbuf, &retval);
+  # else
+! 	apply_autocmds(EVENT_STDINREADPOST, NULL, NULL, FALSE, curbuf);
+  # endif
+  #endif
+      }
+      return retval;
+--- 113,131 ----
+  	 * it can be changed there. */
+  	if (!readonlymode && !bufempty())
+  	    changed();
+! 	else if (retval == OK)
+  	    unchanged(curbuf, FALSE);
+  
+  #ifdef FEAT_AUTOCMD
++ 	if (retval == OK)
++ 	{
+  # ifdef FEAT_EVAL
+! 	    apply_autocmds_retval(EVENT_STDINREADPOST, NULL, NULL, FALSE,
+  							curbuf, &retval);
+  # else
+! 	    apply_autocmds(EVENT_STDINREADPOST, NULL, NULL, FALSE, curbuf);
+  # endif
++ 	}
+  #endif
+      }
+      return retval;
+***************
+*** 294,300 ****
+  #endif
+         )
+  	changed();
+!     else if (retval != FAIL && !read_stdin && !read_fifo)
+  	unchanged(curbuf, FALSE);
+      save_file_ff(curbuf);		/* keep this fileformat */
+  
+--- 297,303 ----
+  #endif
+         )
+  	changed();
+!     else if (retval == OK && !read_stdin && !read_fifo)
+  	unchanged(curbuf, FALSE);
+      save_file_ff(curbuf);		/* keep this fileformat */
+  
+***************
+*** 328,334 ****
+  # endif
+  #endif
+  
+!     if (retval != FAIL)
+      {
+  #ifdef FEAT_AUTOCMD
+  	/*
+--- 331,337 ----
+  # endif
+  #endif
+  
+!     if (retval == OK)
+      {
+  #ifdef FEAT_AUTOCMD
+  	/*
+*** ../vim-8.0.0176/src/ex_cmds.c	2016-12-14 21:41:56.997414047 +0100
+--- src/ex_cmds.c	2017-01-13 21:51:38.875157432 +0100
+***************
+*** 1313,1319 ****
+  	if (otmp != NULL)
+  	{
+  	    if (readfile(otmp, NULL, line2, (linenr_T)0, (linenr_T)MAXLNUM,
+! 						    eap, READ_FILTER) == FAIL)
+  	    {
+  #if defined(FEAT_AUTOCMD) && defined(FEAT_EVAL)
+  		if (!aborting())
+--- 1313,1319 ----
+  	if (otmp != NULL)
+  	{
+  	    if (readfile(otmp, NULL, line2, (linenr_T)0, (linenr_T)MAXLNUM,
+! 						    eap, READ_FILTER) != OK)
+  	    {
+  #if defined(FEAT_AUTOCMD) && defined(FEAT_EVAL)
+  		if (!aborting())
+*** ../vim-8.0.0176/src/ex_docmd.c	2017-01-07 20:39:49.970046560 +0100
+--- src/ex_docmd.c	2017-01-13 21:51:38.879157400 +0100
+***************
+*** 8857,8863 ****
+  			  eap->line2, (linenr_T)0, (linenr_T)MAXLNUM, eap, 0);
+  
+  	}
+! 	if (i == FAIL)
+  	{
+  #if defined(FEAT_AUTOCMD) && defined(FEAT_EVAL)
+  	    if (!aborting())
+--- 8857,8863 ----
+  			  eap->line2, (linenr_T)0, (linenr_T)MAXLNUM, eap, 0);
+  
+  	}
+! 	if (i != OK)
+  	{
+  #if defined(FEAT_AUTOCMD) && defined(FEAT_EVAL)
+  	    if (!aborting())
+*** ../vim-8.0.0176/src/fileio.c	2016-09-25 20:51:25.399154303 +0200
+--- src/fileio.c	2017-01-13 21:59:36.599352568 +0100
+***************
+*** 210,216 ****
+   * READ_KEEP_UNDO  don't clear undo info or read it from a file
+   * READ_FIFO	read from fifo/socket instead of a file
+   *
+!  * return FAIL for failure, OK otherwise
+   */
+      int
+  readfile(
+--- 210,216 ----
+   * READ_KEEP_UNDO  don't clear undo info or read it from a file
+   * READ_FIFO	read from fifo/socket instead of a file
+   *
+!  * return FAIL for failure, NOTDONE for directory (failure), or OK
+   */
+      int
+  readfile(
+***************
+*** 450,462 ****
+  # endif
+  						)
+  	{
+  	    if (S_ISDIR(perm))
+  		filemess(curbuf, fname, (char_u *)_("is a directory"), 0);
+  	    else
+  		filemess(curbuf, fname, (char_u *)_("is not a file"), 0);
+  	    msg_end();
+  	    msg_scroll = msg_save;
+! 	    return FAIL;
+  	}
+  #endif
+  #if defined(MSWIN)
+--- 450,467 ----
+  # endif
+  						)
+  	{
++ 	    int retval = FAIL;
++ 
+  	    if (S_ISDIR(perm))
++ 	    {
+  		filemess(curbuf, fname, (char_u *)_("is a directory"), 0);
++ 		retval = NOTDONE;
++ 	    }
+  	    else
+  		filemess(curbuf, fname, (char_u *)_("is not a file"), 0);
+  	    msg_end();
+  	    msg_scroll = msg_save;
+! 	    return retval;
+  	}
+  #endif
+  #if defined(MSWIN)
+***************
+*** 7136,7142 ****
+  #endif
+  	    if (readfile(buf->b_ffname, buf->b_fname, (linenr_T)0,
+  			(linenr_T)0,
+! 			(linenr_T)MAXLNUM, &ea, flags) == FAIL)
+  	    {
+  #if defined(FEAT_AUTOCMD) && defined(FEAT_EVAL)
+  		if (!aborting())
+--- 7141,7147 ----
+  #endif
+  	    if (readfile(buf->b_ffname, buf->b_fname, (linenr_T)0,
+  			(linenr_T)0,
+! 			(linenr_T)MAXLNUM, &ea, flags) != OK)
+  	    {
+  #if defined(FEAT_AUTOCMD) && defined(FEAT_EVAL)
+  		if (!aborting())
+*** ../vim-8.0.0176/src/memline.c	2016-11-10 20:01:41.193582919 +0100
+--- src/memline.c	2017-01-13 21:51:38.879157400 +0100
+***************
+*** 1519,1525 ****
+  			    line_count = pp->pb_pointer[idx].pe_line_count;
+  			    if (readfile(curbuf->b_ffname, NULL, lnum,
+  					pp->pb_pointer[idx].pe_old_lnum - 1,
+! 					line_count, NULL, 0) == FAIL)
+  				cannot_open = TRUE;
+  			    else
+  				lnum += line_count;
+--- 1519,1525 ----
+  			    line_count = pp->pb_pointer[idx].pe_line_count;
+  			    if (readfile(curbuf->b_ffname, NULL, lnum,
+  					pp->pb_pointer[idx].pe_old_lnum - 1,
+! 					line_count, NULL, 0) != OK)
+  				cannot_open = TRUE;
+  			    else
+  				lnum += line_count;
+*** ../vim-8.0.0176/src/testdir/test_autocmd.vim	2016-09-29 20:54:42.403110749 +0200
+--- src/testdir/test_autocmd.vim	2017-01-13 21:49:20.140267347 +0100
+***************
+*** 322,324 ****
+--- 322,343 ----
+    call delete('Xtestje2')
+    call delete('Xtestje3')
+  endfunc
++ 
++ func Test_BufEnter()
++   au! BufEnter
++   au Bufenter * let val = val . '+'
++   let g:val = ''
++   split NewFile
++   call assert_equal('+', g:val)
++   bwipe!
++   call assert_equal('++', g:val)
++ 
++   " Also get BufEnter when editing a directory
++   call mkdir('Xdir')
++   split Xdir
++   call assert_equal('+++', g:val)
++   bwipe!
++ 
++   call delete('Xdir', 'd')
++   au! BufEnter
++ endfunc
+*** ../vim-8.0.0176/src/version.c	2017-01-12 22:20:49.465383753 +0100
+--- src/version.c	2017-01-13 21:43:33.859050957 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     177,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+267. You get an extra phone line so you can get phone calls.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

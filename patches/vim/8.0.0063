@@ -1,0 +1,51 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0063
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0063
+Problem:    Compiler warning for comparing with unsigned. (Zoltan Arpadffy)
+Solution:   Change <= to ==.
+Files:      src/undo.c
+
+
+*** ../vim-8.0.0062/src/undo.c	2016-08-29 22:42:20.000000000 +0200
+--- src/undo.c	2016-11-05 14:56:19.176297387 +0100
+***************
+*** 1076,1082 ****
+  	    if (bi->bi_used >= bi->bi_avail)
+  	    {
+  		n = fread(bi->bi_buffer, 1, (size_t)CRYPT_BUF_SIZE, bi->bi_fp);
+! 		if (n <= 0)
+  		{
+  		    /* Error may be checked for only later.  Fill with zeros,
+  		     * so that the reader won't use garbage. */
+--- 1076,1082 ----
+  	    if (bi->bi_used >= bi->bi_avail)
+  	    {
+  		n = fread(bi->bi_buffer, 1, (size_t)CRYPT_BUF_SIZE, bi->bi_fp);
+! 		if (n == 0)
+  		{
+  		    /* Error may be checked for only later.  Fill with zeros,
+  		     * so that the reader won't use garbage. */
+*** ../vim-8.0.0062/src/version.c	2016-11-04 22:17:10.654086435 +0100
+--- src/version.c	2016-11-05 14:58:22.639291038 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     63,
+  /**/
+
+-- 
+If the Universe is constantly expanding, why can't I ever find a parking space?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

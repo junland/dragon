@@ -1,0 +1,95 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1115
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1115
+Problem:    Crash when using foldtextresult() recursively.
+Solution:   Avoid recursive calls. (Yasuhiro Matsumoto, closes #2098)
+Files:      src/evalfunc.c, src/testdir/test_fold.vim
+
+
+*** ../vim-8.0.1114/src/evalfunc.c	2017-09-14 20:37:49.963213752 +0200
+--- src/evalfunc.c	2017-09-16 17:12:49.473789813 +0200
+***************
+*** 3642,3652 ****
+--- 3642,3657 ----
+      char_u	buf[FOLD_TEXT_LEN];
+      foldinfo_T  foldinfo;
+      int		fold_count;
++     static int	entered = FALSE;
+  #endif
+  
+      rettv->v_type = VAR_STRING;
+      rettv->vval.v_string = NULL;
+  #ifdef FEAT_FOLDING
++     if (entered)
++ 	return; /* reject recursive use */
++     entered = TRUE;
++ 
+      lnum = get_tv_lnum(argvars);
+      /* treat illegal types and illegal string values for {lnum} the same */
+      if (lnum < 0)
+***************
+*** 3660,3665 ****
+--- 3665,3672 ----
+  	    text = vim_strsave(text);
+  	rettv->vval.v_string = text;
+      }
++ 
++     entered = FALSE;
+  #endif
+  }
+  
+*** ../vim-8.0.1114/src/testdir/test_fold.vim	2017-04-22 22:40:07.256963436 +0200
+--- src/testdir/test_fold.vim	2017-09-16 17:12:35.129875079 +0200
+***************
+*** 278,283 ****
+--- 278,284 ----
+    call assert_equal(0, foldlevel(6))
+    call assert_equal(9, foldclosedend(7))
+    call assert_equal([-1, 2, 2, 2, 2, -1, 7, 7, 7, -1], map(range(1, line('$')), 'foldclosed(v:val)'))
++ 
+    %d
+    " Ensure moving around the edges still works.
+    call setline(1, PrepIndent("a") + repeat(["a"], 3) + ["\ta"])
+***************
+*** 446,448 ****
+--- 447,462 ----
+    set foldmethod&
+    bw!
+  endfunc
++ 
++ func Test_foldtext_recursive()
++   new
++   call setline(1, ['{{{', 'some text', '}}}'])
++   setlocal foldenable foldmethod=marker foldtext=foldtextresult(v\:foldstart)
++   " This was crashing because of endless recursion.
++   2foldclose
++   redraw
++   call assert_equal(1, foldlevel(2))
++   call assert_equal(1, foldclosed(2))
++   call assert_equal(3, foldclosedend(2))
++   bwipe!
++ endfunc
+*** ../vim-8.0.1114/src/version.c	2017-09-16 15:50:25.591054066 +0200
+--- src/version.c	2017-09-16 17:13:07.757681118 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1115,
+  /**/
+
+-- 
+Never eat yellow snow.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,123 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0530
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0530
+Problem:    Buffer overflow when 'columns' is very big. (Nikolai Pavlov)
+Solution:   Correctly compute where to truncate.  Fix translation.
+            (closes #1600)
+Files:      src/edit.c, src/testdir/test_edit.vim
+
+
+*** ../vim-8.0.0529/src/edit.c	2017-03-16 17:23:26.815815927 +0100
+--- src/edit.c	2017-03-31 22:12:34.266631500 +0200
+***************
+*** 4756,4762 ****
+      int	    in_compl_func)	/* called from complete_check() */
+  {
+      int	    num_matches = -1;
+-     int	    i;
+      int	    todo = count;
+      compl_T *found_compl = NULL;
+      int	    found_end = FALSE;
+--- 4756,4761 ----
+***************
+*** 4948,4962 ****
+       */
+      if (compl_shown_match->cp_fname != NULL)
+      {
+! 	STRCPY(IObuff, "match in file ");
+! 	i = (vim_strsize(compl_shown_match->cp_fname) + 16) - sc_col;
+! 	if (i <= 0)
+! 	    i = 0;
+! 	else
+! 	    STRCAT(IObuff, "<");
+! 	STRCAT(IObuff, compl_shown_match->cp_fname + i);
+! 	msg(IObuff);
+! 	redraw_cmdline = FALSE;	    /* don't overwrite! */
+      }
+  
+      return num_matches;
+--- 4947,4976 ----
+       */
+      if (compl_shown_match->cp_fname != NULL)
+      {
+! 	char	*lead = _("match in file");
+! 	int	space = sc_col - vim_strsize((char_u *)lead) - 2;
+! 	char_u	*s;
+! 	char_u	*e;
+! 
+! 	if (space > 0)
+! 	{
+! 	    /* We need the tail that fits.  With double-byte encoding going
+! 	     * back from the end is very slow, thus go from the start and keep
+! 	     * the text that fits in "space" between "s" and "e". */
+! 	    for (s = e = compl_shown_match->cp_fname; *e != NUL; MB_PTR_ADV(e))
+! 	    {
+! 		space -= ptr2cells(e);
+! 		while (space < 0)
+! 		{
+! 		    space += ptr2cells(s);
+! 		    MB_PTR_ADV(s);
+! 		}
+! 	    }
+! 	    vim_snprintf((char *)IObuff, IOSIZE, "%s %s%s", lead,
+! 				s > compl_shown_match->cp_fname ? "<" : "", s);
+! 	    msg(IObuff);
+! 	    redraw_cmdline = FALSE;	    /* don't overwrite! */
+! 	}
+      }
+  
+      return num_matches;
+*** ../vim-8.0.0529/src/testdir/test_edit.vim	2017-03-16 22:37:55.991201882 +0100
+--- src/testdir/test_edit.vim	2017-03-31 21:47:14.695936301 +0200
+***************
+*** 1322,1324 ****
+--- 1322,1345 ----
+    set norightleft
+    bw!
+  endfunc
++ 
++ func Test_edit_complete_very_long_name()
++   let save_columns = &columns
++   set columns=5000
++   call assert_equal(5000, &columns)
++   set noswapfile
++   let dirname = getcwd() . "/Xdir"
++   let longdirname = dirname . repeat('/' . repeat('d', 255), 4)
++   let longfilename = longdirname . '/' . repeat('a', 255)
++   call mkdir(longdirname, 'p')
++   call writefile(['Totum', 'Table'], longfilename)
++   new
++   exe "next Xfile " . longfilename
++   exe "normal iT\<C-N>"
++ 
++   bwipe!
++   exe 'bwipe! ' . longfilename
++   call delete(dirname, 'rf')
++   let &columns = save_columns
++   set swapfile&
++ endfunc
+*** ../vim-8.0.0529/src/version.c	2017-03-30 22:20:23.416149582 +0200
+--- src/version.c	2017-03-31 21:49:08.119240837 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     530,
+  /**/
+
+-- 
+"Marriage is when a man and woman become as one; the trouble starts
+when they try to decide which one"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

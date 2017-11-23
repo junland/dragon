@@ -1,0 +1,107 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0562
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0562
+Problem:    Not enough test coverage for syntax commands.
+Solution:   Add a few more tests. (Dominique Pelle, closes #1624)
+Files:      src/testdir/test_cmdline.vim, src/testdir/test_syntax.vim
+
+
+*** ../vim-8.0.0561/src/testdir/test_cmdline.vim	2017-04-07 16:17:35.585077280 +0200
+--- src/testdir/test_cmdline.vim	2017-04-10 22:39:42.574587964 +0200
+***************
+*** 65,70 ****
+--- 65,74 ----
+    hi Aardig ctermfg=green
+    call feedkeys(":hi \<Tab>\<Home>\"\<CR>", 'xt')
+    call assert_equal('"hi Aardig', getreg(':'))
++   call feedkeys(":hi default \<Tab>\<Home>\"\<CR>", 'xt')
++   call assert_equal('"hi default Aardig', getreg(':'))
++   call feedkeys(":hi clear Aa\<Tab>\<Home>\"\<CR>", 'xt')
++   call assert_equal('"hi clear Aardig', getreg(':'))
+    call feedkeys(":hi li\<S-Tab>\<Home>\"\<CR>", 'xt')
+    call assert_equal('"hi link', getreg(':'))
+    call feedkeys(":hi d\<S-Tab>\<Home>\"\<CR>", 'xt')
+*** ../vim-8.0.0561/src/testdir/test_syntax.vim	2017-04-09 15:41:25.556753876 +0200
+--- src/testdir/test_syntax.vim	2017-04-10 22:39:42.574587964 +0200
+***************
+*** 304,315 ****
+    syn clear
+  endfunc
+  
+! func Test_invalid_arg()
+    call assert_fails('syntax case asdf', 'E390:')
+    if has('conceal')
+      call assert_fails('syntax conceal asdf', 'E390:')
+    endif
+    call assert_fails('syntax spell asdf', 'E390:')
+  endfunc
+  
+  func Test_syn_sync()
+--- 304,321 ----
+    syn clear
+  endfunc
+  
+! func Test_syntax_invalid_arg()
+    call assert_fails('syntax case asdf', 'E390:')
+    if has('conceal')
+      call assert_fails('syntax conceal asdf', 'E390:')
+    endif
+    call assert_fails('syntax spell asdf', 'E390:')
++   call assert_fails('syntax clear @ABCD', 'E391:')
++   call assert_fails('syntax include @Xxx', 'E397:')
++   call assert_fails('syntax region X start="{"', 'E399:')
++   call assert_fails('syntax sync x', 'E404:')
++   call assert_fails('syntax keyword Abc a[', 'E789:')
++   call assert_fails('syntax keyword Abc a[bc]d', 'E890:')
+  endfunc
+  
+  func Test_syn_sync()
+***************
+*** 378,380 ****
+--- 384,403 ----
+    call feedkeys(":ownsyntax java\<C-A>\<C-B>\"\<CR>", 'tx')
+    call assert_equal('"ownsyntax java javacc javascript', @:)
+  endfunc
++ 
++ func Test_highlight_invalid_arg()
++   if has('gui_running')
++     call assert_fails('hi XXX guifg=xxx', 'E254:')
++   endif
++   call assert_fails('hi DoesNotExist', 'E411:')
++   call assert_fails('hi link', 'E412:')
++   call assert_fails('hi link a', 'E412:')
++   call assert_fails('hi link a b c', 'E413:')
++   call assert_fails('hi XXX =', 'E415:')
++   call assert_fails('hi XXX cterm', 'E416:')
++   call assert_fails('hi XXX cterm=', 'E417:')
++   call assert_fails('hi XXX cterm=DoesNotExist', 'E418:')
++   call assert_fails('hi XXX ctermfg=DoesNotExist', 'E421:')
++   call assert_fails('hi XXX xxx=White', 'E423:')
++ endfunc
++ 
+*** ../vim-8.0.0561/src/version.c	2017-04-10 22:22:38.545160122 +0200
+--- src/version.c	2017-04-10 22:40:56.342107427 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     562,
+  /**/
+
+-- 
+Even got a Datapoint 3600(?) with a DD50 connector instead of the
+usual DB25...  what a nightmare trying to figure out the pinout
+for *that* with no spex...
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,56 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0202
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0202
+Problem:    No test for invalid syntax group name.
+Solution:   Add a test for group name error and warning.
+Files:      src/testdir/test_syntax.vim
+
+
+*** ../vim-8.0.0201/src/testdir/test_syntax.vim	2017-01-17 17:44:42.298734441 +0100
+--- src/testdir/test_syntax.vim	2017-01-17 18:12:43.379686263 +0100
+***************
+*** 335,337 ****
+--- 335,348 ----
+    hi clear Foo
+    hi clear Bar
+  endfunc
++ 
++ func Test_invalid_name()
++   syn clear
++   syn keyword Nop yes
++   call assert_fails("syntax keyword Wr\x17ong bar", 'E669:')
++   syntax keyword @Wrong bar
++   call assert_match('W18:', execute('1messages'))
++   syn clear
++   hi clear Nop
++   hi clear @Wrong
++ endfunc
+*** ../vim-8.0.0201/src/version.c	2017-01-17 17:44:42.298734441 +0100
+--- src/version.c	2017-01-17 18:13:46.371270986 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     202,
+  /**/
+
+-- 
+ZOOT:  I'm afraid our life must seem very dull and quiet compared to yours.
+       We are but eightscore young blondes, all between sixteen and
+       nineteen-and-a-half, cut off in this castle, with no one to protect us.
+       Oooh.  It is a lonely life ... bathing ...  dressing ... undressing ...
+       making exciting underwear....
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

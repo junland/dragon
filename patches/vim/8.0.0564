@@ -1,0 +1,69 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0564
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0564
+Problem:    Cannot detect Bazel BUILD files on some systems.
+Solution:   Check for BUILD after script checks. (Issue #1340)
+Files:      runtime/filetype.vim
+
+
+*** ../vim-8.0.0563/runtime/filetype.vim	2016-08-26 19:25:07.000000000 +0200
+--- runtime/filetype.vim	2017-04-15 14:14:22.922164313 +0200
+***************
+*** 309,315 ****
+  au BufNewFile,BufRead */etc/blkid.tab,*/etc/blkid.tab.old   setf xml
+  
+  " Bazel (http://bazel.io)
+! autocmd BufRead,BufNewFile *.bzl,BUILD,WORKSPACE setfiletype bzl
+  
+  " C or lpc
+  au BufNewFile,BufRead *.c			call s:FTlpc()
+--- 310,320 ----
+  au BufNewFile,BufRead */etc/blkid.tab,*/etc/blkid.tab.old   setf xml
+  
+  " Bazel (http://bazel.io)
+! autocmd BufRead,BufNewFile *.bzl,WORKSPACE 	setf bzl
+! if has("fname_case")
+!   " There is another check for BUILD further below.
+!   autocmd BufRead,BufNewFile BUILD		setf bzl
+! endif
+  
+  " C or lpc
+  au BufNewFile,BufRead *.c			call s:FTlpc()
+***************
+*** 2576,2581 ****
+--- 2603,2613 ----
+  " Bazaar version control
+  au BufNewFile,BufRead bzr_log.*			setf bzr
+  
++ " Bazel build file
++ if !has("fname_case")
++   au BufNewFile,BufRead BUILD			setf bzl
++ endif
++ 
+  " BIND zone
+  au BufNewFile,BufRead */named/db.*,*/bind/db.*	call s:StarSetf('bindzone')
+  
+*** ../vim-8.0.0563/src/version.c	2017-04-11 22:44:00.297521127 +0200
+--- src/version.c	2017-04-15 14:24:09.158467724 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     564,
+  /**/
+
+-- 
+Computers are not intelligent.  They only think they are.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

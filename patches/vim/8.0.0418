@@ -1,0 +1,105 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0418
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0418
+Problem:    ASAN logs are disabled and don't cause a failure.
+Solution:   Enable ASAN logs and fail if not empty. (James McCoy,
+            closes #1425)
+Files:      .travis.yml
+
+
+*** ../vim-8.0.0417/.travis.yml	2017-02-23 20:20:46.050319132 +0100
+--- .travis.yml	2017-03-05 14:51:56.454961183 +0100
+***************
+*** 19,32 ****
+    - BUILD=yes TEST=test COVERAGE=no FEATURES=huge SHADOWOPT= SRCDIR=./src CHECK_AUTOCONF=no
+      "CONFOPT='--enable-perlinterp --enable-pythoninterp --enable-rubyinterp --enable-luainterp'"
+      # ASAN build
+!   - BUILD=yes TEST=test SANITIZER_CFLAGS="-g -O1 -fsanitize=address -fno-omit-frame-pointer" FEATURES=huge SRCDIR=./src CHECK_AUTOCONF=no
+      "CONFOPT='--enable-perlinterp --enable-pythoninterp --enable-rubyinterp --enable-luainterp'"
+  
+  sudo: false
+  
+- git:
+-   depth: 20
+- 
+  # instead of a 2*2*8 matrix (2*os + 2*compiler + 8*env),
+  # exclude some builds on mac os x and linux
+  # linux: 2*compiler + 5*env + mac: 2*compiler + 2*env
+--- 19,30 ----
+    - BUILD=yes TEST=test COVERAGE=no FEATURES=huge SHADOWOPT= SRCDIR=./src CHECK_AUTOCONF=no
+      "CONFOPT='--enable-perlinterp --enable-pythoninterp --enable-rubyinterp --enable-luainterp'"
+      # ASAN build
+!   - BUILD=yes TEST=test SANITIZER_CFLAGS="-g -O1 -DABORT_ON_INTERNAL_ERROR -DEXITFREE -fsanitize=address -fno-omit-frame-pointer"
+!     FEATURES=huge SRCDIR=./src CHECK_AUTOCONF=no ASAN_OPTIONS="print_stacktrace=1 log_path=asan"
+      "CONFOPT='--enable-perlinterp --enable-pythoninterp --enable-rubyinterp --enable-luainterp'"
+  
+  sudo: false
+  
+  # instead of a 2*2*8 matrix (2*os + 2*compiler + 8*env),
+  # exclude some builds on mac os x and linux
+  # linux: 2*compiler + 5*env + mac: 2*compiler + 2*env
+***************
+*** 42,52 ****
+        env: BUILD=yes TEST=scripttests COVERAGE=yes CFLAGS=--coverage LDFLAGS=--coverage FEATURES=huge SHADOWOPT= SRCDIR=./src CHECK_AUTOCONF=no
+              "CONFOPT='--enable-perlinterp --enable-pythoninterp --enable-python3interp --enable-rubyinterp --enable-luainterp'"
+      - os: osx
+!       env: BUILD=yes TEST=test SANITIZER_CFLAGS="-g -O1 -fsanitize=address -fno-omit-frame-pointer" FEATURES=huge SRCDIR=./src CHECK_AUTOCONF=no
+              "CONFOPT='--enable-perlinterp --enable-pythoninterp --enable-rubyinterp --enable-luainterp'"
+      - os: linux
+        compiler: gcc
+!       env: BUILD=yes TEST=test SANITIZER_CFLAGS="-g -O1 -fsanitize=address -fno-omit-frame-pointer" FEATURES=huge SRCDIR=./src CHECK_AUTOCONF=no
+              "CONFOPT='--enable-perlinterp --enable-pythoninterp --enable-rubyinterp --enable-luainterp'"
+      - os: linux
+        compiler: clang
+--- 40,52 ----
+        env: BUILD=yes TEST=scripttests COVERAGE=yes CFLAGS=--coverage LDFLAGS=--coverage FEATURES=huge SHADOWOPT= SRCDIR=./src CHECK_AUTOCONF=no
+              "CONFOPT='--enable-perlinterp --enable-pythoninterp --enable-python3interp --enable-rubyinterp --enable-luainterp'"
+      - os: osx
+!       env: BUILD=yes TEST=test SANITIZER_CFLAGS="-g -O1 -DABORT_ON_INTERNAL_ERROR -DEXITFREE -fsanitize=address -fno-omit-frame-pointer"
+!             FEATURES=huge SRCDIR=./src CHECK_AUTOCONF=no ASAN_OPTIONS="print_stacktrace=1 log_path=asan"
+              "CONFOPT='--enable-perlinterp --enable-pythoninterp --enable-rubyinterp --enable-luainterp'"
+      - os: linux
+        compiler: gcc
+!       env: BUILD=yes TEST=test SANITIZER_CFLAGS="-g -O1 -DABORT_ON_INTERNAL_ERROR -DEXITFREE -fsanitize=address -fno-omit-frame-pointer"
+!             FEATURES=huge SRCDIR=./src CHECK_AUTOCONF=no ASAN_OPTIONS="print_stacktrace=1 log_path=asan"
+              "CONFOPT='--enable-perlinterp --enable-pythoninterp --enable-rubyinterp --enable-luainterp'"
+      - os: linux
+        compiler: clang
+***************
+*** 92,98 ****
+--- 92,101 ----
+    - if [ "x$SHADOWOPT" != x ]; then make -C src shadow; fi
+    - (cd ${SRCDIR} && ./configure --with-features=$FEATURES $CONFOPT --enable-fail-if-missing && if [ "$BUILD" = "yes" ]; then make -j$NPROC; fi)
+    - if [ "$BUILD" = "yes" ]; then ${SRCDIR}/vim --version; fi
++   - if [ -n "$ASAN_OPTIONS" ]; then export PATH=/usr/lib/llvm-$(clang -v 2>&1 | sed -n 's/.*version \([1-9]\.[0-9][0-9]*\).*/\1/p')/bin:$PATH; fi
+    - make $SHADOWOPT $TEST
++   - if [ -n "$ASAN_OPTIONS" ]; then for log in $(find -type f -name 'asan.*' -size +0); do cat "$log"; err=1; done; fi
++   - if [ -n "$err" ]; then exit 1; fi
+  
+  after_success:
+    - if [ "$COVERAGE" = "yes" ]; then ~/.local/bin/coveralls -b $SRCDIR -x .xs -e ${SRCDIR}/xxd -e ${SRCDIR}/if_perl.c --encodings utf-8 latin-1 EUC-KR; fi
+*** ../vim-8.0.0417/src/version.c	2017-03-05 14:30:48.372572724 +0100
+--- src/version.c	2017-03-05 14:54:28.821804635 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     418,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+55. You ask your doctor to implant a gig in your brain.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

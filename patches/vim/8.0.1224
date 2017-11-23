@@ -1,0 +1,373 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1224
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1224
+Problem:    Still interference between test functions.
+Solution:   Clear autocommands. Wipe all buffers.  Fix tests that depend on a
+            specific start context.
+Files:      src/testdir/runtest.vim, src/testdir/test_autocmd.vim,
+            src/testdir/test_arglist.vim, src/testdir/test_bufwintabinfo.vim,
+            src/testdir/test_command_count.vim, src/testdir/test_quickfix.vim,
+            src/testdir/test_hardcopy.vim, src/testdir/test_ins_complete.vim,
+            src/testdir/test_packadd.vim, src/testdir/test_signs.vim,
+            src/testdir/test_autochdir.vim
+
+
+*** ../vim-8.0.1223/src/testdir/runtest.vim	2017-10-26 21:59:54.004362215 +0200
+--- src/testdir/runtest.vim	2017-10-26 23:54:07.244158026 +0200
+***************
+*** 99,104 ****
+--- 99,108 ----
+    " Clear any overrides.
+    call test_override('ALL', 0)
+  
++   " Some tests wipe out buffers.  To be consistent, always wipe out all
++   " buffers.
++   %bwipe!
++ 
+    if exists("*SetUp")
+      try
+        call SetUp()
+***************
+*** 133,141 ****
+      endtry
+    endif
+  
+    " Close any extra tab pages and windows and make the current one not modified.
+    while tabpagenr('$') > 1
+!     bwipe!
+    endwhile
+  
+    while 1
+--- 137,148 ----
+      endtry
+    endif
+  
++   " Clear any autocommands
++   au!
++ 
+    " Close any extra tab pages and windows and make the current one not modified.
+    while tabpagenr('$') > 1
+!     quit!
+    endwhile
+  
+    while 1
+***************
+*** 150,164 ****
+        break
+      endif
+    endwhile
+- 
+-   " Wipe out all buffers except the current one, then wipe the current one.
+-   for nr in range(1, bufnr('$'))
+-     if nr != bufnr('%') && bufexists(nr)
+-       exe nr . 'bwipe!'
+-     endif
+-   endfor
+-   set nomodified
+-   bwipe
+  endfunc
+  
+  func AfterTheTest()
+--- 157,162 ----
+*** ../vim-8.0.1223/src/testdir/test_autocmd.vim	2017-10-26 16:42:12.353737032 +0200
+--- src/testdir/test_autocmd.vim	2017-10-26 23:09:29.799173209 +0200
+***************
+*** 254,269 ****
+    au BufReadCmd * e +h
+    help
+  
+-   helpclose
+    au! BufReadCmd
+  endfunc
+  
+  func Test_BufReadCmdHelpJump()
+    " This used to cause access to free memory
+    au BufReadCmd * e +h{
+!   help
+  
+-   helpclose
+    au! BufReadCmd
+  endfunc
+  
+--- 254,268 ----
+    au BufReadCmd * e +h
+    help
+  
+    au! BufReadCmd
+  endfunc
+  
+  func Test_BufReadCmdHelpJump()
+    " This used to cause access to free memory
+    au BufReadCmd * e +h{
+!   " } to fix highlighting
+!   call assert_fails('help', 'E434:')
+  
+    au! BufReadCmd
+  endfunc
+  
+*** ../vim-8.0.1223/src/testdir/test_arglist.vim	2017-08-03 14:29:09.895896191 +0200
+--- src/testdir/test_arglist.vim	2017-10-26 23:19:26.074977191 +0200
+***************
+*** 253,262 ****
+    call assert_equal(['a', 'b', 'a'], argv())
+    call assert_equal('a', expand('%:t'))
+    " When file name case is ignored, an existing buffer with only case
+!   " difference is re-used.  Make sure they don't exist so the case is
+!   " preserved.
+!   bwipe! c
+!   bwipe! d
+    argedit C D
+    call assert_equal('C', expand('%:t'))
+    call assert_equal(['a', 'b', 'a', 'C', 'D'], argv())
+--- 253,259 ----
+    call assert_equal(['a', 'b', 'a'], argv())
+    call assert_equal('a', expand('%:t'))
+    " When file name case is ignored, an existing buffer with only case
+!   " difference is re-used.
+    argedit C D
+    call assert_equal('C', expand('%:t'))
+    call assert_equal(['a', 'b', 'a', 'C', 'D'], argv())
+*** ../vim-8.0.1223/src/testdir/test_bufwintabinfo.vim	2016-09-12 19:51:07.685659713 +0200
+--- src/testdir/test_bufwintabinfo.vim	2017-10-27 00:53:42.378667346 +0200
+***************
+*** 1,7 ****
+  " Tests for the getbufinfo(), getwininfo() and gettabinfo() functions
+  
+  function Test_getbufwintabinfo()
+-     1,$bwipeout
+      edit Xtestfile1
+      edit Xtestfile2
+      let buflist = getbufinfo()
+--- 1,6 ----
+*** ../vim-8.0.1223/src/testdir/test_command_count.vim	2016-09-29 20:54:42.403110749 +0200
+--- src/testdir/test_command_count.vim	2017-10-27 00:13:27.927852456 +0200
+***************
+*** 1,6 ****
+--- 1,7 ----
+  " Test for user command counts.
+  
+  func Test_command_count_0()
++   let bufnr = bufnr('%')
+    set hidden
+    set noswapfile
+  
+***************
+*** 15,31 ****
+    command! -range=% -addr=buffers RangeBuffersAll :let lines = [<line1>, <line2>]
+  
+    .,$RangeLoadedBuffers
+!   call assert_equal([1, 1], lines)
+    %RangeLoadedBuffers
+!   call assert_equal([1, 1], lines)
+    RangeLoadedBuffersAll
+!   call assert_equal([1, 1], lines)
+    .,$RangeBuffers
+!   call assert_equal([1, lastbuf], lines)
+    %RangeBuffers
+!   call assert_equal([1, lastbuf], lines)
+    RangeBuffersAll
+!   call assert_equal([1, lastbuf], lines)
+  
+    delcommand RangeLoadedBuffers
+    delcommand RangeLoadedBuffersAll
+--- 16,32 ----
+    command! -range=% -addr=buffers RangeBuffersAll :let lines = [<line1>, <line2>]
+  
+    .,$RangeLoadedBuffers
+!   call assert_equal([bufnr, bufnr], lines)
+    %RangeLoadedBuffers
+!   call assert_equal([bufnr, bufnr], lines)
+    RangeLoadedBuffersAll
+!   call assert_equal([bufnr, bufnr], lines)
+    .,$RangeBuffers
+!   call assert_equal([bufnr, lastbuf], lines)
+    %RangeBuffers
+!   call assert_equal([bufnr, lastbuf], lines)
+    RangeBuffersAll
+!   call assert_equal([bufnr, lastbuf], lines)
+  
+    delcommand RangeLoadedBuffers
+    delcommand RangeLoadedBuffersAll
+***************
+*** 138,143 ****
+--- 139,145 ----
+  endfunc
+  
+  func Test_command_count_3()
++   let bufnr = bufnr('%')
+    se nohidden
+    e aaa
+    let buf_aaa = bufnr('%')
+***************
+*** 145,151 ****
+    let buf_bbb = bufnr('%')
+    e ccc
+    let buf_ccc = bufnr('%')
+!   buf 1
+    call assert_equal([1, 1, 1], [buflisted(buf_aaa), buflisted(buf_bbb), buflisted(buf_ccc)])
+    exe buf_bbb . "," . buf_ccc . "bdelete"
+    call assert_equal([1, 0, 0], [buflisted(buf_aaa), buflisted(buf_bbb), buflisted(buf_ccc)])
+--- 147,153 ----
+    let buf_bbb = bufnr('%')
+    e ccc
+    let buf_ccc = bufnr('%')
+!   exe bufnr . 'buf'
+    call assert_equal([1, 1, 1], [buflisted(buf_aaa), buflisted(buf_bbb), buflisted(buf_ccc)])
+    exe buf_bbb . "," . buf_ccc . "bdelete"
+    call assert_equal([1, 0, 0], [buflisted(buf_aaa), buflisted(buf_bbb), buflisted(buf_ccc)])
+***************
+*** 155,161 ****
+  
+  func Test_command_count_4()
+    %argd
+!   let bufnr = bufnr('$') + 1
+    arga aa bb cc dd ee ff
+    3argu
+    let args = []
+--- 157,163 ----
+  
+  func Test_command_count_4()
+    %argd
+!   let bufnr = bufnr('$')
+    arga aa bb cc dd ee ff
+    3argu
+    let args = []
+***************
+*** 171,176 ****
+--- 173,180 ----
+    only!
+  
+    exe bufnr . 'buf'
++   bnext
++   let bufnr = bufnr('%')
+    let buffers = []
+    .,$-bufdo call add(buffers, bufnr('%'))
+    call assert_equal([bufnr, bufnr + 1, bufnr + 2, bufnr + 3, bufnr + 4], buffers)
+*** ../vim-8.0.1223/src/testdir/test_quickfix.vim	2017-09-15 22:43:01.793323528 +0200
+--- src/testdir/test_quickfix.vim	2017-10-26 23:38:57.186631103 +0200
+***************
+*** 151,157 ****
+  func XageTests(cchar)
+    call s:setup_commands(a:cchar)
+  
+!   let list = [{'bufnr': 1, 'lnum': 1}]
+    call g:Xsetlist(list)
+  
+    " Jumping to a non existent list should return error
+--- 151,157 ----
+  func XageTests(cchar)
+    call s:setup_commands(a:cchar)
+  
+!   let list = [{'bufnr': bufnr('%'), 'lnum': 1}]
+    call g:Xsetlist(list)
+  
+    " Jumping to a non existent list should return error
+*** ../vim-8.0.1223/src/testdir/test_hardcopy.vim	2017-06-04 21:40:31.844274495 +0200
+--- src/testdir/test_hardcopy.vim	2017-10-26 23:41:07.881701863 +0200
+***************
+*** 50,55 ****
+--- 50,56 ----
+  " We don't check much of the contents.
+  func Test_with_syntax()
+    if has('postscript')
++     edit test_hardcopy.vim
+      set printoptions=syntax:y
+      syn on
+      hardcopy > Xhardcopy
+*** ../vim-8.0.1223/src/testdir/test_ins_complete.vim	2017-10-26 20:20:27.321598241 +0200
+--- src/testdir/test_ins_complete.vim	2017-10-27 00:15:17.607068418 +0200
+***************
+*** 1,6 ****
+--- 1,7 ----
+  
+  " Test for insert expansion
+  func Test_ins_complete()
++   edit test_ins_complete.vim
+    set ff=unix
+    call writefile(["test11\t36Gepeto\t/Tag/",
+  	      \ "asd\ttest11file\t36G",
+*** ../vim-8.0.1223/src/testdir/test_packadd.vim	2017-10-15 22:07:35.211683156 +0200
+--- src/testdir/test_packadd.vim	2017-10-27 00:18:08.253849008 +0200
+***************
+*** 2,8 ****
+  
+  
+  func SetUp()
+!   let s:topdir = expand('%:h') . '/Xdir'
+    exe 'set packpath=' . s:topdir
+    let s:plugdir = s:topdir . '/pack/mine/opt/mytest'
+  endfunc
+--- 2,8 ----
+  
+  
+  func SetUp()
+!   let s:topdir = getcwd() . '/Xdir'
+    exe 'set packpath=' . s:topdir
+    let s:plugdir = s:topdir . '/pack/mine/opt/mytest'
+  endfunc
+*** ../vim-8.0.1223/src/testdir/test_signs.vim	2016-08-29 23:03:25.000000000 +0200
+--- src/testdir/test_signs.vim	2017-10-27 00:40:58.048078281 +0200
+***************
+*** 182,188 ****
+    call assert_fails('sign define Sign1 xxx', 'E475:')
+    call assert_fails('sign undefine', 'E156:')
+    call assert_fails('sign list xxx', 'E155:')
+!   call assert_fails('sign place 1 buffer=', 'E158:')
+    call assert_fails('sign define Sign2 text=', 'E239:')
+  endfunc
+  
+--- 182,188 ----
+    call assert_fails('sign define Sign1 xxx', 'E475:')
+    call assert_fails('sign undefine', 'E156:')
+    call assert_fails('sign list xxx', 'E155:')
+!   call assert_fails('sign place 1 buffer=999', 'E158:')
+    call assert_fails('sign define Sign2 text=', 'E239:')
+  endfunc
+  
+*** ../vim-8.0.1223/src/testdir/test_autochdir.vim	2016-07-28 21:59:12.000000000 +0200
+--- src/testdir/test_autochdir.vim	2017-10-27 00:47:53.789129541 +0200
+***************
+*** 5,10 ****
+--- 5,11 ----
+  endif
+  
+  func Test_set_filename()
++   let cwd = getcwd()
+    call test_autochdir()
+    set acd
+    new
+***************
+*** 13,17 ****
+--- 14,19 ----
+    call assert_equal("samples", substitute(getcwd(), '.*/\(\k*\)', '\1', ''))
+    bwipe!
+    set noacd
++   exe 'cd ' . cwd
+    call delete('samples/Xtest')
+  endfunc
+*** ../vim-8.0.1223/src/version.c	2017-10-26 22:04:00.186638048 +0200
+--- src/version.c	2017-10-26 23:10:31.910739502 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1224,
+  /**/
+
+-- 
+Two cows are standing together in a field.  One asks the other:
+"So what do you think about this Mad Cow Disease?"
+The other replies: "That doesn't concern me. I'm a helicopter."
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,171 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0905
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0905
+Problem:    MS-Windows: broken multi-byte characters in the console.
+Solution:   Restore all regions of the console buffer. (Ken Takata)
+Files:      src/os_win32.c
+
+
+*** ../vim-8.0.0904/src/os_win32.c	2017-08-11 19:12:05.056966332 +0200
+--- src/os_win32.c	2017-08-11 20:33:01.038250779 +0200
+***************
+*** 2192,2197 ****
+--- 2192,2199 ----
+      CONSOLE_SCREEN_BUFFER_INFO	Info;
+      PCHAR_INFO			Buffer;
+      COORD			BufferSize;
++     PSMALL_RECT			Regions;
++     int				NumRegions;
+  } ConsoleBuffer;
+  
+  /*
+***************
+*** 2212,2217 ****
+--- 2214,2220 ----
+      COORD BufferCoord;
+      SMALL_RECT ReadRegion;
+      WORD Y, Y_incr;
++     int i, numregions;
+  
+      if (cb == NULL)
+  	return FALSE;
+***************
+*** 2254,2260 ****
+      ReadRegion.Left = 0;
+      ReadRegion.Right = cb->Info.dwSize.X - 1;
+      Y_incr = 12000 / cb->Info.dwSize.X;
+!     for (Y = 0; Y < cb->BufferSize.Y; Y += Y_incr)
+      {
+  	/*
+  	 * Read into position (0, Y) in our buffer.
+--- 2257,2278 ----
+      ReadRegion.Left = 0;
+      ReadRegion.Right = cb->Info.dwSize.X - 1;
+      Y_incr = 12000 / cb->Info.dwSize.X;
+! 
+!     numregions = (cb->Info.dwSize.Y + Y_incr - 1) / Y_incr;
+!     if (cb->Regions == NULL || numregions != cb->NumRegions)
+!     {
+! 	cb->NumRegions = numregions;
+! 	vim_free(cb->Regions);
+! 	cb->Regions = (PSMALL_RECT)alloc(cb->NumRegions * sizeof(SMALL_RECT));
+! 	if (cb->Regions == NULL)
+! 	{
+! 	    vim_free(cb->Buffer);
+! 	    cb->Buffer = NULL;
+! 	    return FALSE;
+! 	}
+!     }
+! 
+!     for (i = 0, Y = 0; i < cb->NumRegions; i++, Y += Y_incr)
+      {
+  	/*
+  	 * Read into position (0, Y) in our buffer.
+***************
+*** 2268,2274 ****
+  	 */
+  	ReadRegion.Top = Y;
+  	ReadRegion.Bottom = Y + Y_incr - 1;
+! 	if (!ReadConsoleOutput(g_hConOut,	/* output handle */
+  		cb->Buffer,			/* our buffer */
+  		cb->BufferSize,			/* dimensions of our buffer */
+  		BufferCoord,			/* offset in our buffer */
+--- 2286,2292 ----
+  	 */
+  	ReadRegion.Top = Y;
+  	ReadRegion.Bottom = Y + Y_incr - 1;
+! 	if (!ReadConsoleOutputW(g_hConOut,	/* output handle */
+  		cb->Buffer,			/* our buffer */
+  		cb->BufferSize,			/* dimensions of our buffer */
+  		BufferCoord,			/* offset in our buffer */
+***************
+*** 2276,2283 ****
+--- 2294,2304 ----
+  	{
+  	    vim_free(cb->Buffer);
+  	    cb->Buffer = NULL;
++ 	    vim_free(cb->Regions);
++ 	    cb->Regions = NULL;
+  	    return FALSE;
+  	}
++ 	cb->Regions[i] = ReadRegion;
+      }
+  
+      return TRUE;
+***************
+*** 2299,2304 ****
+--- 2320,2326 ----
+  {
+      COORD BufferCoord;
+      SMALL_RECT WriteRegion;
++     int i;
+  
+      if (cb == NULL || !cb->IsValid)
+  	return FALSE;
+***************
+*** 2335,2353 ****
+       */
+      if (cb->Buffer != NULL)
+      {
+! 	BufferCoord.X = 0;
+! 	BufferCoord.Y = 0;
+! 	WriteRegion.Left = 0;
+! 	WriteRegion.Top = 0;
+! 	WriteRegion.Right = cb->Info.dwSize.X - 1;
+! 	WriteRegion.Bottom = cb->Info.dwSize.Y - 1;
+! 	if (!WriteConsoleOutput(g_hConOut,	/* output handle */
+! 		cb->Buffer,			/* our buffer */
+! 		cb->BufferSize,			/* dimensions of our buffer */
+! 		BufferCoord,			/* offset in our buffer */
+! 		&WriteRegion))			/* region to restore */
+  	{
+! 	    return FALSE;
+  	}
+      }
+  
+--- 2357,2375 ----
+       */
+      if (cb->Buffer != NULL)
+      {
+! 	for (i = 0; i < cb->NumRegions; i++)
+  	{
+! 	    BufferCoord.X = cb->Regions[i].Left;
+! 	    BufferCoord.Y = cb->Regions[i].Top;
+! 	    WriteRegion = cb->Regions[i];
+! 	    if (!WriteConsoleOutputW(g_hConOut,	/* output handle */
+! 			cb->Buffer,		/* our buffer */
+! 			cb->BufferSize,		/* dimensions of our buffer */
+! 			BufferCoord,		/* offset in our buffer */
+! 			&WriteRegion))		/* region to restore */
+! 	    {
+! 		return FALSE;
+! 	    }
+  	}
+      }
+  
+*** ../vim-8.0.0904/src/version.c	2017-08-11 20:25:22.097565404 +0200
+--- src/version.c	2017-08-11 20:36:00.028959853 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     905,
+  /**/
+
+-- 
+It is illegal to rob a bank and then shoot at the bank teller with a water
+pistol.
+		[real standing law in Louisana, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

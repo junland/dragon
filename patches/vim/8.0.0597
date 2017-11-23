@@ -1,0 +1,88 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0597
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0597
+Problem:    Off-by-one error in buffer size computation.
+Solution:   Use ">=" instead of ">". (Lemonboy, closes #1694)
+Files:      src/quickfix.c
+
+
+*** ../vim-8.0.0596/src/quickfix.c	2017-05-01 14:13:50.842738024 +0200
+--- src/quickfix.c	2017-05-15 08:40:22.098491507 +0200
+***************
+*** 919,925 ****
+  	    }
+  	    if (fmt_ptr->flags == '+' && !qi->qf_multiscan)	/* %+ */
+  	    {
+! 		if (linelen > fields->errmsglen)
+  		{
+  		    /* linelen + null terminator */
+  		    if ((fields->errmsg = vim_realloc(fields->errmsg,
+--- 919,925 ----
+  	    }
+  	    if (fmt_ptr->flags == '+' && !qi->qf_multiscan)	/* %+ */
+  	    {
+! 		if (linelen >= fields->errmsglen)
+  		{
+  		    /* linelen + null terminator */
+  		    if ((fields->errmsg = vim_realloc(fields->errmsg,
+***************
+*** 934,940 ****
+  		if (regmatch.startp[i] == NULL || regmatch.endp[i] == NULL)
+  		    continue;
+  		len = (int)(regmatch.endp[i] - regmatch.startp[i]);
+! 		if (len > fields->errmsglen)
+  		{
+  		    /* len + null terminator */
+  		    if ((fields->errmsg = vim_realloc(fields->errmsg, len + 1))
+--- 934,940 ----
+  		if (regmatch.startp[i] == NULL || regmatch.endp[i] == NULL)
+  		    continue;
+  		len = (int)(regmatch.endp[i] - regmatch.startp[i]);
+! 		if (len >= fields->errmsglen)
+  		{
+  		    /* len + null terminator */
+  		    if ((fields->errmsg = vim_realloc(fields->errmsg, len + 1))
+***************
+*** 1017,1023 ****
+  	fields->namebuf[0] = NUL;	/* no match found, remove file name */
+  	fields->lnum = 0;			/* don't jump to this line */
+  	fields->valid = FALSE;
+! 	if (linelen > fields->errmsglen)
+  	{
+  	    /* linelen + null terminator */
+  	    if ((fields->errmsg = vim_realloc(fields->errmsg,
+--- 1017,1023 ----
+  	fields->namebuf[0] = NUL;	/* no match found, remove file name */
+  	fields->lnum = 0;			/* don't jump to this line */
+  	fields->valid = FALSE;
+! 	if (linelen >= fields->errmsglen)
+  	{
+  	    /* linelen + null terminator */
+  	    if ((fields->errmsg = vim_realloc(fields->errmsg,
+*** ../vim-8.0.0596/src/version.c	2017-05-01 20:46:47.747526808 +0200
+--- src/version.c	2017-05-15 08:43:44.625270120 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     597,
+  /**/
+
+-- 
+TERRY GILLIAM PLAYED: PATSY (ARTHUR'S TRUSTY STEED), THE GREEN KNIGHT
+                      SOOTHSAYER, BRIDGEKEEPER, SIR GAWAIN (THE FIRST TO BE
+                      KILLED BY THE RABBIT)
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

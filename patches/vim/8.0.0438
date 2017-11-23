@@ -1,0 +1,66 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0438
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0438
+Problem:    The fnamemodify test changes 'shell' in a way later tests may not
+            be able to use system().
+Solution:   Save and restore 'shell'.
+Files:      src/testdir/test_fnamemodify.vim
+
+
+*** ../vim-8.0.0437/src/testdir/test_fnamemodify.vim	2016-03-25 18:39:32.000000000 +0100
+--- src/testdir/test_fnamemodify.vim	2017-03-09 13:47:37.579597437 +0100
+***************
+*** 1,6 ****
+--- 1,8 ----
+  " Test filename modifiers.
+  
+  func Test_fnamemodify()
++   let save_home = $HOME
++   let save_shell = &shell
+    let $HOME = fnamemodify('.', ':p:h:h')
+    set shell=sh
+  
+***************
+*** 39,45 ****
+    call assert_equal("'abc\ndef'", fnamemodify("abc\ndef", ':S'))
+    set shell=tcsh
+    call assert_equal("'abc\\\ndef'",  fnamemodify("abc\ndef", ':S'))
+!   set shell&
+  endfunc
+  
+  func Test_expand()
+--- 41,49 ----
+    call assert_equal("'abc\ndef'", fnamemodify("abc\ndef", ':S'))
+    set shell=tcsh
+    call assert_equal("'abc\\\ndef'",  fnamemodify("abc\ndef", ':S'))
+! 
+!   let $HOME = save_home
+!   let &shell = save_shell
+  endfunc
+  
+  func Test_expand()
+*** ../vim-8.0.0437/src/version.c	2017-03-09 13:57:58.283298820 +0100
+--- src/version.c	2017-03-09 13:59:00.066870055 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     438,
+  /**/
+
+-- 
+From "know your smileys":
+ |-P	Reaction to unusually ugly C code
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

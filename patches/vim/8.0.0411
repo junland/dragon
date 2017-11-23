@@ -1,0 +1,104 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0411
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0411
+Problem:    We can't change the case in menu entries, it breaks translations.
+Solution:   Ignore case when looking up a menu translation.
+Files:      src/menu.c, src/testdir/test_menu.vim
+
+
+*** ../vim-8.0.0410/src/menu.c	2016-08-29 22:42:20.000000000 +0200
+--- src/menu.c	2017-03-04 20:16:19.700592029 +0100
+***************
+*** 2455,2461 ****
+      char_u		*dname;
+  
+      for (i = 0; i < menutrans_ga.ga_len; ++i)
+! 	if (STRNCMP(name, tp[i].from, len) == 0 && tp[i].from[len] == NUL)
+  	    return tp[i].to;
+  
+      /* Now try again while ignoring '&' characters. */
+--- 2455,2461 ----
+      char_u		*dname;
+  
+      for (i = 0; i < menutrans_ga.ga_len; ++i)
+! 	if (STRNICMP(name, tp[i].from, len) == 0 && tp[i].from[len] == NUL)
+  	    return tp[i].to;
+  
+      /* Now try again while ignoring '&' characters. */
+***************
+*** 2466,2472 ****
+      if (dname != NULL)
+      {
+  	for (i = 0; i < menutrans_ga.ga_len; ++i)
+! 	    if (STRCMP(dname, tp[i].from_noamp) == 0)
+  	    {
+  		vim_free(dname);
+  		return tp[i].to;
+--- 2466,2472 ----
+      if (dname != NULL)
+      {
+  	for (i = 0; i < menutrans_ga.ga_len; ++i)
+! 	    if (STRICMP(dname, tp[i].from_noamp) == 0)
+  	    {
+  		vim_free(dname);
+  		return tp[i].to;
+*** ../vim-8.0.0410/src/testdir/test_menu.vim	2016-01-03 23:23:48.000000000 +0100
+--- src/testdir/test_menu.vim	2017-03-04 20:35:10.467763599 +0100
+***************
+*** 1,9 ****
+--- 1,29 ----
+  " Test that the system menu can be loaded.
+  
++ if !has('menu')
++   finish
++ endif
++ 
+  func Test_load_menu()
+    try
+      source $VIMRUNTIME/menu.vim
+    catch
+      call assert_false(1, 'error while loading menus: ' . v:exception)
+    endtry
++   source $VIMRUNTIME/delmenu.vim
++ endfunc
++ 
++ func Test_translate_menu()
++   if !has('multi_lang')
++     return
++   endif
++   if !filereadable($VIMRUNTIME . '/lang/menu_de_de.latin1.vim')
++     throw 'Skipped: translated menu not found'
++   endif
++ 
++   set langmenu=de_de
++   source $VIMRUNTIME/menu.vim
++   call assert_match(':browse tabnew', execute(':menu File.In\ neuem\ Tab\ öffnen\.\.\.'))
++ 
++   source $VIMRUNTIME/delmenu.vim
+  endfunc
+*** ../vim-8.0.0410/src/version.c	2017-03-04 20:09:30.495831503 +0100
+--- src/version.c	2017-03-04 20:22:36.617663263 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     411,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+48. You get a tatoo that says "This body best viewed with Netscape 3.1 or
+    higher."
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,62 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0617
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0617 (after 8.0.0615)
+Problem:    Hardcopy test hangs on MS-Windows.
+Solution:   Check the postscript feature is supported.
+Files:      src/testdir/test_hardcopy.vim
+
+
+*** ../vim-8.0.0616/src/testdir/test_hardcopy.vim	2017-06-04 20:43:43.956009665 +0200
+--- src/testdir/test_hardcopy.vim	2017-06-04 21:38:01.521314110 +0200
+***************
+*** 62,71 ****
+  endfunc
+  
+  func Test_fname_with_spaces()
+!   split t\ e\ s\ t.txt
+!   call setline(1, ['just', 'some', 'text'])
+!   hardcopy > %.ps
+!   call assert_true(filereadable('t e s t.txt.ps'))
+!   call delete('t e s t.txt.ps')
+!   bwipe!
+  endfunc
+--- 62,73 ----
+  endfunc
+  
+  func Test_fname_with_spaces()
+!   if has('postscript')
+!     split t\ e\ s\ t.txt
+!     call setline(1, ['just', 'some', 'text'])
+!     hardcopy > %.ps
+!     call assert_true(filereadable('t e s t.txt.ps'))
+!     call delete('t e s t.txt.ps')
+!     bwipe!
+!   endif
+  endfunc
+*** ../vim-8.0.0616/src/version.c	2017-06-04 21:06:05.082813802 +0200
+--- src/version.c	2017-06-04 21:39:20.708766538 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     617,
+  /**/
+
+-- 
+Often you're less important than your furniture.  If you think about it, you
+can get fired but your furniture stays behind, gainfully employed at the
+company that didn't need _you_ anymore.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

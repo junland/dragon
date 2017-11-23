@@ -1,0 +1,102 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1321
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1321
+Problem:    Can't build huge version with Athena. (Mark Kelly)
+Solution:   Move including beval.h to before structs.h. Include beval.pro like
+            other proto files.
+Files:      src/vim.h, src/beval.h, src/proto.h
+
+
+*** ../vim-8.0.1320/src/vim.h	2017-11-18 22:13:04.753908641 +0100
+--- src/vim.h	2017-11-19 20:19:14.544788162 +0100
+***************
+*** 1809,1822 ****
+  
+  /* Include option.h before structs.h, because the number of window-local and
+   * buffer-local options is used there. */
+! #include "option.h"	    /* options and default values */
+  
+  /* Note that gui.h is included by structs.h */
+  
+! #include "structs.h"	    /* file that defines many structures */
+  
+  #include "alloc.h"
+- #include "beval.h"
+  
+  /* Values for "do_profiling". */
+  #define PROF_NONE	0	/* profiling not started */
+--- 1809,1823 ----
+  
+  /* Include option.h before structs.h, because the number of window-local and
+   * buffer-local options is used there. */
+! #include "option.h"	/* options and default values */
+! 
+! #include "beval.h"	/* BalloonEval */
+  
+  /* Note that gui.h is included by structs.h */
+  
+! #include "structs.h"	/* defines many structures */
+  
+  #include "alloc.h"
+  
+  /* Values for "do_profiling". */
+  #define PROF_NONE	0	/* profiling not started */
+*** ../vim-8.0.1320/src/beval.h	2017-11-18 22:49:53.717133676 +0100
+--- src/beval.h	2017-11-19 20:22:17.777978314 +0100
+***************
+*** 78,84 ****
+  #define EVAL_OFFSET_X 15 /* displacement of beval topleft corner from pointer */
+  #define EVAL_OFFSET_Y 10
+  
+- #include "beval.pro"
+  #ifdef FEAT_BEVAL_GUI
+  # include "gui_beval.pro"
+  #endif
+--- 78,83 ----
+*** ../vim-8.0.1320/src/proto.h	2017-10-28 21:08:38.991456926 +0200
+--- src/proto.h	2017-11-19 20:23:01.689305010 +0100
+***************
+*** 201,207 ****
+  
+  /* Ugly solution for "BalloonEval" not being defined while it's used in some
+   * .pro files. */
+! # ifndef FEAT_BEVAL
+  #  define BalloonEval int
+  # endif
+  
+--- 201,209 ----
+  
+  /* Ugly solution for "BalloonEval" not being defined while it's used in some
+   * .pro files. */
+! # ifdef FEAT_BEVAL
+! #  include "beval.pro"
+! # else
+  #  define BalloonEval int
+  # endif
+  
+*** ../vim-8.0.1320/src/version.c	2017-11-19 20:32:45.580353585 +0100
+--- src/version.c	2017-11-19 20:34:04.531143358 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1321,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+12. You turn off your modem and get this awful empty feeling, like you just
+    pulled the plug on a loved one.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

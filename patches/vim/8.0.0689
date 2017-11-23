@@ -1,0 +1,81 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0689
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0689
+Problem:    The ~ character is not escaped when adding to the search pattern
+            with CTRL-L. (Ramel Eshed)
+Solution:   Escape the character. (Christian Brabandt)
+Files:      src/ex_getln.c, src/testdir/test_search.vim
+
+
+*** ../vim-8.0.0688/src/ex_getln.c	2017-06-25 21:17:18.579532117 +0200
+--- src/ex_getln.c	2017-06-29 22:19:08.937366645 +0200
+***************
+*** 1492,1498 ****
+  			    if (c != NUL)
+  			    {
+  				if (c == firstc || vim_strchr((char_u *)(
+! 					      p_magic ? "\\^$.*[" : "\\^$"), c)
+  								       != NULL)
+  				{
+  				    /* put a backslash before special
+--- 1492,1498 ----
+  			    if (c != NUL)
+  			    {
+  				if (c == firstc || vim_strchr((char_u *)(
+! 					      p_magic ? "\\~^$.*[" : "\\^$"), c)
+  								       != NULL)
+  				{
+  				    /* put a backslash before special
+*** ../vim-8.0.0688/src/testdir/test_search.vim	2017-03-09 18:19:58.165107821 +0100
+--- src/testdir/test_search.vim	2017-06-29 22:18:25.481679178 +0200
+***************
+*** 302,304 ****
+--- 302,324 ----
+    exe "norm 0t\u93cf"
+    bw!
+  endfunc
++ 
++ func Test_search_cmdline3()
++   if !exists('+incsearch')
++     return
++   endif
++   " need to disable char_avail,
++   " so that expansion of commandline works
++   call test_override("char_avail", 1)
++   new
++   call setline(1, ['  1', '  2 the~e', '  3 the theother'])
++   set incsearch
++   1
++   " first match
++   call feedkeys("/the\<c-l>\<cr>", 'tx')
++   call assert_equal('  2 the~e', getline('.'))
++   " clean up
++   set noincsearch
++   call test_override("char_avail", 0)
++   bw!
++ endfunc
+*** ../vim-8.0.0688/src/version.c	2017-06-28 22:26:49.566720272 +0200
+--- src/version.c	2017-06-29 22:22:30.059919008 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     689,
+  /**/
+
+-- 
+From "know your smileys":
+ @:-()	Elvis Presley
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,60 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1292
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1292
+Problem:    Quick clicks in the WinBar start Visual mode.
+Solution:   Use a double click in the WinBar like a normal click.
+Files:      src/ui.c
+
+
+*** ../vim-8.0.1291/src/ui.c	2017-10-28 21:08:38.991456926 +0200
+--- src/ui.c	2017-11-12 16:43:56.853623451 +0100
+***************
+*** 2653,2658 ****
+--- 2653,2673 ----
+  	    return IN_STATUS_LINE;
+  	if (on_sep_line)
+  	    return IN_SEP_LINE;
++ #ifdef FEAT_MENU
++ 	if (in_winbar)
++ 	{
++ 	    /* A quick second click may arrive as a double-click, but we use it
++ 	     * as a second click in the WinBar. */
++ 	    if ((mod_mask & MOD_MASK_MULTI_CLICK) && !(flags & MOUSE_RELEASED))
++ 	    {
++ 		wp = mouse_find_win(&row, &col);
++ 		if (wp == NULL)
++ 		    return IN_UNKNOWN;
++ 		winbar_click(wp, col);
++ 	    }
++ 	    return IN_OTHER_WIN | MOUSE_WINBAR;
++ 	}
++ #endif
+  	if (flags & MOUSE_MAY_STOP_VIS)
+  	{
+  	    end_visual_mode();
+*** ../vim-8.0.1291/src/version.c	2017-11-12 15:36:34.029935566 +0100
+--- src/version.c	2017-11-12 16:51:22.314648571 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1292,
+  /**/
+
+
+-- 
+FIRST VILLAGER: We have found a witch.  May we burn her?
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,66 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0704
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0704
+Problem:    Problems with autocommands when opening help.
+Solution:   Avoid using invalid "varp" value.  Allow using :wincmd if buffer
+            is locked. (closes #1806, closes #1804)
+Files:      src/option.c, src/ex_cmds.h
+
+
+*** ../vim-8.0.0703/src/option.c	2017-07-07 11:53:29.511876559 +0200
+--- src/option.c	2017-07-09 15:36:31.032350711 +0200
+***************
+*** 7570,7575 ****
+--- 7570,7578 ----
+  		did_filetype = TRUE;
+  		apply_autocmds(EVENT_FILETYPE, curbuf->b_p_ft,
+  					       curbuf->b_fname, TRUE, curbuf);
++ 		/* Just in case the old "curbuf" is now invalid. */
++ 		if (varp != &(curbuf->b_p_ft))
++ 		    varp = NULL;
+  	    }
+  	}
+  #endif
+*** ../vim-8.0.0703/src/ex_cmds.h	2017-07-07 12:22:51.594469896 +0200
+--- src/ex_cmds.h	2017-07-09 15:31:46.698557815 +0200
+***************
+*** 1625,1631 ****
+  			EXTRA|NEEDARG|TRLBAR,
+  			ADDR_LINES),
+  EX(CMD_wincmd,		"wincmd",	ex_wincmd,
+! 			NEEDARG|WORD1|RANGE|NOTADR,
+  			ADDR_WINDOWS),
+  EX(CMD_windo,		"windo",	ex_listdo,
+  			NEEDARG|EXTRA|NOTRLCOM|RANGE|NOTADR|DFLALL,
+--- 1625,1631 ----
+  			EXTRA|NEEDARG|TRLBAR,
+  			ADDR_LINES),
+  EX(CMD_wincmd,		"wincmd",	ex_wincmd,
+! 			NEEDARG|WORD1|RANGE|NOTADR|CMDWIN,
+  			ADDR_WINDOWS),
+  EX(CMD_windo,		"windo",	ex_listdo,
+  			NEEDARG|EXTRA|NOTRLCOM|RANGE|NOTADR|DFLALL,
+*** ../vim-8.0.0703/src/version.c	2017-07-09 11:07:11.720971332 +0200
+--- src/version.c	2017-07-09 15:32:49.330079317 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     704,
+  /**/
+
+-- 
+Don't drink and drive.  You might hit a bump and spill your beer.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

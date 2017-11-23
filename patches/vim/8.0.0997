@@ -1,0 +1,69 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0997
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0997 (after 8.0.0996)
+Problem:    Libvterm and Terminal.app not regognized from termresponse.
+Solution:   Adjust string compare.
+Files:      src/term.c
+
+
+*** ../vim-8.0.0996/src/term.c	2017-08-26 15:15:59.710311866 +0200
+--- src/term.c	2017-08-26 15:28:10.361512898 +0200
+***************
+*** 4510,4516 ****
+  
+  			/* libvterm sends 0;100;0 */
+  			if (col == 100
+! 				&& STRNCMP(tp + extra - 2, ">0;100;0c", 9) == 0)
+  			{
+  			    /* If run from Vim $COLORS is set to the number of
+  			     * colors the terminal supports.  Otherwise assume
+--- 4510,4516 ----
+  
+  			/* libvterm sends 0;100;0 */
+  			if (col == 100
+! 				&& STRNCMP(tp + extra - 2, "0;100;0c", 8) == 0)
+  			{
+  			    /* If run from Vim $COLORS is set to the number of
+  			     * colors the terminal supports.  Otherwise assume
+***************
+*** 4522,4528 ****
+  #  ifdef MACOS
+  			/* Mac Terminal.app sends 1;95;0 */
+  			if (col == 95
+! 				&& STRNCMP(tp + extra - 2, ">1;95;0c", 9) == 0)
+  			{
+  			    /* Terminal.app sets $TERM to "xterm-256colors",
+  			     * but it's not fully xterm compatible. */
+--- 4522,4528 ----
+  #  ifdef MACOS
+  			/* Mac Terminal.app sends 1;95;0 */
+  			if (col == 95
+! 				&& STRNCMP(tp + extra - 2, "1;95;0c", 7) == 0)
+  			{
+  			    /* Terminal.app sets $TERM to "xterm-256colors",
+  			     * but it's not fully xterm compatible. */
+*** ../vim-8.0.0996/src/version.c	2017-08-26 15:15:59.710311866 +0200
+--- src/version.c	2017-08-26 15:28:57.325205600 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     997,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+26. You check your mail. It says "no new messages." So you check it again.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

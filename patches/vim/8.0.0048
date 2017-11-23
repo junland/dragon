@@ -1,0 +1,199 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0048
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0048
+Problem:    On Windows job_stop() stops cmd.exe, not the processes it runs.
+            (Linwei)
+Solution:   Iterate over all processes and terminate the one where the parent
+            is the job process. (Yasuhiro Matsumoto, closes #1184)
+Files:      src/os_win32.c, src/structs.h
+
+
+*** ../vim-8.0.0047/src/os_win32.c	2016-10-15 18:36:45.353910276 +0200
+--- src/os_win32.c	2016-10-27 16:42:55.597417857 +0200
+***************
+*** 50,55 ****
+--- 50,59 ----
+  # endif
+  #endif
+  
++ #ifdef FEAT_JOB_CHANNEL
++ # include <tlhelp32.h>
++ #endif
++ 
+  #ifdef __MINGW32__
+  # ifndef FROM_LEFT_1ST_BUTTON_PRESSED
+  #  define FROM_LEFT_1ST_BUTTON_PRESSED    0x0001
+***************
+*** 4796,4802 ****
+  {
+      STARTUPINFO		si;
+      PROCESS_INFORMATION	pi;
+-     HANDLE		jo;
+      SECURITY_ATTRIBUTES saAttr;
+      channel_T		*channel = NULL;
+      HANDLE		ifd[2];
+--- 4800,4805 ----
+***************
+*** 4821,4833 ****
+      efd[0] = INVALID_HANDLE_VALUE;
+      efd[1] = INVALID_HANDLE_VALUE;
+  
+-     jo = CreateJobObject(NULL, NULL);
+-     if (jo == NULL)
+-     {
+- 	job->jv_status = JOB_FAILED;
+- 	goto failed;
+-     }
+- 
+      ZeroMemory(&pi, sizeof(pi));
+      ZeroMemory(&si, sizeof(si));
+      si.cb = sizeof(si);
+--- 4824,4829 ----
+***************
+*** 4912,4939 ****
+      }
+  
+      if (!vim_create_process(cmd, TRUE,
+- 	    CREATE_SUSPENDED |
+  	    CREATE_DEFAULT_ERROR_MODE |
+  	    CREATE_NEW_PROCESS_GROUP |
+  	    CREATE_NEW_CONSOLE,
+  	    &si, &pi))
+      {
+- 	CloseHandle(jo);
+  	job->jv_status = JOB_FAILED;
+  	goto failed;
+      }
+  
+-     if (!AssignProcessToJobObject(jo, pi.hProcess))
+-     {
+- 	/* if failing, switch the way to terminate
+- 	 * process with TerminateProcess. */
+- 	CloseHandle(jo);
+- 	jo = NULL;
+-     }
+-     ResumeThread(pi.hThread);
+      CloseHandle(pi.hThread);
+      job->jv_proc_info = pi;
+-     job->jv_job_object = jo;
+      job->jv_status = JOB_STARTED;
+  
+      CloseHandle(ifd[0]);
+--- 4908,4924 ----
+***************
+*** 5020,5025 ****
+--- 5005,5048 ----
+      return NULL;
+  }
+  
++     static BOOL
++ terminate_all(HANDLE process, int code)
++ {
++     PROCESSENTRY32  pe;
++     HANDLE	    h = INVALID_HANDLE_VALUE;
++     DWORD	    pid = GetProcessId(process);
++ 
++     if (pid != 0)
++     {
++ 	h = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
++ 	if (h == INVALID_HANDLE_VALUE)
++ 	    goto theend;
++ 
++ 	pe.dwSize = sizeof(PROCESSENTRY32);
++ 	if (Process32First(h, &pe))
++ 	{
++ 	    do
++ 	    {
++ 		if (pe.th32ParentProcessID == pid)
++ 		{
++ 		    HANDLE ph = OpenProcess(
++ 				  PROCESS_ALL_ACCESS, FALSE, pe.th32ProcessID);
++ 		    if (ph != NULL)
++ 		    {
++ 			terminate_all(ph, code);
++ 			CloseHandle(ph);
++ 		    }
++ 		}
++ 	    } while (Process32Next(h, &pe));
++ 	}
++ 
++ 	CloseHandle(h);
++     }
++ 
++ theend:
++     return TerminateProcess(process, code);
++ }
++ 
+      int
+  mch_stop_job(job_T *job, char_u *how)
+  {
+***************
+*** 5027,5036 ****
+  
+      if (STRCMP(how, "term") == 0 || STRCMP(how, "kill") == 0 || *how == NUL)
+      {
+! 	if (job->jv_job_object != NULL)
+! 	    return TerminateJobObject(job->jv_job_object, 0) ? OK : FAIL;
+! 	else
+! 	    return TerminateProcess(job->jv_proc_info.hProcess, 0) ? OK : FAIL;
+      }
+  
+      if (!AttachConsole(job->jv_proc_info.dwProcessId))
+--- 5050,5056 ----
+  
+      if (STRCMP(how, "term") == 0 || STRCMP(how, "kill") == 0 || *how == NUL)
+      {
+! 	return terminate_all(job->jv_proc_info.hProcess, 0) ? OK : FAIL;
+      }
+  
+      if (!AttachConsole(job->jv_proc_info.dwProcessId))
+***************
+*** 5051,5058 ****
+  {
+      if (job->jv_status != JOB_FAILED)
+      {
+- 	if (job->jv_job_object != NULL)
+- 	    CloseHandle(job->jv_job_object);
+  	CloseHandle(job->jv_proc_info.hProcess);
+      }
+  }
+--- 5071,5076 ----
+*** ../vim-8.0.0047/src/structs.h	2016-10-09 17:27:56.863388510 +0200
+--- src/structs.h	2016-10-27 16:36:49.151650364 +0200
+***************
+*** 1437,1443 ****
+  #endif
+  #ifdef WIN32
+      PROCESS_INFORMATION	jv_proc_info;
+-     HANDLE		jv_job_object;
+  #endif
+      jobstatus_T	jv_status;
+      char_u	*jv_stoponexit; /* allocated */
+--- 1437,1442 ----
+*** ../vim-8.0.0047/src/version.c	2016-10-27 14:49:11.022995393 +0200
+--- src/version.c	2016-10-27 16:38:42.722958450 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     48,
+  /**/
+
+-- 
+FIRST SOLDIER:  So they wouldn't be able to bring a coconut back anyway.
+SECOND SOLDIER: Wait a minute! Suppose two swallows carried it together?
+FIRST SOLDIER:  No, they'd have to have it on a line.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

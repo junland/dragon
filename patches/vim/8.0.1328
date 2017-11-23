@@ -1,0 +1,158 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1328
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1328
+Problem:    Trouble when using ":term ++close" with autocmd. (Gabriel Barta)
+Solution:   Use aucmd_prepbuf() and aucmd_restbuf() instead of setting curbuf.
+            (closes #2339)
+Files:      src/terminal.c, src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.1327/src/terminal.c	2017-11-20 21:49:08.807167869 +0100
+--- src/terminal.c	2017-11-21 14:38:24.078427810 +0100
+***************
+*** 51,56 ****
+--- 51,57 ----
+   * - implement term_setsize()
+   * - Termdebug does not work when Vim build with mzscheme.  gdb hangs.
+   * - MS-Windows GUI: WinBar has  tearoff item
++  * - Adding WinBar to terminal window doesn't display, text isn't shifted down.
+   * - MS-Windows GUI: still need to type a key after shell exits?  #1924
+   * - After executing a shell command the status line isn't redraw.
+   * - What to store in a session file?  Shell at the prompt would be OK to
+***************
+*** 2172,2181 ****
+  
+  		if (term->tl_finish == 'c')
+  		{
+  		    /* ++close or term_finish == "close" */
+  		    ch_log(NULL, "terminal job finished, closing window");
+! 		    curbuf = term->tl_buffer;
+  		    do_bufdel(DOBUF_WIPE, (char_u *)"", 1, fnum, fnum, FALSE);
+  		    break;
+  		}
+  		if (term->tl_finish == 'o' && term->tl_buffer->b_nwindows == 0)
+--- 2173,2185 ----
+  
+  		if (term->tl_finish == 'c')
+  		{
++ 		    aco_save_T	aco;
++ 
+  		    /* ++close or term_finish == "close" */
+  		    ch_log(NULL, "terminal job finished, closing window");
+! 		    aucmd_prepbuf(&aco, term->tl_buffer);
+  		    do_bufdel(DOBUF_WIPE, (char_u *)"", 1, fnum, fnum, FALSE);
++ 		    aucmd_restbuf(&aco);
+  		    break;
+  		}
+  		if (term->tl_finish == 'o' && term->tl_buffer->b_nwindows == 0)
+*** ../vim-8.0.1327/src/testdir/test_terminal.vim	2017-11-04 19:24:24.754197129 +0100
+--- src/testdir/test_terminal.vim	2017-11-21 14:38:05.338708269 +0100
+***************
+*** 352,360 ****
+    call delete('Xtext')
+  endfunc
+  
+! func Test_finish_open_close()
+!   call assert_equal(1, winnr('$'))
+! 
+    if s:python != ''
+      let cmd = s:python . " test_short_sleep.py"
+      let waittime = 500
+--- 352,358 ----
+    call delete('Xtext')
+  endfunc
+  
+! func s:get_sleep_cmd()
+    if s:python != ''
+      let cmd = s:python . " test_short_sleep.py"
+      let waittime = 500
+***************
+*** 367,378 ****
+        let cmd = 'sleep 1'
+      endif
+    endif
+  
+    exe 'terminal ++close ' . cmd
+    call assert_equal(2, winnr('$'))
+    wincmd p
+    call WaitFor("winnr('$') == 1", waittime)
+-   call assert_equal(1, winnr('$'))
+  
+    call term_start(cmd, {'term_finish': 'close'})
+    call assert_equal(2, winnr('$'))
+--- 365,382 ----
+        let cmd = 'sleep 1'
+      endif
+    endif
++   return [cmd, waittime]
++ endfunc
++ 
++ func Test_terminal_finish_open_close()
++   call assert_equal(1, winnr('$'))
++ 
++   let [cmd, waittime] = s:get_sleep_cmd()
+  
+    exe 'terminal ++close ' . cmd
+    call assert_equal(2, winnr('$'))
+    wincmd p
+    call WaitFor("winnr('$') == 1", waittime)
+  
+    call term_start(cmd, {'term_finish': 'close'})
+    call assert_equal(2, winnr('$'))
+***************
+*** 743,745 ****
+--- 747,775 ----
+    unlet g:job
+    let &encoding = save_enc
+  endfunc
++ 
++ func Test_terminal_aucmd_on_close()
++   fun Nop()
++     let s:called = 1
++   endfun
++ 
++   aug repro
++       au!
++       au BufWinLeave * call Nop()
++   aug END
++ 
++   let [cmd, waittime] = s:get_sleep_cmd()
++ 
++   call assert_equal(1, winnr('$'))
++   new
++   call setline(1, ['one', 'two'])
++   exe 'term ++close ' . cmd
++   wincmd p
++   call WaitFor("winnr('$') == 2", waittime)
++   call assert_equal(1, s:called)
++   bwipe!
++ 
++   unlet s:called
++   au! repro
++   delfunc Nop
++ endfunc
+*** ../vim-8.0.1327/src/version.c	2017-11-21 13:52:10.228556769 +0100
+--- src/version.c	2017-11-21 14:40:43.968335317 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1328,
+  /**/
+
+-- 
+Don't Panic!
+		-- The Hitchhiker's Guide to the Galaxy
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

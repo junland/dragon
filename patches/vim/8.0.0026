@@ -1,0 +1,154 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0026
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0026
+Problem:    Error format with %W, %C and %Z does not work. (Gerd Wachsmuth)
+Solution:   Skip code when qf_multiignore is set. (Lcd)
+Files:      src/quickfix.c, src/testdir/test_quickfix.vim
+
+
+*** ../vim-8.0.0025/src/quickfix.c	2016-09-27 21:28:52.901342062 +0200
+--- src/quickfix.c	2016-10-09 16:02:48.394927690 +0200
+***************
+*** 1010,1048 ****
+  	}
+  	else if (vim_strchr((char_u *)"CZ", idx) != NULL)
+  	{				/* continuation of multi-line msg */
+! 	    qfline_T *qfprev = qi->qf_lists[qi->qf_curlist].qf_last;
+! 
+! 	    if (qfprev == NULL)
+! 		return QF_FAIL;
+! 	    if (*fields->errmsg && !qi->qf_multiignore)
+  	    {
+! 		len = (int)STRLEN(qfprev->qf_text);
+! 		if ((ptr = alloc((unsigned)(len + STRLEN(fields->errmsg) + 2)))
+! 			== NULL)
+  		    return QF_FAIL;
+! 		STRCPY(ptr, qfprev->qf_text);
+! 		vim_free(qfprev->qf_text);
+! 		qfprev->qf_text = ptr;
+! 		*(ptr += len) = '\n';
+! 		STRCPY(++ptr, fields->errmsg);
+! 	    }
+! 	    if (qfprev->qf_nr == -1)
+! 		qfprev->qf_nr = fields->enr;
+! 	    if (vim_isprintc(fields->type) && !qfprev->qf_type)
+! 		/* only printable chars allowed */
+! 		qfprev->qf_type = fields->type;
+  
+! 	    if (!qfprev->qf_lnum)
+! 		qfprev->qf_lnum = fields->lnum;
+! 	    if (!qfprev->qf_col)
+! 		qfprev->qf_col = fields->col;
+! 	    qfprev->qf_viscol = fields->use_viscol;
+! 	    if (!qfprev->qf_fnum)
+! 		qfprev->qf_fnum = qf_get_fnum(qi, qi->qf_directory,
+! 			*fields->namebuf || qi->qf_directory != NULL
+! 			? fields->namebuf
+! 			: qi->qf_currfile != NULL && fields->valid
+! 			? qi->qf_currfile : 0);
+  	    if (idx == 'Z')
+  		qi->qf_multiline = qi->qf_multiignore = FALSE;
+  	    line_breakcheck();
+--- 1010,1051 ----
+  	}
+  	else if (vim_strchr((char_u *)"CZ", idx) != NULL)
+  	{				/* continuation of multi-line msg */
+! 	    if (!qi->qf_multiignore)
+  	    {
+! 		qfline_T *qfprev = qi->qf_lists[qi->qf_curlist].qf_last;
+! 
+! 		if (qfprev == NULL)
+  		    return QF_FAIL;
+! 		if (*fields->errmsg && !qi->qf_multiignore)
+! 		{
+! 		    len = (int)STRLEN(qfprev->qf_text);
+! 		    if ((ptr = alloc((unsigned)(len + STRLEN(fields->errmsg) + 2)))
+! 			    == NULL)
+! 			return QF_FAIL;
+! 		    STRCPY(ptr, qfprev->qf_text);
+! 		    vim_free(qfprev->qf_text);
+! 		    qfprev->qf_text = ptr;
+! 		    *(ptr += len) = '\n';
+! 		    STRCPY(++ptr, fields->errmsg);
+! 		}
+! 		if (qfprev->qf_nr == -1)
+! 		    qfprev->qf_nr = fields->enr;
+! 		if (vim_isprintc(fields->type) && !qfprev->qf_type)
+! 		    /* only printable chars allowed */
+! 		    qfprev->qf_type = fields->type;
+  
+! 		if (!qfprev->qf_lnum)
+! 		    qfprev->qf_lnum = fields->lnum;
+! 		if (!qfprev->qf_col)
+! 		    qfprev->qf_col = fields->col;
+! 		qfprev->qf_viscol = fields->use_viscol;
+! 		if (!qfprev->qf_fnum)
+! 		    qfprev->qf_fnum = qf_get_fnum(qi, qi->qf_directory,
+! 			    *fields->namebuf || qi->qf_directory != NULL
+! 			    ? fields->namebuf
+! 			    : qi->qf_currfile != NULL && fields->valid
+! 			    ? qi->qf_currfile : 0);
+! 	    }
+  	    if (idx == 'Z')
+  		qi->qf_multiline = qi->qf_multiignore = FALSE;
+  	    line_breakcheck();
+*** ../vim-8.0.0025/src/testdir/test_quickfix.vim	2016-09-27 21:28:52.901342062 +0200
+--- src/testdir/test_quickfix.vim	2016-10-09 16:01:59.319265564 +0200
+***************
+*** 818,823 ****
+--- 818,846 ----
+    call delete('habits1.txt')
+  endfunction
+  
++ " Test for resync after continuing an ignored message
++ function! Xefm_ignore_continuations(cchar)
++   call s:setup_commands(a:cchar)
++ 
++   let save_efm = &efm
++ 
++   let &efm =
++ 	\ '%Eerror %m %l,' .
++ 	\ '%-Wignored %m %l,' .
++ 	\ '%+Cmore ignored %m %l,' .
++ 	\ '%Zignored end'
++   Xgetexpr ['ignored warning 1', 'more ignored continuation 2', 'ignored end', 'error resync 4']
++   let l = map(g:Xgetlist(), '[v:val.text, v:val.valid, v:val.lnum, v:val.type]')
++   call assert_equal([['resync', 1, 4, 'E']], l)
++ 
++   let &efm = save_efm
++ endfunction
++ 
++ function! Test_efm_ignore_continuations()
++   call Xefm_ignore_continuations('c')
++   call Xefm_ignore_continuations('l')
++ endfunction
++ 
+  " Tests for invalid error format specifies
+  function Xinvalid_efm_Tests(cchar)
+    call s:setup_commands(a:cchar)
+*** ../vim-8.0.0025/src/version.c	2016-10-09 15:50:45.927932466 +0200
+--- src/version.c	2016-10-09 16:03:43.222550240 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     26,
+  /**/
+
+-- 
+Q: How do you tell the difference between a female cat and a male cat?
+A: You ask it a question and if HE answers, it's a male but, if SHE
+   answers, it's a female.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

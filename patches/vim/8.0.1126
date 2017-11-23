@@ -1,0 +1,110 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1126
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1126
+Problem:    Endless resize when terminal showing in two buffers. (Hirohito
+            Higashi)
+Solution:   Set a flag to prevent resizing the window.
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.1125/src/terminal.c	2017-09-17 23:02:17.176074400 +0200
+--- src/terminal.c	2017-09-18 21:19:31.007890281 +0200
+***************
+*** 39,44 ****
+--- 39,45 ----
+   *
+   * TODO:
+   * - Shift-Tab does not work.
++  * - click in Window toolbar of other window: save/restore Insert and Visual
+   * - Redirecting output does not work on MS-Windows, Test_terminal_redir_file()
+   *   is disabled.
+   * - implement term_setsize()
+***************
+*** 98,103 ****
+--- 99,107 ----
+      job_T	*tl_job;
+      buf_T	*tl_buffer;
+  
++     /* Set when setting the size of a vterm, reset after redrawing. */
++     int		tl_vterm_size_changed;
++ 
+      /* used when tl_job is NULL and only a pty was created */
+      int		tl_tty_fd;
+      char_u	*tl_tty_in;
+***************
+*** 2016,2031 ****
+  
+      term->tl_rows = rows;
+      term->tl_cols = cols;
+!     FOR_ALL_WINDOWS(wp)
+      {
+! 	if (wp->w_buffer == term->tl_buffer)
+  	{
+! 	    win_setheight_win(rows, wp);
+! 	    win_setwidth_win(cols, wp);
+  	}
+      }
+- 
+-     redraw_buf_later(term->tl_buffer, NOT_VALID);
+      return 1;
+  }
+  
+--- 2020,2040 ----
+  
+      term->tl_rows = rows;
+      term->tl_cols = cols;
+!     if (term->tl_vterm_size_changed)
+! 	/* Size was set by vterm_set_size(), don't set the window size. */
+! 	term->tl_vterm_size_changed = FALSE;
+!     else
+      {
+! 	FOR_ALL_WINDOWS(wp)
+  	{
+! 	    if (wp->w_buffer == term->tl_buffer)
+! 	    {
+! 		win_setheight_win(rows, wp);
+! 		win_setwidth_win(cols, wp);
+! 	    }
+  	}
++ 	redraw_buf_later(term->tl_buffer, NOT_VALID);
+      }
+      return 1;
+  }
+  
+***************
+*** 2222,2227 ****
+--- 2231,2237 ----
+  	    }
+  	}
+  
++ 	term->tl_vterm_size_changed = TRUE;
+  	vterm_set_size(vterm, rows, cols);
+  	ch_log(term->tl_job->jv_channel, "Resizing terminal to %d lines",
+  									 rows);
+*** ../vim-8.0.1125/src/version.c	2017-09-18 20:31:37.596757010 +0200
+--- src/version.c	2017-09-18 21:20:28.747544859 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1126,
+  /**/
+
+-- 
+Although the scythe isn't pre-eminent among the weapons of war, anyone who
+has been on the wrong end of, say, a peasants' revolt will know that in
+skilled hands it is fearsome.
+					-- (Terry Pratchett, Mort)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

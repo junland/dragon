@@ -1,0 +1,52 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0194
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0194 (after 8.0.0189)
+Problem:    Profile tests fails if total and self time are equal.
+Solution:   Make one time optional.
+Files:      src/testdir/test_profile.vim
+
+
+*** ../vim-8.0.0193/src/testdir/test_profile.vim	2017-01-15 15:22:14.162467173 +0100
+--- src/testdir/test_profile.vim	2017-01-15 21:09:52.377847944 +0100
+***************
+*** 113,119 ****
+    call assert_equal('                              " a comment',      lines[9])
+    call assert_match('^\s*20\s\+\d\+\.\d\+\s\+\d\+\.\d\+\s\+call Foo()$', lines[10])
+    call assert_match('^\s*20\s\+\d\+\.\d\+\s\+endfor$',                lines[11])
+!   call assert_match('^\s*2\s\+\d\+\.\d\+\s\+\d\+\.\d\+\s\+call Foo()$', lines[12])
+    call assert_equal('',                                               lines[13])
+  
+    call delete('Xprofile_file.vim')
+--- 113,120 ----
+    call assert_equal('                              " a comment',      lines[9])
+    call assert_match('^\s*20\s\+\d\+\.\d\+\s\+\d\+\.\d\+\s\+call Foo()$', lines[10])
+    call assert_match('^\s*20\s\+\d\+\.\d\+\s\+endfor$',                lines[11])
+!   " if self and total are equal we only get one number
+!   call assert_match('^\s*2\s\+\(\d\+\.\d\+\s\+\)\=\d\+\.\d\+\s\+call Foo()$', lines[12])
+    call assert_equal('',                                               lines[13])
+  
+    call delete('Xprofile_file.vim')
+*** ../vim-8.0.0193/src/version.c	2017-01-15 20:51:33.904962652 +0100
+--- src/version.c	2017-01-15 21:11:04.745378587 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     194,
+  /**/
+
+-- 
+Life would be so much easier if we could just look at the source code.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

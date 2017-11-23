@@ -1,0 +1,235 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0582
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0582
+Problem:    Illegal memory access with z= command. (Dominique Pelle)
+Solution:   Avoid case folded text to be longer than the original text.  Use
+            MB_PTR2LEN() instead of MB_BYTE2LEN().
+Files:      src/spell.c, src/testdir/test_spell.vim
+
+
+*** ../vim-8.0.0581/src/spell.c	2017-03-29 17:30:23.168136866 +0200
+--- src/spell.c	2017-04-22 23:44:08.384237267 +0200
+***************
+*** 3123,3129 ****
+  
+      if (has_mbyte)
+      {
+! 	l = MB_BYTE2LEN(*p);
+  	s = p;
+  	if (l == 1)
+  	{
+--- 3123,3129 ----
+  
+      if (has_mbyte)
+      {
+! 	l = MB_PTR2LEN(p);
+  	s = p;
+  	if (l == 1)
+  	{
+***************
+*** 3808,3813 ****
+--- 3808,3817 ----
+      vim_strncpy(su->su_badword, su->su_badptr, su->su_badlen);
+      (void)spell_casefold(su->su_badptr, su->su_badlen,
+  						    su->su_fbadword, MAXWLEN);
++     /* TODO: make this work if the case-folded text is longer than the original
++      * text. Currently an illegal byte causes wrong pointer computations. */
++     su->su_fbadword[su->su_badlen] = NUL;
++ 
+      /* get caps flags for bad word */
+      su->su_badflags = badword_captype(su->su_badptr,
+  					       su->su_badptr + su->su_badlen);
+***************
+*** 4937,4948 ****
+  			{
+  			    int	    l;
+  
+! #ifdef FEAT_MBYTE
+! 			    if (has_mbyte)
+! 				l = MB_BYTE2LEN(fword[sp->ts_fidx]);
+! 			    else
+! #endif
+! 				l = 1;
+  			    if (fword_ends)
+  			    {
+  				/* Copy the skipped character to preword. */
+--- 4941,4947 ----
+  			{
+  			    int	    l;
+  
+! 			    l = MB_PTR2LEN(fword + sp->ts_fidx);
+  			    if (fword_ends)
+  			    {
+  				/* Copy the skipped character to preword. */
+***************
+*** 5109,5117 ****
+  				/* Correct ts_fidx for the byte length of the
+  				 * character (we didn't check that before). */
+  				sp->ts_fidx = sp->ts_fcharstart
+! 					    + MB_BYTE2LEN(
+! 						    fword[sp->ts_fcharstart]);
+! 
+  				/* For changing a composing character adjust
+  				 * the score from SCORE_SUBST to
+  				 * SCORE_SUBCOMP. */
+--- 5108,5115 ----
+  				/* Correct ts_fidx for the byte length of the
+  				 * character (we didn't check that before). */
+  				sp->ts_fidx = sp->ts_fcharstart
+! 					    + MB_PTR2LEN(
+! 						    fword + sp->ts_fcharstart);
+  				/* For changing a composing character adjust
+  				 * the score from SCORE_SUBST to
+  				 * SCORE_SUBCOMP. */
+***************
+*** 5232,5238 ****
+  		if (has_mbyte)
+  		{
+  		    c = mb_ptr2char(fword + sp->ts_fidx);
+! 		    stack[depth].ts_fidx += MB_BYTE2LEN(fword[sp->ts_fidx]);
+  		    if (enc_utf8 && utf_iscomposing(c))
+  			stack[depth].ts_score -= SCORE_DEL - SCORE_DELCOMP;
+  		    else if (c == mb_ptr2char(fword + stack[depth].ts_fidx))
+--- 5230,5236 ----
+  		if (has_mbyte)
+  		{
+  		    c = mb_ptr2char(fword + sp->ts_fidx);
+! 		    stack[depth].ts_fidx += MB_PTR2LEN(fword + sp->ts_fidx);
+  		    if (enc_utf8 && utf_iscomposing(c))
+  			stack[depth].ts_score -= SCORE_DEL - SCORE_DELCOMP;
+  		    else if (c == mb_ptr2char(fword + stack[depth].ts_fidx))
+***************
+*** 5456,5464 ****
+  #ifdef FEAT_MBYTE
+  	    if (has_mbyte)
+  	    {
+! 		n = MB_BYTE2LEN(*p);
+  		c = mb_ptr2char(p + n);
+! 		mch_memmove(p + MB_BYTE2LEN(p[n]), p, n);
+  		mb_char2bytes(c, p);
+  	    }
+  	    else
+--- 5454,5462 ----
+  #ifdef FEAT_MBYTE
+  	    if (has_mbyte)
+  	    {
+! 		n = MB_PTR2LEN(p);
+  		c = mb_ptr2char(p + n);
+! 		mch_memmove(p + MB_PTR2LEN(p + n), p, n);
+  		mb_char2bytes(c, p);
+  	    }
+  	    else
+***************
+*** 5550,5560 ****
+  #ifdef FEAT_MBYTE
+  	    if (has_mbyte)
+  	    {
+! 		n = MB_BYTE2LEN(*p);
+  		c2 = mb_ptr2char(p + n);
+! 		fl = MB_BYTE2LEN(p[n]);
+  		c = mb_ptr2char(p + n + fl);
+! 		tl = MB_BYTE2LEN(p[n + fl]);
+  		mch_memmove(p + fl + tl, p, n);
+  		mb_char2bytes(c, p);
+  		mb_char2bytes(c2, p + tl);
+--- 5548,5558 ----
+  #ifdef FEAT_MBYTE
+  	    if (has_mbyte)
+  	    {
+! 		n = MB_PTR2LEN(p);
+  		c2 = mb_ptr2char(p + n);
+! 		fl = MB_PTR2LEN(p + n);
+  		c = mb_ptr2char(p + n + fl);
+! 		tl = MB_PTR2LEN(p + n + fl);
+  		mch_memmove(p + fl + tl, p, n);
+  		mb_char2bytes(c, p);
+  		mb_char2bytes(c2, p + tl);
+***************
+*** 5627,5636 ****
+  #ifdef FEAT_MBYTE
+  	    if (has_mbyte)
+  	    {
+! 		n = MB_BYTE2LEN(*p);
+! 		n += MB_BYTE2LEN(p[n]);
+  		c = mb_ptr2char(p + n);
+! 		tl = MB_BYTE2LEN(p[n]);
+  		mch_memmove(p + tl, p, n);
+  		mb_char2bytes(c, p);
+  	    }
+--- 5625,5634 ----
+  #ifdef FEAT_MBYTE
+  	    if (has_mbyte)
+  	    {
+! 		n = MB_PTR2LEN(p);
+! 		n += MB_PTR2LEN(p + n);
+  		c = mb_ptr2char(p + n);
+! 		tl = MB_PTR2LEN(p + n);
+  		mch_memmove(p + tl, p, n);
+  		mb_char2bytes(c, p);
+  	    }
+***************
+*** 5693,5701 ****
+  	    if (has_mbyte)
+  	    {
+  		c = mb_ptr2char(p);
+! 		tl = MB_BYTE2LEN(*p);
+! 		n = MB_BYTE2LEN(p[tl]);
+! 		n += MB_BYTE2LEN(p[tl + n]);
+  		mch_memmove(p, p + tl, n);
+  		mb_char2bytes(c, p + n);
+  	    }
+--- 5691,5699 ----
+  	    if (has_mbyte)
+  	    {
+  		c = mb_ptr2char(p);
+! 		tl = MB_PTR2LEN(p);
+! 		n = MB_PTR2LEN(p + tl);
+! 		n += MB_PTR2LEN(p + tl + n);
+  		mch_memmove(p, p + tl, n);
+  		mb_char2bytes(c, p + n);
+  	    }
+*** ../vim-8.0.0581/src/testdir/test_spell.vim	2017-02-25 14:20:56.784372170 +0100
+--- src/testdir/test_spell.vim	2017-04-22 22:43:42.251575350 +0200
+***************
+*** 18,20 ****
+--- 18,29 ----
+    bwipe!
+    set nospell
+  endfunc
++ 
++ func Test_z_equal_on_invalid_utf8_word()
++   split
++   set spell
++   call setline(1, "\xff")
++   norm z=
++   set nospell
++   bwipe!
++ endfunc
+*** ../vim-8.0.0581/src/version.c	2017-04-22 22:40:07.256963436 +0200
+--- src/version.c	2017-04-22 23:48:32.254538011 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     582,
+  /**/
+
+-- 
+CONCORDE:  Quickly, sir, come this way!
+LAUNCELOT: No!  It's not right for my idiom.  I must escape more  ... more ...
+CONCORDE:  Dramatically, sir?
+LAUNCELOT: Dramatically.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

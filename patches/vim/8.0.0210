@@ -1,0 +1,580 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0210
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0210
+Problem:    Vim does not support bracketed paste, as implemented by xterm and
+            other terminals.
+Solution:   Add t_BE, t_BD, t_PS and t_PE.
+Files:      src/term.c, src/term.h, src/option.c, src/misc2.c, src/keymap.h,
+            src/edit.c, src/normal.c, src/evalfunc.c, src/getchar.c,
+	    src/vim.h, src/proto/edit.pro, runtime/doc/term.txt
+
+
+*** ../vim-8.0.0209/src/term.c	2017-01-06 18:16:15.632490849 +0100
+--- src/term.c	2017-01-21 20:00:45.628203646 +0100
+***************
+*** 857,862 ****
+--- 857,864 ----
+      {(int)KS_8F,	IF_EB("\033[38;2;%lu;%lu;%lum", ESC_STR "[38;2;%lu;%lu;%lum")},
+      {(int)KS_8B,	IF_EB("\033[48;2;%lu;%lu;%lum", ESC_STR "[48;2;%lu;%lu;%lum")},
+  #  endif
++     {(int)KS_CBE,	IF_EB("\033[?2004h", ESC_STR "[?2004h")},
++     {(int)KS_CBD,	IF_EB("\033[?2004l", ESC_STR "[?2004l")},
+  
+      {K_UP,		IF_EB("\033O*A", ESC_STR "O*A")},
+      {K_DOWN,		IF_EB("\033O*B", ESC_STR "O*B")},
+***************
+*** 902,914 ****
+      {K_ZEND,		IF_EB("\033[8;*~", ESC_STR "[8;*~")},
+      {K_PAGEUP,		IF_EB("\033[5;*~", ESC_STR "[5;*~")},
+      {K_PAGEDOWN,	IF_EB("\033[6;*~", ESC_STR "[6;*~")},
+!     {K_KPLUS,		IF_EB("\033O*k", ESC_STR "O*k")},	/* keypad plus */
+!     {K_KMINUS,		IF_EB("\033O*m", ESC_STR "O*m")},	/* keypad minus */
+!     {K_KDIVIDE,		IF_EB("\033O*o", ESC_STR "O*o")},	/* keypad / */
+!     {K_KMULTIPLY,	IF_EB("\033O*j", ESC_STR "O*j")},	/* keypad * */
+!     {K_KENTER,		IF_EB("\033O*M", ESC_STR "O*M")},	/* keypad Enter */
+!     {K_KPOINT,		IF_EB("\033O*n", ESC_STR "O*n")},	/* keypad . */
+!     {K_KDEL,		IF_EB("\033[3;*~", ESC_STR "[3;*~")},	/* keypad Del */
+  
+      {BT_EXTRA_KEYS,   ""},
+      {TERMCAP2KEY('k', '0'), IF_EB("\033[10;*~", ESC_STR "[10;*~")}, /* F0 */
+--- 904,918 ----
+      {K_ZEND,		IF_EB("\033[8;*~", ESC_STR "[8;*~")},
+      {K_PAGEUP,		IF_EB("\033[5;*~", ESC_STR "[5;*~")},
+      {K_PAGEDOWN,	IF_EB("\033[6;*~", ESC_STR "[6;*~")},
+!     {K_KPLUS,		IF_EB("\033O*k", ESC_STR "O*k")},     /* keypad plus */
+!     {K_KMINUS,		IF_EB("\033O*m", ESC_STR "O*m")},     /* keypad minus */
+!     {K_KDIVIDE,		IF_EB("\033O*o", ESC_STR "O*o")},     /* keypad / */
+!     {K_KMULTIPLY,	IF_EB("\033O*j", ESC_STR "O*j")},     /* keypad * */
+!     {K_KENTER,		IF_EB("\033O*M", ESC_STR "O*M")},     /* keypad Enter */
+!     {K_KPOINT,		IF_EB("\033O*n", ESC_STR "O*n")},     /* keypad . */
+!     {K_KDEL,		IF_EB("\033[3;*~", ESC_STR "[3;*~")}, /* keypad Del */
+!     {K_PS,		IF_EB("\033[200~", ESC_STR "[200~")}, /* paste start */
+!     {K_PE,		IF_EB("\033[201~", ESC_STR "[201~")}, /* paste end */
+  
+      {BT_EXTRA_KEYS,   ""},
+      {TERMCAP2KEY('k', '0'), IF_EB("\033[10;*~", ESC_STR "[10;*~")}, /* F0 */
+***************
+*** 1224,1229 ****
+--- 1228,1235 ----
+      {K_KMULTIPLY,	"[KMULTIPLY]"},
+      {K_KENTER,		"[KENTER]"},
+      {K_KPOINT,		"[KPOINT]"},
++     {K_PS,		"[PASTE-START]"},
++     {K_PE,		"[PASTE-END]"},
+      {K_K0,		"[K0]"},
+      {K_K1,		"[K1]"},
+      {K_K2,		"[K2]"},
+***************
+*** 1538,1543 ****
+--- 1544,1551 ----
+  				{KS_CSI, "SI"}, {KS_CEI, "EI"},
+  				{KS_U7, "u7"}, {KS_RBG, "RB"},
+  				{KS_8F, "8f"}, {KS_8B, "8b"},
++ 				{KS_CBE, "BE"}, {KS_CBD, "BD"},
++ 				{KS_CPS, "PS"}, {KS_CPE, "PE"},
+  				{(enum SpecialKey)0, NULL}
+  			    };
+  
+***************
+*** 3140,3145 ****
+--- 3148,3154 ----
+      {
+  	out_str(T_TI);			/* start termcap mode */
+  	out_str(T_KS);			/* start "keypad transmit" mode */
++ 	out_str(T_BE);			/* enable bracketed paste moe */
+  	out_flush();
+  	termcap_active = TRUE;
+  	screen_start();			/* don't know where cursor is now */
+***************
+*** 3189,3194 ****
+--- 3198,3204 ----
+  	    check_for_codes_from_term();
+  	}
+  #endif
++ 	out_str(T_BD);			/* disable bracketed paste moe */
+  	out_str(T_KE);			/* stop "keypad transmit" mode */
+  	out_flush();
+  	termcap_active = FALSE;
+*** ../vim-8.0.0209/src/term.h	2016-08-29 22:42:20.000000000 +0200
+--- src/term.h	2017-01-21 16:34:00.936095982 +0100
+***************
+*** 89,98 ****
+      KS_OP,	/* original color pair */
+      KS_U7,	/* request cursor position */
+      KS_8F,	/* set foreground color (RGB) */
+!     KS_8B	/* set background color (RGB) */
+  };
+  
+! #define KS_LAST	    KS_8B
+  
+  /*
+   * the terminal capabilities are stored in this array
+--- 89,102 ----
+      KS_OP,	/* original color pair */
+      KS_U7,	/* request cursor position */
+      KS_8F,	/* set foreground color (RGB) */
+!     KS_8B,	/* set background color (RGB) */
+!     KS_CBE,	/* enable bracketed paste mode */
+!     KS_CBD,	/* disable bracketed paste mode */
+!     KS_CPS,	/* start of brackted paste */
+!     KS_CPE	/* end of brackted paste */
+  };
+  
+! #define KS_LAST	    KS_CPE
+  
+  /*
+   * the terminal capabilities are stored in this array
+***************
+*** 170,175 ****
+--- 174,183 ----
+  #define T_U7	(term_str(KS_U7))	/* request cursor position */
+  #define T_8F	(term_str(KS_8F))	/* set foreground color (RGB) */
+  #define T_8B	(term_str(KS_8B))	/* set background color (RGB) */
++ #define T_BE	(term_str(KS_CBE))	/* enable bracketed paste mode */
++ #define T_BD	(term_str(KS_CBD))	/* disable bracketed paste mode */
++ #define T_PS	(term_str(KS_CPS))	/* start of bracketed paste */
++ #define T_PE	(term_str(KS_CPE))	/* end of bracketed paste */
+  
+  #define TMODE_COOK  0	/* terminal mode for external cmds and Ex mode */
+  #define TMODE_SLEEP 1	/* terminal mode for sleeping (cooked but no echo) */
+*** ../vim-8.0.0209/src/option.c	2017-01-14 14:28:26.956592328 +0100
+--- src/option.c	2017-01-21 15:34:59.567463663 +0100
+***************
+*** 3040,3045 ****
+--- 3040,3047 ----
+      p_term("t_ZR", T_CZR)
+      p_term("t_8f", T_8F)
+      p_term("t_8b", T_8B)
++     p_term("t_BE", T_BE)
++     p_term("t_BD", T_BD)
+  
+  /* terminal key codes are not in here */
+  
+*** ../vim-8.0.0209/src/misc2.c	2017-01-10 13:51:05.587236267 +0100
+--- src/misc2.c	2017-01-21 15:43:20.460160465 +0100
+***************
+*** 2294,2299 ****
+--- 2294,2301 ----
+      {K_XDOWN,		(char_u *)"xDown"},
+      {K_XLEFT,		(char_u *)"xLeft"},
+      {K_XRIGHT,		(char_u *)"xRight"},
++     {K_PS,		(char_u *)"PasteStart"},
++     {K_PE,		(char_u *)"PasteEnd"},
+  
+      {K_F1,		(char_u *)"F1"},
+      {K_F2,		(char_u *)"F2"},
+*** ../vim-8.0.0209/src/keymap.h	2016-08-29 22:42:20.000000000 +0200
+--- src/keymap.h	2017-01-21 15:45:55.467135851 +0100
+***************
+*** 391,396 ****
+--- 391,398 ----
+  #define K_KMULTIPLY	TERMCAP2KEY('K', '9')	/* keypad * */
+  #define K_KENTER	TERMCAP2KEY('K', 'A')	/* keypad Enter */
+  #define K_KPOINT	TERMCAP2KEY('K', 'B')	/* keypad . or ,*/
++ #define K_PS		TERMCAP2KEY('P', 'S')	/* paste start */
++ #define K_PE		TERMCAP2KEY('P', 'E')	/* paste end */
+  
+  #define K_K0		TERMCAP2KEY('K', 'C')	/* keypad 0 */
+  #define K_K1		TERMCAP2KEY('K', 'D')	/* keypad 1 */
+*** ../vim-8.0.0209/src/edit.c	2017-01-20 21:51:46.130731009 +0100
+--- src/edit.c	2017-01-21 19:22:18.064013812 +0100
+***************
+*** 309,314 ****
+--- 309,315 ----
+   * "cmdchar" can be:
+   * 'i'	normal insert command
+   * 'a'	normal append command
++  * K_PS bracketed paste
+   * 'R'	replace command
+   * 'r'	"r<CR>" command: insert one <CR>.  Note: count can be > 1, for redo,
+   *	but still only one <CR> is inserted.  The <Esc> is not used for redo.
+***************
+*** 782,791 ****
+  	    dont_sync_undo = TRUE;
+  	else
+  	    dont_sync_undo = FALSE;
+! 	do
+! 	{
+! 	    c = safe_vgetc();
+! 	} while (c == K_IGNORE);
+  
+  #ifdef FEAT_AUTOCMD
+  	/* Don't want K_CURSORHOLD for the second key, e.g., after CTRL-V. */
+--- 783,796 ----
+  	    dont_sync_undo = TRUE;
+  	else
+  	    dont_sync_undo = FALSE;
+! 	if (cmdchar == K_PS)
+! 	    /* Got here from normal mode when bracketed paste started. */
+! 	    c = K_PS;
+! 	else
+! 	    do
+! 	    {
+! 		c = safe_vgetc();
+! 	    } while (c == K_IGNORE);
+  
+  #ifdef FEAT_AUTOCMD
+  	/* Don't want K_CURSORHOLD for the second key, e.g., after CTRL-V. */
+***************
+*** 1193,1198 ****
+--- 1198,1213 ----
+  	    ins_mousescroll(MSCR_RIGHT);
+  	    break;
+  #endif
++ 	case K_PS:
++ 	    bracketed_paste(PASTE_INSERT, FALSE, NULL);
++ 	    if (cmdchar == K_PS)
++ 		/* invoked from normal mode, bail out */
++ 		goto doESCkey;
++ 	    break;
++ 	case K_PE:
++ 	    /* Got K_PE without K_PS, ignore. */
++ 	    break;
++ 
+  #ifdef FEAT_GUI_TABLINE
+  	case K_TABLINE:
+  	case K_TABMENU:
+***************
+*** 9424,9429 ****
+--- 9439,9529 ----
+  }
+  #endif
+  
++ /*
++  * Handle receiving P_PS: start paste mode.  Inserts the following text up to
++  * P_PE literally.
++  * When "drop" is TRUE then consume the text and drop it.
++  */
++     int
++ bracketed_paste(paste_mode_T mode, int drop, garray_T *gap)
++ {
++     int		c;
++     char_u	buf[NUMBUFLEN + MB_MAXBYTES];
++     int		idx = 0;
++     char_u	*end = find_termcode((char_u *)"PE");
++     int		ret_char = -1;
++     int		save_allow_keys = allow_keys;
++ 
++     /* If the end code is too long we can't detect it, read everything. */
++     if (STRLEN(end) >= NUMBUFLEN)
++ 	end = NULL;
++     ++no_mapping;
++     allow_keys = 0;
++     for (;;)
++     {
++ 	/* When the end is not defined read everything. */
++ 	if (end == NULL && vpeekc() == NUL)
++ 	    break;
++ 	c = plain_vgetc();
++ #ifdef FEAT_MBYTE
++ 	if (has_mbyte)
++ 	    idx += (*mb_char2bytes)(c, buf + idx);
++ 	else
++ #endif
++ 	    buf[idx++] = c;
++ 	buf[idx] = NUL;
++ 	if (end != NUL && STRNCMP(buf, end, idx) == 0)
++ 	{
++ 	    if (end[idx] == NUL)
++ 		break; /* Found the end of paste code. */
++ 	    continue;
++ 	}
++ 	if (!drop)
++ 	{
++ 	    switch (mode)
++ 	    {
++ 		case PASTE_CMDLINE:
++ 		    put_on_cmdline(buf, idx, TRUE);
++ 		    break;
++ 
++ 		case PASTE_EX:
++ 		    if (gap != NULL && ga_grow(gap, idx) == OK)
++ 		    {
++ 			mch_memmove((char *)gap->ga_data + gap->ga_len,
++ 							     buf, (size_t)idx);
++ 			gap->ga_len += idx;
++ 		    }
++ 		    break;
++ 
++ 		case PASTE_INSERT:
++ 		    if (stop_arrow() == OK)
++ 		    {
++ 			ins_char_bytes(buf, idx);
++ 			AppendToRedobuffLit(buf, idx);
++ 		    }
++ 		    break;
++ 
++ 		case PASTE_ONE_CHAR:
++ 		    if (ret_char == -1)
++ 		    {
++ #ifdef FEAT_MBYTE
++ 			if (has_mbyte)
++ 			    ret_char = (*mb_ptr2char)(buf);
++ 			else
++ #endif
++ 			    ret_char = buf[0];
++ 		    }
++ 		    break;
++ 	    }
++ 	}
++ 	idx = 0;
++     }
++     --no_mapping;
++     allow_keys = save_allow_keys;
++ 
++     return ret_char;
++ }
++ 
+  #if defined(FEAT_GUI_TABLINE) || defined(PROTO)
+      static void
+  ins_tabline(int c)
+*** ../vim-8.0.0209/src/normal.c	2017-01-20 21:51:46.130731009 +0100
+--- src/normal.c	2017-01-21 19:29:47.988909502 +0100
+***************
+*** 426,431 ****
+--- 426,432 ----
+  #ifdef FEAT_AUTOCMD
+      {K_CURSORHOLD, nv_cursorhold, NV_KEEPREG,		0},
+  #endif
++     {K_PS,	nv_edit,	0,			0},
+  };
+  
+  /* Number of commands in nv_cmds[]. */
+***************
+*** 3858,3864 ****
+  	K_VER_SCROLLBAR, K_HOR_SCROLLBAR,
+  	K_LEFTMOUSE_NM, K_LEFTRELEASE_NM,
+  # endif
+! 	K_IGNORE,
+  	K_LEFTMOUSE, K_LEFTDRAG, K_LEFTRELEASE,
+  	K_MIDDLEMOUSE, K_MIDDLEDRAG, K_MIDDLERELEASE,
+  	K_RIGHTMOUSE, K_RIGHTDRAG, K_RIGHTRELEASE,
+--- 3859,3865 ----
+  	K_VER_SCROLLBAR, K_HOR_SCROLLBAR,
+  	K_LEFTMOUSE_NM, K_LEFTRELEASE_NM,
+  # endif
+! 	K_IGNORE, K_PS,
+  	K_LEFTMOUSE, K_LEFTDRAG, K_LEFTRELEASE,
+  	K_MIDDLEMOUSE, K_MIDDLEDRAG, K_MIDDLERELEASE,
+  	K_RIGHTMOUSE, K_RIGHTDRAG, K_RIGHTRELEASE,
+***************
+*** 9015,9020 ****
+--- 9016,9022 ----
+  
+  /*
+   * Handle "A", "a", "I", "i" and <Insert> commands.
++  * Also handle K_PS, start bracketed paste.
+   */
+      static void
+  nv_edit(cmdarg_T *cap)
+***************
+*** 9042,9047 ****
+--- 9044,9052 ----
+  	/* Only give this error when 'insertmode' is off. */
+  	EMSG(_(e_modifiable));
+  	clearop(cap->oap);
++ 	if (cap->cmdchar == K_PS)
++ 	    /* drop the pasted text */
++ 	    bracketed_paste(PASTE_INSERT, TRUE, NULL);
+      }
+      else if (!checkclearopq(cap->oap))
+      {
+***************
+*** 9073,9078 ****
+--- 9078,9084 ----
+  		break;
+  
+  	    case 'a':	/* "a"ppend is like "i"nsert on the next character. */
++ 	    case K_PS:	/* bracketed paste works like "a"ppend */
+  #ifdef FEAT_VIRTUALEDIT
+  		/* increment coladd when in virtual space, increment the
+  		 * column otherwise, also to append after an unprintable char */
+***************
+*** 9103,9108 ****
+--- 9109,9117 ----
+  
+  	invoke_edit(cap, FALSE, cap->cmdchar, FALSE);
+      }
++     else if (cap->cmdchar == K_PS)
++ 	/* drop the pasted text */
++ 	bracketed_paste(PASTE_INSERT, TRUE, NULL);
+  }
+  
+  /*
+*** ../vim-8.0.0209/src/evalfunc.c	2017-01-20 19:59:47.983380544 +0100
+--- src/evalfunc.c	2017-01-21 19:37:45.749632870 +0100
+***************
+*** 4231,4237 ****
+      {
+  	if (argvars[0].v_type == VAR_UNKNOWN)
+  	    /* getchar(): blocking wait. */
+! 	    n = safe_vgetc();
+  	else if (get_tv_number_chk(&argvars[0], &error) == 1)
+  	    /* getchar(1): only check if char avail */
+  	    n = vpeekc_any();
+--- 4231,4237 ----
+      {
+  	if (argvars[0].v_type == VAR_UNKNOWN)
+  	    /* getchar(): blocking wait. */
+! 	    n = plain_vgetc();
+  	else if (get_tv_number_chk(&argvars[0], &error) == 1)
+  	    /* getchar(1): only check if char avail */
+  	    n = vpeekc_any();
+***************
+*** 4240,4246 ****
+  	    n = 0;
+  	else
+  	    /* getchar(0) and char avail: return char */
+! 	    n = safe_vgetc();
+  
+  	if (n == K_IGNORE)
+  	    continue;
+--- 4240,4246 ----
+  	    n = 0;
+  	else
+  	    /* getchar(0) and char avail: return char */
+! 	    n = plain_vgetc();
+  
+  	if (n == K_IGNORE)
+  	    continue;
+*** ../vim-8.0.0209/src/getchar.c	2017-01-10 13:51:05.583236296 +0100
+--- src/getchar.c	2017-01-21 19:36:53.673989329 +0100
+***************
+*** 1817,1822 ****
+--- 1817,1828 ----
+      {
+  	c = safe_vgetc();
+      } while (c == K_IGNORE || c == K_VER_SCROLLBAR || c == K_HOR_SCROLLBAR);
++ 
++     if (c == K_PS)
++ 	/* Only handle the first pasted character.  Drop the rest, since we
++ 	 * don't know what to do with it. */
++ 	c = bracketed_paste(PASTE_ONE_CHAR, FALSE, NULL);
++ 
+      return c;
+  }
+  
+***************
+*** 1906,1912 ****
+  }
+  
+  /*
+!  * get a character:
+   * 1. from the stuffbuffer
+   *	This is used for abbreviated commands like "D" -> "d$".
+   *	Also used to redo a command for ".".
+--- 1912,1918 ----
+  }
+  
+  /*
+!  * Get a character:
+   * 1. from the stuffbuffer
+   *	This is used for abbreviated commands like "D" -> "d$".
+   *	Also used to redo a command for ".".
+*** ../vim-8.0.0209/src/vim.h	2017-01-12 21:44:45.146171805 +0100
+--- src/vim.h	2017-01-21 19:05:15.035107243 +0100
+***************
+*** 2108,2113 ****
+--- 2108,2121 ----
+      ASSERT_OTHER
+  } assert_type_T;
+  
++ /* Mode for bracketed_paste(). */
++ typedef enum {
++     PASTE_INSERT,	/* insert mode */
++     PASTE_CMDLINE,	/* command line */
++     PASTE_EX,		/* ex mode line */
++     PASTE_ONE_CHAR	/* return first character */
++ } paste_mode_T;
++ 
+  #include "ex_cmds.h"	    /* Ex command defines */
+  #include "spell.h"	    /* spell checking stuff */
+  
+*** ../vim-8.0.0209/src/proto/edit.pro	2016-10-15 17:06:42.090912729 +0200
+--- src/proto/edit.pro	2017-01-21 19:03:58.359641105 +0100
+***************
+*** 38,43 ****
+--- 38,44 ----
+  void fix_indent(void);
+  int in_cinkeys(int keytyped, int when, int line_is_empty);
+  int hkmap(int c);
++ int bracketed_paste(paste_mode_T mode, int drop, garray_T *gap);
+  void ins_scroll(void);
+  void ins_horscroll(void);
+  int ins_copychar(linenr_T lnum);
+*** ../vim-8.0.0209/runtime/doc/term.txt	2016-09-12 12:45:48.000000000 +0200
+--- runtime/doc/term.txt	2017-01-21 19:58:23.397174277 +0100
+***************
+*** 89,94 ****
+--- 89,106 ----
+  for a moment.  This means that you can stop the output to the screen by
+  hitting a printing key.  Output resumes when you hit <BS>.
+  
++ 						*xterm-bracketed-paste*
++ When the 't_BE' option is set then 't_BE' will be sent to the
++ terminal when entering "raw" mode and 't_BD' when leaving "raw" mode.  The
++ terminal is then expected to put 't_PS' before pasted text and 't_PE' after
++ pasted text.  This way Vim can separate text that is pasted from characters
++ that are typed.  The pasted text is handled like when the middle mouse button
++ is used.
++ 
++ Note that in some situations Vim will not recognize the bracketed paste and
++ you will get the raw text.  In other situations Vim will only get the first
++ pasted character and drop the rest, e.g. when using the "r" command.
++ 
+  							*cs7-problem*
+  Note: If the terminal settings are changed after running Vim, you might have
+  an illegal combination of settings.  This has been reported on Solaris 2.5
+***************
+*** 306,311 ****
+--- 318,327 ----
+  		|xterm-true-color|
+  	t_8b	set background color (R, G, B)			*t_8b* *'t_8b'*
+  		|xterm-true-color|
++ 	t_BE	enable bracketed paste mode			*t_BE* *'t_BE'*
++ 		|xterm-bracketed-paste|
++ 	t_BD	disable bracketed paste mode			*t_BD* *'t_BD'*
++ 		|xterm-bracketed-paste|
+  
+  KEY CODES
+  Note: Use the <> form if possible
+***************
+*** 398,403 ****
+--- 414,421 ----
+  	t_KK	<k8>		keypad 8		 *<k8>*	*t_KK* *'t_KK'*
+  	t_KL	<k9>		keypad 9		 *<k9>*	*t_KL* *'t_KL'*
+  		<Mouse>		leader of mouse code		*<Mouse>*
++ 	t_PS	start of brackted paste |xterm-bracketed-paste|   *t_PS* 't_PS'
++ 	t_PE	end of bracketed paste |xterm-bracketed-paste|    *t_PE* 't_PE'
+  
+  Note about t_so and t_mr: When the termcap entry "so" is not present the
+  entry for "mr" is used.  And vice versa.  The same is done for "se" and "me".
+*** ../vim-8.0.0209/src/version.c	2017-01-21 14:44:32.531503504 +0100
+--- src/version.c	2017-01-21 17:22:39.156736230 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     210,
+  /**/
+
+-- 
+FATHER:       Make sure the Prince doesn't leave this room until I come and
+              get him.
+FIRST GUARD:  Not ... to leave the room ... even if you come and get him.
+FATHER:       No.  Until I come and get him.
+SECOND GUARD: Hic.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

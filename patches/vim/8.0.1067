@@ -1,0 +1,191 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1067
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1067
+Problem:    Using try/catch in timer does not prevent it from being stopped.
+Solution:   Reset the exception context and use did_emsg instead of
+            called_emsg.
+Files:      src/ex_cmds2.c, src/testdir/test_timers.vim, src/globals.h,
+            src/message.c
+
+
+*** ../vim-8.0.1066/src/ex_cmds2.c	2017-08-26 23:43:23.974903370 +0200
+--- src/ex_cmds2.c	2017-09-06 23:39:00.181795178 +0200
+***************
+*** 1219,1248 ****
+  	{
+  	    int save_timer_busy = timer_busy;
+  	    int save_vgetc_busy = vgetc_busy;
+! 	    int did_emsg_save = did_emsg;
+! 	    int called_emsg_save = called_emsg;
+! 	    int did_throw_save = did_throw;
+  	    int	save_must_redraw = must_redraw;
+  
+  	    timer_busy = timer_busy > 0 || vgetc_busy > 0;
+  	    vgetc_busy = 0;
+  	    called_emsg = FALSE;
+  	    must_redraw = 0;
+  	    timer->tr_firing = TRUE;
+  	    timer_callback(timer);
+  	    timer->tr_firing = FALSE;
+  	    timer_next = timer->tr_next;
+  	    did_one = TRUE;
+  	    timer_busy = save_timer_busy;
+  	    vgetc_busy = save_vgetc_busy;
+! 	    if (called_emsg)
+! 	    {
+  		++timer->tr_emsg_count;
+! 		if (!did_throw_save && did_throw && current_exception != NULL)
+! 		    discard_current_exception();
+! 	    }
+! 	    did_emsg = did_emsg_save;
+! 	    called_emsg = called_emsg_save;
+  	    if (must_redraw != 0)
+  		need_update_screen = TRUE;
+  	    must_redraw = must_redraw > save_must_redraw
+--- 1219,1258 ----
+  	{
+  	    int save_timer_busy = timer_busy;
+  	    int save_vgetc_busy = vgetc_busy;
+! 	    int save_did_emsg = did_emsg;
+! 	    int save_called_emsg = called_emsg;
+  	    int	save_must_redraw = must_redraw;
++ 	    int	save_trylevel = trylevel;
++ 	    int save_did_throw = did_throw;
++ 	    except_T *save_current_exception = current_exception;
+  
++ 	    /* Create a scope for running the timer callback, ignoring most of
++ 	     * the current scope, such as being inside a try/catch. */
+  	    timer_busy = timer_busy > 0 || vgetc_busy > 0;
+  	    vgetc_busy = 0;
+  	    called_emsg = FALSE;
++ 	    did_emsg = FALSE;
++ 	    did_uncaught_emsg = FALSE;
+  	    must_redraw = 0;
++ 	    trylevel = 0;
++ 	    did_throw = FALSE;
++ 	    current_exception = NULL;
++ 
+  	    timer->tr_firing = TRUE;
+  	    timer_callback(timer);
+  	    timer->tr_firing = FALSE;
++ 
+  	    timer_next = timer->tr_next;
+  	    did_one = TRUE;
+  	    timer_busy = save_timer_busy;
+  	    vgetc_busy = save_vgetc_busy;
+! 	    if (did_uncaught_emsg)
+  		++timer->tr_emsg_count;
+! 	    did_emsg = save_did_emsg;
+! 	    called_emsg = save_called_emsg;
+! 	    trylevel = save_trylevel;
+! 	    did_throw = save_did_throw;
+! 	    current_exception = save_current_exception;
+  	    if (must_redraw != 0)
+  		need_update_screen = TRUE;
+  	    must_redraw = must_redraw > save_must_redraw
+*** ../vim-8.0.1066/src/testdir/test_timers.vim	2017-09-04 22:55:57.923034277 +0200
+--- src/testdir/test_timers.vim	2017-09-06 22:50:08.589057934 +0200
+***************
+*** 208,213 ****
+--- 208,231 ----
+    call assert_equal(3, g:call_count)
+  endfunc
+  
++ func FuncWithCaughtError(timer)
++   let g:call_count += 1
++   try
++     doesnotexist
++   catch
++     " nop
++   endtry
++ endfunc
++ 
++ func Test_timer_catch_error()
++   let g:call_count = 0
++   let timer = timer_start(10, 'FuncWithCaughtError', {'repeat': 4})
++   " Timer will not be stopped.
++   call WaitFor('g:call_count == 4')
++   sleep 50m
++   call assert_equal(4, g:call_count)
++ endfunc
++ 
+  func FeedAndPeek(timer)
+    call test_feedinput('a')
+    call getchar(1)
+*** ../vim-8.0.1066/src/globals.h	2017-08-17 16:55:08.629414811 +0200
+--- src/globals.h	2017-09-06 23:39:54.425439077 +0200
+***************
+*** 182,187 ****
+--- 182,191 ----
+  #endif
+  EXTERN int	did_emsg;		    /* set by emsg() when the message
+  					       is displayed or thrown */
++ #ifdef FEAT_EVAL
++ EXTERN int	did_uncaught_emsg;	    /* emsg() was called and did not
++ 					       cause an exception */
++ #endif
+  EXTERN int	did_emsg_syntax;	    /* did_emsg set because of a
+  					       syntax error */
+  EXTERN int	called_emsg;		    /* always set by emsg() */
+*** ../vim-8.0.1066/src/message.c	2017-08-17 20:31:44.001203501 +0200
+--- src/message.c	2017-09-06 23:39:09.081736747 +0200
+***************
+*** 609,619 ****
+  
+      called_emsg = TRUE;
+  
+-     /*
+-      * If "emsg_severe" is TRUE: When an error exception is to be thrown,
+-      * prefer this message over previous messages for the same command.
+-      */
+  #ifdef FEAT_EVAL
+      severe = emsg_severe;
+      emsg_severe = FALSE;
+  #endif
+--- 609,617 ----
+  
+      called_emsg = TRUE;
+  
+  #ifdef FEAT_EVAL
++     /* If "emsg_severe" is TRUE: When an error exception is to be thrown,
++      * prefer this message over previous messages for the same command. */
+      severe = emsg_severe;
+      emsg_severe = FALSE;
+  #endif
+***************
+*** 684,689 ****
+--- 682,690 ----
+  	else
+  	    flush_buffers(FALSE);	/* flush internal buffers */
+  	did_emsg = TRUE;		/* flag for DoOneCmd() */
++ #ifdef FEAT_EVAL
++ 	did_uncaught_emsg = TRUE;
++ #endif
+      }
+  
+      emsg_on_display = TRUE;	/* remember there is an error message */
+*** ../vim-8.0.1066/src/version.c	2017-09-06 22:08:11.829623019 +0200
+--- src/version.c	2017-09-06 22:55:00.867131679 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1067,
+  /**/
+
+-- 
+From "know your smileys":
+ :-H	Is missing teeth
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

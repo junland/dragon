@@ -1,0 +1,79 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1151
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1151
+Problem:    "vim -c startinsert!" doesn't append.
+Solution:   Correct line number on startup. (Christian Brabandt, closes #2117)
+Files:      src/ex_docmd.c, src/testdir/test_startup.vim
+
+
+*** ../vim-8.0.1150/src/ex_docmd.c	2017-09-23 16:33:40.857195233 +0200
+--- src/ex_docmd.c	2017-09-26 17:37:53.176701503 +0200
+***************
+*** 10294,10299 ****
+--- 10294,10302 ----
+  {
+      if (eap->forceit)
+      {
++ 	/* cursor line can be zero on startup */
++ 	if (!curwin->w_cursor.lnum)
++ 	    curwin->w_cursor.lnum = 1;
+  	coladvance((colnr_T)MAXCOL);
+  	curwin->w_curswant = MAXCOL;
+  	curwin->w_set_curswant = FALSE;
+*** ../vim-8.0.1150/src/testdir/test_startup.vim	2017-06-27 14:43:51.195020530 +0200
+--- src/testdir/test_startup.vim	2017-09-26 17:37:40.440779121 +0200
+***************
+*** 263,265 ****
+--- 263,289 ----
+    call assert_match("defaulting to 'ansi'", out)
+    let $TERM = save_term
+  endfunc
++ 
++ func Test_zzz_startinsert()
++   " Test :startinsert
++   call writefile(['123456'], 'Xtestout')
++   let after = [
++ 	\ ':startinsert',
++   \ 'call feedkeys("foobar\<c-o>:wq\<cr>","t")'
++ 	\ ]
++   if RunVim([], after, 'Xtestout')
++     let lines = readfile('Xtestout')
++     call assert_equal(['foobar123456'], lines)
++   endif
++   " Test :startinsert!
++   call writefile(['123456'], 'Xtestout')
++   let after = [
++ 	\ ':startinsert!',
++   \ 'call feedkeys("foobar\<c-o>:wq\<cr>","t")'
++ 	\ ]
++   if RunVim([], after, 'Xtestout')
++     let lines = readfile('Xtestout')
++     call assert_equal(['123456foobar'], lines)
++   endif
++   call delete('Xtestout')
++ endfunc
+*** ../vim-8.0.1150/src/version.c	2017-09-26 14:46:00.467725346 +0200
+--- src/version.c	2017-09-26 17:38:46.536376329 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1151,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+201. When somebody asks you where you are, you tell them in which chat room.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

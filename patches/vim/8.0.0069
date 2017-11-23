@@ -1,0 +1,308 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0069
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0069
+Problem:    Compiler warning for self-comparison.
+Solution:   Define ONE_WINDOW and add #ifdef.
+Files:      src/globals.h, src/buffer.c, src/ex_docmd.c, src/move.c,
+            src/screen.c, src/quickfix.c, src/window.c
+
+
+*** ../vim-8.0.0068/src/globals.h	2016-08-29 22:42:20.000000000 +0200
+--- src/globals.h	2016-11-06 15:18:10.068418172 +0100
+***************
+*** 546,551 ****
+--- 546,552 ----
+  EXTERN win_T	*firstwin;		/* first window */
+  EXTERN win_T	*lastwin;		/* last window */
+  EXTERN win_T	*prevwin INIT(= NULL);	/* previous window */
++ # define ONE_WINDOW (firstwin == lastwin)
+  # define W_NEXT(wp) ((wp)->w_next)
+  # define FOR_ALL_WINDOWS(wp) for (wp = firstwin; wp != NULL; wp = wp->w_next)
+  # define FOR_ALL_TABPAGES(tp) for (tp = first_tabpage; tp != NULL; tp = tp->tp_next)
+***************
+*** 563,568 ****
+--- 564,570 ----
+  #else
+  # define firstwin curwin
+  # define lastwin curwin
++ # define ONE_WINDOW 1
+  # define W_NEXT(wp) NULL
+  # define FOR_ALL_WINDOWS(wp) wp = curwin;
+  # define FOR_ALL_TABPAGES(tp) for (;FALSE;)
+*** ../vim-8.0.0068/src/buffer.c	2016-10-30 21:57:48.070395594 +0100
+--- src/buffer.c	2016-11-06 15:20:32.491532716 +0100
+***************
+*** 4935,4941 ****
+  		    }
+  #ifdef FEAT_WINDOWS
+  		    /* don't close last window */
+! 		    if (firstwin == lastwin
+  			    && (first_tabpage->tp_next == NULL || !had_tab))
+  #endif
+  			use_firstwin = TRUE;
+--- 4935,4941 ----
+  		    }
+  #ifdef FEAT_WINDOWS
+  		    /* don't close last window */
+! 		    if (ONE_WINDOW
+  			    && (first_tabpage->tp_next == NULL || !had_tab))
+  #endif
+  			use_firstwin = TRUE;
+*** ../vim-8.0.0068/src/ex_docmd.c	2016-10-15 15:39:34.685059653 +0200
+--- src/ex_docmd.c	2016-11-06 15:21:01.243353096 +0100
+***************
+*** 7239,7245 ****
+  	 * :h|wincmd w|1q     - don't quit
+  	 * :h|wincmd w|q      - quit
+  	 */
+! 	if (only_one_window() && (firstwin == lastwin || eap->addr_count == 0))
+  #endif
+  	    getout(0);
+  #ifdef FEAT_WINDOWS
+--- 7239,7245 ----
+  	 * :h|wincmd w|1q     - don't quit
+  	 * :h|wincmd w|q      - quit
+  	 */
+! 	if (only_one_window() && (ONE_WINDOW || eap->addr_count == 0))
+  #endif
+  	    getout(0);
+  #ifdef FEAT_WINDOWS
+*** ../vim-8.0.0068/src/move.c	2016-10-18 14:50:14.731694041 +0200
+--- src/move.c	2016-11-06 15:18:38.896239173 +0100
+***************
+*** 2311,2317 ****
+  #endif
+  	if (dir == FORWARD)
+  	{
+! 	    if (firstwin == lastwin && p_window > 0 && p_window < Rows - 1)
+  	    {
+  		/* Vi compatible scrolling */
+  		if (p_window <= 2)
+--- 2311,2317 ----
+  #endif
+  	if (dir == FORWARD)
+  	{
+! 	    if (ONE_WINDOW && p_window > 0 && p_window < Rows - 1)
+  	    {
+  		/* Vi compatible scrolling */
+  		if (p_window <= 2)
+***************
+*** 2361,2367 ****
+  		continue;
+  	    }
+  #endif
+! 	    if (firstwin == lastwin && p_window > 0 && p_window < Rows - 1)
+  	    {
+  		/* Vi compatible scrolling (sort of) */
+  		if (p_window <= 2)
+--- 2361,2367 ----
+  		continue;
+  	    }
+  #endif
+! 	    if (ONE_WINDOW && p_window > 0 && p_window < Rows - 1)
+  	    {
+  		/* Vi compatible scrolling (sort of) */
+  		if (p_window <= 2)
+*** ../vim-8.0.0068/src/screen.c	2016-10-27 17:27:38.265074170 +0200
+--- src/screen.c	2016-11-06 15:21:34.503145348 +0100
+***************
+*** 1510,1516 ****
+  	if (mid_start == 0)
+  	{
+  	    mid_end = wp->w_height;
+! 	    if (lastwin == firstwin)
+  	    {
+  		/* Clear the screen when it was not done by win_del_lines() or
+  		 * win_ins_lines() above, "screen_cleared" is FALSE or MAYBE
+--- 1510,1516 ----
+  	if (mid_start == 0)
+  	{
+  	    mid_end = wp->w_height;
+! 	    if (ONE_WINDOW)
+  	    {
+  		/* Clear the screen when it was not done by win_del_lines() or
+  		 * win_ins_lines() above, "screen_cleared" is FALSE or MAYBE
+***************
+*** 5670,5676 ****
+  #ifdef FEAT_DIFF
+  		     && filler_todo <= 0
+  #endif
+! 		     && W_WIDTH(wp) == Columns)
+  	    {
+  		/* Remember that the line wraps, used for modeless copy. */
+  		LineWraps[screen_row - 1] = TRUE;
+--- 5670,5679 ----
+  #ifdef FEAT_DIFF
+  		     && filler_todo <= 0
+  #endif
+! #ifdef FEAT_WINDOWS
+! 		     && W_WIDTH(wp) == Columns
+! #endif
+! 		     )
+  	    {
+  		/* Remember that the line wraps, used for modeless copy. */
+  		LineWraps[screen_row - 1] = TRUE;
+***************
+*** 10524,10530 ****
+       * window differs, or the fillchars differ, or this is not the
+       * current window */
+      if (*attr != 0 && ((hl_attr(HLF_S) != hl_attr(HLF_SNC)
+! 			|| !is_curwin || firstwin == lastwin)
+  		    || (fill_stl != fill_stlnc)))
+  	return fill;
+      if (is_curwin)
+--- 10527,10533 ----
+       * window differs, or the fillchars differ, or this is not the
+       * current window */
+      if (*attr != 0 && ((hl_attr(HLF_S) != hl_attr(HLF_SNC)
+! 			|| !is_curwin || ONE_WINDOW)
+  		    || (fill_stl != fill_stlnc)))
+  	return fill;
+      if (is_curwin)
+*** ../vim-8.0.0068/src/quickfix.c	2016-11-06 14:46:40.644143343 +0100
+--- src/quickfix.c	2016-11-06 15:21:15.663263021 +0100
+***************
+*** 2137,2143 ****
+  	 * If there is only one window and it is the quickfix window, create a
+  	 * new one above the quickfix window.
+  	 */
+! 	if (((firstwin == lastwin) && bt_quickfix(curbuf)) || !usable_win)
+  	{
+  	    flags = WSP_ABOVE;
+  	    if (ll_ref != NULL)
+--- 2137,2143 ----
+  	 * If there is only one window and it is the quickfix window, create a
+  	 * new one above the quickfix window.
+  	 */
+! 	if ((ONE_WINDOW && bt_quickfix(curbuf)) || !usable_win)
+  	{
+  	    flags = WSP_ABOVE;
+  	    if (ll_ref != NULL)
+*** ../vim-8.0.0068/src/window.c	2016-09-04 17:24:16.000000000 +0200
+--- src/window.c	2016-11-06 15:22:39.882737085 +0100
+***************
+*** 234,240 ****
+  /* cursor to previous window with wrap around */
+      case 'W':
+  		CHECK_CMDWIN
+! 		if (firstwin == lastwin && Prenum != 1)	/* just one window */
+  		    beep_flush();
+  		else
+  		{
+--- 234,240 ----
+  /* cursor to previous window with wrap around */
+      case 'W':
+  		CHECK_CMDWIN
+! 		if (ONE_WINDOW && Prenum != 1)	/* just one window */
+  		    beep_flush();
+  		else
+  		{
+***************
+*** 1593,1599 ****
+      frame_T	*frp;
+      int		n;
+  
+!     if (firstwin == lastwin)		/* nothing to do */
+      {
+  	beep_flush();
+  	return;
+--- 1593,1599 ----
+      frame_T	*frp;
+      int		n;
+  
+!     if (ONE_WINDOW)		/* nothing to do */
+      {
+  	beep_flush();
+  	return;
+***************
+*** 2206,2212 ****
+      }
+      return TRUE;
+  #else
+!     return firstwin == lastwin;
+  #endif
+  }
+  
+--- 2206,2212 ----
+      }
+      return TRUE;
+  #else
+!     return ONE_WINDOW;
+  #endif
+  }
+  
+***************
+*** 2220,2226 ****
+      int		free_buf,
+      tabpage_T   *prev_curtab)
+  {
+!     if (firstwin == lastwin)
+      {
+  #ifdef FEAT_AUTOCMD
+  	buf_T	*old_curbuf = curbuf;
+--- 2220,2226 ----
+      int		free_buf,
+      tabpage_T   *prev_curtab)
+  {
+!     if (ONE_WINDOW)
+      {
+  #ifdef FEAT_AUTOCMD
+  	buf_T	*old_curbuf = curbuf;
+***************
+*** 2625,2631 ****
+      /*
+       * If there is only one window there is nothing to remove.
+       */
+!     if (tp == NULL ? firstwin == lastwin : tp->tp_firstwin == tp->tp_lastwin)
+  	return NULL;
+  
+      /*
+--- 2625,2631 ----
+      /*
+       * If there is only one window there is nothing to remove.
+       */
+!     if (tp == NULL ? ONE_WINDOW : tp->tp_firstwin == tp->tp_lastwin)
+  	return NULL;
+  
+      /*
+***************
+*** 2780,2786 ****
+      frame_T	*frp;
+      int		b;
+  
+!     if (tp == NULL ? firstwin == lastwin : tp->tp_firstwin == tp->tp_lastwin)
+  	/* Last window in this tab page, will go to next tab page. */
+  	return alt_tabpage()->tp_curwin->w_frame;
+  
+--- 2780,2786 ----
+      frame_T	*frp;
+      int		b;
+  
+!     if (tp == NULL ? ONE_WINDOW : tp->tp_firstwin == tp->tp_lastwin)
+  	/* Last window in this tab page, will go to next tab page. */
+  	return alt_tabpage()->tp_curwin->w_frame;
+  
+*** ../vim-8.0.0068/src/version.c	2016-11-06 14:46:40.644143343 +0100
+--- src/version.c	2016-11-06 15:24:12.094161516 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     69,
+  /**/
+
+-- 
+Imagine a world without hypothetical situations.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

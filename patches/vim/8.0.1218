@@ -1,0 +1,196 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1218
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1218
+Problem:    Writing to freed memory in autocmd.
+Solution:   Make a copy of the file name. (Dominique Pelle, closes #2245)
+Files:      src/tag.c, src/testdir/test_autocmd.vim
+
+
+*** ../vim-8.0.1217/src/tag.c	2017-09-16 20:54:47.118560293 +0200
+--- src/tag.c	2017-10-26 16:34:42.060731936 +0200
+***************
+*** 2950,2955 ****
+--- 2950,2974 ----
+  }
+  
+  /*
++  * Returns the length of a matching tag line.
++  */
++     static size_t
++ matching_line_len(char_u *lbuf)
++ {
++     char_u	*p = lbuf + 1;
++ 
++     /* does the same thing as parse_match() */
++     p += STRLEN(p) + 2;
++ #ifdef FEAT_EMACS_TAGS
++     if (*p)
++ 	p += STRLEN(p);
++     else
++ 	++p;
++ #endif
++     return (p - lbuf) + STRLEN(p);
++ }
++ 
++ /*
+   * Parse a line from a matching tag.  Does not change the line itself.
+   *
+   * The line that we get looks like this:
+***************
+*** 3071,3077 ****
+   */
+      static int
+  jumpto_tag(
+!     char_u	*lbuf,		/* line from the tags file for this tag */
+      int		forceit,	/* :ta with ! */
+      int		keep_help)	/* keep help flag (FALSE for cscope) */
+  {
+--- 3090,3096 ----
+   */
+      static int
+  jumpto_tag(
+!     char_u	*lbuf_arg,	/* line from the tags file for this tag */
+      int		forceit,	/* :ta with ! */
+      int		keep_help)	/* keep help flag (FALSE for cscope) */
+  {
+***************
+*** 3079,3085 ****
+      int		save_magic;
+      int		save_p_ws, save_p_scs, save_p_ic;
+      linenr_T	save_lnum;
+-     int		csave = 0;
+      char_u	*str;
+      char_u	*pbuf;			/* search pattern buffer */
+      char_u	*pbuf_end;
+--- 3098,3103 ----
+***************
+*** 3099,3116 ****
+  #ifdef FEAT_FOLDING
+      int		old_KeyTyped = KeyTyped;    /* getting the file may reset it */
+  #endif
+  
+      pbuf = alloc(LSIZE);
+  
+      /* parse the match line into the tagp structure */
+!     if (pbuf == NULL || parse_match(lbuf, &tagp) == FAIL)
+      {
+  	tagp.fname_end = NULL;
+  	goto erret;
+      }
+  
+      /* truncate the file name, so it can be used as a string */
+-     csave = *tagp.fname_end;
+      *tagp.fname_end = NUL;
+      fname = tagp.fname;
+  
+--- 3117,3142 ----
+  #ifdef FEAT_FOLDING
+      int		old_KeyTyped = KeyTyped;    /* getting the file may reset it */
+  #endif
++     size_t	len;
++     char_u	*lbuf;
++ 
++     /* Make a copy of the line, it can become invalid when an autocommand calls
++      * back here recursively. */
++     len = matching_line_len(lbuf_arg) + 1;
++     lbuf = alloc((int)len);
++     if (lbuf != NULL)
++ 	mch_memmove(lbuf, lbuf_arg, len);
+  
+      pbuf = alloc(LSIZE);
+  
+      /* parse the match line into the tagp structure */
+!     if (pbuf == NULL || lbuf == NULL || parse_match(lbuf, &tagp) == FAIL)
+      {
+  	tagp.fname_end = NULL;
+  	goto erret;
+      }
+  
+      /* truncate the file name, so it can be used as a string */
+      *tagp.fname_end = NUL;
+      fname = tagp.fname;
+  
+***************
+*** 3246,3252 ****
+--- 3272,3281 ----
+  #endif
+  	    keep_help_flag = curbuf->b_help;
+      }
++ 
+      if (getfile_result == GETFILE_UNUSED)
++ 	/* Careful: getfile() may trigger autocommands and call jumpto_tag()
++ 	 * recursively. */
+  	getfile_result = getfile(0, fname, NULL, TRUE, (linenr_T)0, forceit);
+      keep_help_flag = FALSE;
+  
+***************
+*** 3441,3448 ****
+  #if defined(FEAT_QUICKFIX)
+      g_do_tagpreview = 0; /* For next time */
+  #endif
+!     if (tagp.fname_end != NULL)
+! 	*tagp.fname_end = csave;
+      vim_free(pbuf);
+      vim_free(tofree_fname);
+      vim_free(full_fname);
+--- 3470,3476 ----
+  #if defined(FEAT_QUICKFIX)
+      g_do_tagpreview = 0; /* For next time */
+  #endif
+!     vim_free(lbuf);
+      vim_free(pbuf);
+      vim_free(tofree_fname);
+      vim_free(full_fname);
+*** ../vim-8.0.1217/src/testdir/test_autocmd.vim	2017-10-22 14:23:40.124199208 +0200
+--- src/testdir/test_autocmd.vim	2017-10-26 16:02:00.037904285 +0200
+***************
+*** 249,254 ****
+--- 249,272 ----
+    au! VimEnter
+  endfunc
+  
++ func Test_BufReadCmdHelp()
++   " This used to cause access to free memory
++   au BufReadCmd * e +h
++   help
++ 
++   helpclose
++   au! BufReadCmd
++ endfunc
++ 
++ func Test_BufReadCmdHelpJump()
++   " This used to cause access to free memory
++   au BufReadCmd * e +h{
++   help
++ 
++   helpclose
++   au! BufReadCmd
++ endfunc
++ 
+  func Test_augroup_deleted()
+    " This caused a crash before E936 was introduced
+    augroup x
+*** ../vim-8.0.1217/src/version.c	2017-10-26 14:28:25.944144974 +0200
+--- src/version.c	2017-10-26 15:47:15.247963549 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1218,
+  /**/
+
+-- 
+Be nice to your kids...  they'll be the ones choosing your nursing home.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

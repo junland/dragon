@@ -1,0 +1,212 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0280
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0280
+Problem:    On MS-Windows setting an environment variable with multi-byte
+            strings does not work well.
+Solution:   Use wputenv when possible. (Taro Muraoka, Ken Takata)
+Files:      src/misc1.c, src/os_win32.c, src/os_win32.h,
+            src/proto/os_win32.pro, src/vim.h
+
+
+*** ../vim-8.0.0279/src/misc1.c	2017-01-22 19:49:07.983272435 +0100
+--- src/misc1.c	2017-02-01 13:08:19.128442600 +0100
+***************
+*** 4453,4461 ****
+      {
+  	sprintf((char *)envbuf, "%s=%s", name, val);
+  	putenv((char *)envbuf);
+- # ifdef libintl_putenv
+- 	libintl_putenv((char *)envbuf);
+- # endif
+      }
+  #endif
+  #ifdef FEAT_GETTEXT
+--- 4453,4458 ----
+*** ../vim-8.0.0279/src/os_win32.c	2017-01-12 21:44:45.142171836 +0100
+--- src/os_win32.c	2017-02-01 13:08:19.132442574 +0100
+***************
+*** 515,520 ****
+--- 515,521 ----
+  static char *null_libintl_bindtextdomain(const char *, const char *);
+  static char *null_libintl_bind_textdomain_codeset(const char *, const char *);
+  static int null_libintl_putenv(const char *);
++ static int null_libintl_wputenv(const wchar_t *);
+  
+  static HINSTANCE hLibintlDLL = NULL;
+  char *(*dyn_libintl_gettext)(const char *) = null_libintl_gettext;
+***************
+*** 526,531 ****
+--- 527,533 ----
+  char *(*dyn_libintl_bind_textdomain_codeset)(const char *, const char *)
+  				       = null_libintl_bind_textdomain_codeset;
+  int (*dyn_libintl_putenv)(const char *) = null_libintl_putenv;
++ int (*dyn_libintl_wputenv)(const wchar_t *) = null_libintl_wputenv;
+  
+      int
+  dyn_libintl_init(void)
+***************
+*** 591,599 ****
+      /* _putenv() function for the libintl.dll is optional. */
+      hmsvcrt = find_imported_module_by_funcname(hLibintlDLL, "getenv");
+      if (hmsvcrt != NULL)
+  	dyn_libintl_putenv = (void *)GetProcAddress(hmsvcrt, "_putenv");
+!     if (dyn_libintl_putenv == NULL || dyn_libintl_putenv == putenv)
+  	dyn_libintl_putenv = null_libintl_putenv;
+  
+      return 1;
+  }
+--- 593,606 ----
+      /* _putenv() function for the libintl.dll is optional. */
+      hmsvcrt = find_imported_module_by_funcname(hLibintlDLL, "getenv");
+      if (hmsvcrt != NULL)
++     {
+  	dyn_libintl_putenv = (void *)GetProcAddress(hmsvcrt, "_putenv");
+! 	dyn_libintl_wputenv = (void *)GetProcAddress(hmsvcrt, "_wputenv");
+!     }
+!     if (dyn_libintl_putenv == NULL || dyn_libintl_putenv == _putenv)
+  	dyn_libintl_putenv = null_libintl_putenv;
++     if (dyn_libintl_wputenv == NULL || dyn_libintl_wputenv == _wputenv)
++ 	dyn_libintl_wputenv = null_libintl_wputenv;
+  
+      return 1;
+  }
+***************
+*** 610,615 ****
+--- 617,623 ----
+      dyn_libintl_bindtextdomain	= null_libintl_bindtextdomain;
+      dyn_libintl_bind_textdomain_codeset = null_libintl_bind_textdomain_codeset;
+      dyn_libintl_putenv		= null_libintl_putenv;
++     dyn_libintl_wputenv		= null_libintl_wputenv;
+  }
+  
+  /*ARGSUSED*/
+***************
+*** 658,663 ****
+--- 666,678 ----
+      return 0;
+  }
+  
++ /*ARGSUSED*/
++     int
++ null_libintl_wputenv(const wchar_t *envstring)
++ {
++     return 0;
++ }
++ 
+  #endif /* DYNAMIC_GETTEXT */
+  
+  /* This symbol is not defined in older versions of the SDK or Visual C++ */
+***************
+*** 6985,6987 ****
+--- 7000,7042 ----
+      set_alist_count();
+  }
+  #endif
++ 
++     int
++ mch_setenv(char *var, char *value, int x)
++ {
++     char_u	*envbuf;
++ 
++     envbuf = alloc((unsigned)(STRLEN(var) + STRLEN(value) + 2));
++     if (envbuf == NULL)
++ 	return -1;
++ 
++     sprintf((char *)envbuf, "%s=%s", var, value);
++ 
++ #ifdef FEAT_MBYTE
++     if (enc_codepage >= 0 && (int)GetACP() != enc_codepage)
++     {
++ 	WCHAR	    *p = enc_to_utf16(envbuf, NULL);
++ 
++ 	vim_free(envbuf);
++ 	if (p == NULL)
++ 	    return -1;
++ 	_wputenv(p);
++ # ifdef libintl_wputenv
++ 	libintl_wputenv(p);
++ # endif
++ 	/* Unlike Un*x systems, we can free the string for _wputenv(). */
++ 	vim_free(p);
++     }
++     else
++ #endif
++     {
++ 	_putenv((char *)envbuf);
++ # ifdef libintl_putenv
++ 	libintl_putenv((char *)envbuf);
++ # endif
++ 	/* Unlike Un*x systems, we can free the string for _putenv(). */
++ 	vim_free(envbuf);
++     }
++ 
++     return 0;
++ }
+*** ../vim-8.0.0279/src/os_win32.h	2016-10-12 14:19:55.754357695 +0200
+--- src/os_win32.h	2017-02-01 13:08:19.132442574 +0100
+***************
+*** 202,208 ****
+  #define ASSERT_NULL_OR_POINTER(p, type) \
+      ASSERT(((p) == NULL)  ||  IsValidAddress((p), sizeof(type), FALSE))
+  
+! #define mch_setenv(name, val, x) setenv(name, val, x)
+  #define mch_getenv(x) (char_u *)getenv((char *)(x))
+  #ifdef __BORLANDC__
+  # define vim_mkdir(x, y) mkdir(x)
+--- 202,210 ----
+  #define ASSERT_NULL_OR_POINTER(p, type) \
+      ASSERT(((p) == NULL)  ||  IsValidAddress((p), sizeof(type), FALSE))
+  
+! #ifndef HAVE_SETENV
+! # define HAVE_SETENV
+! #endif
+  #define mch_getenv(x) (char_u *)getenv((char *)(x))
+  #ifdef __BORLANDC__
+  # define vim_mkdir(x, y) mkdir(x)
+*** ../vim-8.0.0279/src/proto/os_win32.pro	2017-01-12 21:44:45.142171836 +0100
+--- src/proto/os_win32.pro	2017-02-01 13:08:19.132442574 +0100
+***************
+*** 65,68 ****
+--- 65,69 ----
+  void used_file_arg(char *name, int literal, int full_path, int diff_mode);
+  void set_alist_count(void);
+  void fix_arg_enc(void);
++ int mch_setenv(char *var, char *value, int x);
+  /* vim: set ft=c : */
+*** ../vim-8.0.0279/src/vim.h	2017-01-27 21:22:14.094909115 +0100
+--- src/vim.h	2017-02-01 13:08:19.132442574 +0100
+***************
+*** 594,599 ****
+--- 594,600 ----
+  #  endif
+  #  define textdomain(domain) (*dyn_libintl_textdomain)(domain)
+  #  define libintl_putenv(envstring) (*dyn_libintl_putenv)(envstring)
++ #  define libintl_wputenv(envstring) (*dyn_libintl_wputenv)(envstring)
+  # else
+  #  include <libintl.h>
+  #  define _(x) gettext((char *)(x))
+*** ../vim-8.0.0279/src/version.c	2017-02-01 13:02:43.794603926 +0100
+--- src/version.c	2017-02-01 13:10:42.215521081 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     280,
+  /**/
+
+-- 
+An indication you must be a manager:
+You feel sorry for Dilbert's boss.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,75 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1193
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1193
+Problem:    Crash when wiping out a buffer after using getbufinfo().
+            (Yegappan Lakshmanan)
+Solution:   Remove b:changedtick from the buffer variables.
+Files:      src/buffer.c, src/testdir/test_autocmd.vim
+
+
+*** ../vim-8.0.1192/src/buffer.c	2017-09-30 16:00:07.443448218 +0200
+--- src/buffer.c	2017-10-14 21:10:56.925605901 +0200
+***************
+*** 837,842 ****
+--- 837,844 ----
+      ++buf_free_count;
+      free_buffer_stuff(buf, TRUE);
+  #ifdef FEAT_EVAL
++     /* b:changedtick uses an item in buf_T, remove it now */
++     dictitem_remove(buf->b_vars, (dictitem_T *)&buf->b_ct_di);
+      unref_var_dict(buf->b_vars);
+  #endif
+  #ifdef FEAT_LUA
+*** ../vim-8.0.1192/src/testdir/test_autocmd.vim	2017-10-13 22:33:28.120111521 +0200
+--- src/testdir/test_autocmd.vim	2017-10-14 21:09:18.626261949 +0200
+***************
+*** 769,778 ****
+    bwipe!
+    call assert_equal(1, line('$'))
+    call assert_equal('', bufname('%'))
+!   call assert_equal(1, len(getbufinfo()))
+  
+    call delete('Xxx1')
+    call delete('Xxx2')
+    %bwipe
+    au! BufLeave
+  endfunc
+--- 769,782 ----
+    bwipe!
+    call assert_equal(1, line('$'))
+    call assert_equal('', bufname('%'))
+!   let g:bufinfo = getbufinfo()
+!   call assert_equal(1, len(g:bufinfo))
+  
+    call delete('Xxx1')
+    call delete('Xxx2')
+    %bwipe
+    au! BufLeave
++ 
++   " check that bufinfo doesn't contain a pointer to freed memory
++   call test_garbagecollect_now()
+  endfunc
+*** ../vim-8.0.1192/src/version.c	2017-10-14 20:24:15.048417152 +0200
+--- src/version.c	2017-10-14 21:10:03.941959257 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1193,
+  /**/
+
+-- 
+Not too long ago, a program was something you watched on TV...
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

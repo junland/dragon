@@ -1,0 +1,69 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0588
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0588
+Problem:    job_stop() often assumes the channel will be closed, while the job
+	    may not actually be stopped. (Martin Gammelsæter)
+Solution:   Only assume the job stops on "kill".  Don't send a signal if the
+            job has already ended. (closes #1632)
+Files:      src/channel.c
+
+
+*** ../vim-8.0.0587/src/channel.c	2017-04-07 14:01:54.844119764 +0200
+--- src/channel.c	2017-04-28 20:46:30.374968371 +0200
+***************
+*** 5148,5159 ****
+  	    return 0;
+  	}
+      }
+      ch_logs(job->jv_channel, "Stopping job with '%s'", (char *)arg);
+      if (mch_stop_job(job, arg) == FAIL)
+  	return 0;
+  
+!     /* Assume that "hup" does not kill the job. */
+!     if (job->jv_channel != NULL && STRCMP(arg, "hup") != 0)
+  	job->jv_channel->ch_job_killed = TRUE;
+  
+      /* We don't try freeing the job, obviously the caller still has a
+--- 5148,5164 ----
+  	    return 0;
+  	}
+      }
++     if (job->jv_status == JOB_ENDED)
++     {
++ 	ch_log(job->jv_channel, "Job has already ended, job_stop() skipped");
++ 	return 0;
++     }
+      ch_logs(job->jv_channel, "Stopping job with '%s'", (char *)arg);
+      if (mch_stop_job(job, arg) == FAIL)
+  	return 0;
+  
+!     /* Assume that only "kill" will kill the job. */
+!     if (job->jv_channel != NULL && STRCMP(arg, "kill") == 0)
+  	job->jv_channel->ch_job_killed = TRUE;
+  
+      /* We don't try freeing the job, obviously the caller still has a
+*** ../vim-8.0.0587/src/version.c	2017-04-28 15:45:42.384360243 +0200
+--- src/version.c	2017-04-28 20:46:04.451125603 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     588,
+  /**/
+
+-- 
+My girlfriend told me I should be more affectionate.
+So I got TWO girlfriends.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

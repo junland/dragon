@@ -1,0 +1,109 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1303
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1303
+Problem:    'ttymouse' is not set to "sgr" for Terminal.app and Iterm2.
+Solution:   Recognize Iterm2 by the termresponse.
+Files:      src/term.c
+
+
+*** ../vim-8.0.1302/src/term.c	2017-11-05 21:24:18.776215634 +0100
+--- src/term.c	2017-11-16 22:03:51.936116265 +0100
+***************
+*** 4546,4551 ****
+--- 4546,4554 ----
+  		    if (tp[1 + (tp[0] != CSI)] == '>' && semicols == 2)
+  		    {
+  			int need_flush = FALSE;
++ # ifdef FEAT_MOUSE_SGR
++ 			int is_iterm2 = FALSE;
++ # endif
+  
+  			/* if xterm version >= 141 try to get termcap codes */
+  			if (version >= 141)
+***************
+*** 4573,4584 ****
+  # endif
+  			}
+  
+  			/* Only set 'ttymouse' automatically if it was not set
+  			 * by the user already. */
+  			if (!option_was_set((char_u *)"ttym"))
+  			{
+  # ifdef FEAT_MOUSE_SGR
+! 			    if (version >= 277)
+  				set_option_value((char_u *)"ttym", 0L,
+  							  (char_u *)"sgr", 0);
+  			    else
+--- 4576,4604 ----
+  # endif
+  			}
+  
++ 			if (version == 95)
++ 			{
++ 			    /* Mac Terminal.app sends 1;95;0 */
++ 			    if (STRNCMP(tp + extra - 2, "1;95;0c", 7) == 0)
++ 			    {
++ 				is_not_xterm = TRUE;
++ 				is_mac_terminal = TRUE;
++ 			    }
++ # ifdef FEAT_MOUSE_SGR
++ 			    /* Iterm2 sends 0;95;0 */
++ 			    if (STRNCMP(tp + extra - 2, "0;95;0c", 7) == 0)
++ 				is_iterm2 = TRUE;
++ # endif
++ 			}
++ 
+  			/* Only set 'ttymouse' automatically if it was not set
+  			 * by the user already. */
+  			if (!option_was_set((char_u *)"ttym"))
+  			{
+  # ifdef FEAT_MOUSE_SGR
+! 			    /* Xterm version 277 supports SGR.  Also support
+! 			     * Terminal.app and iterm2. */
+! 			    if (version >= 277 || is_iterm2 || is_mac_terminal)
+  				set_option_value((char_u *)"ttym", 0L,
+  							  (char_u *)"sgr", 0);
+  			    else
+***************
+*** 4593,4606 ****
+  			 * "xterm-256colors"  but are not fully xterm
+  			 * compatible. */
+  
+- 			/* Mac Terminal.app sends 1;95;0 */
+- 			if (version == 95
+- 				&& STRNCMP(tp + extra - 2, "1;95;0c", 7) == 0)
+- 			{
+- 			    is_not_xterm = TRUE;
+- 			    is_mac_terminal = TRUE;
+- 			}
+- 
+  			/* Gnome terminal sends 1;3801;0, 1;4402;0 or 1;2501;0.
+  			 * xfce4-terminal sends 1;2802;0.
+  			 * screen sends 83;40500;0
+--- 4613,4618 ----
+*** ../vim-8.0.1302/src/version.c	2017-11-16 21:52:07.655021738 +0100
+--- src/version.c	2017-11-16 22:05:43.834380303 +0100
+***************
+*** 768,769 ****
+--- 768,771 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1303,
+  /**/
+
+-- 
+Normal people believe that if it ain't broke, don't fix it.  Engineers believe
+that if it ain't broke, it doesn't have enough features yet.
+				(Scott Adams - The Dilbert principle)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

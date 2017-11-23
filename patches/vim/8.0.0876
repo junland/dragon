@@ -1,0 +1,92 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0876
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0876
+Problem:    MS-Windows: Backslashes and wildcards in backticks don't work.
+Solution:   Do not handle backslashes inside backticks in the wrong place.
+            (Yasuhiro Matsumoto, closes #1942)
+Files:      src/os_mswin.c, src/os_win32.c
+
+
+*** ../vim-8.0.0875/src/os_mswin.c	2017-08-03 20:44:43.194297497 +0200
+--- src/os_mswin.c	2017-08-05 23:06:31.719734658 +0200
+***************
+*** 450,455 ****
+--- 450,464 ----
+  {
+      if (path_with_url(p))
+  	return;
++ 
++     if (*p == '`')
++     {
++ 	/* don't replace backslash in backtick quoted strings */
++ 	int len = STRLEN(p);
++ 	if (len > 2 && *(p + len - 1) == '`')
++ 	    return;
++     }
++ 
+      while (*p)
+      {
+  	if (*p == psepcN)
+*** ../vim-8.0.0875/src/os_win32.c	2017-08-03 20:44:43.190297526 +0200
+--- src/os_win32.c	2017-08-05 23:06:31.719734658 +0200
+***************
+*** 7004,7009 ****
+--- 7004,7011 ----
+  	str = utf16_to_enc(ArglistW[idx], NULL);
+  	if (str != NULL)
+  	{
++ 	    int literal = used_file_literal;
++ 
+  #ifdef FEAT_DIFF
+  	    /* When using diff mode may need to concatenate file name to
+  	     * directory name.  Just like it's done in main(). */
+***************
+*** 7025,7031 ****
+  	    if (used_file_literal)
+  		buf_set_name(fnum_list[i], str);
+  
+! 	    alist_add(&global_alist, str, used_file_literal ? 2 : 0);
+  	}
+      }
+  
+--- 7027,7041 ----
+  	    if (used_file_literal)
+  		buf_set_name(fnum_list[i], str);
+  
+! 	    /* Check backtick literal. backtick literal is already expanded in
+! 	     * main.c, so this part add str as literal. */
+! 	    if (literal == FALSE)
+! 	    {
+! 		int len = STRLEN(str);
+! 		if (len > 2 && *str == '`' && *(str + len - 1) == '`')
+! 		    literal = TRUE;
+! 	    }
+! 	    alist_add(&global_alist, str, literal ? 2 : 0);
+  	}
+      }
+  
+*** ../vim-8.0.0875/src/version.c	2017-08-05 23:00:49.690238118 +0200
+--- src/version.c	2017-08-05 23:05:47.972054974 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     876,
+  /**/
+
+-- 
+Vi beats Emacs to death, and then again!
+			http://linuxtoday.com/stories/5764.html
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

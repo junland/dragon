@@ -1,0 +1,62 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0304
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0304 (after 8.0.0302)
+Problem:    Assign test fails in the GUI.
+Solution:   Skip the test for setting t_k1.
+Files:      src/testdir/test_assign.vim
+
+
+*** ../vim-8.0.0303/src/testdir/test_assign.vim	2017-02-04 19:49:10.940502929 +0100
+--- src/testdir/test_assign.vim	2017-02-04 21:47:00.863904307 +0100
+***************
+*** 15,25 ****
+    call assert_match('t_te.*^[[yes;', execute("set termcap"))
+    let &t_te = old_t_te
+  
+!   " Key code
+!   let old_t_k1 = &t_k1
+!   let &t_k1 = "that"
+!   call assert_match('t_k1.*that', execute("set termcap"))
+!   let &t_k1 = old_t_k1
+  
+    call assert_fails('let x = &t_xx', 'E15')
+    let &t_xx = "yes"
+--- 15,27 ----
+    call assert_match('t_te.*^[[yes;', execute("set termcap"))
+    let &t_te = old_t_te
+  
+!   if !has('gui_running')
+!     " Key code
+!     let old_t_k1 = &t_k1
+!     let &t_k1 = "that"
+!     call assert_match('t_k1.*that', execute("set termcap"))
+!     let &t_k1 = old_t_k1
+!   endif
+  
+    call assert_fails('let x = &t_xx', 'E15')
+    let &t_xx = "yes"
+*** ../vim-8.0.0303/src/version.c	2017-02-04 21:34:27.293529871 +0100
+--- src/version.c	2017-02-04 21:49:32.422773989 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     304,
+  /**/
+
+-- 
+bashian roulette:
+$ ((RANDOM%6)) || rm -rf ~
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,327 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0608
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0608
+Problem:    Cannot manipulate other than the current quickfix list.
+Solution:   Pass the list index to quickfix functions. (Yegappan Lakshmanan)
+Files:      src/quickfix.c
+
+
+*** ../vim-8.0.0607/src/quickfix.c	2017-06-04 14:57:57.312461379 +0200
+--- src/quickfix.c	2017-06-04 15:29:35.579229108 +0200
+***************
+*** 118,127 ****
+  static efm_T	*fmt_start = NULL; /* cached across qf_parse_line() calls */
+  
+  static int	qf_init_ext(qf_info_T *qi, char_u *efile, buf_T *buf, typval_T *tv, char_u *errorformat, int newlist, linenr_T lnumfirst, linenr_T lnumlast, char_u *qf_title, char_u *enc);
+! static void	qf_store_title(qf_info_T *qi, char_u *title);
+  static void	qf_new_list(qf_info_T *qi, char_u *qf_title);
+  static void	ll_free_all(qf_info_T **pqi);
+! static int	qf_add_entry(qf_info_T *qi, char_u *dir, char_u *fname, int bufnum, char_u *mesg, long lnum, int col, int vis_col, char_u *pattern, int nr, int type, int valid);
+  static qf_info_T *ll_new_list(void);
+  static void	qf_free(qf_info_T *qi, int idx);
+  static char_u	*qf_types(int, int);
+--- 118,127 ----
+  static efm_T	*fmt_start = NULL; /* cached across qf_parse_line() calls */
+  
+  static int	qf_init_ext(qf_info_T *qi, char_u *efile, buf_T *buf, typval_T *tv, char_u *errorformat, int newlist, linenr_T lnumfirst, linenr_T lnumlast, char_u *qf_title, char_u *enc);
+! static void	qf_store_title(qf_info_T *qi, int qf_idx, char_u *title);
+  static void	qf_new_list(qf_info_T *qi, char_u *qf_title);
+  static void	ll_free_all(qf_info_T **pqi);
+! static int	qf_add_entry(qf_info_T *qi, int qf_idx, char_u *dir, char_u *fname, int bufnum, char_u *mesg, long lnum, int col, int vis_col, char_u *pattern, int nr, int type, int valid);
+  static qf_info_T *ll_new_list(void);
+  static void	qf_free(qf_info_T *qi, int idx);
+  static char_u	*qf_types(int, int);
+***************
+*** 1277,1282 ****
+--- 1277,1283 ----
+  	    continue;
+  
+  	if (qf_add_entry(qi,
++ 			qi->qf_curlist,
+  			qi->qf_directory,
+  			(*fields.namebuf || qi->qf_directory != NULL)
+  			    ? fields.namebuf
+***************
+*** 1344,1356 ****
+  }
+  
+      static void
+! qf_store_title(qf_info_T *qi, char_u *title)
+  {
+      if (title != NULL)
+      {
+  	char_u *p = alloc((int)STRLEN(title) + 2);
+  
+! 	qi->qf_lists[qi->qf_curlist].qf_title = p;
+  	if (p != NULL)
+  	    sprintf((char *)p, ":%s", (char *)title);
+      }
+--- 1345,1357 ----
+  }
+  
+      static void
+! qf_store_title(qf_info_T *qi, int qf_idx, char_u *title)
+  {
+      if (title != NULL)
+      {
+  	char_u *p = alloc((int)STRLEN(title) + 2);
+  
+! 	qi->qf_lists[qf_idx].qf_title = p;
+  	if (p != NULL)
+  	    sprintf((char *)p, ":%s", (char *)title);
+      }
+***************
+*** 1386,1392 ****
+      else
+  	qi->qf_curlist = qi->qf_listcount++;
+      vim_memset(&qi->qf_lists[qi->qf_curlist], 0, (size_t)(sizeof(qf_list_T)));
+!     qf_store_title(qi, qf_title);
+  }
+  
+  /*
+--- 1387,1393 ----
+      else
+  	qi->qf_curlist = qi->qf_listcount++;
+      vim_memset(&qi->qf_lists[qi->qf_curlist], 0, (size_t)(sizeof(qf_list_T)));
+!     qf_store_title(qi, qi->qf_curlist, qf_title);
+  }
+  
+  /*
+***************
+*** 1438,1443 ****
+--- 1439,1445 ----
+      static int
+  qf_add_entry(
+      qf_info_T	*qi,		/* quickfix list */
++     int		qf_idx,		/* list index */
+      char_u	*dir,		/* optional directory name */
+      char_u	*fname,		/* file name or NULL */
+      int		bufnum,		/* buffer number or zero */
+***************
+*** 1488,1500 ****
+      qfp->qf_type = type;
+      qfp->qf_valid = valid;
+  
+!     lastp = &qi->qf_lists[qi->qf_curlist].qf_last;
+!     if (qi->qf_lists[qi->qf_curlist].qf_count == 0)
+  				/* first element in the list */
+      {
+! 	qi->qf_lists[qi->qf_curlist].qf_start = qfp;
+! 	qi->qf_lists[qi->qf_curlist].qf_ptr = qfp;
+! 	qi->qf_lists[qi->qf_curlist].qf_index = 0;
+  	qfp->qf_prev = NULL;
+      }
+      else
+--- 1490,1502 ----
+      qfp->qf_type = type;
+      qfp->qf_valid = valid;
+  
+!     lastp = &qi->qf_lists[qf_idx].qf_last;
+!     if (qi->qf_lists[qf_idx].qf_count == 0)
+  				/* first element in the list */
+      {
+! 	qi->qf_lists[qf_idx].qf_start = qfp;
+! 	qi->qf_lists[qf_idx].qf_ptr = qfp;
+! 	qi->qf_lists[qf_idx].qf_index = 0;
+  	qfp->qf_prev = NULL;
+      }
+      else
+***************
+*** 1505,1517 ****
+      qfp->qf_next = NULL;
+      qfp->qf_cleared = FALSE;
+      *lastp = qfp;
+!     ++qi->qf_lists[qi->qf_curlist].qf_count;
+!     if (qi->qf_lists[qi->qf_curlist].qf_index == 0 && qfp->qf_valid)
+  				/* first valid entry */
+      {
+! 	qi->qf_lists[qi->qf_curlist].qf_index =
+! 	    qi->qf_lists[qi->qf_curlist].qf_count;
+! 	qi->qf_lists[qi->qf_curlist].qf_ptr = qfp;
+      }
+  
+      return OK;
+--- 1507,1519 ----
+      qfp->qf_next = NULL;
+      qfp->qf_cleared = FALSE;
+      *lastp = qfp;
+!     ++qi->qf_lists[qf_idx].qf_count;
+!     if (qi->qf_lists[qf_idx].qf_index == 0 && qfp->qf_valid)
+  				/* first valid entry */
+      {
+! 	qi->qf_lists[qf_idx].qf_index =
+! 	    qi->qf_lists[qf_idx].qf_count;
+! 	qi->qf_lists[qf_idx].qf_ptr = qfp;
+      }
+  
+      return OK;
+***************
+*** 1628,1633 ****
+--- 1630,1636 ----
+  		    ++i, from_qfp = from_qfp->qf_next)
+  	    {
+  		if (qf_add_entry(to->w_llist,
++ 				 to->w_llist->qf_curlist,
+  				 NULL,
+  				 NULL,
+  				 0,
+***************
+*** 4240,4245 ****
+--- 4243,4249 ----
+  		     * dummy buffer, unless duplicate_name is set, then the
+  		     * buffer will be wiped out below. */
+  		    if (qf_add_entry(qi,
++ 				qi->qf_curlist,
+  				NULL,       /* dir */
+  				fname,
+  				duplicate_name ? 0 : buf->b_fnum,
+***************
+*** 4744,4749 ****
+--- 4748,4754 ----
+      static int
+  qf_add_entries(
+  	qf_info_T	*qi,
++ 	int		qf_idx,
+  	list_T		*list,
+  	char_u		*title,
+  	int		action)
+***************
+*** 4762,4779 ****
+      int		retval = OK;
+      int		did_bufnr_emsg = FALSE;
+  
+!     if (action == ' ' || qi->qf_curlist == qi->qf_listcount)
+  	/* make place for a new list */
+  	qf_new_list(qi, title);
+  #ifdef FEAT_WINDOWS
+!     else if (action == 'a' && qi->qf_lists[qi->qf_curlist].qf_count > 0)
+  	/* Adding to existing list, use last entry. */
+! 	old_last = qi->qf_lists[qi->qf_curlist].qf_last;
+  #endif
+      else if (action == 'r')
+      {
+! 	qf_free(qi, qi->qf_curlist);
+! 	qf_store_title(qi, title);
+      }
+  
+      for (li = list->lv_first; li != NULL; li = li->li_next)
+--- 4767,4787 ----
+      int		retval = OK;
+      int		did_bufnr_emsg = FALSE;
+  
+!     if (action == ' ' || qf_idx == qi->qf_listcount)
+!     {
+  	/* make place for a new list */
+  	qf_new_list(qi, title);
++ 	qf_idx = qi->qf_curlist;
++     }
+  #ifdef FEAT_WINDOWS
+!     else if (action == 'a' && qi->qf_lists[qf_idx].qf_count > 0)
+  	/* Adding to existing list, use last entry. */
+! 	old_last = qi->qf_lists[qf_idx].qf_last;
+  #endif
+      else if (action == 'r')
+      {
+! 	qf_free(qi, qf_idx);
+! 	qf_store_title(qi, qf_idx, title);
+      }
+  
+      for (li = list->lv_first; li != NULL; li = li->li_next)
+***************
+*** 4819,4824 ****
+--- 4827,4833 ----
+  	    valid = (int)get_dict_number(d, (char_u *)"valid");
+  
+  	status =  qf_add_entry(qi,
++ 			       qf_idx,
+  			       NULL,	    /* dir */
+  			       filename,
+  			       bufnum,
+***************
+*** 4843,4859 ****
+  	}
+      }
+  
+!     if (qi->qf_lists[qi->qf_curlist].qf_index == 0)
+  	/* no valid entry */
+! 	qi->qf_lists[qi->qf_curlist].qf_nonevalid = TRUE;
+      else
+! 	qi->qf_lists[qi->qf_curlist].qf_nonevalid = FALSE;
+      if (action != 'a')
+      {
+! 	qi->qf_lists[qi->qf_curlist].qf_ptr =
+! 	    qi->qf_lists[qi->qf_curlist].qf_start;
+! 	if (qi->qf_lists[qi->qf_curlist].qf_count > 0)
+! 	    qi->qf_lists[qi->qf_curlist].qf_index = 1;
+      }
+  
+  #ifdef FEAT_WINDOWS
+--- 4852,4868 ----
+  	}
+      }
+  
+!     if (qi->qf_lists[qf_idx].qf_index == 0)
+  	/* no valid entry */
+! 	qi->qf_lists[qf_idx].qf_nonevalid = TRUE;
+      else
+! 	qi->qf_lists[qf_idx].qf_nonevalid = FALSE;
+      if (action != 'a')
+      {
+! 	qi->qf_lists[qf_idx].qf_ptr =
+! 	    qi->qf_lists[qf_idx].qf_start;
+! 	if (qi->qf_lists[qf_idx].qf_count > 0)
+! 	    qi->qf_lists[qf_idx].qf_index = 1;
+      }
+  
+  #ifdef FEAT_WINDOWS
+***************
+*** 5024,5030 ****
+      else if (what != NULL)
+  	retval = qf_set_properties(qi, what, action);
+      else
+! 	retval = qf_add_entries(qi, list, title, action);
+  
+      return retval;
+  }
+--- 5033,5039 ----
+      else if (what != NULL)
+  	retval = qf_set_properties(qi, what, action);
+      else
+! 	retval = qf_add_entries(qi, qi->qf_curlist, list, title, action);
+  
+      return retval;
+  }
+***************
+*** 5387,5392 ****
+--- 5396,5402 ----
+  				     line[--l] = NUL;
+  
+  				if (qf_add_entry(qi,
++ 					    qi->qf_curlist,
+  					    NULL,	/* dir */
+  					    fnames[fi],
+  					    0,
+*** ../vim-8.0.0607/src/version.c	2017-06-04 14:57:57.312461379 +0200
+--- src/version.c	2017-06-04 15:25:08.421097694 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     608,
+  /**/
+
+-- 
+A radioactive cat has eighteen half-lives.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

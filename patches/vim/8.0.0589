@@ -1,0 +1,62 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0589
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0589 (after 8.0.0578)
+Problem:    :simalt still does not work.
+Solution:   Use K_NOP instead of K_IGNORE. (Christian Brabandt)
+Files:      src/gui_w32.c
+
+
+*** ../vim-8.0.0588/src/gui_w32.c	2017-04-22 15:17:36.122798042 +0200
+--- src/gui_w32.c	2017-04-29 17:35:06.578284894 +0200
+***************
+*** 2642,2652 ****
+      }
+      if (fill_typebuf)
+      {
+! 	/* Put something in the typeahead buffer so that the message will get
+  	 * processed. */
+  	key_name[0] = K_SPECIAL;
+  	key_name[1] = KS_EXTRA;
+! 	key_name[2] = KE_IGNORE;
+  	key_name[3] = NUL;
+  	typebuf_was_filled = TRUE;
+  	(void)ins_typebuf(key_name, REMAP_NONE, 0, TRUE, FALSE);
+--- 2642,2652 ----
+      }
+      if (fill_typebuf)
+      {
+! 	/* Put a NOP in the typeahead buffer so that the message will get
+  	 * processed. */
+  	key_name[0] = K_SPECIAL;
+  	key_name[1] = KS_EXTRA;
+! 	key_name[2] = KE_NOP;
+  	key_name[3] = NUL;
+  	typebuf_was_filled = TRUE;
+  	(void)ins_typebuf(key_name, REMAP_NONE, 0, TRUE, FALSE);
+*** ../vim-8.0.0588/src/version.c	2017-04-29 16:24:32.211919570 +0200
+--- src/version.c	2017-04-29 17:36:59.021605145 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     589,
+  /**/
+
+-- 
+TIM:   That is not an ordinary rabbit ... 'tis the most foul cruel and
+       bad-tempered thing you ever set eyes on.
+ROBIN: You tit.  I soiled my armour I was so scared!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

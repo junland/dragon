@@ -1,0 +1,124 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0197
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0197
+Problem:    On MS-Windows the system() test skips a few parts.
+Solution:   Swap single and double quotes for the command.
+Files:      src/testdir/test_system.vim
+
+
+*** ../vim-8.0.0196/src/testdir/test_system.vim	2017-01-14 19:38:32.449616516 +0100
+--- src/testdir/test_system.vim	2017-01-16 22:50:52.735935225 +0100
+***************
+*** 48,89 ****
+  endfunction
+  
+  function! Test_system_exmode()
+!   if !has('unix')
+!     return
+    endif
+  
+-   let cmd=" -es -u NONE -c 'source Xscript' +q; echo $?"
+-   " Need to put this in a script, "catch" isn't found after an unknown
+-   " function.
+-   call writefile(['try', 'call doesnotexist()', 'catch', 'endtry'], 'Xscript')
+-   let a = system(v:progpath . cmd)
+-   call assert_equal('0', a[0])
+-   call assert_equal(0, v:shell_error)
+- 
+    " Error before try does set error flag.
+    call writefile(['call nosuchfunction()', 'try', 'call doesnotexist()', 'catch', 'endtry'], 'Xscript')
+!   let a = system(v:progpath . cmd)
+!   call assert_notequal('0', a[0])
+  
+!   let cmd=" -es -u NONE -c 'source Xscript' +q"
+    let a = system(v:progpath . cmd)
+    call assert_notequal(0, v:shell_error)
+  
+!   let cmd=" -es -u NONE -c 'call doesnotexist()' +q; echo $?"
+!   let a = system(v:progpath. cmd)
+!   call assert_notequal(0, a[0])
+  
+!   let cmd=" -es -u NONE -c 'call doesnotexist()' +q"
+    let a = system(v:progpath. cmd)
+    call assert_notequal(0, v:shell_error)
+  
+!   let cmd=" -es -u NONE -c 'call doesnotexist()|let a=1' +q; echo $?"
+!   let a = system(v:progpath. cmd)
+!   call assert_notequal(0, a[0])
+  
+!   let cmd=" -es -u NONE -c 'call doesnotexist()|let a=1' +q"
+    let a = system(v:progpath. cmd)
+    call assert_notequal(0, v:shell_error)
+- 
+-   call delete('Xscript')
+  endfunc
+--- 48,92 ----
+  endfunction
+  
+  function! Test_system_exmode()
+!   if has('unix') " echo $? only works on Unix
+!     let cmd = ' -es -u NONE -c "source Xscript" +q; echo $?'
+!     " Need to put this in a script, "catch" isn't found after an unknown
+!     " function.
+!     call writefile(['try', 'call doesnotexist()', 'catch', 'endtry'], 'Xscript')
+!     let a = system(v:progpath . cmd)
+!     call assert_equal('0', a[0])
+!     call assert_equal(0, v:shell_error)
+    endif
+  
+    " Error before try does set error flag.
+    call writefile(['call nosuchfunction()', 'try', 'call doesnotexist()', 'catch', 'endtry'], 'Xscript')
+!   if has('unix') " echo $? only works on Unix
+!     let a = system(v:progpath . cmd)
+!     call assert_notequal('0', a[0])
+!   endif
+  
+!   let cmd = ' -es -u NONE -c "source Xscript" +q'
+    let a = system(v:progpath . cmd)
+    call assert_notequal(0, v:shell_error)
++   call delete('Xscript')
+  
+!   if has('unix') " echo $? only works on Unix
+!     let cmd = ' -es -u NONE -c "call doesnotexist()" +q; echo $?'
+!     let a = system(v:progpath. cmd)
+!     call assert_notequal(0, a[0])
+!   endif
+  
+!   let cmd = ' -es -u NONE -c "call doesnotexist()" +q'
+    let a = system(v:progpath. cmd)
+    call assert_notequal(0, v:shell_error)
+  
+!   if has('unix') " echo $? only works on Unix
+!     let cmd = ' -es -u NONE -c "call doesnotexist()|let a=1" +q; echo $?'
+!     let a = system(v:progpath. cmd)
+!     call assert_notequal(0, a[0])
+!   endif
+  
+!   let cmd = ' -es -u NONE -c "call doesnotexist()|let a=1" +q'
+    let a = system(v:progpath. cmd)
+    call assert_notequal(0, v:shell_error)
+  endfunc
+*** ../vim-8.0.0196/src/version.c	2017-01-16 22:37:39.520971858 +0100
+--- src/version.c	2017-01-16 22:53:18.194680870 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     197,
+  /**/
+
+-- 
+Facepalm statement #8: "Drive faster, the petrol is running out"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

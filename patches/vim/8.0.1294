@@ -1,0 +1,45 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1294
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1294
+Problem:    GUI: get stuck when splitting a terminal window.
+Solution:   Stop blinking when values become zero. (Hirohito Higashi)
+Files:      src/gui.c
+
+
+*** ../vim-8.0.1293/src/gui.c	2017-11-11 17:09:03.280621200 +0100
+--- src/gui.c	2017-11-12 18:29:56.314878329 +0100
+***************
+*** 1118,1123 ****
+--- 1118,1125 ----
+  	gui_mch_set_blinking(shape->blinkwait,
+  			     shape->blinkon,
+  			     shape->blinkoff);
++ 	if (shape->blinkoff == 0 || shape->blinkon == 0 || shape->blinkoff == 0)
++ 	    gui_mch_stop_blink();
+  #ifdef FEAT_TERMINAL
+  	if (shape_bg != INVALCOLOR)
+  	{
+*** ../vim-8.0.1293/src/version.c	2017-11-12 18:00:36.416643524 +0100
+--- src/version.c	2017-11-12 18:28:02.552452721 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1294,
+  /**/
+
+-- 
+I have read and understood the above. X________________
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

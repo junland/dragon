@@ -1,0 +1,447 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0912
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0912
+Problem:    Cannot run a job in a hidden terminal.
+Solution:   Add option "hidden" and ++hidden.
+Files:      src/terminal.c, src/structs.h, src/channel.c, src/fileio.c,
+            runtime/doc/terminal.txt, src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0911/src/terminal.c	2017-08-11 22:27:44.509127632 +0200
+--- src/terminal.c	2017-08-12 14:31:36.882322521 +0200
+***************
+*** 36,43 ****
+   * that buffer, attributes come from the scrollback buffer tl_scrollback.
+   *
+   * TODO:
+-  * - add option values to the command:
+-  *      :term ++24x80 ++close vim notes.txt
+   * - When using term_finish "open" have a way to specify how the window is to
+   *   be opened.  E.g. term_opencmd "10split buffer %d".
+   * - support different cursor shapes, colors and attributes
+--- 36,41 ----
+***************
+*** 249,254 ****
+--- 247,253 ----
+      exarg_T	split_ea;
+      win_T	*old_curwin = curwin;
+      term_T	*term;
++     buf_T	*old_curbuf = NULL;
+  
+      if (check_restricted() || check_secure())
+  	return;
+***************
+*** 268,278 ****
+--- 267,300 ----
+  	if (!can_abandon(curbuf, forceit))
+  	{
+  	    EMSG(_(e_nowrtmsg));
++ 	    vim_free(term);
+  	    return;
+  	}
+  	if (do_ecmd(0, NULL, NULL, &split_ea, ECMD_ONE,
+  		     ECMD_HIDE + (forceit ? ECMD_FORCEIT : 0), curwin) == FAIL)
++ 	{
++ 	    vim_free(term);
+  	    return;
++ 	}
++     }
++     else if (opt->jo_hidden)
++     {
++ 	buf_T *buf;
++ 
++ 	/* Create a new buffer without a window. Make it the current buffer for
++ 	 * a moment to be able to do the initialisations. */
++ 	buf = buflist_new((char_u *)"", NULL, (linenr_T)0,
++ 							 BLN_NEW | BLN_LISTED);
++ 	if (buf == NULL || ml_open(buf) == FAIL)
++ 	{
++ 	    vim_free(term);
++ 	    return;
++ 	}
++ 	old_curbuf = curbuf;
++ 	--curbuf->b_nwindows;
++ 	curbuf = buf;
++ 	curwin->w_buffer = buf;
++ 	++curbuf->b_nwindows;
+      }
+      else
+      {
+***************
+*** 302,312 ****
+      term->tl_buffer = curbuf;
+      curbuf->b_term = term;
+  
+!     /* only one size was taken care of with :new, do the other one */
+!     if (opt->jo_term_rows > 0 && (cmdmod.split & WSP_VERT))
+! 	win_setheight(opt->jo_term_rows);
+!     if (opt->jo_term_cols > 0 && !(cmdmod.split & WSP_VERT))
+! 	win_setwidth(opt->jo_term_cols);
+  
+      /* Link the new terminal in the list of active terminals. */
+      term->tl_next = first_term;
+--- 324,337 ----
+      term->tl_buffer = curbuf;
+      curbuf->b_term = term;
+  
+!     if (!opt->jo_hidden)
+!     {
+! 	/* only one size was taken care of with :new, do the other one */
+! 	if (opt->jo_term_rows > 0 && (cmdmod.split & WSP_VERT))
+! 	    win_setheight(opt->jo_term_rows);
+! 	if (opt->jo_term_cols > 0 && !(cmdmod.split & WSP_VERT))
+! 	    win_setwidth(opt->jo_term_cols);
+!     }
+  
+      /* Link the new terminal in the list of active terminals. */
+      term->tl_next = first_term;
+***************
+*** 360,373 ****
+  	/* Get and remember the size we ended up with.  Update the pty. */
+  	vterm_get_size(term->tl_vterm, &term->tl_rows, &term->tl_cols);
+  	term_report_winsize(term, term->tl_rows, term->tl_cols);
+      }
+      else
+      {
+  	free_terminal(curbuf);
+  
+  	/* Wiping out the buffer will also close the window and call
+  	 * free_terminal(). */
+! 	do_buffer(DOBUF_WIPE, DOBUF_CURRENT, FORWARD, 0, TRUE);
+      }
+  }
+  
+--- 385,415 ----
+  	/* Get and remember the size we ended up with.  Update the pty. */
+  	vterm_get_size(term->tl_vterm, &term->tl_rows, &term->tl_cols);
+  	term_report_winsize(term, term->tl_rows, term->tl_cols);
++ 
++ 	if (old_curbuf != NULL)
++ 	{
++ 	    --curbuf->b_nwindows;
++ 	    curbuf = old_curbuf;
++ 	    curwin->w_buffer = curbuf;
++ 	    ++curbuf->b_nwindows;
++ 	}
+      }
+      else
+      {
++ 	buf_T *buf = curbuf;
++ 
+  	free_terminal(curbuf);
++ 	if (old_curbuf != NULL)
++ 	{
++ 	    --curbuf->b_nwindows;
++ 	    curbuf = old_curbuf;
++ 	    curwin->w_buffer = curbuf;
++ 	    ++curbuf->b_nwindows;
++ 	}
+  
+  	/* Wiping out the buffer will also close the window and call
+  	 * free_terminal(). */
+! 	do_buffer(DOBUF_WIPE, DOBUF_FIRST, FORWARD, buf->b_fnum, TRUE);
+      }
+  }
+  
+***************
+*** 395,400 ****
+--- 437,444 ----
+  	    opt.jo_term_finish = 'o';
+  	else if ((int)(p - cmd) == 6 && STRNICMP(cmd, "curwin", 6) == 0)
+  	    opt.jo_curwin = 1;
++ 	else if ((int)(p - cmd) == 6 && STRNICMP(cmd, "hidden", 6) == 0)
++ 	    opt.jo_hidden = 1;
+  	else
+  	{
+  	    if (*p)
+***************
+*** 886,892 ****
+      static void
+  cleanup_vterm(term_T *term)
+  {
+!     if (term->tl_finish == 0)
+  	move_terminal_to_buffer(term);
+      term_free_vterm(term);
+      set_terminal_mode(term, FALSE);
+--- 930,936 ----
+      static void
+  cleanup_vterm(term_T *term)
+  {
+!     if (term->tl_finish != 'c')
+  	move_terminal_to_buffer(term);
+      term_free_vterm(term);
+      set_terminal_mode(term, FALSE);
+***************
+*** 1222,1228 ****
+  
+  /*
+   * Called when a job has finished.
+!  * This updates the title and status, but does not close the vter, because
+   * there might still be pending output in the channel.
+   */
+      void
+--- 1266,1272 ----
+  
+  /*
+   * Called when a job has finished.
+!  * This updates the title and status, but does not close the vterm, because
+   * there might still be pending output in the channel.
+   */
+      void
+***************
+*** 1478,1483 ****
+--- 1522,1528 ----
+  		if (term->tl_finish == 'c')
+  		{
+  		    /* ++close or term_finish == "close" */
++ 		    ch_log(NULL, "terminal job finished, closing window");
+  		    curbuf = term->tl_buffer;
+  		    do_bufdel(DOBUF_WIPE, (char_u *)"", 1, fnum, fnum, FALSE);
+  		    break;
+***************
+*** 1487,1495 ****
+--- 1532,1543 ----
+  		    char buf[50];
+  
+  		    /* TODO: use term_opencmd */
++ 		    ch_log(NULL, "terminal job finished, opening window");
+  		    vim_snprintf(buf, sizeof(buf), "botright sbuf %d", fnum);
+  		    do_cmdline_cmd((char_u *)buf);
+  		}
++ 		else
++ 		    ch_log(NULL, "terminal job finished");
+  	    }
+  
+  	    redraw_buf_and_status_later(term->tl_buffer, NOT_VALID);
+***************
+*** 2380,2386 ****
+  	    && get_job_options(&argvars[1], &opt,
+  		JO_TIMEOUT_ALL + JO_STOPONEXIT
+  		    + JO_EXIT_CB + JO_CLOSE_CALLBACK,
+! 		JO2_TERM_NAME + JO2_TERM_FINISH
+  		    + JO2_TERM_COLS + JO2_TERM_ROWS + JO2_VERTICAL + JO2_CURWIN
+  		    + JO2_CWD + JO2_ENV) == FAIL)
+  	return;
+--- 2428,2434 ----
+  	    && get_job_options(&argvars[1], &opt,
+  		JO_TIMEOUT_ALL + JO_STOPONEXIT
+  		    + JO_EXIT_CB + JO_CLOSE_CALLBACK,
+! 		JO2_TERM_NAME + JO2_TERM_FINISH + JO2_HIDDEN
+  		    + JO2_TERM_COLS + JO2_TERM_ROWS + JO2_VERTICAL + JO2_CURWIN
+  		    + JO2_CWD + JO2_ENV) == FAIL)
+  	return;
+*** ../vim-8.0.0911/src/structs.h	2017-08-11 22:27:44.513127603 +0200
+--- src/structs.h	2017-08-12 13:16:06.072841380 +0200
+***************
+*** 1692,1698 ****
+  #define JO2_TERM_COLS	    0x0080	/* "term_cols" */
+  #define JO2_VERTICAL	    0x0100	/* "vertical" */
+  #define JO2_CURWIN	    0x0200	/* "curwin" */
+! #define JO2_ALL		    0x03FF
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+  #define JO_CB_ALL \
+--- 1692,1699 ----
+  #define JO2_TERM_COLS	    0x0080	/* "term_cols" */
+  #define JO2_VERTICAL	    0x0100	/* "vertical" */
+  #define JO2_CURWIN	    0x0200	/* "curwin" */
+! #define JO2_HIDDEN	    0x0400	/* "hidden" */
+! #define JO2_ALL		    0x07FF
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+  #define JO_CB_ALL \
+***************
+*** 1754,1759 ****
+--- 1755,1761 ----
+      int		jo_term_cols;
+      int		jo_vertical;
+      int		jo_curwin;
++     int		jo_hidden;
+      char_u	*jo_term_name;
+      int		jo_term_finish;
+  #endif
+*** ../vim-8.0.0911/src/channel.c	2017-08-11 22:27:44.513127603 +0200
+--- src/channel.c	2017-08-12 13:16:45.620613359 +0200
+***************
+*** 4462,4467 ****
+--- 4462,4474 ----
+  		opt->jo_set |= JO2_CURWIN;
+  		opt->jo_curwin = get_tv_number(item);
+  	    }
++ 	    else if (STRCMP(hi->hi_key, "hidden") == 0)
++ 	    {
++ 		if (!(supported2 & JO2_HIDDEN))
++ 		    break;
++ 		opt->jo_set |= JO2_HIDDEN;
++ 		opt->jo_hidden = get_tv_number(item);
++ 	    }
+  #endif
+  	    else if (STRCMP(hi->hi_key, "env") == 0)
+  	    {
+*** ../vim-8.0.0911/src/fileio.c	2017-07-23 19:50:39.036922744 +0200
+--- src/fileio.c	2017-08-12 14:19:33.386494694 +0200
+***************
+*** 6890,6895 ****
+--- 6890,6898 ----
+  #ifdef FEAT_NETBEANS_INTG
+  	    || isNetbeansBuffer(buf)
+  #endif
++ #ifdef FEAT_TERMINAL
++ 	    || buf->b_term != NULL
++ #endif
+  	    )
+  	return 0;
+  
+*** ../vim-8.0.0911/runtime/doc/terminal.txt	2017-08-10 23:15:14.998851718 +0200
+--- runtime/doc/terminal.txt	2017-08-12 13:13:11.249849479 +0200
+***************
+*** 1,4 ****
+! *terminal.txt*	For Vim version 8.0.  Last change: 2017 Aug 10
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+--- 1,4 ----
+! *terminal.txt*	For Vim version 8.0.  Last change: 2017 Aug 12
+  
+  
+  		  VIM REFERENCE MANUAL	  by Bram Moolenaar
+***************
+*** 103,110 ****
+  			++close		The terminal window will close
+  					automatically when the job terminates.
+  			++open		When the job terminates and no window
+! 					show it, a window will be opened.
+  					Note that this can be interruptive.
+  
+  When the buffer associated with the terminal is wiped out the job is killed,
+  similar to calling `job_stop(job, "kill")`
+--- 103,119 ----
+  			++close		The terminal window will close
+  					automatically when the job terminates.
+  			++open		When the job terminates and no window
+! 					shows it, a window will be opened.
+  					Note that this can be interruptive.
++ 			++curwin	Open the terminal in the current
++ 					window, do not split the current
++ 					window.  Fails if the current buffer
++ 					cannot be |abandon|ed.
++ 			++hidden	Open the terminal in a hidden buffer,
++ 					no window will be used.
++ 
++ 			If you want to use more options use the |term_start()|
++ 			function.
+  
+  When the buffer associated with the terminal is wiped out the job is killed,
+  similar to calling `job_stop(job, "kill")`
+***************
+*** 114,119 ****
+--- 123,135 ----
+  hidden.  The command will not be stopped.  The `:buffer` command can be used
+  to turn the current window into a terminal window.  If there are unsaved
+  changes this fails, use ! to force, as usual.
++ 
++ To have a background job run without a window, and open the window when it's
++ done, use options like this: >
++ 	:term ++hidden ++open make
++ Note that the window will open at an unexpected moment, this will interrupt
++ what you are doing.
++ 
+  							*E947*
+  So long as the job is running, the buffer is considered modified and Vim
+  cannot be quit easily, see |abandon|.
+*** ../vim-8.0.0911/src/testdir/test_terminal.vim	2017-08-11 22:44:33.082003433 +0200
+--- src/testdir/test_terminal.vim	2017-08-12 14:26:32.540077362 +0200
+***************
+*** 337,343 ****
+    endif
+  
+    exe 'terminal ++close ' . cmd
+-   let buf = bufnr('')
+    call assert_equal(2, winnr('$'))
+    wincmd p
+    call WaitFor("winnr('$') == 1", waittime)
+--- 337,342 ----
+***************
+*** 345,368 ****
+  
+    call term_start(cmd, {'term_finish': 'close'})
+    call assert_equal(2, winnr('$'))
+-   let buf = bufnr('')
+    wincmd p
+    call WaitFor("winnr('$') == 1", waittime)
+    call assert_equal(1, winnr('$'))
+  
+    exe 'terminal ++open ' . cmd
+-   let buf = bufnr('')
+    close
+    call WaitFor("winnr('$') == 2", waittime)
+    call assert_equal(2, winnr('$'))
+    bwipe
+  
+    call term_start(cmd, {'term_finish': 'open'})
+-   let buf = bufnr('')
+    close
+    call WaitFor("winnr('$') == 2", waittime)
+    call assert_equal(2, winnr('$'))
+  
+    bwipe
+  endfunc
+  
+--- 344,375 ----
+  
+    call term_start(cmd, {'term_finish': 'close'})
+    call assert_equal(2, winnr('$'))
+    wincmd p
+    call WaitFor("winnr('$') == 1", waittime)
+    call assert_equal(1, winnr('$'))
+  
+    exe 'terminal ++open ' . cmd
+    close
+    call WaitFor("winnr('$') == 2", waittime)
+    call assert_equal(2, winnr('$'))
+    bwipe
+  
+    call term_start(cmd, {'term_finish': 'open'})
+    close
+    call WaitFor("winnr('$') == 2", waittime)
+    call assert_equal(2, winnr('$'))
++   bwipe
+  
++   exe 'terminal ++hidden ++open ' . cmd
++   call assert_equal(1, winnr('$'))
++   call WaitFor("winnr('$') == 2", waittime)
++   call assert_equal(2, winnr('$'))
++   bwipe
++ 
++   call term_start(cmd, {'term_finish': 'open', 'hidden': 1})
++   call assert_equal(1, winnr('$'))
++   call WaitFor("winnr('$') == 2", waittime)
++   call assert_equal(2, winnr('$'))
+    bwipe
+  endfunc
+  
+*** ../vim-8.0.0911/src/version.c	2017-08-11 22:44:33.086003405 +0200
+--- src/version.c	2017-08-12 13:14:51.517271278 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     912,
+  /**/
+
+-- 
+There are only two hard things in programming: Cache invalidation,
+naming things and off-by-one errors.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

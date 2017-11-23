@@ -1,0 +1,57 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0595
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0595 (after 8.0.0590)
+Problem:    Coverity warning for not checking return value of dict_add().
+Solution:   Check the return value for FAIL.
+Files:      src/quickfix.c
+
+*** ../vim-8.0.0594/src/quickfix.c	2017-04-30 14:20:53.342830874 +0200
+--- src/quickfix.c	2017-05-01 13:55:28.177255513 +0200
+***************
+*** 4722,4728 ****
+  	    if (di != NULL)
+  	    {
+  		copy_tv(qi->qf_lists[qf_idx].qf_ctx, &di->di_tv);
+! 		dict_add(retdict, di);
+  	    }
+  	}
+  	else
+--- 4722,4729 ----
+  	    if (di != NULL)
+  	    {
+  		copy_tv(qi->qf_lists[qf_idx].qf_ctx, &di->di_tv);
+! 		if (dict_add(retdict, di) == FAIL)
+! 		    dictitem_free(di);
+  	    }
+  	}
+  	else
+*** ../vim-8.0.0594/src/version.c	2017-04-30 20:46:27.662554770 +0200
+--- src/version.c	2017-05-01 14:13:17.590934603 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     595,
+  /**/
+
+-- 
+ARTHUR:          What does it say?
+BROTHER MAYNARD: It reads ... "Here may be found the last words of Joseph of
+                 Aramathea." "He who is valorous and pure of heart may find
+                 the Holy Grail in the aaaaarrrrrrggghhh..."
+ARTHUR:          What?
+BROTHER MAYNARD: "The Aaaaarrrrrrggghhh..."
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

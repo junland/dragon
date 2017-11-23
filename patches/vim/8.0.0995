@@ -1,0 +1,50 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0995
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0995
+Problem:    Terminal tests fail on Mac.
+Solution:   Add workaround: sleep a moment in between sending keys.
+Files:      src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0994/src/testdir/test_terminal.vim	2017-08-20 20:21:19.614457312 +0200
+--- src/testdir/test_terminal.vim	2017-08-25 23:20:19.002276584 +0200
+***************
+*** 456,461 ****
+--- 456,466 ----
+  
+    for c in ['a','b','c','d','e','f','g','h','i','j','k']
+      call term_sendkeys(g:buf, 'echo ' . repeat(c, 5000) . "\<cr>")
++     if has('mac')
++       " TODO: this should not be needed, but without it sending keys blocks
++       " after 8000 chars or so.
++       sleep 100m
++     endif
+    endfor
+    call term_sendkeys(g:buf, "echo done\<cr>")
+  
+*** ../vim-8.0.0994/src/version.c	2017-08-24 21:48:22.536643534 +0200
+--- src/version.c	2017-08-25 23:21:18.945908291 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     995,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+22. You've already visited all the links at Yahoo and you're halfway through
+    Lycos.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

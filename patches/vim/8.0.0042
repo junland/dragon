@@ -1,0 +1,74 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0042
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0042 (after 8.0.0041)
+Problem:    When using Insert mode completion with 'completeopt' containing
+            "noinsert" change is not saved for undo.  (Tommy Allen)
+Solution:   Call stop_arrow() before inserting for pressing Enter.
+Files:      src/edit.c, src/testdir/test_popup.vim
+
+
+*** ../vim-8.0.0041/src/edit.c	2016-10-16 15:35:43.113173887 +0200
+--- src/edit.c	2016-10-17 20:40:11.205738031 +0200
+***************
+*** 857,864 ****
+  
+  		/* Pressing CTRL-Y selects the current match.  When
+  		 * compl_enter_selects is set the Enter key does the same. */
+! 		if (c == Ctrl_Y || (compl_enter_selects
+! 				   && (c == CAR || c == K_KENTER || c == NL)))
+  		{
+  		    ins_compl_delete();
+  		    ins_compl_insert(FALSE);
+--- 857,865 ----
+  
+  		/* Pressing CTRL-Y selects the current match.  When
+  		 * compl_enter_selects is set the Enter key does the same. */
+! 		if ((c == Ctrl_Y || (compl_enter_selects
+! 				    && (c == CAR || c == K_KENTER || c == NL)))
+! 			&& stop_arrow() == OK)
+  		{
+  		    ins_compl_delete();
+  		    ins_compl_insert(FALSE);
+*** ../vim-8.0.0041/src/testdir/test_popup.vim	2016-10-16 15:35:43.113173887 +0200
+--- src/testdir/test_popup.vim	2016-10-17 20:33:32.300678084 +0200
+***************
+*** 420,425 ****
+--- 420,432 ----
+    call feedkeys("u", 'xt')
+    call assert_equal('', getline(2))
+  
++   call feedkeys("ibbb\<Esc>0", 'xt')
++   call assert_equal('bbb', getline(2))
++   call feedkeys("A\<Right>\<Down>\<CR>\<Esc>", 'xt')
++   call assert_equal('January', getline(2))
++   call feedkeys("u", 'xt')
++   call assert_equal('bbb', getline(2))
++ 
+    iunmap <Right>
+    set completeopt&
+    q!
+*** ../vim-8.0.0041/src/version.c	2016-10-16 15:35:43.113173887 +0200
+--- src/version.c	2016-10-17 20:43:35.744230520 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     42,
+  /**/
+
+-- 
+bashian roulette:
+$ ((RANDOM%6)) || rm -rf ~
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

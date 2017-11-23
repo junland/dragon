@@ -1,0 +1,238 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0763
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0763
+Problem:    Libvterm can be improved.
+Solution:   Various small improvements, more comments.
+Files:      src/libvterm/README, src/libvterm/include/vterm.h,
+            src/libvterm/include/vterm_keycodes.h,
+            src/libvterm/src/keyboard.c, src/libvterm/src/parser.c,
+            src/libvterm/src/screen.c, src/libvterm/src/state.c
+
+
+*** ../vim-8.0.0762/src/libvterm/README	2017-07-07 11:53:29.515876528 +0200
+--- src/libvterm/README	2017-07-07 12:47:05.915432891 +0200
+***************
+*** 1,13 ****
+  This is a MODIFIED version of libvterm.
+  
+  The original can be found:
+! On the original site (tar archive and Bazaar repository):
+  	http://www.leonerd.org.uk/code/libvterm/
+! Cloned on Github:
+  	https://github.com/neovim/libvterm
+  
+  Modifications:
+  - Add a .gitignore file.
+  - Convert from C99 to C90.
+  - Other changes to support embedding in Vim.
+- - 
+--- 1,12 ----
+  This is a MODIFIED version of libvterm.
+  
+  The original can be found:
+! - on the original site (tar archive and Bazaar repository):
+  	http://www.leonerd.org.uk/code/libvterm/
+! - cloned on Github:
+  	https://github.com/neovim/libvterm
+  
+  Modifications:
+  - Add a .gitignore file.
+  - Convert from C99 to C90.
+  - Other changes to support embedding in Vim.
+*** ../vim-8.0.0762/src/libvterm/include/vterm.h	2017-07-07 11:53:29.519876497 +0200
+--- src/libvterm/include/vterm.h	2017-07-23 17:08:08.008023893 +0200
+***************
+*** 160,166 ****
+--- 160,168 ----
+  /* Free and cleanup a terminal and all its data. */
+  void   vterm_free(VTerm* vt);
+  
++ /* Get the current size of the terminal and store in "rowsp" and "colsp". */
+  void vterm_get_size(const VTerm *vt, int *rowsp, int *colsp);
++ 
+  void vterm_set_size(VTerm *vt, int rows, int cols);
+  
+  int  vterm_get_utf8(const VTerm *vt);
+***************
+*** 195,208 ****
+   *
+   * Don't confuse this with the final byte of the CSI escape; 'a' in this case.
+   */
+! #define CSI_ARG_FLAG_MORE (1<<31)
+! #define CSI_ARG_MASK      (~(1<<31))
+  
+  #define CSI_ARG_HAS_MORE(a) ((a) & CSI_ARG_FLAG_MORE)
+  #define CSI_ARG(a)          ((a) & CSI_ARG_MASK)
+  
+  /* Can't use -1 to indicate a missing argument; use this instead */
+! #define CSI_ARG_MISSING ((1UL<<31)-1)
+  
+  #define CSI_ARG_IS_MISSING(a) (CSI_ARG(a) == CSI_ARG_MISSING)
+  #define CSI_ARG_OR(a,def)     (CSI_ARG(a) == CSI_ARG_MISSING ? (def) : CSI_ARG(a))
+--- 197,210 ----
+   *
+   * Don't confuse this with the final byte of the CSI escape; 'a' in this case.
+   */
+! #define CSI_ARG_FLAG_MORE (1<<30)
+! #define CSI_ARG_MASK      (~(1<<30))
+  
+  #define CSI_ARG_HAS_MORE(a) ((a) & CSI_ARG_FLAG_MORE)
+  #define CSI_ARG(a)          ((a) & CSI_ARG_MASK)
+  
+  /* Can't use -1 to indicate a missing argument; use this instead */
+! #define CSI_ARG_MISSING ((1<<30)-1)
+  
+  #define CSI_ARG_IS_MISSING(a) (CSI_ARG(a) == CSI_ARG_MISSING)
+  #define CSI_ARG_OR(a,def)     (CSI_ARG(a) == CSI_ARG_MISSING ? (def) : CSI_ARG(a))
+***************
+*** 248,254 ****
+--- 250,258 ----
+  void  vterm_state_set_unrecognised_fallbacks(VTermState *state, const VTermParserCallbacks *fallbacks, void *user);
+  void *vterm_state_get_unrecognised_fbdata(VTermState *state);
+  
++ /* Initialize the state. */
+  void vterm_state_reset(VTermState *state, int hard);
++ 
+  void vterm_state_get_cursorpos(const VTermState *state, VTermPos *cursorpos);
+  void vterm_state_get_default_colors(const VTermState *state, VTermColor *default_fg, VTermColor *default_bg);
+  void vterm_state_get_palette_color(const VTermState *state, int index, VTermColor *col);
+***************
+*** 295,300 ****
+--- 299,305 ----
+    int (*sb_popline)(int cols, VTermScreenCell *cells, void *user);
+  } VTermScreenCallbacks;
+  
++ /* Return the screen of the vterm. */
+  VTermScreen *vterm_obtain_screen(VTerm *vt);
+  
+  /*
+***************
+*** 317,325 ****
+--- 322,336 ----
+    VTERM_DAMAGE_SCROLL   /* entire screen + scrollrect */
+  } VTermDamageSize;
+  
++ /* Invoke the relevant callbacks to update the screen. */
+  void vterm_screen_flush_damage(VTermScreen *screen);
++ 
+  void vterm_screen_set_damage_merge(VTermScreen *screen, VTermDamageSize size);
+  
++ /*
++  * Reset the screen.  Also invokes vterm_state_reset().
++  * Must be called before the terminal can be used.
++  */
+  void   vterm_screen_reset(VTermScreen *screen, int hard);
+  
+  /* Neither of these functions NUL-terminate the buffer */
+*** ../vim-8.0.0762/src/libvterm/include/vterm_keycodes.h	2017-07-07 11:53:29.519876497 +0200
+--- src/libvterm/include/vterm_keycodes.h	2017-07-21 21:00:24.506780213 +0200
+***************
+*** 28,36 ****
+--- 28,38 ----
+    VTERM_KEY_PAGEUP,
+    VTERM_KEY_PAGEDOWN,
+  
++   /* F1 is VTERM_KEY_FUNCTION(1), F2 VTERM_KEY_FUNCTION(2), etc. */
+    VTERM_KEY_FUNCTION_0   = 256,
+    VTERM_KEY_FUNCTION_MAX = VTERM_KEY_FUNCTION_0 + 255,
+  
++   /* keypad keys */
+    VTERM_KEY_KP_0,
+    VTERM_KEY_KP_1,
+    VTERM_KEY_KP_2,
+*** ../vim-8.0.0762/src/libvterm/src/keyboard.c	2017-07-07 11:53:29.519876497 +0200
+--- src/libvterm/src/keyboard.c	2017-07-21 21:04:01.233214739 +0200
+***************
+*** 68,73 ****
+--- 68,74 ----
+    int csinum;
+  } keycodes_s;
+  
++ /* Order here must be exactly the same as VTermKey enum! */
+  static keycodes_s keycodes[] = {
+    { KEYCODE_NONE,       0, 0 }, /* NONE */
+  
+*** ../vim-8.0.0762/src/libvterm/src/parser.c	2017-07-07 11:53:29.519876497 +0200
+--- src/libvterm/src/parser.c	2017-07-21 10:57:05.541373234 +0200
+***************
+*** 190,196 ****
+  size_t vterm_input_write(VTerm *vt, const char *bytes, size_t len)
+  {
+    size_t pos = 0;
+!   const char *string_start;
+  
+    switch(vt->parser_state) {
+    case NORMAL:
+--- 190,196 ----
+  size_t vterm_input_write(VTerm *vt, const char *bytes, size_t len)
+  {
+    size_t pos = 0;
+!   const char *string_start = NULL;  /* init to avoid gcc warning */
+  
+    switch(vt->parser_state) {
+    case NORMAL:
+*** ../vim-8.0.0762/src/libvterm/src/screen.c	2017-07-07 11:53:29.519876497 +0200
+--- src/libvterm/src/screen.c	2017-07-18 22:27:49.266324854 +0200
+***************
+*** 819,832 ****
+  
+  VTermScreen *vterm_obtain_screen(VTerm *vt)
+  {
+!   VTermScreen *screen;
+!   if(vt->screen)
+!     return vt->screen;
+! 
+!   screen = screen_new(vt);
+!   vt->screen = screen;
+! 
+!   return screen;
+  }
+  
+  void vterm_screen_enable_altscreen(VTermScreen *screen, int altscreen)
+--- 819,827 ----
+  
+  VTermScreen *vterm_obtain_screen(VTerm *vt)
+  {
+!   if(!vt->screen)
+!     vt->screen = screen_new(vt);
+!   return vt->screen;
+  }
+  
+  void vterm_screen_enable_altscreen(VTermScreen *screen, int altscreen)
+*** ../vim-8.0.0762/src/libvterm/src/state.c	2017-07-21 21:09:57.886649529 +0200
+--- src/libvterm/src/state.c	2017-07-22 19:19:59.964846973 +0200
+***************
+*** 1194,1199 ****
+--- 1194,1200 ----
+      break;
+  
+    case LEADER('>', 0x63): /* DEC secondary Device Attributes */
++     /* This returns xterm version number 100. */
+      vterm_push_output_sprintf_ctrl(state->vt, C1_CSI, ">%d;%d;%dc", 0, 100, 0);
+      break;
+  
+*** ../vim-8.0.0762/src/version.c	2017-07-23 22:01:43.063625375 +0200
+--- src/version.c	2017-07-23 22:04:54.210296517 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     763,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+223. You set up a web-cam as your home's security system.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

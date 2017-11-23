@@ -1,0 +1,62 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0802
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0802
+Problem:    After a job exits the last line in the terminal window does not
+            get color attributes.
+Solution:   Fix off-by-one error.
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0801/src/terminal.c	2017-07-29 15:53:34.761242943 +0200
+--- src/terminal.c	2017-07-29 15:59:42.410646046 +0200
+***************
+*** 1270,1276 ****
+      term_T *term = buf->b_term;
+      sb_line_T *line;
+  
+!     if (lnum >= term->tl_scrollback.ga_len)
+  	return 0;
+      line = (sb_line_T *)term->tl_scrollback.ga_data + lnum - 1;
+      if (col >= line->sb_cols)
+--- 1270,1276 ----
+      term_T *term = buf->b_term;
+      sb_line_T *line;
+  
+!     if (lnum > term->tl_scrollback.ga_len)
+  	return 0;
+      line = (sb_line_T *)term->tl_scrollback.ga_data + lnum - 1;
+      if (col >= line->sb_cols)
+*** ../vim-8.0.0801/src/version.c	2017-07-29 15:53:34.765242915 +0200
+--- src/version.c	2017-07-29 16:01:11.882013850 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     802,
+  /**/
+
+-- 
+       When danger reared its ugly head,
+       He bravely turned his tail and fled
+       Yes, Brave Sir Robin turned about
+       And gallantly he chickened out
+       Bravely taking to his feet
+       He beat a very brave retreat
+       Bravest of the brave Sir Robin
+       Petrified of being dead
+       Soiled his pants then brave Sir Robin
+       Turned away and fled.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

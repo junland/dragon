@@ -1,0 +1,251 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0838
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0838
+Problem:    Buffer hangs around whem terminal window is closed.
+Solution:   When the job has ended wipe out a terminal buffer when the window
+            is closed.
+Files:      src/buffer.c, src/terminal.c, src/proto/terminal.pro,
+            src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0837/src/buffer.c	2017-07-28 21:51:53.007136551 +0200
+--- src/buffer.c	2017-08-01 21:21:24.432513623 +0200
+***************
+*** 468,473 ****
+--- 468,498 ----
+      int		del_buf = (action == DOBUF_DEL || action == DOBUF_WIPE);
+      int		wipe_buf = (action == DOBUF_WIPE);
+  
++ #ifdef FEAT_TERMINAL
++     if (bt_terminal(buf))
++     {
++ 	if (term_job_running(buf->b_term))
++ 	{
++ 	    if (wipe_buf)
++ 		/* Wiping out a terminal buffer kills the job. */
++ 		free_terminal(buf);
++ 	    else
++ 	    {
++ 		/* The job keeps running, hide the buffer. */
++ 		del_buf = FALSE;
++ 		unload_buf = FALSE;
++ 	    }
++ 	}
++ 	else
++ 	{
++ 	    /* A terminal buffer is wiped out if the job has finished. */
++ 	    del_buf = TRUE;
++ 	    unload_buf = TRUE;
++ 	    wipe_buf = TRUE;
++ 	}
++     }
++     else
++ #endif
+      /*
+       * Force unloading or deleting when 'bufhidden' says so.
+       * The caller must take care of NOT deleting/freeing when 'bufhidden' is
+*** ../vim-8.0.0837/src/terminal.c	2017-08-01 20:25:17.873279284 +0200
+--- src/terminal.c	2017-08-01 21:37:26.129512271 +0200
+***************
+*** 36,45 ****
+   * that buffer, attributes come from the scrollback buffer tl_scrollback.
+   *
+   * TODO:
+!  * - When closing a window with a terminal buffer where the job has ended, wipe
+!  *   out the buffer.  Like 'bufhidden' is "wipe".
+!  * - When a buffer with a terminal is wiped out, kill the job and close the
+!  *   channel.
+   * - in bash mouse clicks are inserting characters.
+   * - mouse scroll: when over other window, scroll that window.
+   * - typing CTRL-C is not sent to the terminal.  need to setup controlling tty?
+--- 36,42 ----
+   * that buffer, attributes come from the scrollback buffer tl_scrollback.
+   *
+   * TODO:
+!  * - don't allow exiting Vim when a terminal is still running a job
+   * - in bash mouse clicks are inserting characters.
+   * - mouse scroll: when over other window, scroll that window.
+   * - typing CTRL-C is not sent to the terminal.  need to setup controlling tty?
+***************
+*** 59,70 ****
+   * - do not store terminal window in viminfo.  Or prefix term:// ?
+   * - add a character in :ls output
+   * - add 't' to mode()
+-  * - When making a change after the job has ended, make the buffer a normal
+-  *   buffer; needs to be written.
+-  * - when closing window and job has not ended, make terminal hidden?
+-  * - when closing window and job has ended, make buffer hidden?
+-  * - don't allow exiting Vim when a terminal is still running a job
+   * - use win_del_lines() to make scroll-up efficient.
+   * - add test for giving error for invalid 'termsize' value.
+   * - support minimal size when 'termsize' is "rows*cols".
+   * - support minimal size when 'termsize' is empty?
+--- 56,63 ----
+   * - do not store terminal window in viminfo.  Or prefix term:// ?
+   * - add a character in :ls output
+   * - add 't' to mode()
+   * - use win_del_lines() to make scroll-up efficient.
++  * - implement term_setsize()
+   * - add test for giving error for invalid 'termsize' value.
+   * - support minimal size when 'termsize' is "rows*cols".
+   * - support minimal size when 'termsize' is empty?
+***************
+*** 573,579 ****
+  /*
+   * Return TRUE if the job for "term" is still running.
+   */
+!     static int
+  term_job_running(term_T *term)
+  {
+      /* Also consider the job finished when the channel is closed, to avoid a
+--- 566,572 ----
+  /*
+   * Return TRUE if the job for "term" is still running.
+   */
+!     int
+  term_job_running(term_T *term)
+  {
+      /* Also consider the job finished when the channel is closed, to avoid a
+*** ../vim-8.0.0837/src/proto/terminal.pro	2017-07-30 19:38:16.962463378 +0200
+--- src/proto/terminal.pro	2017-08-01 21:21:36.076428906 +0200
+***************
+*** 2,7 ****
+--- 2,8 ----
+  void ex_terminal(exarg_T *eap);
+  void free_terminal(buf_T *buf);
+  void write_to_term(buf_T *buffer, char_u *msg, channel_T *channel);
++ int term_job_running(term_T *term);
+  int term_in_terminal_mode(void);
+  void term_leave_terminal_mode(void);
+  int term_use_loop(void);
+*** ../vim-8.0.0837/src/testdir/test_terminal.vim	2017-08-01 20:25:17.873279284 +0200
+--- src/testdir/test_terminal.vim	2017-08-01 21:35:37.882300745 +0200
+***************
+*** 6,11 ****
+--- 6,13 ----
+  
+  source shared.vim
+  
++ " Open a terminal with a shell, assign the job to g:job and return the buffer
++ " number.
+  func Run_shell_in_terminal()
+    let buf = term_start(&shell)
+  
+***************
+*** 16,37 ****
+    let g:job = term_getjob(buf)
+    call assert_equal(v:t_job, type(g:job))
+  
+!   call term_sendkeys(buf, "exit\r")
+    call WaitFor('job_status(g:job) == "dead"')
+    call assert_equal('dead', job_status(g:job))
+- 
+-   return buf
+  endfunc
+  
+  func Test_terminal_basic()
+    let buf = Run_shell_in_terminal()
+  
+-   exe buf . 'bwipe'
+    unlet g:job
+  endfunc
+  
+  func Test_terminal_make_change()
+    let buf = Run_shell_in_terminal()
+    call term_wait(buf)
+  
+    setlocal modifiable
+--- 18,48 ----
+    let g:job = term_getjob(buf)
+    call assert_equal(v:t_job, type(g:job))
+  
+!   return buf
+! endfunc
+! 
+! " Stops the shell started by Run_shell_in_terminal().
+! func Stop_shell_in_terminal(buf)
+!   call term_sendkeys(a:buf, "exit\r")
+    call WaitFor('job_status(g:job) == "dead"')
+    call assert_equal('dead', job_status(g:job))
+  endfunc
+  
+  func Test_terminal_basic()
+    let buf = Run_shell_in_terminal()
++   call Stop_shell_in_terminal(buf)
++   call term_wait(buf)
++ 
++   " closing window wipes out the terminal buffer a with finished job
++   close
++   call assert_equal("", bufname(buf))
+  
+    unlet g:job
+  endfunc
+  
+  func Test_terminal_make_change()
+    let buf = Run_shell_in_terminal()
++   call Stop_shell_in_terminal(buf)
+    call term_wait(buf)
+  
+    setlocal modifiable
+***************
+*** 43,48 ****
+--- 54,85 ----
+    unlet g:job
+  endfunc
+  
++ func Test_terminal_wipe_buffer()
++   let buf = Run_shell_in_terminal()
++   exe buf . 'bwipe'
++   call WaitFor('job_status(g:job) == "dead"')
++   call assert_equal('dead', job_status(g:job))
++   call assert_equal("", bufname(buf))
++ 
++   unlet g:job
++ endfunc
++ 
++ func Test_terminal_hide_buffer()
++   let buf = Run_shell_in_terminal()
++   quit
++   for nr in range(1, winnr('$'))
++     call assert_notequal(winbufnr(nr), buf)
++   endfor
++   call assert_true(bufloaded(buf))
++   call assert_true(buflisted(buf))
++ 
++   exe 'split ' . buf . 'buf'
++   call Stop_shell_in_terminal(buf)
++   exe buf . 'bwipe'
++ 
++   unlet g:job
++ endfunc
++ 
+  func Check_123(buf)
+    let l = term_scrape(a:buf, 1)
+    call assert_true(len(l) > 0)
+*** ../vim-8.0.0837/src/version.c	2017-08-01 20:53:25.928774497 +0200
+--- src/version.c	2017-08-01 21:43:00.875073388 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     838,
+  /**/
+
+-- 
+DEAD PERSON:  I'm getting better!
+CUSTOMER:     No, you're not -- you'll be stone dead in a moment.
+MORTICIAN:    Oh, I can't take him like that -- it's against regulations.
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

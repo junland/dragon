@@ -1,0 +1,172 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0265
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0265
+Problem:    May get ml_get error when :pydo deletes lines or switches to
+            another buffer. (Nikolai Pavlov, issue #1421)
+Solution:   Check the buffer and line every time.
+Files:      src/if_py_both.h, src/testdir/test_python2.vim,
+            src/testdir/test_python3.vim, src/Makefile,
+            src/testdir/Make_all.mak
+
+
+*** ../vim-8.0.0264/src/if_py_both.h	2016-08-26 16:32:10.000000000 +0200
+--- src/if_py_both.h	2017-01-29 21:23:56.687392654 +0100
+***************
+*** 5619,5624 ****
+--- 5619,5625 ----
+      int		status;
+      PyObject	*pyfunc, *pymain;
+      PyObject	*run_ret;
++     buf_T	*was_curbuf = curbuf;
+  
+      if (u_save((linenr_T)RangeStart - 1, (linenr_T)RangeEnd + 1) != OK)
+      {
+***************
+*** 5671,5677 ****
+  #ifdef PY_CAN_RECURSE
+  	*pygilstate = PyGILState_Ensure();
+  #endif
+! 	if (!(line = GetBufferLine(curbuf, lnum)))
+  	    goto err;
+  	if (!(linenr = PyInt_FromLong((long) lnum)))
+  	{
+--- 5672,5680 ----
+  #ifdef PY_CAN_RECURSE
+  	*pygilstate = PyGILState_Ensure();
+  #endif
+! 	/* Check the line number, the command my have deleted lines. */
+! 	if (lnum > curbuf->b_ml.ml_line_count
+! 		|| !(line = GetBufferLine(curbuf, lnum)))
+  	    goto err;
+  	if (!(linenr = PyInt_FromLong((long) lnum)))
+  	{
+***************
+*** 5684,5692 ****
+--- 5687,5705 ----
+  	if (!ret)
+  	    goto err;
+  
++ 	/* Check that the command didn't switch to another buffer. */
++ 	if (curbuf != was_curbuf)
++ 	{
++ 	    Py_XDECREF(ret);
++ 	    goto err;
++ 	}
++ 
+  	if (ret != Py_None)
+  	    if (SetBufferLine(curbuf, lnum, ret, NULL) == FAIL)
++ 	    {
++ 		Py_XDECREF(ret);
+  		goto err;
++ 	    }
+  
+  	Py_XDECREF(ret);
+  	PythonIO_Flush();
+*** ../vim-8.0.0264/src/testdir/test_python2.vim	2017-01-29 21:30:06.492908600 +0100
+--- src/testdir/test_python2.vim	2017-01-29 21:20:44.248685873 +0100
+***************
+*** 0 ****
+--- 1,24 ----
++ " Test for python 2 commands.
++ " TODO: move tests from test87.in here.
++ 
++ if !has('python')
++   finish
++ endif
++ 
++ func Test_pydo()
++   " Check deleting lines does not trigger ml_get error.
++   py import vim
++   new
++   call setline(1, ['one', 'two', 'three'])
++   pydo vim.command("%d_")
++   bwipe!
++ 
++   " Check switching to another buffer does not trigger ml_get error.
++   new
++   let wincount = winnr('$')
++   call setline(1, ['one', 'two', 'three'])
++   pydo vim.command("new")
++   call assert_equal(wincount + 1, winnr('$'))
++   bwipe!
++   bwipe!
++ endfunc
+*** ../vim-8.0.0264/src/testdir/test_python3.vim	2017-01-29 21:30:06.500908546 +0100
+--- src/testdir/test_python3.vim	2017-01-29 21:26:04.830531733 +0100
+***************
+*** 0 ****
+--- 1,24 ----
++ " Test for python 2 commands.
++ " TODO: move tests from test88.in here.
++ 
++ if !has('python3')
++   finish
++ endif
++ 
++ func Test_py3do()
++   " Check deleting lines does not trigger an ml_get error.
++   py3 import vim
++   new
++   call setline(1, ['one', 'two', 'three'])
++   py3do vim.command("%d_")
++   bwipe!
++ 
++   " Check switching to another buffer does not trigger an ml_get error.
++   new
++   let wincount = winnr('$')
++   call setline(1, ['one', 'two', 'three'])
++   py3do vim.command("new")
++   call assert_equal(wincount + 1, winnr('$'))
++   bwipe!
++   bwipe!
++ endfunc
+*** ../vim-8.0.0264/src/Makefile	2017-01-28 16:39:15.876735290 +0100
+--- src/Makefile	2017-01-29 21:22:06.308134370 +0100
+***************
+*** 2168,2173 ****
+--- 2168,2175 ----
+  	test_popup \
+  	test_profile \
+  	test_put \
++ 	test_python2 \
++ 	test_python3 \
+  	test_pyx2 \
+  	test_pyx3 \
+  	test_quickfix \
+*** ../vim-8.0.0264/src/testdir/Make_all.mak	2017-01-28 15:58:45.352197224 +0100
+--- src/testdir/Make_all.mak	2017-01-29 21:25:27.866780054 +0100
+***************
+*** 176,181 ****
+--- 176,183 ----
+  	    test_packadd.res \
+  	    test_perl.res \
+  	    test_profile.res \
++ 	    test_python2.res \
++ 	    test_python3.res \
+  	    test_pyx2.res \
+  	    test_pyx3.res \
+  	    test_quickfix.res \
+*** ../vim-8.0.0264/src/version.c	2017-01-29 20:31:17.872621591 +0100
+--- src/version.c	2017-01-29 21:30:15.168850338 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     265,
+  /**/
+
+-- 
+It's not hard to meet expenses, they're everywhere.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

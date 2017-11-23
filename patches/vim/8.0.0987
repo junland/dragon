@@ -1,0 +1,76 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0987
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0987
+Problem:    terminal: second byte of double-byte char wrong
+Solution:   Set the second byte to NUL only for utf-8 and non-multibyte.
+Files:      src/terminal.c
+
+
+*** ../vim-8.0.0986/src/terminal.c	2017-08-22 22:21:33.497436406 +0200
+--- src/terminal.c	2017-08-22 22:26:11.775721433 +0200
+***************
+*** 2130,2136 ****
+  						       (char*)mb, 2, 0, 0) > 1)
+  			{
+  			    ScreenLines[off] = mb[0];
+! 			    ScreenLines[off+1] = mb[1];
+  			    cell.width = mb_ptr2cells(mb);
+  			}
+  			else
+--- 2130,2136 ----
+  						       (char*)mb, 2, 0, 0) > 1)
+  			{
+  			    ScreenLines[off] = mb[0];
+! 			    ScreenLines[off + 1] = mb[1];
+  			    cell.width = mb_ptr2cells(mb);
+  			}
+  			else
+***************
+*** 2148,2155 ****
+  		{
+  		    if (enc_utf8)
+  			ScreenLinesUC[off] = NUL;
+! 		    else if (!has_mbyte)
+  			ScreenLines[off] = NUL;
+  		    ++pos.col;
+  		    ++off;
+  		}
+--- 2148,2159 ----
+  		{
+  		    if (enc_utf8)
+  			ScreenLinesUC[off] = NUL;
+! 
+! 		    /* don't set the second byte to NUL for a DBCS encoding, it
+! 		     * has been set above */
+! 		    if (enc_utf8 || !has_mbyte)
+  			ScreenLines[off] = NUL;
++ 
+  		    ++pos.col;
+  		    ++off;
+  		}
+*** ../vim-8.0.0986/src/version.c	2017-08-22 22:21:33.497436406 +0200
+--- src/version.c	2017-08-22 22:28:12.198978886 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     987,
+  /**/
+
+-- 
+An operatingsystem is just a name you give to the rest of bloating
+idiosyncratic machine-based-features you left out of your editor.
+			(author unknown)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

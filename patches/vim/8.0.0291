@@ -1,0 +1,76 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0291
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0291 (after 8.0.0282)
+Problem:    Visual block insertion does not insert in all lines.
+Solution:   Don't bail out of insert too early. Add a test. (Christian
+            Brabandt, closes #1290)
+Files:      src/ops.c, src/testdir/test_visual.vim
+
+
+*** ../vim-8.0.0290/src/ops.c	2017-02-01 15:03:25.679840157 +0100
+--- src/ops.c	2017-02-01 21:46:49.837832763 +0100
+***************
+*** 2571,2578 ****
+      }
+  
+      t1 = oap->start;
+!     if (edit(NUL, FALSE, (linenr_T)count1))
+! 	return;
+  
+      /* When a tab was inserted, and the characters in front of the tab
+       * have been converted to a tab as well, the column of the cursor
+--- 2571,2577 ----
+      }
+  
+      t1 = oap->start;
+!     (void)edit(NUL, FALSE, (linenr_T)count1);
+  
+      /* When a tab was inserted, and the characters in front of the tab
+       * have been converted to a tab as well, the column of the cursor
+*** ../vim-8.0.0290/src/testdir/test_visual.vim	2017-01-02 17:31:20.610046069 +0100
+--- src/testdir/test_visual.vim	2017-02-01 21:43:16.231244062 +0100
+***************
+*** 23,25 ****
+--- 23,38 ----
+    call assert_equal('hello world world', getline(1))
+    q!
+  endfunc
++ 
++ func Test_Visual_ctrl_o()
++   new
++   call setline(1, ['one', 'two', 'three'])
++   call cursor(1,2)
++   set noshowmode
++   set tw=0
++   call feedkeys("\<c-v>jjlIa\<c-\>\<c-o>:set tw=88\<cr>\<esc>", 'tx')
++   call assert_equal(['oane', 'tawo', 'tahree'], getline(1, 3))
++   call assert_equal(88, &tw)
++   set tw&
++   bw!
++ endfu
+*** ../vim-8.0.0290/src/version.c	2017-02-01 21:23:05.559250966 +0100
+--- src/version.c	2017-02-01 21:49:00.180971616 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     291,
+  /**/
+
+-- 
+To the optimist, the glass is half full.
+To the pessimist, the glass is half empty.
+To the engineer, the glass is twice as big as it needs to be.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

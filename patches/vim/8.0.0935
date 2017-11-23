@@ -1,0 +1,92 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0935
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0935
+Problem:    Cannot recognize a terminal buffer in :ls output.
+Solution:   Use R for a running job and F for a finished job.
+Files:      src/buffer.c
+
+
+*** ../vim-8.0.0934/src/buffer.c	2017-08-13 18:11:13.355992144 +0200
+--- src/buffer.c	2017-08-13 20:41:11.574796082 +0200
+***************
+*** 3034,3039 ****
+--- 3034,3041 ----
+      buf_T	*buf;
+      int		len;
+      int		i;
++     int		ro_char;
++     int		changed_char;
+  
+      for (buf = firstbuf; buf != NULL && !got_int; buf = buf->b_next)
+      {
+***************
+*** 3060,3065 ****
+--- 3062,3082 ----
+  	if (message_filtered(NameBuff))
+  	    continue;
+  
++ 	changed_char = (buf->b_flags & BF_READERR) ? 'x'
++ 					     : (bufIsChanged(buf) ? '+' : ' ');
++ #ifdef FEAT_TERMINAL
++ 	if (term_job_running(buf->b_term))
++ 	{
++ 	    ro_char = 'R';
++ 	    changed_char = ' ';  /* bufIsChanged() returns TRUE to avoid
++ 				  * closing, but it's not actually changed. */
++ 	}
++ 	else if (buf->b_term != NULL)
++ 	    ro_char = 'F';
++ 	else
++ #endif
++ 	    ro_char = !buf->b_p_ma ? '-' : (buf->b_p_ro ? '=' : ' ');
++ 
+  	msg_putchar('\n');
+  	len = vim_snprintf((char *)IObuff, IOSIZE - 20, "%3d%c%c%c%c%c \"%s\"",
+  		buf->b_fnum,
+***************
+*** 3068,3076 ****
+  			(curwin->w_alt_fnum == buf->b_fnum ? '#' : ' '),
+  		buf->b_ml.ml_mfp == NULL ? ' ' :
+  			(buf->b_nwindows == 0 ? 'h' : 'a'),
+! 		!buf->b_p_ma ? '-' : (buf->b_p_ro ? '=' : ' '),
+! 		(buf->b_flags & BF_READERR) ? 'x'
+! 					    : (bufIsChanged(buf) ? '+' : ' '),
+  		NameBuff);
+  	if (len > IOSIZE - 20)
+  	    len = IOSIZE - 20;
+--- 3085,3092 ----
+  			(curwin->w_alt_fnum == buf->b_fnum ? '#' : ' '),
+  		buf->b_ml.ml_mfp == NULL ? ' ' :
+  			(buf->b_nwindows == 0 ? 'h' : 'a'),
+! 		ro_char,
+! 		changed_char,
+  		NameBuff);
+  	if (len > IOSIZE - 20)
+  	    len = IOSIZE - 20;
+*** ../vim-8.0.0934/src/version.c	2017-08-13 20:28:48.955421362 +0200
+--- src/version.c	2017-08-13 20:37:14.380263274 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     935,
+  /**/
+
+-- 
+TERRY GILLIAM PLAYED: PATSY (ARTHUR'S TRUSTY STEED), THE GREEN KNIGHT
+                      SOOTHSAYER, BRIDGEKEEPER, SIR GAWAIN (THE FIRST TO BE
+                      KILLED BY THE RABBIT)
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

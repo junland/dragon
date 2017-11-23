@@ -1,0 +1,90 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1204
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1204
+Problem:    A QuitPre autocommand may get the wrong file name.
+Solution:   Pass the buffer being closed to apply_autocmds(). (Rich Howe)
+Files:      src/ex_docmd.c, src/testdir/test_autocmd.vim
+
+
+*** ../vim-8.0.1203/src/ex_docmd.c	2017-10-14 16:06:16.094677647 +0200
+--- src/ex_docmd.c	2017-10-19 12:34:43.694941534 +0200
+***************
+*** 7224,7233 ****
+  	wp = curwin;
+  
+  #ifdef FEAT_AUTOCMD
+!     apply_autocmds(EVENT_QUITPRE, NULL, NULL, FALSE, curbuf);
+!     /* Refuse to quit when locked or when the buffer in the last window is
+!      * being closed (can only happen in autocommands). */
+!     if (curbuf_locked() || !win_valid(wp)
+  	    || (wp->w_buffer->b_nwindows == 1 && wp->w_buffer->b_locked > 0))
+  	return;
+  #endif
+--- 7224,7237 ----
+  	wp = curwin;
+  
+  #ifdef FEAT_AUTOCMD
+!     /* Refuse to quit when locked. */
+!     if (curbuf_locked())
+! 	return;
+!     apply_autocmds(EVENT_QUITPRE, NULL, NULL, FALSE, wp->w_buffer);
+!     /* Bail out when autocommands closed the window.
+!      * Refuse to quit when the buffer in the last window is being closed (can
+!      * only happen in autocommands). */
+!     if (!win_valid(wp)
+  	    || (wp->w_buffer->b_nwindows == 1 && wp->w_buffer->b_locked > 0))
+  	return;
+  #endif
+*** ../vim-8.0.1203/src/testdir/test_autocmd.vim	2017-10-15 22:07:35.207683184 +0200
+--- src/testdir/test_autocmd.vim	2017-10-19 12:29:03.633255448 +0200
+***************
+*** 779,781 ****
+--- 779,795 ----
+    " check that bufinfo doesn't contain a pointer to freed memory
+    call test_garbagecollect_now()
+  endfunc
++ 
++ func Test_QuitPre()
++   edit Xfoo
++   let winid = win_getid(winnr())
++   split Xbar
++   au! QuitPre * let g:afile = expand('<afile>')
++   " Close the other window, <afile> should be correct.
++   exe win_id2win(winid) . 'q'
++   call assert_equal('Xfoo', g:afile)
++  
++   unlet g:afile
++   bwipe Xfoo
++   bwipe Xbar
++ endfunc
+*** ../vim-8.0.1203/src/version.c	2017-10-15 22:56:45.763420554 +0200
+--- src/version.c	2017-10-19 12:31:49.860124293 +0200
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1204,
+  /**/
+
+
+-- 
+DEAD PERSON:  I don't want to go in the cart!
+CUSTOMER:     Oh, don't be such a baby.
+MORTICIAN:    I can't take him...
+DEAD PERSON:  I feel fine!
+CUSTOMER:     Oh, do us a favor...
+MORTICIAN:    I can't.
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

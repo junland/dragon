@@ -1,0 +1,191 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0839
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0839
+Problem:    Cannot kill a job in a terminal with CTRL-C.
+Solution:   Set the controlling tty and send SIGINT. (closes #1910)
+Files:      src/os_unix.c, src/terminal.c, src/proto/os_unix.pro
+
+
+*** ../vim-8.0.0838/src/os_unix.c	2017-08-01 18:44:24.181179640 +0200
+--- src/os_unix.c	2017-08-01 22:19:35.751454154 +0200
+***************
+*** 4194,4199 ****
+--- 4194,4219 ----
+  }
+  #endif
+  
++ /*
++  * Send SIGINT to a child process if "c" is an interrupt character.
++  */
++     void
++ may_send_sigint(int c UNUSED, pid_t pid UNUSED, pid_t wpid UNUSED)
++ {
++ # ifdef SIGINT
++     if (c == Ctrl_C || c == intr_char)
++     {
++ #  ifdef HAVE_SETSID
++ 	kill(-pid, SIGINT);
++ #  else
++ 	kill(0, SIGINT);
++ #  endif
++ 	if (wpid > 0)
++ 	    kill(wpid, SIGINT);
++     }
++ # endif
++ }
++ 
+      int
+  mch_call_shell(
+      char_u	*cmd,
+***************
+*** 4765,4787 ****
+  			 */
+  			if (len == 1 && (pty_master_fd < 0 || cmd != NULL))
+  			{
+- # ifdef SIGINT
+  			    /*
+  			     * Send SIGINT to the child's group or all
+  			     * processes in our group.
+  			     */
+! 			    if (ta_buf[ta_len] == Ctrl_C
+! 					       || ta_buf[ta_len] == intr_char)
+! 			    {
+! #  ifdef HAVE_SETSID
+! 				kill(-pid, SIGINT);
+! #  else
+! 				kill(0, SIGINT);
+! #  endif
+! 				if (wpid > 0)
+! 				    kill(wpid, SIGINT);
+! 			    }
+! # endif
+  			    if (pty_master_fd < 0 && toshell_fd >= 0
+  					       && ta_buf[ta_len] == Ctrl_D)
+  			    {
+--- 4785,4796 ----
+  			 */
+  			if (len == 1 && (pty_master_fd < 0 || cmd != NULL))
+  			{
+  			    /*
+  			     * Send SIGINT to the child's group or all
+  			     * processes in our group.
+  			     */
+! 			    may_send_sigint(ta_buf[ta_len], pid, wpid);
+! 
+  			    if (pty_master_fd < 0 && toshell_fd >= 0
+  					       && ta_buf[ta_len] == Ctrl_D)
+  			    {
+***************
+*** 5360,5374 ****
+  	if (null_fd >= 0)
+  	    close(null_fd);
+  
+  	/* See above for type of argv. */
+  	execvp(argv[0], argv);
+  
+  	if (stderr_works)
+  	    perror("executing job failed");
+! #ifdef EXITFREE
+  	/* calling free_all_mem() here causes problems. Ignore valgrind
+  	 * reporting possibly leaked memory. */
+! #endif
+  	_exit(EXEC_FAILED);	    /* exec failed, return failure code */
+      }
+  
+--- 5369,5394 ----
+  	if (null_fd >= 0)
+  	    close(null_fd);
+  
++ 	if (pty_slave_fd >= 0)
++ 	{
++ 	    /* push stream discipline modules */
++ 	    SetupSlavePTY(pty_slave_fd);
++ #  ifdef TIOCSCTTY
++ 	    /* Try to become controlling tty (probably doesn't work,
++ 	     * unless run by root) */
++ 	    ioctl(pty_slave_fd, TIOCSCTTY, (char *)NULL);
++ #  endif
++ 	}
++ 
+  	/* See above for type of argv. */
+  	execvp(argv[0], argv);
+  
+  	if (stderr_works)
+  	    perror("executing job failed");
+! # ifdef EXITFREE
+  	/* calling free_all_mem() here causes problems. Ignore valgrind
+  	 * reporting possibly leaked memory. */
+! # endif
+  	_exit(EXEC_FAILED);	    /* exec failed, return failure code */
+      }
+  
+*** ../vim-8.0.0838/src/terminal.c	2017-08-01 21:44:27.082445161 +0200
+--- src/terminal.c	2017-08-01 22:19:05.419667779 +0200
+***************
+*** 39,46 ****
+   * - don't allow exiting Vim when a terminal is still running a job
+   * - in bash mouse clicks are inserting characters.
+   * - mouse scroll: when over other window, scroll that window.
+-  * - typing CTRL-C is not sent to the terminal.  need to setup controlling tty?
+-  *	#1910
+   * - For the scrollback buffer store lines in the buffer, only attributes in
+   *   tl_scrollback.
+   * - When the job ends:
+--- 39,44 ----
+***************
+*** 962,967 ****
+--- 960,976 ----
+  	    /* job finished while waiting for a character */
+  	    break;
+  
++ #ifdef UNIX
++ 	may_send_sigint(c, curbuf->b_term->tl_job->jv_pid, 0);
++ #endif
++ #ifdef WIN3264
++ 	if (c == Ctrl_C)
++ 	    /* We don't know if the job can handle CTRL-C itself or not, this
++ 	     * may kill the shell instead of killing the command running in the
++ 	     * shell. */
++ 	    mch_stop_job(curbuf->b_term->tl_job, "quit")
++ #endif
++ 
+  	if (c == (termkey == 0 ? Ctrl_W : termkey))
+  	{
+  	    int	    prev_c = c;
+*** ../vim-8.0.0838/src/proto/os_unix.pro	2017-07-22 22:32:51.233745323 +0200
+--- src/proto/os_unix.pro	2017-08-01 22:10:48.423161358 +0200
+***************
+*** 57,62 ****
+--- 57,63 ----
+  void mch_set_shellsize(void);
+  void mch_new_shellsize(void);
+  int mch_parse_cmd(char_u *cmd, int use_shcf, char ***argv, int *argc);
++ void may_send_sigint(int c, pid_t pid, pid_t wpid);
+  int mch_call_shell(char_u *cmd, int options);
+  void mch_job_start(char **argv, job_T *job, jobopt_T *options);
+  char *mch_job_status(job_T *job);
+*** ../vim-8.0.0838/src/version.c	2017-08-01 21:44:27.082445161 +0200
+--- src/version.c	2017-08-01 22:23:20.609869102 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     839,
+  /**/
+
+-- 
+We do not stumble over mountains, but over molehills.
+				Confucius
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

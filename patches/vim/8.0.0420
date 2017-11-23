@@ -1,0 +1,881 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0420
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0420
+Problem:    When running :make the output may be in the system encoding,
+            different from 'encoding'.
+Solution:   Add the 'makeencoding' option. (Ken Takata)
+Files:      runtime/doc/options.txt, runtime/doc/quickfix.txt,
+            runtime/doc/quickref.txt, src/Makefile, src/buffer.c,
+            src/if_cscope.c, src/main.c, src/option.c, src/option.h,
+            src/proto/quickfix.pro, src/quickfix.c, src/structs.h,
+            src/testdir/Make_all.mak, src/testdir/test_makeencoding.py,
+            src/testdir/test_makeencoding.vim
+
+
+*** ../vim-8.0.0419/runtime/doc/options.txt	2017-01-28 15:58:45.340197300 +0100
+--- runtime/doc/options.txt	2017-03-05 17:10:37.131206854 +0100
+***************
+*** 4946,4951 ****
+--- 4994,5018 ----
+  	This option cannot be set from a |modeline| or in the |sandbox|, for
+  	security reasons.
+  
++ 					*'makeencoding'* *'menc'*
++ 'makeencoding' 'menc'	string	(default "")
++ 			global or local to buffer |global-local|
++ 			{only available when compiled with the |+multi_byte|
++ 			feature}
++ 			{not in Vi}
++ 	Encoding used for reading the output of external commands.  When empty,
++ 	encoding is not converted.
++ 	This is used for `:make`, `:lmake`, `:grep`, `:lgrep`, `:grepadd`,
++ 	`:lgrepadd`, `:cfile`, `:cgetfile`, `:caddfile`, `:lfile`, `:lgetfile`,
++ 	and `:laddfile`.
++ 
++ 	This would be mostly useful when you use MS-Windows and set 'encoding'
++ 	to "utf-8".  If |+iconv| is enabled and GNU libiconv is used, setting
++ 	'makeencoding' to "char" has the same effect as setting to the system
++ 	locale encoding.  Example: >
++ 		:set encoding=utf-8
++ 		:set makeencoding=char	" system locale is used
++ <
+  						*'makeprg'* *'mp'*
+  'makeprg' 'mp'		string	(default "make", VMS: "MMS")
+  			global or local to buffer |global-local|
+*** ../vim-8.0.0419/runtime/doc/quickfix.txt	2016-09-12 12:45:48.000000000 +0200
+--- runtime/doc/quickfix.txt	2017-03-05 17:10:37.131206854 +0100
+***************
+*** 164,169 ****
+--- 164,172 ----
+  			keep Vim running while compiling.  If you give the
+  			name of the errorfile, the 'errorfile' option will
+  			be set to [errorfile].  See |:cc| for [!].
++ 			If the encoding of the error file differs from the
++ 			'encoding' option, you can use the 'makeencoding'
++ 			option to specify the encoding.
+  
+  							*:lf* *:lfile*
+  :lf[ile][!] [errorfile]	Same as ":cfile", except the location list for the
+***************
+*** 175,180 ****
+--- 178,186 ----
+  :cg[etfile] [errorfile]					*:cg* *:cgetfile*
+  			Read the error file.  Just like ":cfile" but don't
+  			jump to the first error.
++ 			If the encoding of the error file differs from the
++ 			'encoding' option, you can use the 'makeencoding'
++ 			option to specify the encoding.
+  
+  
+  :lg[etfile] [errorfile]					*:lg* *:lgetfile*
+***************
+*** 185,190 ****
+--- 191,199 ----
+  :caddf[ile] [errorfile]	Read the error file and add the errors from the
+  			errorfile to the current quickfix list. If a quickfix
+  			list is not present, then a new list is created.
++ 			If the encoding of the error file differs from the
++ 			'encoding' option, you can use the 'makeencoding'
++ 			option to specify the encoding.
+  
+  							*:laddf* *:laddfile*
+  :laddf[ile] [errorfile]	Same as ":caddfile", except the location list for the
+***************
+*** 320,325 ****
+--- 329,335 ----
+  	endfunction
+  
+  	au QuickfixCmdPost make call QfMakeConv()
++ Another option is using 'makeencoding'.
+  
+  
+  EXECUTE A COMMAND IN ALL THE BUFFERS IN QUICKFIX OR LOCATION LIST:
+***************
+*** 586,591 ****
+--- 596,604 ----
+  			   like |:cnext| and |:cprevious|, see above.
+  			This command does not accept a comment, any "
+  			characters are considered part of the arguments.
++ 			If the encoding of the program output differs from the
++ 			'encoding' option, you can use the 'makeencoding'
++ 			option to specify the encoding.
+  
+  							*:lmak* *:lmake*
+  :lmak[e][!] [arguments]
+***************
+*** 645,650 ****
+--- 658,664 ----
+  	au QuickfixCmdPost make call QfMakeConv()
+  
+  (Example by Faque Cheng)
++ Another option is using 'makeencoding'.
+  
+  ==============================================================================
+  5. Using :vimgrep and :grep				*grep* *lid*
+***************
+*** 759,764 ****
+--- 773,781 ----
+  			When 'grepprg' is "internal" this works like
+  			|:vimgrep|.  Note that the pattern needs to be
+  			enclosed in separator characters then.
++ 			If the encoding of the program output differs from the
++ 			'encoding' option, you can use the 'makeencoding'
++ 			option to specify the encoding.
+  
+  							    *:lgr* *:lgrep*
+  :lgr[ep][!] [arguments]	Same as ":grep", except the location list for the
+***************
+*** 783,788 ****
+--- 800,809 ----
+  				  \ | catch /E480:/
+  				  \ | endtry"
+  <
++ 			If the encoding of the program output differs from the
++ 			'encoding' option, you can use the 'makeencoding'
++ 			option to specify the encoding.
++ 
+  							*:lgrepa* *:lgrepadd*
+  :lgrepa[dd][!] [arguments]
+  			Same as ":grepadd", except the location list for the
+*** ../vim-8.0.0419/runtime/doc/quickref.txt	2017-01-28 15:58:45.340197300 +0100
+--- runtime/doc/quickref.txt	2017-03-05 17:10:37.131206854 +0100
+***************
+*** 782,787 ****
+--- 782,788 ----
+  'macatsui'		    Mac GUI: use ATSUI text drawing
+  'magic'			    changes special characters in search patterns
+  'makeef'	  'mef'     name of the errorfile for ":make"
++ 'makeencoding'	  'menc'    encoding of external make/grep commands
+  'makeprg'	  'mp'	    program to use for the ":make" command
+  'matchpairs'	  'mps'     pairs of characters that "%" can match
+  'matchtime'	  'mat'     tenths of a second to show matching paren
+*** ../vim-8.0.0419/src/Makefile	2017-02-27 21:48:06.217790605 +0100
+--- src/Makefile	2017-03-05 17:10:37.131206854 +0100
+***************
+*** 2157,2162 ****
+--- 2157,2163 ----
+  	test_listlbr \
+  	test_listlbr_utf8 \
+  	test_lua \
++ 	test_makeencoding \
+  	test_man \
+  	test_mapping \
+  	test_marks \
+*** ../vim-8.0.0419/src/buffer.c	2017-02-25 15:41:33.142201356 +0100
+--- src/buffer.c	2017-03-05 17:10:37.131206854 +0100
+***************
+*** 2255,2260 ****
+--- 2255,2263 ----
+      clear_string_option(&buf->b_p_lw);
+  #endif
+      clear_string_option(&buf->b_p_bkc);
++ #ifdef FEAT_MBYTE
++     clear_string_option(&buf->b_p_menc);
++ #endif
+  }
+  
+  /*
+*** ../vim-8.0.0419/src/if_cscope.c	2017-01-15 17:18:52.684270653 +0100
+--- src/if_cscope.c	2017-03-05 17:10:37.131206854 +0100
+***************
+*** 1242,1248 ****
+  		wp = curwin;
+  	    /* '-' starts a new error list */
+  	    if (qf_init(wp, tmp, (char_u *)"%f%*\\t%l%*\\t%m",
+! 						  *qfpos == '-', cmdline) > 0)
+  	    {
+  # ifdef FEAT_WINDOWS
+  		if (postponed_split != 0)
+--- 1242,1248 ----
+  		wp = curwin;
+  	    /* '-' starts a new error list */
+  	    if (qf_init(wp, tmp, (char_u *)"%f%*\\t%l%*\\t%m",
+! 					  *qfpos == '-', cmdline, NULL) > 0)
+  	    {
+  # ifdef FEAT_WINDOWS
+  		if (postponed_split != 0)
+*** ../vim-8.0.0419/src/main.c	2017-03-05 15:19:28.278417362 +0100
+--- src/main.c	2017-03-05 17:10:37.131206854 +0100
+***************
+*** 559,569 ****
+       */
+      if (params.edit_type == EDIT_QF)
+      {
+  	if (params.use_ef != NULL)
+  	    set_string_option_direct((char_u *)"ef", -1,
+  					   params.use_ef, OPT_FREE, SID_CARG);
+  	vim_snprintf((char *)IObuff, IOSIZE, "cfile %s", p_ef);
+! 	if (qf_init(NULL, p_ef, p_efm, TRUE, IObuff) < 0)
+  	{
+  	    out_char('\n');
+  	    mch_exit(3);
+--- 559,574 ----
+       */
+      if (params.edit_type == EDIT_QF)
+      {
++ 	char_u	*enc = NULL;
++ 
++ # ifdef FEAT_MBYTE
++ 	enc = p_menc;
++ # endif
+  	if (params.use_ef != NULL)
+  	    set_string_option_direct((char_u *)"ef", -1,
+  					   params.use_ef, OPT_FREE, SID_CARG);
+  	vim_snprintf((char *)IObuff, IOSIZE, "cfile %s", p_ef);
+! 	if (qf_init(NULL, p_ef, p_efm, TRUE, IObuff, enc) < 0)
+  	{
+  	    out_char('\n');
+  	    mch_exit(3);
+*** ../vim-8.0.0419/src/option.c	2017-02-25 22:37:10.015880173 +0100
+--- src/option.c	2017-03-05 17:18:16.131693875 +0100
+***************
+*** 139,144 ****
+--- 139,147 ----
+  # define PV_LISP	OPT_BUF(BV_LISP)
+  # define PV_LW		OPT_BOTH(OPT_BUF(BV_LW))
+  #endif
++ #ifdef FEAT_MBYTE
++ # define PV_MENC	OPT_BOTH(OPT_BUF(BV_MENC))
++ #endif
+  #define PV_MA		OPT_BUF(BV_MA)
+  #define PV_ML		OPT_BUF(BV_ML)
+  #define PV_MOD		OPT_BUF(BV_MOD)
+***************
+*** 1900,1905 ****
+--- 1903,1917 ----
+  			    {(char_u *)NULL, (char_u *)0L}
+  #endif
+  			    SCRIPTID_INIT},
++     {"makeencoding","menc", P_STRING|P_VI_DEF,
++ #ifdef FEAT_MBYTE
++ 			    (char_u *)&p_menc, PV_MENC,
++ 			    {(char_u *)"", (char_u *)0L}
++ #else
++ 			    (char_u *)NULL, PV_NONE,
++ 			    {(char_u *)0L, (char_u *)0L}
++ #endif
++ 			    SCRIPTID_INIT},
+      {"makeprg",	    "mp",   P_STRING|P_EXPAND|P_VI_DEF|P_SECURE,
+  #ifdef FEAT_QUICKFIX
+  			    (char_u *)&p_mp, PV_MP,
+***************
+*** 5686,5691 ****
+--- 5698,5706 ----
+      check_string_option(&buf->b_p_lw);
+  #endif
+      check_string_option(&buf->b_p_bkc);
++ #ifdef FEAT_MBYTE
++     check_string_option(&buf->b_p_menc);
++ #endif
+  }
+  
+  /*
+***************
+*** 6289,6296 ****
+  #endif
+  
+  #ifdef FEAT_MBYTE
+!     /* 'encoding' and 'fileencoding' */
+!     else if (varp == &p_enc || gvarp == &p_fenc || varp == &p_tenc)
+      {
+  	if (gvarp == &p_fenc)
+  	{
+--- 6304,6312 ----
+  #endif
+  
+  #ifdef FEAT_MBYTE
+!     /* 'encoding', 'fileencoding', 'termencoding' and 'makeencoding' */
+!     else if (varp == &p_enc || gvarp == &p_fenc || varp == &p_tenc
+! 							   || gvarp == &p_menc)
+      {
+  	if (gvarp == &p_fenc)
+  	{
+***************
+*** 10425,10430 ****
+--- 10441,10451 ----
+  	    clear_string_option(&buf->b_p_lw);
+  	    break;
+  #endif
++ #ifdef FEAT_MBYTE
++ 	case PV_MENC:
++ 	    clear_string_option(&buf->b_p_menc);
++ 	    break;
++ #endif
+      }
+  }
+  
+***************
+*** 10478,10483 ****
+--- 10499,10507 ----
+  	    case PV_LW:   return (char_u *)&(curbuf->b_p_lw);
+  #endif
+  	    case PV_BKC:  return (char_u *)&(curbuf->b_p_bkc);
++ #ifdef FEAT_MBYTE
++ 	    case PV_MENC: return (char_u *)&(curbuf->b_p_menc);
++ #endif
+  	}
+  	return NULL; /* "cannot happen" */
+      }
+***************
+*** 10553,10558 ****
+--- 10577,10586 ----
+  	case PV_LW:	return *curbuf->b_p_lw != NUL
+  				    ? (char_u *)&(curbuf->b_p_lw) : p->var;
+  #endif
++ #ifdef FEAT_MBYTE
++ 	case PV_MENC:	return *curbuf->b_p_menc != NUL
++ 				    ? (char_u *)&(curbuf->b_p_menc) : p->var;
++ #endif
+  
+  #ifdef FEAT_ARABIC
+  	case PV_ARAB:	return (char_u *)&(curwin->w_p_arab);
+***************
+*** 11154,11159 ****
+--- 11182,11190 ----
+  #ifdef FEAT_LISP
+  	    buf->b_p_lw = empty_option;
+  #endif
++ #ifdef FEAT_MBYTE
++ 	    buf->b_p_menc = empty_option;
++ #endif
+  
+  	    /*
+  	     * Don't copy the options set by ex_help(), use the saved values,
+*** ../vim-8.0.0419/src/option.h	2017-01-28 15:58:45.352197224 +0100
+--- src/option.h	2017-03-05 17:10:37.135206824 +0100
+***************
+*** 630,635 ****
+--- 630,638 ----
+  EXTERN int	p_macatsui;	/* 'macatsui' */
+  #endif
+  EXTERN int	p_magic;	/* 'magic' */
++ #ifdef FEAT_MBYTE
++ EXTERN char_u	*p_menc;	/* 'makeencoding' */
++ #endif
+  #ifdef FEAT_QUICKFIX
+  EXTERN char_u	*p_mef;		/* 'makeef' */
+  EXTERN char_u	*p_mp;		/* 'makeprg' */
+***************
+*** 1065,1070 ****
+--- 1068,1076 ----
+      , BV_LISP
+      , BV_LW
+  #endif
++ #ifdef FEAT_MBYTE
++     , BV_MENC
++ #endif
+      , BV_MA
+      , BV_ML
+      , BV_MOD
+*** ../vim-8.0.0419/src/proto/quickfix.pro	2016-09-12 13:04:17.000000000 +0200
+--- src/proto/quickfix.pro	2017-03-05 17:10:37.135206824 +0100
+***************
+*** 1,5 ****
+  /* quickfix.c */
+! int qf_init(win_T *wp, char_u *efile, char_u *errorformat, int newlist, char_u *qf_title);
+  void qf_free_all(win_T *wp);
+  void copy_loclist(win_T *from, win_T *to);
+  void qf_jump(qf_info_T *qi, int dir, int errornr, int forceit);
+--- 1,5 ----
+  /* quickfix.c */
+! int qf_init(win_T *wp, char_u *efile, char_u *errorformat, int newlist, char_u *qf_title, char_u *enc);
+  void qf_free_all(win_T *wp);
+  void copy_loclist(win_T *from, win_T *to);
+  void qf_jump(qf_info_T *qi, int dir, int errornr, int forceit);
+*** ../vim-8.0.0419/src/quickfix.c	2016-11-13 15:09:21.301005386 +0100
+--- src/quickfix.c	2017-03-05 17:31:16.949720034 +0100
+***************
+*** 116,122 ****
+  
+  static efm_T	*fmt_start = NULL; /* cached across qf_parse_line() calls */
+  
+! static int	qf_init_ext(qf_info_T *qi, char_u *efile, buf_T *buf, typval_T *tv, char_u *errorformat, int newlist, linenr_T lnumfirst, linenr_T lnumlast, char_u *qf_title);
+  static void	qf_store_title(qf_info_T *qi, char_u *title);
+  static void	qf_new_list(qf_info_T *qi, char_u *qf_title);
+  static void	ll_free_all(qf_info_T **pqi);
+--- 116,122 ----
+  
+  static efm_T	*fmt_start = NULL; /* cached across qf_parse_line() calls */
+  
+! static int	qf_init_ext(qf_info_T *qi, char_u *efile, buf_T *buf, typval_T *tv, char_u *errorformat, int newlist, linenr_T lnumfirst, linenr_T lnumlast, char_u *qf_title, char_u *enc);
+  static void	qf_store_title(qf_info_T *qi, char_u *title);
+  static void	qf_new_list(qf_info_T *qi, char_u *qf_title);
+  static void	ll_free_all(qf_info_T **pqi);
+***************
+*** 167,173 ****
+      char_u	    *efile,
+      char_u	    *errorformat,
+      int		    newlist,		/* TRUE: start a new error list */
+!     char_u	    *qf_title)
+  {
+      qf_info_T	    *qi = &ql_info;
+  
+--- 167,174 ----
+      char_u	    *efile,
+      char_u	    *errorformat,
+      int		    newlist,		/* TRUE: start a new error list */
+!     char_u	    *qf_title,
+!     char_u	    *enc)
+  {
+      qf_info_T	    *qi = &ql_info;
+  
+***************
+*** 180,186 ****
+  
+      return qf_init_ext(qi, efile, curbuf, NULL, errorformat, newlist,
+  						    (linenr_T)0, (linenr_T)0,
+! 						    qf_title);
+  }
+  
+  /*
+--- 181,187 ----
+  
+      return qf_init_ext(qi, efile, curbuf, NULL, errorformat, newlist,
+  						    (linenr_T)0, (linenr_T)0,
+! 						    qf_title, enc);
+  }
+  
+  /*
+***************
+*** 498,503 ****
+--- 499,505 ----
+      buf_T	*buf;
+      linenr_T	buflnum;
+      linenr_T	lnumlast;
++     vimconv_T	vc;
+  } qfstate_T;
+  
+      static char_u *
+***************
+*** 713,718 ****
+--- 715,744 ----
+      else
+  	state->linebuf = IObuff;
+  
++ #ifdef FEAT_MBYTE
++     /* Convert a line if it contains a non-ASCII character. */
++     if (state->vc.vc_type != CONV_NONE && has_non_ascii(state->linebuf)) {
++ 	char_u	*line;
++ 
++ 	line = string_convert(&state->vc, state->linebuf, &state->linelen);
++ 	if (line != NULL)
++ 	{
++ 	    if (state->linelen < IOSIZE)
++ 	    {
++ 		STRCPY(state->linebuf, line);
++ 		vim_free(line);
++ 	    }
++ 	    else
++ 	    {
++ 		vim_free(state->growbuf);
++ 		state->linebuf = state->growbuf = line;
++ 		state->growbufsiz = state->linelen < LINE_MAXLEN
++ 						? state->linelen : LINE_MAXLEN;
++ 	    }
++ 	}
++     }
++ #endif
++ 
+      return QF_OK;
+  }
+  
+***************
+*** 1105,1115 ****
+      int		    newlist,		/* TRUE: start a new error list */
+      linenr_T	    lnumfirst,		/* first line number to use */
+      linenr_T	    lnumlast,		/* last line number to use */
+!     char_u	    *qf_title)
+  {
+!     qfstate_T	    state = {NULL, 0, NULL, 0, NULL, NULL, NULL, NULL,
+! 			     NULL, 0, 0};
+!     qffields_T	    fields = {NULL, NULL, 0, 0L, 0, FALSE, NULL, 0, 0, 0};
+  #ifdef FEAT_WINDOWS
+      qfline_T	    *old_last = NULL;
+      int		    adding = FALSE;
+--- 1131,1141 ----
+      int		    newlist,		/* TRUE: start a new error list */
+      linenr_T	    lnumfirst,		/* first line number to use */
+      linenr_T	    lnumlast,		/* last line number to use */
+!     char_u	    *qf_title,
+!     char_u	    *enc)
+  {
+!     qfstate_T	    state;
+!     qffields_T	    fields;
+  #ifdef FEAT_WINDOWS
+      qfline_T	    *old_last = NULL;
+      int		    adding = FALSE;
+***************
+*** 1120,1125 ****
+--- 1146,1158 ----
+      int		    retval = -1;	/* default: return error flag */
+      int		    status;
+  
++     vim_memset(&state, 0, sizeof(state));
++     vim_memset(&fields, 0, sizeof(fields));
++ #ifdef FEAT_MBYTE
++     state.vc.vc_type = CONV_NONE;
++     if (enc != NULL && *enc != NUL)
++ 	convert_setup(&state.vc, enc, p_enc);
++ #endif
+      fields.namebuf = alloc_id(CMDBUFFSIZE + 1, aid_qf_namebuf);
+      fields.errmsglen = CMDBUFFSIZE + 1;
+      fields.errmsg = alloc_id(fields.errmsglen, aid_qf_errmsg);
+***************
+*** 1286,1291 ****
+--- 1319,1328 ----
+  #ifdef FEAT_WINDOWS
+      qf_update_buffer(qi, old_last);
+  #endif
++ #ifdef FEAT_MBYTE
++     if (state.vc.vc_type != CONV_NONE)
++ 	convert_setup(&state.vc, NULL, NULL);
++ #endif
+  
+      return retval;
+  }
+***************
+*** 3431,3436 ****
+--- 3468,3474 ----
+  {
+      char_u	*fname;
+      char_u	*cmd;
++     char_u	*enc = NULL;
+      unsigned	len;
+      win_T	*wp = NULL;
+      qf_info_T	*qi = &ql_info;
+***************
+*** 3464,3469 ****
+--- 3502,3510 ----
+  # endif
+      }
+  #endif
++ #ifdef FEAT_MBYTE
++     enc = (*curbuf->b_p_menc != NUL) ? curbuf->b_p_menc : p_menc;
++ #endif
+  
+      if (eap->cmdidx == CMD_lmake || eap->cmdidx == CMD_lgrep
+  	|| eap->cmdidx == CMD_lgrepadd)
+***************
+*** 3511,3517 ****
+  			    && eap->cmdidx != CMD_lmake) ? p_gefm : p_efm,
+  					   (eap->cmdidx != CMD_grepadd
+  					    && eap->cmdidx != CMD_lgrepadd),
+! 					   *eap->cmdlinep);
+      if (wp != NULL)
+  	qi = GET_LOC_LIST(wp);
+  #ifdef FEAT_AUTOCMD
+--- 3552,3558 ----
+  			    && eap->cmdidx != CMD_lmake) ? p_gefm : p_efm,
+  					   (eap->cmdidx != CMD_grepadd
+  					    && eap->cmdidx != CMD_lgrepadd),
+! 					   *eap->cmdlinep, enc);
+      if (wp != NULL)
+  	qi = GET_LOC_LIST(wp);
+  #ifdef FEAT_AUTOCMD
+***************
+*** 3850,3855 ****
+--- 3891,3897 ----
+      void
+  ex_cfile(exarg_T *eap)
+  {
++     char_u	*enc = NULL;
+      win_T	*wp = NULL;
+      qf_info_T	*qi = &ql_info;
+  #ifdef FEAT_AUTOCMD
+***************
+*** 3874,3879 ****
+--- 3916,3924 ----
+      if (au_name != NULL)
+  	apply_autocmds(EVENT_QUICKFIXCMDPRE, au_name, NULL, FALSE, curbuf);
+  #endif
++ #ifdef FEAT_MBYTE
++     enc = (*curbuf->b_p_menc != NUL) ? curbuf->b_p_menc : p_menc;
++ #endif
+  #ifdef FEAT_BROWSE
+      if (cmdmod.browse)
+      {
+***************
+*** 3901,3907 ****
+       */
+      if (qf_init(wp, p_ef, p_efm, (eap->cmdidx != CMD_caddfile
+  				  && eap->cmdidx != CMD_laddfile),
+! 							   *eap->cmdlinep) > 0
+  				  && (eap->cmdidx == CMD_cfile
+  					     || eap->cmdidx == CMD_lfile))
+      {
+--- 3946,3952 ----
+       */
+      if (qf_init(wp, p_ef, p_efm, (eap->cmdidx != CMD_caddfile
+  				  && eap->cmdidx != CMD_laddfile),
+! 						       *eap->cmdlinep, enc) > 0
+  				  && (eap->cmdidx == CMD_cfile
+  					     || eap->cmdidx == CMD_lfile))
+      {
+***************
+*** 4927,4933 ****
+  			    (eap->cmdidx != CMD_caddbuffer
+  			     && eap->cmdidx != CMD_laddbuffer),
+  						   eap->line1, eap->line2,
+! 						   qf_title) > 0)
+  	    {
+  #ifdef FEAT_AUTOCMD
+  		if (au_name != NULL)
+--- 4972,4978 ----
+  			    (eap->cmdidx != CMD_caddbuffer
+  			     && eap->cmdidx != CMD_laddbuffer),
+  						   eap->line1, eap->line2,
+! 						   qf_title, NULL) > 0)
+  	    {
+  #ifdef FEAT_AUTOCMD
+  		if (au_name != NULL)
+***************
+*** 4995,5001 ****
+  	    if (qf_init_ext(qi, NULL, NULL, tv, p_efm,
+  			    (eap->cmdidx != CMD_caddexpr
+  			     && eap->cmdidx != CMD_laddexpr),
+! 				 (linenr_T)0, (linenr_T)0, *eap->cmdlinep) > 0)
+  	    {
+  #ifdef FEAT_AUTOCMD
+  		if (au_name != NULL)
+--- 5040,5047 ----
+  	    if (qf_init_ext(qi, NULL, NULL, tv, p_efm,
+  			    (eap->cmdidx != CMD_caddexpr
+  			     && eap->cmdidx != CMD_laddexpr),
+! 				 (linenr_T)0, (linenr_T)0, *eap->cmdlinep,
+! 				 NULL) > 0)
+  	    {
+  #ifdef FEAT_AUTOCMD
+  		if (au_name != NULL)
+*** ../vim-8.0.0419/src/structs.h	2017-02-25 14:59:29.902090452 +0100
+--- src/structs.h	2017-03-05 17:10:37.139206793 +0100
+***************
+*** 2133,2138 ****
+--- 2133,2141 ----
+  #ifdef FEAT_LISP
+      int		b_p_lisp;	/* 'lisp' */
+  #endif
++ #ifdef FEAT_MBYTE
++     char_u	*b_p_menc;	/* 'makeencoding' */
++ #endif
+      char_u	*b_p_mps;	/* 'matchpairs' */
+      int		b_p_ml;		/* 'modeline' */
+      int		b_p_ml_nobin;	/* b_p_ml saved for binary mode */
+*** ../vim-8.0.0419/src/testdir/Make_all.mak	2017-02-27 21:48:06.217790605 +0100
+--- src/testdir/Make_all.mak	2017-03-05 17:10:37.139206793 +0100
+***************
+*** 170,175 ****
+--- 170,176 ----
+  	    test_listlbr.res \
+  	    test_listlbr_utf8.res \
+  	    test_lua.res \
++ 	    test_makeencoding.res \
+  	    test_man.res \
+  	    test_marks.res \
+  	    test_matchadd_conceal.res \
+*** ../vim-8.0.0419/src/testdir/test_makeencoding.py	2017-03-05 17:35:05.371967791 +0100
+--- src/testdir/test_makeencoding.py	2017-03-05 17:10:37.139206793 +0100
+***************
+*** 0 ****
+--- 1,67 ----
++ #!/usr/bin/python
++ # -*- coding: utf-8 -*-
++ 
++ # Test program for :make, :grep and :cgetfile.
++ 
++ from __future__ import print_function, unicode_literals
++ import locale
++ import io
++ import sys
++ 
++ def set_output_encoding(enc=None):
++     """Set the encoding of stdout and stderr
++ 
++     arguments:
++       enc -- Encoding name.
++              If omitted, locale.getpreferredencoding() is used.
++     """
++     if enc is None:
++         enc = locale.getpreferredencoding()
++ 
++     def get_text_writer(fo, **kwargs):
++         kw = dict(kwargs)
++         kw.setdefault('errors', 'backslashreplace') # use \uXXXX style
++         kw.setdefault('closefd', False)
++ 
++         if sys.version_info[0] < 3:
++             # Work around for Python 2.x
++             # New line conversion isn't needed here. Done in somewhere else.
++             writer = io.open(fo.fileno(), mode='w', newline='', **kw)
++             write = writer.write    # save the original write() function
++             enc = locale.getpreferredencoding()
++             def convwrite(s):
++                 if isinstance(s, bytes):
++                     write(s.decode(enc))    # convert to unistr
++                 else:
++                     write(s)
++                 try:
++                     writer.flush()  # needed on Windows
++                 except IOError:
++                     pass
++             writer.write = convwrite
++         else:
++             writer = io.open(fo.fileno(), mode='w', **kw)
++         return writer
++ 
++     sys.stdout = get_text_writer(sys.stdout, encoding=enc)
++     sys.stderr = get_text_writer(sys.stderr, encoding=enc)
++ 
++ 
++ def main():
++     enc = 'utf-8'
++     if len(sys.argv) > 1:
++         enc = sys.argv[1]
++     set_output_encoding(enc)
++ 
++     message_tbl = {
++             'utf-8': 'ÀÈÌÒÙ こんにちは 你好',
++             'latin1': 'ÀÈÌÒÙ',
++             'cp932': 'こんにちは',
++             'cp936': '你好',
++             }
++ 
++     print('Xfoobar.c(10) : %s (%s)' % (message_tbl[enc], enc))
++ 
++ 
++ if __name__ == "__main__":
++     main()
+*** ../vim-8.0.0419/src/testdir/test_makeencoding.vim	2017-03-05 17:35:05.379967730 +0100
+--- src/testdir/test_makeencoding.vim	2017-03-05 17:10:37.139206793 +0100
+***************
+*** 0 ****
+--- 1,106 ----
++ " Tests for 'makeencoding'.
++ if !has('multi_byte')
++   finish
++ endif
++ 
++ source shared.vim
++ 
++ let s:python = PythonProg()
++ if s:python == ''
++   " Can't run this test.
++   finish
++ endif
++ 
++ let s:script = 'test_makeencoding.py'
++ 
++ let s:message_tbl = {
++       \ 'utf-8': 'ÀÈÌÒÙ こんにちは 你好',
++       \ 'latin1': 'ÀÈÌÒÙ',
++       \ 'cp932': 'こんにちは',
++       \ 'cp936': '你好',
++       \}
++ 
++ 
++ " Tests for :cgetfile and :lgetfile.
++ func Test_getfile()
++   set errorfile=Xerror.txt
++   set errorformat=%f(%l)\ :\ %m
++ 
++   " :cgetfile
++   for enc in keys(s:message_tbl)
++     let &makeencoding = enc
++     exec "silent !" . s:python . " " . s:script . " " . enc . " > " . &errorfile
++     cgetfile
++     copen
++     call assert_equal("Xfoobar.c|10| " . s:message_tbl[enc] . " (" . enc . ")",
++           \ getline('.'))
++     cclose
++   endfor
++ 
++   " :lgetfile
++   for enc in keys(s:message_tbl)
++     let &makeencoding = enc
++     exec "silent !" . s:python . " " . s:script . " " . enc . " > " . &errorfile
++     lgetfile
++     lopen
++     call assert_equal("Xfoobar.c|10| " . s:message_tbl[enc] . " (" . enc . ")",
++           \ getline('.'))
++     lclose
++   endfor
++ 
++   call delete(&errorfile)
++ endfunc
++ 
++ 
++ " Tests for :grep and :lgrep.
++ func Test_grep()
++   let &grepprg = s:python
++   set grepformat=%f(%l)\ :\ %m
++ 
++   " :grep
++   for enc in keys(s:message_tbl)
++     let &makeencoding = enc
++     exec "silent grep! " . s:script . " " . enc
++     copen
++     call assert_equal("Xfoobar.c|10| " . s:message_tbl[enc] . " (" . enc . ")",
++           \ getline('.'))
++     cclose
++   endfor
++ 
++   " :lgrep
++   for enc in keys(s:message_tbl)
++     let &makeencoding = enc
++     exec "silent lgrep! " . s:script . " " . enc
++     lopen
++     call assert_equal("Xfoobar.c|10| " . s:message_tbl[enc] . " (" . enc . ")",
++           \ getline('.'))
++     lclose
++   endfor
++ endfunc
++ 
++ 
++ " Tests for :make and :lmake.
++ func Test_make()
++   let &makeprg = s:python
++   set errorformat=%f(%l)\ :\ %m
++ 
++   " :make
++   for enc in keys(s:message_tbl)
++     let &makeencoding = enc
++     exec "silent make! " . s:script . " " . enc
++     copen
++     call assert_equal("Xfoobar.c|10| " . s:message_tbl[enc] . " (" . enc . ")",
++           \ getline('.'))
++     cclose
++   endfor
++ 
++   " :lmake
++   for enc in keys(s:message_tbl)
++     let &makeencoding = enc
++     exec "silent lmake! " . s:script . " " . enc
++     lopen
++     call assert_equal("Xfoobar.c|10| " . s:message_tbl[enc] . " (" . enc . ")",
++           \ getline('.'))
++     lclose
++   endfor
++ endfunc
+*** ../vim-8.0.0419/src/version.c	2017-03-05 15:19:28.278417362 +0100
+--- src/version.c	2017-03-05 17:31:57.817406853 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     420,
+  /**/
+
+-- 
+Time is money.  Especially if you make clocks.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,275 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0018
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0018
+Problem:    When using ":sleep" channel input is not handled.
+Solution:   When there is a channel check for input also when not in raw mode.
+            Check every 100 msec.
+Files:      src/channel.c, src/proto/channel.pro, src/ui.c, src/proto/ui.pro,
+            src/ex_docmd.c, src/os_amiga.c, src/proto/os_amiga.pro,
+            src/os_unix.c, src/proto/os_unix.pro, src/os_win32.c,
+            src/proto/os_win32.pro
+
+
+*** ../vim-8.0.0017/src/channel.c	2016-09-26 22:36:50.615386371 +0200
+--- src/channel.c	2016-09-29 15:12:13.482556346 +0200
+***************
+*** 341,346 ****
+--- 341,352 ----
+      return channel;
+  }
+  
++     int
++ has_any_channel(void)
++ {
++     return first_channel != NULL;
++ }
++ 
+  /*
+   * Called when the refcount of a channel is zero.
+   * Return TRUE if "channel" has a callback and the associated job wasn't
+*** ../vim-8.0.0017/src/proto/channel.pro	2016-09-26 22:36:50.615386371 +0200
+--- src/proto/channel.pro	2016-09-29 14:59:14.620048830 +0200
+***************
+*** 4,9 ****
+--- 4,10 ----
+  void ch_log(channel_T *ch, char *msg);
+  void ch_logs(channel_T *ch, char *msg, char *name);
+  channel_T *add_channel(void);
++ int has_any_channel(void);
+  int channel_unref(channel_T *channel);
+  int free_unused_channels_contents(int copyID, int mask);
+  void free_unused_channels(int copyID, int mask);
+*** ../vim-8.0.0017/src/ui.c	2016-08-29 22:42:20.000000000 +0200
+--- src/ui.c	2016-09-29 15:06:26.753000044 +0200
+***************
+*** 353,364 ****
+      void
+  ui_breakcheck(void)
+  {
+  #ifdef FEAT_GUI
+      if (gui.in_use)
+  	gui_mch_update();
+      else
+  #endif
+! 	mch_breakcheck();
+  }
+  
+  /*****************************************************************************
+--- 353,374 ----
+      void
+  ui_breakcheck(void)
+  {
++     ui_breakcheck_force(FALSE);
++ }
++ 
++ /*
++  * When "force" is true also check when the terminal is not in raw mode.
++  * This is useful to read input on channels.
++  */
++     void
++ ui_breakcheck_force(int force)
++ {
+  #ifdef FEAT_GUI
+      if (gui.in_use)
+  	gui_mch_update();
+      else
+  #endif
+! 	mch_breakcheck(force);
+  }
+  
+  /*****************************************************************************
+*** ../vim-8.0.0017/src/proto/ui.pro	2016-09-12 13:04:21.000000000 +0200
+--- src/proto/ui.pro	2016-09-29 15:06:34.028948742 +0200
+***************
+*** 10,15 ****
+--- 10,16 ----
+  void ui_set_shellsize(int mustset);
+  void ui_new_shellsize(void);
+  void ui_breakcheck(void);
++ void ui_breakcheck_force(int force);
+  void clip_init(int can_use);
+  void clip_update_selection(VimClipboard *clip);
+  void clip_own_selection(VimClipboard *cbd);
+*** ../vim-8.0.0017/src/ex_docmd.c	2016-09-11 14:36:00.000000000 +0200
+--- src/ex_docmd.c	2016-09-29 15:06:48.532846478 +0200
+***************
+*** 9065,9072 ****
+  		wait_now = due_time;
+  	}
+  #endif
+  	ui_delay(wait_now, TRUE);
+! 	ui_breakcheck();
+  #ifdef MESSAGE_QUEUE
+  	/* Process the netbeans and clientserver messages that may have been
+  	 * received in the call to ui_breakcheck() when the GUI is in use. This
+--- 9065,9081 ----
+  		wait_now = due_time;
+  	}
+  #endif
++ #ifdef FEAT_JOB_CHANNEL
++ 	if (has_any_channel() && wait_now > 100L)
++ 	    wait_now = 100L;
++ #endif
+  	ui_delay(wait_now, TRUE);
+! #ifdef FEAT_JOB_CHANNEL
+! 	if (has_any_channel())
+! 	    ui_breakcheck_force(TRUE);
+! 	else
+! #endif
+! 	    ui_breakcheck();
+  #ifdef MESSAGE_QUEUE
+  	/* Process the netbeans and clientserver messages that may have been
+  	 * received in the call to ui_breakcheck() when the GUI is in use. This
+*** ../vim-8.0.0017/src/os_amiga.c	2016-08-29 22:42:20.000000000 +0200
+--- src/os_amiga.c	2016-09-29 15:07:57.060363361 +0200
+***************
+*** 1381,1387 ****
+   * trouble with lattice-c programs.
+   */
+      void
+! mch_breakcheck(void)
+  {
+     if (SetSignal(0L, (long)(SIGBREAKF_CTRL_C|SIGBREAKF_CTRL_D|SIGBREAKF_CTRL_E|SIGBREAKF_CTRL_F)) & SIGBREAKF_CTRL_C)
+  	got_int = TRUE;
+--- 1381,1387 ----
+   * trouble with lattice-c programs.
+   */
+      void
+! mch_breakcheck(int force)
+  {
+     if (SetSignal(0L, (long)(SIGBREAKF_CTRL_C|SIGBREAKF_CTRL_D|SIGBREAKF_CTRL_E|SIGBREAKF_CTRL_F)) & SIGBREAKF_CTRL_C)
+  	got_int = TRUE;
+*** ../vim-8.0.0017/src/proto/os_amiga.pro	2016-09-12 13:04:29.000000000 +0200
+--- src/proto/os_amiga.pro	2016-09-29 15:08:16.240228159 +0200
+***************
+*** 36,42 ****
+  void mch_set_shellsize(void);
+  void mch_new_shellsize(void);
+  int mch_call_shell(char_u *cmd, int options);
+! void mch_breakcheck(void);
+  long Chk_Abort(void);
+  int mch_expandpath(garray_T *gap, char_u *pat, int flags);
+  int mch_has_exp_wildcard(char_u *p);
+--- 36,42 ----
+  void mch_set_shellsize(void);
+  void mch_new_shellsize(void);
+  int mch_call_shell(char_u *cmd, int options);
+! void mch_breakcheck(int force);
+  long Chk_Abort(void);
+  int mch_expandpath(garray_T *gap, char_u *pat, int flags);
+  int mch_has_exp_wildcard(char_u *p);
+*** ../vim-8.0.0017/src/os_unix.c	2016-08-29 22:42:20.000000000 +0200
+--- src/os_unix.c	2016-09-29 15:12:37.530386938 +0200
+***************
+*** 5364,5372 ****
+   * In cooked mode we should get SIGINT, no need to check.
+   */
+      void
+! mch_breakcheck(void)
+  {
+!     if (curr_tmode == TMODE_RAW && RealWaitForChar(read_cmd_fd, 0L, NULL, NULL))
+  	fill_input_buf(FALSE);
+  }
+  
+--- 5364,5373 ----
+   * In cooked mode we should get SIGINT, no need to check.
+   */
+      void
+! mch_breakcheck(int force)
+  {
+!     if ((curr_tmode == TMODE_RAW || force)
+! 			       && RealWaitForChar(read_cmd_fd, 0L, NULL, NULL))
+  	fill_input_buf(FALSE);
+  }
+  
+*** ../vim-8.0.0017/src/proto/os_unix.pro	2016-09-12 13:04:15.000000000 +0200
+--- src/proto/os_unix.pro	2016-09-29 15:09:02.235903956 +0200
+***************
+*** 61,67 ****
+  char *mch_job_status(job_T *job);
+  int mch_stop_job(job_T *job, char_u *how);
+  void mch_clear_job(job_T *job);
+! void mch_breakcheck(void);
+  int mch_expandpath(garray_T *gap, char_u *path, int flags);
+  int mch_expand_wildcards(int num_pat, char_u **pat, int *num_file, char_u ***file, int flags);
+  int mch_has_exp_wildcard(char_u *p);
+--- 61,67 ----
+  char *mch_job_status(job_T *job);
+  int mch_stop_job(job_T *job, char_u *how);
+  void mch_clear_job(job_T *job);
+! void mch_breakcheck(int force);
+  int mch_expandpath(garray_T *gap, char_u *path, int flags);
+  int mch_expand_wildcards(int num_pat, char_u **pat, int *num_file, char_u ***file, int flags);
+  int mch_has_exp_wildcard(char_u *p);
+*** ../vim-8.0.0017/src/os_win32.c	2016-09-01 18:31:42.000000000 +0200
+--- src/os_win32.c	2016-09-29 15:09:50.431564286 +0200
+***************
+*** 6187,6196 ****
+  
+  
+  /*
+!  * check for an "interrupt signal": CTRL-break or CTRL-C
+   */
+      void
+! mch_breakcheck(void)
+  {
+  #ifndef FEAT_GUI_W32	    /* never used */
+      if (g_fCtrlCPressed || g_fCBrkPressed)
+--- 6187,6196 ----
+  
+  
+  /*
+!  * Check for an "interrupt signal": CTRL-break or CTRL-C.
+   */
+      void
+! mch_breakcheck(int force)
+  {
+  #ifndef FEAT_GUI_W32	    /* never used */
+      if (g_fCtrlCPressed || g_fCBrkPressed)
+*** ../vim-8.0.0017/src/proto/os_win32.pro	2016-09-12 13:04:29.000000000 +0200
+--- src/proto/os_win32.pro	2016-09-29 15:10:04.219467120 +0200
+***************
+*** 48,54 ****
+  void mch_write(char_u *s, int len);
+  void mch_delay(long msec, int ignoreinput);
+  int mch_remove(char_u *name);
+! void mch_breakcheck(void);
+  long_u mch_total_mem(int special);
+  int mch_wrename(WCHAR *wold, WCHAR *wnew);
+  int mch_rename(const char *pszOldFile, const char *pszNewFile);
+--- 48,54 ----
+  void mch_write(char_u *s, int len);
+  void mch_delay(long msec, int ignoreinput);
+  int mch_remove(char_u *name);
+! void mch_breakcheck(int force);
+  long_u mch_total_mem(int special);
+  int mch_wrename(WCHAR *wold, WCHAR *wnew);
+  int mch_rename(const char *pszOldFile, const char *pszNewFile);
+*** ../vim-8.0.0017/src/version.c	2016-09-27 21:28:52.905342034 +0200
+--- src/version.c	2016-09-29 15:17:41.140258776 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     18,
+  /**/
+
+-- 
+ARTHUR:  Well, I can't just call you `Man'.
+DENNIS:  Well, you could say `Dennis'.
+ARTHUR:  Well, I didn't know you were called `Dennis.'
+DENNIS:  Well, you didn't bother to find out, did you?
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

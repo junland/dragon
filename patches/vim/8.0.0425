@@ -1,0 +1,144 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0425
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0425
+Problem:    Build errors when building without folding.
+Solution:   Add #ifdefs. (John Marriott)
+Files:      src/diff.c, src/edit.c, src/option.c, src/syntax.c
+
+
+*** ../vim-8.0.0424/src/diff.c	2017-02-03 23:16:24.349040487 +0100
+--- src/diff.c	2017-03-05 21:12:47.820078988 +0100
+***************
+*** 2616,2622 ****
+      return lnum;
+  }
+  
+- #if defined(FEAT_FOLDING) || defined(PROTO)
+  /*
+   * For line "lnum" in the current window find the equivalent lnum in window
+   * "wp", compensating for inserted/deleted lines.
+--- 2616,2621 ----
+***************
+*** 2656,2661 ****
+  	n = dp->df_lnum[i] + dp->df_count[i];
+      return n;
+  }
+- #endif
+  
+  #endif	/* FEAT_DIFF */
+--- 2655,2659 ----
+*** ../vim-8.0.0424/src/edit.c	2017-03-01 12:29:03.578834362 +0100
+--- src/edit.c	2017-03-05 21:14:50.939110028 +0100
+***************
+*** 541,548 ****
+  
+      /*
+       * Handle restarting Insert mode.
+!      * Don't do this for "CTRL-O ." (repeat an insert): we get here with
+!      * restart_edit non-zero, and something in the stuff buffer.
+       */
+      if (restart_edit != 0 && stuff_empty())
+      {
+--- 541,548 ----
+  
+      /*
+       * Handle restarting Insert mode.
+!      * Don't do this for "CTRL-O ." (repeat an insert): In that case we get
+!      * here with something in the stuff buffer.
+       */
+      if (restart_edit != 0 && stuff_empty())
+      {
+***************
+*** 1453,1462 ****
+--- 1453,1466 ----
+  
+  docomplete:
+  	    compl_busy = TRUE;
++ #ifdef FEAT_FOLDING
+  	    disable_fold_update++;  /* don't redraw folds here */
++ #endif
+  	    if (ins_complete(c, TRUE) == FAIL)
+  		compl_cont_status = 0;
++ #ifdef FEAT_FOLDING
+  	    disable_fold_update--;
++ #endif
+  	    compl_busy = FALSE;
+  	    break;
+  #endif /* FEAT_INS_EXPAND */
+*** ../vim-8.0.0424/src/option.c	2017-03-05 17:43:10.620245573 +0100
+--- src/option.c	2017-03-05 21:15:35.430760118 +0100
+***************
+*** 4535,4542 ****
+  		 * "wrap" gets set. */
+  		if (curwin->w_p_diff
+  			&& opt_idx >= 0  /* shut up coverity warning */
+! 			&& (options[opt_idx].indir == PV_FDM
+! 			    || options[opt_idx].indir == PV_WRAP))
+  		    goto skip;
+  #endif
+  	    }
+--- 4535,4545 ----
+  		 * "wrap" gets set. */
+  		if (curwin->w_p_diff
+  			&& opt_idx >= 0  /* shut up coverity warning */
+! 			&& (
+! #ifdef FEAT_FOLDING
+! 			    options[opt_idx].indir == PV_FDM ||
+! #endif
+! 			    options[opt_idx].indir == PV_WRAP))
+  		    goto skip;
+  #endif
+  	    }
+*** ../vim-8.0.0424/src/syntax.c	2017-02-25 14:59:29.910090402 +0100
+--- src/syntax.c	2017-03-05 21:16:37.590271467 +0100
+***************
+*** 1183,1193 ****
+      void
+  syn_stack_free_all(synblock_T *block)
+  {
+      win_T	*wp;
+  
+      syn_stack_free_block(block);
+  
+- 
+  #ifdef FEAT_FOLDING
+      /* When using "syntax" fold method, must update all folds. */
+      FOR_ALL_WINDOWS(wp)
+--- 1183,1194 ----
+      void
+  syn_stack_free_all(synblock_T *block)
+  {
++ #ifdef FEAT_FOLDING
+      win_T	*wp;
++ #endif
+  
+      syn_stack_free_block(block);
+  
+  #ifdef FEAT_FOLDING
+      /* When using "syntax" fold method, must update all folds. */
+      FOR_ALL_WINDOWS(wp)
+*** ../vim-8.0.0424/src/version.c	2017-03-05 19:49:09.402670667 +0100
+--- src/version.c	2017-03-05 21:12:40.112139684 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     425,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+68. Your cat always puts viruses on your dogs homepage
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,96 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0855
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0855
+Problem:    MS-Windows: can't get tty name of terminal.
+Solution:   Use the winpty process number. (Yasuhiro Matsumoto, closes #1929)
+Files:      src/terminal.c, src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0854/src/terminal.c	2017-08-03 20:44:43.186297555 +0200
+--- src/terminal.c	2017-08-03 20:32:59.023355123 +0200
+***************
+*** 2201,2206 ****
+--- 2201,2207 ----
+  void (*winpty_error_free)(void*);
+  LPCWSTR (*winpty_error_msg)(void*);
+  BOOL (*winpty_set_size)(void*, int, int, void*);
++ HANDLE (*winpty_agent_process)(void*);
+  
+  #define WINPTY_DLL "winpty.dll"
+  
+***************
+*** 2230,2235 ****
+--- 2231,2237 ----
+  	{"winpty_spawn_config_new", (FARPROC*)&winpty_spawn_config_new},
+  	{"winpty_error_msg", (FARPROC*)&winpty_error_msg},
+  	{"winpty_set_size", (FARPROC*)&winpty_set_size},
++ 	{"winpty_agent_process", (FARPROC*)&winpty_agent_process},
+  	{NULL, NULL}
+      };
+  
+***************
+*** 2272,2277 ****
+--- 2274,2280 ----
+      HANDLE	    jo = NULL, child_process_handle, child_thread_handle;
+      void	    *winpty_err;
+      void	    *spawn_config = NULL;
++     char	    buf[MAX_PATH];
+  
+      if (!dyn_winpty_init())
+  	return FAIL;
+***************
+*** 2358,2363 ****
+--- 2361,2369 ----
+      job->jv_proc_info.dwProcessId = GetProcessId(child_process_handle);
+      job->jv_job_object = jo;
+      job->jv_status = JOB_STARTED;
++     sprintf(buf, "winpty://%lu",
++ 	    GetProcessId(winpty_agent_process(term->tl_winpty)));
++     job->jv_tty_name = vim_strsave((char_u*)buf);
+      ++job->jv_refcount;
+      term->tl_job = job;
+  
+*** ../vim-8.0.0854/src/testdir/test_terminal.vim	2017-08-03 17:06:40.973493469 +0200
+--- src/testdir/test_terminal.vim	2017-08-03 20:34:03.306893860 +0200
+***************
+*** 34,40 ****
+      call assert_match("^/dev/", job_info(g:job).tty)
+      call assert_match("^/dev/", term_gettty(''))
+    else
+!     call assert_equal("", job_info(g:job).tty)
+    endif
+    call Stop_shell_in_terminal(buf)
+    call term_wait(buf)
+--- 34,41 ----
+      call assert_match("^/dev/", job_info(g:job).tty)
+      call assert_match("^/dev/", term_gettty(''))
+    else
+!     call assert_match("^winpty://", job_info(g:job).tty)
+!     call assert_match("^winpty://", term_gettty(''))
+    endif
+    call Stop_shell_in_terminal(buf)
+    call term_wait(buf)
+*** ../vim-8.0.0854/src/version.c	2017-08-03 20:44:43.194297497 +0200
+--- src/version.c	2017-08-03 20:51:37.275318800 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     855,
+  /**/
+
+-- 
+No letters of the alphabet were harmed in the creation of this message.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

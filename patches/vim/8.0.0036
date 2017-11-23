@@ -1,0 +1,510 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0036
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0036
+Problem:    Detecting that a job has finished may take a while.
+Solution:   Check for a finished job more often (Ozaki Kiichi)
+Files:      src/channel.c, src/os_unix.c, src/os_win32.c,
+            src/proto/os_unix.pro, src/proto/os_win32.pro,
+            src/testdir/test_channel.vim
+
+
+*** ../vim-8.0.0035/src/channel.c	2016-10-09 17:27:56.859388538 +0200
+--- src/channel.c	2016-10-15 18:34:49.054767438 +0200
+***************
+*** 4428,4433 ****
+--- 4428,4466 ----
+      }
+  }
+  
++     static void
++ job_cleanup(job_T *job)
++ {
++     if (job->jv_status != JOB_ENDED)
++ 	return;
++ 
++     if (job->jv_exit_cb != NULL)
++     {
++ 	typval_T	argv[3];
++ 	typval_T	rettv;
++ 	int		dummy;
++ 
++ 	/* invoke the exit callback; make sure the refcount is > 0 */
++ 	++job->jv_refcount;
++ 	argv[0].v_type = VAR_JOB;
++ 	argv[0].vval.v_job = job;
++ 	argv[1].v_type = VAR_NUMBER;
++ 	argv[1].vval.v_number = job->jv_exitval;
++ 	call_func(job->jv_exit_cb, (int)STRLEN(job->jv_exit_cb),
++ 	    &rettv, 2, argv, NULL, 0L, 0L, &dummy, TRUE,
++ 	    job->jv_exit_partial, NULL);
++ 	clear_tv(&rettv);
++ 	--job->jv_refcount;
++ 	channel_need_redraw = TRUE;
++     }
++     if (job->jv_refcount == 0)
++     {
++ 	/* The job was already unreferenced, now that it ended it can be
++ 	 * freed. Careful: caller must not use "job" after this! */
++ 	job_free(job);
++     }
++ }
++ 
+  #if defined(EXITFREE) || defined(PROTO)
+      void
+  job_free_all(void)
+***************
+*** 4445,4454 ****
+      static int
+  job_still_useful(job_T *job)
+  {
+!     return job->jv_status == JOB_STARTED
+! 	       && (job->jv_stoponexit != NULL || job->jv_exit_cb != NULL
+! 		   || (job->jv_channel != NULL
+! 		       && channel_still_useful(job->jv_channel)));
+  }
+  
+  /*
+--- 4478,4492 ----
+      static int
+  job_still_useful(job_T *job)
+  {
+!     return (job->jv_stoponexit != NULL || job->jv_exit_cb != NULL
+! 	    || (job->jv_channel != NULL
+! 		&& channel_still_useful(job->jv_channel)));
+! }
+! 
+!     static int
+! job_still_alive(job_T *job)
+! {
+!     return (job->jv_status == JOB_STARTED) && job_still_useful(job);
+  }
+  
+  /*
+***************
+*** 4462,4468 ****
+      typval_T	tv;
+  
+      for (job = first_job; job != NULL; job = job->jv_next)
+! 	if (job_still_useful(job))
+  	{
+  	    tv.v_type = VAR_JOB;
+  	    tv.vval.v_job = job;
+--- 4500,4506 ----
+      typval_T	tv;
+  
+      for (job = first_job; job != NULL; job = job->jv_next)
+! 	if (job_still_alive(job))
+  	{
+  	    tv.v_type = VAR_JOB;
+  	    tv.vval.v_job = job;
+***************
+*** 4478,4484 ****
+      {
+  	/* Do not free the job when it has not ended yet and there is a
+  	 * "stoponexit" flag or an exit callback. */
+! 	if (!job_still_useful(job))
+  	{
+  	    job_free(job);
+  	}
+--- 4516,4522 ----
+      {
+  	/* Do not free the job when it has not ended yet and there is a
+  	 * "stoponexit" flag or an exit callback. */
+! 	if (!job_still_alive(job))
+  	{
+  	    job_free(job);
+  	}
+***************
+*** 4503,4509 ****
+  
+      for (job = first_job; job != NULL; job = job->jv_next)
+  	if ((job->jv_copyID & mask) != (copyID & mask)
+! 						    && !job_still_useful(job))
+  	{
+  	    /* Free the channel and ordinary items it contains, but don't
+  	     * recurse into Lists, Dictionaries etc. */
+--- 4541,4547 ----
+  
+      for (job = first_job; job != NULL; job = job->jv_next)
+  	if ((job->jv_copyID & mask) != (copyID & mask)
+! 						     && !job_still_alive(job))
+  	{
+  	    /* Free the channel and ordinary items it contains, but don't
+  	     * recurse into Lists, Dictionaries etc. */
+***************
+*** 4523,4529 ****
+      {
+  	job_next = job->jv_next;
+  	if ((job->jv_copyID & mask) != (copyID & mask)
+! 						    && !job_still_useful(job))
+  	{
+  	    /* Free the job struct itself. */
+  	    job_free_job(job);
+--- 4561,4567 ----
+      {
+  	job_next = job->jv_next;
+  	if ((job->jv_copyID & mask) != (copyID & mask)
+! 						     && !job_still_alive(job))
+  	{
+  	    /* Free the job struct itself. */
+  	    job_free_job(job);
+***************
+*** 4614,4647 ****
+      job_T	    *job;
+  
+      for (job = first_job; job != NULL; job = job->jv_next)
+! 	if (job->jv_status == JOB_STARTED && job_still_useful(job))
+  	    return TRUE;
+      return FALSE;
+  }
+  
+  /*
+   * Called once in a while: check if any jobs that seem useful have ended.
+   */
+      void
+  job_check_ended(void)
+  {
+!     static time_t   last_check = 0;
+!     time_t	    now;
+!     job_T	    *job;
+!     job_T	    *next;
+  
+!     /* Only do this once in 10 seconds. */
+!     now = time(NULL);
+!     if (last_check + 10 < now)
+!     {
+! 	last_check = now;
+! 	for (job = first_job; job != NULL; job = next)
+! 	{
+! 	    next = job->jv_next;
+! 	    if (job->jv_status == JOB_STARTED && job_still_useful(job))
+! 		job_status(job); /* may free "job" */
+! 	}
+      }
+      if (channel_need_redraw)
+      {
+  	channel_need_redraw = FALSE;
+--- 4652,4682 ----
+      job_T	    *job;
+  
+      for (job = first_job; job != NULL; job = job->jv_next)
+! 	if (job_still_alive(job))
+  	    return TRUE;
+      return FALSE;
+  }
+  
++ #define MAX_CHECK_ENDED 8
++ 
+  /*
+   * Called once in a while: check if any jobs that seem useful have ended.
+   */
+      void
+  job_check_ended(void)
+  {
+!     int		i;
+  
+!     for (i = 0; i < MAX_CHECK_ENDED; ++i)
+!     {
+! 	job_T	*job = mch_detect_ended_job(first_job);
+! 
+! 	if (job == NULL)
+! 	    break;
+! 	if (job_still_useful(job))
+! 	    job_cleanup(job); /* may free "job" */
+      }
++ 
+      if (channel_need_redraw)
+      {
+  	channel_need_redraw = FALSE;
+***************
+*** 4862,4893 ****
+      {
+  	result = mch_job_status(job);
+  	if (job->jv_status == JOB_ENDED)
+! 	    ch_log(job->jv_channel, "Job ended");
+! 	if (job->jv_status == JOB_ENDED && job->jv_exit_cb != NULL)
+! 	{
+! 	    typval_T	argv[3];
+! 	    typval_T	rettv;
+! 	    int		dummy;
+! 
+! 	    /* invoke the exit callback; make sure the refcount is > 0 */
+! 	    ++job->jv_refcount;
+! 	    argv[0].v_type = VAR_JOB;
+! 	    argv[0].vval.v_job = job;
+! 	    argv[1].v_type = VAR_NUMBER;
+! 	    argv[1].vval.v_number = job->jv_exitval;
+! 	    call_func(job->jv_exit_cb, (int)STRLEN(job->jv_exit_cb),
+! 			   &rettv, 2, argv, NULL, 0L, 0L, &dummy, TRUE,
+! 			   job->jv_exit_partial, NULL);
+! 	    clear_tv(&rettv);
+! 	    --job->jv_refcount;
+! 	    channel_need_redraw = TRUE;
+! 	}
+! 	if (job->jv_status == JOB_ENDED && job->jv_refcount == 0)
+! 	{
+! 	    /* The job was already unreferenced, now that it ended it can be
+! 	     * freed. Careful: caller must not use "job" after this! */
+! 	    job_free(job);
+! 	}
+      }
+      return result;
+  }
+--- 4897,4903 ----
+      {
+  	result = mch_job_status(job);
+  	if (job->jv_status == JOB_ENDED)
+! 	    job_cleanup(job);
+      }
+      return result;
+  }
+*** ../vim-8.0.0035/src/os_unix.c	2016-10-12 14:50:50.233115689 +0200
+--- src/os_unix.c	2016-10-15 18:33:46.303229935 +0200
+***************
+*** 5294,5301 ****
+      if (wait_pid == -1)
+      {
+  	/* process must have exited */
+! 	job->jv_status = JOB_ENDED;
+! 	return "dead";
+      }
+      if (wait_pid == 0)
+  	return "run";
+--- 5294,5300 ----
+      if (wait_pid == -1)
+      {
+  	/* process must have exited */
+! 	goto return_dead;
+      }
+      if (wait_pid == 0)
+  	return "run";
+***************
+*** 5303,5318 ****
+      {
+  	/* LINTED avoid "bitwise operation on signed value" */
+  	job->jv_exitval = WEXITSTATUS(status);
+! 	job->jv_status = JOB_ENDED;
+! 	return "dead";
+      }
+      if (WIFSIGNALED(status))
+      {
+  	job->jv_exitval = -1;
+! 	job->jv_status = JOB_ENDED;
+! 	return "dead";
+      }
+      return "run";
+  }
+  
+      int
+--- 5302,5363 ----
+      {
+  	/* LINTED avoid "bitwise operation on signed value" */
+  	job->jv_exitval = WEXITSTATUS(status);
+! 	goto return_dead;
+      }
+      if (WIFSIGNALED(status))
+      {
+  	job->jv_exitval = -1;
+! 	goto return_dead;
+      }
+      return "run";
++ 
++ return_dead:
++     if (job->jv_status != JOB_ENDED)
++     {
++ 	ch_log(job->jv_channel, "Job ended");
++ 	job->jv_status = JOB_ENDED;
++     }
++     return "dead";
++ }
++ 
++     job_T *
++ mch_detect_ended_job(job_T *job_list)
++ {
++ # ifdef HAVE_UNION_WAIT
++     union wait	status;
++ # else
++     int		status = -1;
++ # endif
++     pid_t	wait_pid = 0;
++     job_T	*job;
++ 
++ # ifdef __NeXT__
++     wait_pid = wait4(-1, &status, WNOHANG, (struct rusage *)0);
++ # else
++     wait_pid = waitpid(-1, &status, WNOHANG);
++ # endif
++     if (wait_pid <= 0)
++ 	/* no process ended */
++ 	return NULL;
++     for (job = job_list; job != NULL; job = job->jv_next)
++     {
++ 	if (job->jv_pid == wait_pid)
++ 	{
++ 	    if (WIFEXITED(status))
++ 		/* LINTED avoid "bitwise operation on signed value" */
++ 		job->jv_exitval = WEXITSTATUS(status);
++ 	    else if (WIFSIGNALED(status))
++ 		job->jv_exitval = -1;
++ 	    if (job->jv_status != JOB_ENDED)
++ 	    {
++ 		ch_log(job->jv_channel, "Job ended");
++ 		job->jv_status = JOB_ENDED;
++ 	    }
++ 	    return job;
++ 	}
++     }
++     return NULL;
++ 
+  }
+  
+      int
+*** ../vim-8.0.0035/src/os_win32.c	2016-10-12 14:19:55.754357695 +0200
+--- src/os_win32.c	2016-10-15 18:34:13.379030378 +0200
+***************
+*** 4973,4985 ****
+      if (!GetExitCodeProcess(job->jv_proc_info.hProcess, &dwExitCode)
+  	    || dwExitCode != STILL_ACTIVE)
+      {
+- 	job->jv_status = JOB_ENDED;
+  	job->jv_exitval = (int)dwExitCode;
+  	return "dead";
+      }
+      return "run";
+  }
+  
+      int
+  mch_stop_job(job_T *job, char_u *how)
+  {
+--- 4973,5025 ----
+      if (!GetExitCodeProcess(job->jv_proc_info.hProcess, &dwExitCode)
+  	    || dwExitCode != STILL_ACTIVE)
+      {
+  	job->jv_exitval = (int)dwExitCode;
++ 	if (job->jv_status != JOB_ENDED)
++ 	{
++ 	    ch_log(job->jv_channel, "Job ended");
++ 	    job->jv_status = JOB_ENDED;
++ 	}
+  	return "dead";
+      }
+      return "run";
+  }
+  
++     job_T *
++ mch_detect_ended_job(job_T *job_list)
++ {
++     HANDLE jobHandles[MAXIMUM_WAIT_OBJECTS];
++     job_T *jobArray[MAXIMUM_WAIT_OBJECTS];
++     job_T *job = job_list;
++ 
++     while (job != NULL)
++     {
++ 	DWORD n;
++ 	DWORD result;
++ 
++ 	for (n = 0; n < MAXIMUM_WAIT_OBJECTS
++ 				       && job != NULL; job = job->jv_next)
++ 	{
++ 	    if (job->jv_status == JOB_STARTED)
++ 	    {
++ 		jobHandles[n] = job->jv_proc_info.hProcess;
++ 		jobArray[n] = job;
++ 		++n;
++ 	    }
++ 	}
++ 	if (n == 0)
++ 	    continue;
++ 	result = WaitForMultipleObjects(n, jobHandles, FALSE, 0);
++ 	if (result >= WAIT_OBJECT_0 && result < WAIT_OBJECT_0 + n)
++ 	{
++ 	    job_T *wait_job = jobArray[result - WAIT_OBJECT_0];
++ 
++ 	    if (STRCMP(mch_job_status(wait_job), "dead") == 0)
++ 		return wait_job;
++ 	}
++     }
++     return NULL;
++ }
++ 
+      int
+  mch_stop_job(job_T *job, char_u *how)
+  {
+*** ../vim-8.0.0035/src/proto/os_unix.pro	2016-09-29 15:18:51.359768012 +0200
+--- src/proto/os_unix.pro	2016-10-15 18:26:49.770299911 +0200
+***************
+*** 59,64 ****
+--- 59,65 ----
+  int mch_call_shell(char_u *cmd, int options);
+  void mch_start_job(char **argv, job_T *job, jobopt_T *options);
+  char *mch_job_status(job_T *job);
++ job_T *mch_detect_ended_job(job_T *job_list);
+  int mch_stop_job(job_T *job, char_u *how);
+  void mch_clear_job(job_T *job);
+  void mch_breakcheck(int force);
+*** ../vim-8.0.0035/src/proto/os_win32.pro	2016-10-12 14:19:55.754357695 +0200
+--- src/proto/os_win32.pro	2016-10-15 18:26:49.770299911 +0200
+***************
+*** 41,46 ****
+--- 41,47 ----
+  int mch_call_shell(char_u *cmd, int options);
+  void mch_start_job(char *cmd, job_T *job, jobopt_T *options);
+  char *mch_job_status(job_T *job);
++ job_T *mch_detect_ended_job(job_T *job_list);
+  int mch_stop_job(job_T *job, char_u *how);
+  void mch_clear_job(job_T *job);
+  void mch_set_normal_colors(void);
+*** ../vim-8.0.0035/src/testdir/test_channel.vim	2016-10-09 17:27:56.863388510 +0200
+--- src/testdir/test_channel.vim	2016-10-15 18:26:49.770299911 +0200
+***************
+*** 1362,1367 ****
+--- 1362,1385 ----
+    endif
+  endfunc
+  
++ let g:exit_cb_time = {'start': 0, 'end': 0}
++ function MyExitTimeCb(job, status)
++   let g:exit_cb_time.end = reltime(g:exit_cb_time.start)
++ endfunction
++ 
++ func Test_exit_callback_interval()
++   if !has('job')
++     return
++   endif
++ 
++   let g:exit_cb_time.start = reltime()
++   let job = job_start([s:python, '-c', 'import time;time.sleep(0.5)'], {'exit_cb': 'MyExitTimeCb'})
++   call WaitFor('g:exit_cb_time.end != 0')
++   let elapsed = reltimefloat(g:exit_cb_time.end)
++   call assert_true(elapsed > 0.3)
++   call assert_true(elapsed < 1.0)
++ endfunc
++ 
+  """""""""
+  
+  let g:Ch_close_ret = 'alive'
+*** ../vim-8.0.0035/src/version.c	2016-10-15 17:06:42.094912699 +0200
+--- src/version.c	2016-10-15 18:28:19.269640273 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     36,
+  /**/
+
+-- 
+It is illegal for a driver to be blindfolded while operating a vehicle.
+		[real standing law in Alabama, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,1206 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0281
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0281
+Problem:    MS-Windows files are still using ARGSUSED while most other files
+            have UNUSED.
+Solution:   Change ARGSUSED to UNUSED or delete it.
+Files:      src/os_win32.c, src/gui_w32.c, src/os_mswin.c, src/os_w32exe.c,
+            src/winclip.c
+
+
+*** ../vim-8.0.0280/src/os_win32.c	2017-02-01 13:14:11.026177020 +0100
+--- src/os_win32.c	2017-02-01 13:41:37.369970759 +0100
+***************
+*** 620,633 ****
+      dyn_libintl_wputenv		= null_libintl_wputenv;
+  }
+  
+- /*ARGSUSED*/
+      static char *
+  null_libintl_gettext(const char *msgid)
+  {
+      return (char*)msgid;
+  }
+  
+- /*ARGSUSED*/
+      static char *
+  null_libintl_ngettext(
+  	const char *msgid,
+--- 620,631 ----
+***************
+*** 637,674 ****
+      return (char *)(n == 1 ? msgid : msgid_plural);
+  }
+  
+- /*ARGSUSED*/
+      static char *
+! null_libintl_bindtextdomain(const char *domainname, const char *dirname)
+  {
+      return NULL;
+  }
+  
+- /*ARGSUSED*/
+      static char *
+! null_libintl_bind_textdomain_codeset(const char *domainname,
+! 							  const char *codeset)
+  {
+      return NULL;
+  }
+  
+- /*ARGSUSED*/
+      static char *
+! null_libintl_textdomain(const char *domainname)
+  {
+      return NULL;
+  }
+  
+- /*ARGSUSED*/
+      int
+! null_libintl_putenv(const char *envstring)
+  {
+      return 0;
+  }
+  
+- /*ARGSUSED*/
+      int
+! null_libintl_wputenv(const wchar_t *envstring)
+  {
+      return 0;
+  }
+--- 635,670 ----
+      return (char *)(n == 1 ? msgid : msgid_plural);
+  }
+  
+      static char *
+! null_libintl_bindtextdomain(
+! 	const char *domainname UNUSED,
+! 	const char *dirname UNUSED)
+  {
+      return NULL;
+  }
+  
+      static char *
+! null_libintl_bind_textdomain_codeset(
+! 	const char *domainname UNUSED,
+! 	const char *codeset UNUSED)
+  {
+      return NULL;
+  }
+  
+      static char *
+! null_libintl_textdomain(const char *domainname UNUSED)
+  {
+      return NULL;
+  }
+  
+      int
+! null_libintl_putenv(const char *envstring UNUSED)
+  {
+      return 0;
+  }
+  
+      int
+! null_libintl_wputenv(const wchar_t *envstring UNUSED)
+  {
+      return 0;
+  }
+***************
+*** 1060,1068 ****
+   * For the GUI the mouse handling is in gui_w32.c.
+   */
+  # ifdef FEAT_GUI_W32
+- /*ARGSUSED*/
+      void
+! mch_setmouse(int on)
+  {
+  }
+  # else
+--- 1056,1063 ----
+   * For the GUI the mouse handling is in gui_w32.c.
+   */
+  # ifdef FEAT_GUI_W32
+      void
+! mch_setmouse(int on UNUSED)
+  {
+  }
+  # else
+***************
+*** 1658,1670 ****
+   * If time == -1, wait forever for characters.
+   * Returns the number of characters read into buf.
+   */
+- /*ARGSUSED*/
+      int
+  mch_inchar(
+!     char_u	*buf,
+!     int		maxlen,
+!     long	time,
+!     int		tb_change_cnt)
+  {
+  #ifndef FEAT_GUI_W32	    /* this isn't used for the GUI */
+  
+--- 1653,1664 ----
+   * If time == -1, wait forever for characters.
+   * Returns the number of characters read into buf.
+   */
+      int
+  mch_inchar(
+!     char_u	*buf UNUSED,
+!     int		maxlen UNUSED,
+!     long	time UNUSED,
+!     int		tb_change_cnt UNUSED)
+  {
+  #ifndef FEAT_GUI_W32	    /* this isn't used for the GUI */
+  
+***************
+*** 2592,2602 ****
+  /*
+   * Do we have an interactive window?
+   */
+- /*ARGSUSED*/
+      int
+  mch_check_win(
+!     int argc,
+!     char **argv)
+  {
+      get_exe_name();
+  
+--- 2586,2595 ----
+  /*
+   * Do we have an interactive window?
+   */
+      int
+  mch_check_win(
+!     int argc UNUSED,
+!     char **argv UNUSED)
+  {
+      get_exe_name();
+  
+***************
+*** 5348,5358 ****
+  
+  
+  #ifdef FEAT_GUI_W32
+- /*ARGSUSED*/
+      void
+  mch_write(
+!     char_u  *s,
+!     int	    len)
+  {
+      /* never used */
+  }
+--- 5341,5350 ----
+  
+  
+  #ifdef FEAT_GUI_W32
+      void
+  mch_write(
+!     char_u  *s UNUSED,
+!     int	    len UNUSED)
+  {
+      /* never used */
+  }
+***************
+*** 6050,6060 ****
+  /*
+   * Delay for "msec" milliseconds.
+   */
+- /*ARGSUSED*/
+      void
+  mch_delay(
+      long    msec,
+!     int	    ignoreinput)
+  {
+  #ifdef FEAT_GUI_W32
+      Sleep((int)msec);	    /* never wait for input */
+--- 6042,6051 ----
+  /*
+   * Delay for "msec" milliseconds.
+   */
+      void
+  mch_delay(
+      long    msec,
+!     int	    ignoreinput UNUSED)
+  {
+  #ifdef FEAT_GUI_W32
+      Sleep((int)msec);	    /* never wait for input */
+***************
+*** 6143,6151 ****
+  /*
+   * How much main memory in KiB that can be used by VIM.
+   */
+- /*ARGSUSED*/
+      long_u
+! mch_total_mem(int special)
+  {
+      MEMORYSTATUSEX  ms;
+  
+--- 6134,6141 ----
+  /*
+   * How much main memory in KiB that can be used by VIM.
+   */
+      long_u
+! mch_total_mem(int special UNUSED)
+  {
+      MEMORYSTATUSEX  ms;
+  
+*** ../vim-8.0.0280/src/gui_w32.c	2016-12-01 20:32:23.958023740 +0100
+--- src/gui_w32.c	2017-02-01 13:41:54.784829904 +0100
+***************
+*** 558,570 ****
+      blink_offtime = off;
+  }
+  
+- /* ARGSUSED */
+      static VOID CALLBACK
+  _OnBlinkTimer(
+      HWND hwnd,
+!     UINT uMsg,
+      UINT idEvent,
+!     DWORD dwTime)
+  {
+      MSG msg;
+  
+--- 558,569 ----
+      blink_offtime = off;
+  }
+  
+      static VOID CALLBACK
+  _OnBlinkTimer(
+      HWND hwnd,
+!     UINT uMsg UNUSED,
+      UINT idEvent,
+!     DWORD dwTime UNUSED)
+  {
+      MSG msg;
+  
+***************
+*** 590,596 ****
+  	gui_update_cursor(TRUE, FALSE);
+  	blink_state = BLINK_ON;
+  	blink_timer = (UINT) SetTimer(NULL, 0, (UINT)blink_ontime,
+! 							 (TIMERPROC)_OnBlinkTimer);
+      }
+  }
+  
+--- 589,595 ----
+  	gui_update_cursor(TRUE, FALSE);
+  	blink_state = BLINK_ON;
+  	blink_timer = (UINT) SetTimer(NULL, 0, (UINT)blink_ontime,
+! 						    (TIMERPROC)_OnBlinkTimer);
+      }
+  }
+  
+***************
+*** 644,656 ****
+   * Call-back routines.
+   */
+  
+- /*ARGSUSED*/
+      static VOID CALLBACK
+  _OnTimer(
+      HWND hwnd,
+!     UINT uMsg,
+      UINT idEvent,
+!     DWORD dwTime)
+  {
+      MSG msg;
+  
+--- 643,654 ----
+   * Call-back routines.
+   */
+  
+      static VOID CALLBACK
+  _OnTimer(
+      HWND hwnd,
+!     UINT uMsg UNUSED,
+      UINT idEvent,
+!     DWORD dwTime UNUSED)
+  {
+      MSG msg;
+  
+***************
+*** 667,678 ****
+  	s_wait_timer = 0;
+  }
+  
+- /*ARGSUSED*/
+      static void
+  _OnDeadChar(
+!     HWND hwnd,
+!     UINT ch,
+!     int cRepeat)
+  {
+      dead_key = 1;
+  }
+--- 665,675 ----
+  	s_wait_timer = 0;
+  }
+  
+      static void
+  _OnDeadChar(
+!     HWND hwnd UNUSED,
+!     UINT ch UNUSED,
+!     int cRepeat UNUSED)
+  {
+      dead_key = 1;
+  }
+***************
+*** 752,763 ****
+  /*
+   * Key hit, add it to the input buffer.
+   */
+- /*ARGSUSED*/
+      static void
+  _OnChar(
+!     HWND hwnd,
+      UINT ch,
+!     int cRepeat)
+  {
+      char_u	string[40];
+      int		len = 0;
+--- 749,759 ----
+  /*
+   * Key hit, add it to the input buffer.
+   */
+      static void
+  _OnChar(
+!     HWND hwnd UNUSED,
+      UINT ch,
+!     int cRepeat UNUSED)
+  {
+      char_u	string[40];
+      int		len = 0;
+***************
+*** 777,788 ****
+  /*
+   * Alt-Key hit, add it to the input buffer.
+   */
+- /*ARGSUSED*/
+      static void
+  _OnSysChar(
+!     HWND hwnd,
+      UINT cch,
+!     int cRepeat)
+  {
+      char_u	string[40]; /* Enough for multibyte character */
+      int		len;
+--- 773,783 ----
+  /*
+   * Alt-Key hit, add it to the input buffer.
+   */
+      static void
+  _OnSysChar(
+!     HWND hwnd UNUSED,
+      UINT cch,
+!     int cRepeat UNUSED)
+  {
+      char_u	string[40]; /* Enough for multibyte character */
+      int		len;
+***************
+*** 861,871 ****
+      gui_send_mouse_event(button, x, y, repeated_click, vim_modifiers);
+  }
+  
+- /*ARGSUSED*/
+      static void
+  _OnMouseButtonDown(
+!     HWND hwnd,
+!     BOOL fDoubleClick,
+      int x,
+      int y,
+      UINT keyFlags)
+--- 856,865 ----
+      gui_send_mouse_event(button, x, y, repeated_click, vim_modifiers);
+  }
+  
+      static void
+  _OnMouseButtonDown(
+!     HWND hwnd UNUSED,
+!     BOOL fDoubleClick UNUSED,
+      int x,
+      int y,
+      UINT keyFlags)
+***************
+*** 960,969 ****
+      }
+  }
+  
+- /*ARGSUSED*/
+      static void
+  _OnMouseMoveOrRelease(
+!     HWND hwnd,
+      int x,
+      int y,
+      UINT keyFlags)
+--- 954,962 ----
+      }
+  }
+  
+      static void
+  _OnMouseMoveOrRelease(
+!     HWND hwnd UNUSED,
+      int x,
+      int y,
+      UINT keyFlags)
+***************
+*** 1038,1050 ****
+      return pMenu;
+  }
+  
+- /*ARGSUSED*/
+      static void
+  _OnMenu(
+!     HWND	hwnd,
+      int		id,
+!     HWND	hwndCtl,
+!     UINT	codeNotify)
+  {
+      vimmenu_T	*pMenu;
+  
+--- 1031,1042 ----
+      return pMenu;
+  }
+  
+      static void
+  _OnMenu(
+!     HWND	hwnd UNUSED,
+      int		id,
+!     HWND	hwndCtl UNUSED,
+!     UINT	codeNotify UNUSED)
+  {
+      vimmenu_T	*pMenu;
+  
+***************
+*** 1527,1535 ****
+   * Return the name of font "font" in allocated memory.
+   * Don't know how to get the actual name, thus use the provided name.
+   */
+- /*ARGSUSED*/
+      char_u *
+! gui_mch_get_fontname(GuiFont font, char_u *name)
+  {
+      if (name == NULL)
+  	return NULL;
+--- 1519,1526 ----
+   * Return the name of font "font" in allocated memory.
+   * Don't know how to get the actual name, thus use the provided name.
+   */
+      char_u *
+! gui_mch_get_fontname(GuiFont font UNUSED, char_u *name)
+  {
+      if (name == NULL)
+  	return NULL;
+***************
+*** 2175,2187 ****
+  #endif
+  }
+  
+- /*ARGSUSED*/
+      void
+  gui_mch_set_menu_pos(
+!     int	    x,
+!     int	    y,
+!     int	    w,
+!     int	    h)
+  {
+      /* It will be in the right place anyway */
+  }
+--- 2166,2177 ----
+  #endif
+  }
+  
+      void
+  gui_mch_set_menu_pos(
+!     int	    x UNUSED,
+!     int	    y UNUSED,
+!     int	    w UNUSED,
+!     int	    h UNUSED)
+  {
+      /* It will be in the right place anyway */
+  }
+***************
+*** 2817,2826 ****
+   * Get this message when the user clicks on the cross in the top right corner
+   * of a Windows95 window.
+   */
+- /*ARGSUSED*/
+      static void
+! _OnClose(
+!     HWND hwnd)
+  {
+      gui_shell_closed();
+  }
+--- 2807,2814 ----
+   * Get this message when the user clicks on the cross in the top right corner
+   * of a Windows95 window.
+   */
+      static void
+! _OnClose(HWND hwnd UNUSED)
+  {
+      gui_shell_closed();
+  }
+***************
+*** 2829,2836 ****
+   * Get a message when the window is being destroyed.
+   */
+      static void
+! _OnDestroy(
+!     HWND hwnd)
+  {
+      if (!destroying)
+  	_OnClose(hwnd);
+--- 2817,2823 ----
+   * Get a message when the window is being destroyed.
+   */
+      static void
+! _OnDestroy(HWND hwnd)
+  {
+      if (!destroying)
+  	_OnClose(hwnd);
+***************
+*** 2883,2893 ****
+      }
+  }
+  
+- /*ARGSUSED*/
+      static void
+  _OnSize(
+      HWND hwnd,
+!     UINT state,
+      int cx,
+      int cy)
+  {
+--- 2870,2879 ----
+      }
+  }
+  
+      static void
+  _OnSize(
+      HWND hwnd,
+!     UINT state UNUSED,
+      int cx,
+      int cy)
+  {
+***************
+*** 3124,3132 ****
+  }
+  
+  
+- /*ARGSUSED*/
+      void
+! gui_mch_exit(int rc)
+  {
+  #if defined(FEAT_DIRECTX)
+      DWriteContext_Close(s_dwc);
+--- 3110,3117 ----
+  }
+  
+  
+      void
+! gui_mch_exit(int rc UNUSED)
+  {
+  #if defined(FEAT_DIRECTX)
+      DWriteContext_Close(s_dwc);
+***************
+*** 3285,3293 ****
+   * Initialise vim to use the font with the given name.
+   * Return FAIL if the font could not be loaded, OK otherwise.
+   */
+- /*ARGSUSED*/
+      int
+! gui_mch_init_font(char_u *font_name, int fontset)
+  {
+      LOGFONT	lf;
+      GuiFont	font = NOFONT;
+--- 3270,3277 ----
+   * Initialise vim to use the font with the given name.
+   * Return FAIL if the font could not be loaded, OK otherwise.
+   */
+      int
+! gui_mch_init_font(char_u *font_name, int fontset UNUSED)
+  {
+      LOGFONT	lf;
+      GuiFont	font = NOFONT;
+***************
+*** 3416,3426 ****
+  /*
+   * Set the window title
+   */
+- /*ARGSUSED*/
+      void
+  gui_mch_settitle(
+      char_u  *title,
+!     char_u  *icon)
+  {
+      set_window_title(s_hwnd, (title == NULL ? "VIM" : (char *)title));
+  }
+--- 3400,3409 ----
+  /*
+   * Set the window title
+   */
+      void
+  gui_mch_settitle(
+      char_u  *title,
+!     char_u  *icon UNUSED)
+  {
+      set_window_title(s_hwnd, (title == NULL ? "VIM" : (char *)title));
+  }
+***************
+*** 3772,3781 ****
+  }
+  #endif /* FEAT_BROWSE */
+  
+- /*ARGSUSED*/
+      static void
+  _OnDropFiles(
+!     HWND hwnd,
+      HDROP hDrop)
+  {
+  #ifdef FEAT_WINDOWS
+--- 3755,3763 ----
+  }
+  #endif /* FEAT_BROWSE */
+  
+      static void
+  _OnDropFiles(
+!     HWND hwnd UNUSED,
+      HDROP hDrop)
+  {
+  #ifdef FEAT_WINDOWS
+***************
+*** 3833,3842 ****
+  #endif
+  }
+  
+- /*ARGSUSED*/
+      static int
+  _OnScroll(
+!     HWND hwnd,
+      HWND hwndCtl,
+      UINT code,
+      int pos)
+--- 3815,3823 ----
+  #endif
+  }
+  
+      static int
+  _OnScroll(
+!     HWND hwnd UNUSED,
+      HWND hwndCtl,
+      UINT code,
+      int pos)
+***************
+*** 3954,3960 ****
+   * Return pointer to buffer in "tofree".
+   * Returns zero when out of memory.
+   */
+- /*ARGSUSED*/
+      int
+  get_cmd_args(char *prog, char *cmdline, char ***argvp, char **tofree)
+  {
+--- 3935,3940 ----
+***************
+*** 5588,5597 ****
+  /*
+   * Set the size of the window to the given width and height in pixels.
+   */
+- /*ARGSUSED*/
+      void
+! gui_mch_set_shellsize(int width, int height,
+! 	int min_width, int min_height, int base_width, int base_height,
+  	int direction)
+  {
+      RECT	workarea_rect;
+--- 5568,5581 ----
+  /*
+   * Set the size of the window to the given width and height in pixels.
+   */
+      void
+! gui_mch_set_shellsize(
+! 	int width,
+! 	int height,
+! 	int min_width UNUSED,
+! 	int min_height UNUSED,
+! 	int base_width UNUSED,
+! 	int base_height UNUSED,
+  	int direction)
+  {
+      RECT	workarea_rect;
+***************
+*** 5752,5760 ****
+  /*
+   * handle WM_IME_NOTIFY message
+   */
+- /*ARGSUSED*/
+      static LRESULT
+! _OnImeNotify(HWND hWnd, DWORD dwCommand, DWORD dwData)
+  {
+      LRESULT lResult = 0;
+      HIMC hImc;
+--- 5736,5743 ----
+  /*
+   * handle WM_IME_NOTIFY message
+   */
+      static LRESULT
+! _OnImeNotify(HWND hWnd, DWORD dwCommand, DWORD dwData UNUSED)
+  {
+      LRESULT lResult = 0;
+      HIMC hImc;
+***************
+*** 5802,5810 ****
+      return lResult;
+  }
+  
+- /*ARGSUSED*/
+      static LRESULT
+! _OnImeComposition(HWND hwnd, WPARAM dbcs, LPARAM param)
+  {
+      char_u	*ret;
+      int		len;
+--- 5785,5792 ----
+      return lResult;
+  }
+  
+      static LRESULT
+! _OnImeComposition(HWND hwnd, WPARAM dbcs UNUSED, LPARAM param)
+  {
+      char_u	*ret;
+      int		len;
+***************
+*** 6844,6856 ****
+   * pressed, return that button's ID - IDCANCEL (2), which is the button's
+   * number.
+   */
+- /*ARGSUSED*/
+      static LRESULT CALLBACK
+  dialog_callback(
+      HWND hwnd,
+      UINT message,
+      WPARAM wParam,
+!     LPARAM lParam)
+  {
+      if (message == WM_INITDIALOG)
+      {
+--- 6826,6837 ----
+   * pressed, return that button's ID - IDCANCEL (2), which is the button's
+   * number.
+   */
+      static LRESULT CALLBACK
+  dialog_callback(
+      HWND hwnd,
+      UINT message,
+      WPARAM wParam,
+!     LPARAM lParam UNUSED)
+  {
+      if (message == WM_INITDIALOG)
+      {
+***************
+*** 8536,8548 ****
+      PostMessage(beval->balloon, WM_CLOSE, 0, 0);
+  }
+  
+- /*ARGSUSED*/
+      static VOID CALLBACK
+  BevalTimerProc(
+!     HWND    hwnd,
+!     UINT    uMsg,
+!     UINT_PTR    idEvent,
+!     DWORD   dwTime)
+  {
+      POINT	pt;
+      RECT	rect;
+--- 8517,8528 ----
+      PostMessage(beval->balloon, WM_CLOSE, 0, 0);
+  }
+  
+      static VOID CALLBACK
+  BevalTimerProc(
+!     HWND	hwnd UNUSED,
+!     UINT	uMsg UNUSED,
+!     UINT_PTR    idEvent UNUSED,
+!     DWORD	dwTime)
+  {
+      POINT	pt;
+      RECT	rect;
+***************
+*** 8578,8593 ****
+      }
+  }
+  
+- /*ARGSUSED*/
+      void
+! gui_mch_disable_beval_area(BalloonEval *beval)
+  {
+      // TRACE0("gui_mch_disable_beval_area {{{");
+      KillTimer(s_textArea, BevalTimerId);
+      // TRACE0("gui_mch_disable_beval_area }}}");
+  }
+  
+- /*ARGSUSED*/
+      void
+  gui_mch_enable_beval_area(BalloonEval *beval)
+  {
+--- 8558,8571 ----
+      }
+  }
+  
+      void
+! gui_mch_disable_beval_area(BalloonEval *beval UNUSED)
+  {
+      // TRACE0("gui_mch_disable_beval_area {{{");
+      KillTimer(s_textArea, BevalTimerId);
+      // TRACE0("gui_mch_disable_beval_area }}}");
+  }
+  
+      void
+  gui_mch_enable_beval_area(BalloonEval *beval)
+  {
+***************
+*** 8619,8625 ****
+      // TRACE0("gui_mch_post_balloon }}}");
+  }
+  
+- /*ARGSUSED*/
+      BalloonEval *
+  gui_mch_create_beval_area(
+      void	*target,	/* ignored, always use s_textArea */
+--- 8597,8602 ----
+***************
+*** 8659,8667 ****
+      return beval;
+  }
+  
+- /*ARGSUSED*/
+      static void
+! Handle_WM_Notify(HWND hwnd, LPNMHDR pnmh)
+  {
+      if (pnmh->idFrom != ID_BEVAL_TOOLTIP) /* it is not our tooltip */
+  	return;
+--- 8636,8643 ----
+      return beval;
+  }
+  
+      static void
+! Handle_WM_Notify(HWND hwnd UNUSED, LPNMHDR pnmh)
+  {
+      if (pnmh->idFrom != ID_BEVAL_TOOLTIP) /* it is not our tooltip */
+  	return;
+*** ../vim-8.0.0280/src/os_mswin.c	2016-12-01 20:32:23.958023740 +0100
+--- src/os_mswin.c	2017-02-01 13:42:07.536151245 +0100
+***************
+*** 306,315 ****
+   *  2: Just restore icon (which we don't have)
+   *  3: Restore title and icon (which we don't have)
+   */
+- /*ARGSUSED*/
+      void
+! mch_restore_title(
+!     int which)
+  {
+  #ifndef FEAT_GUI_MSWIN
+      SetConsoleTitle(g_szOrigTitle);
+--- 306,313 ----
+   *  2: Just restore icon (which we don't have)
+   *  3: Restore title and icon (which we don't have)
+   */
+      void
+! mch_restore_title(int which UNUSED)
+  {
+  #ifndef FEAT_GUI_MSWIN
+      SetConsoleTitle(g_szOrigTitle);
+***************
+*** 345,357 ****
+   * When 'shellslash' set do it the other way around.
+   * Return OK or FAIL.
+   */
+- /*ARGSUSED*/
+      int
+  mch_FullName(
+      char_u	*fname,
+      char_u	*buf,
+      int		len,
+!     int		force)
+  {
+      int		nResult = FAIL;
+  
+--- 343,354 ----
+   * When 'shellslash' set do it the other way around.
+   * Return OK or FAIL.
+   */
+      int
+  mch_FullName(
+      char_u	*fname,
+      char_u	*buf,
+      int		len,
+!     int		force UNUSED)
+  {
+      int		nResult = FAIL;
+  
+***************
+*** 636,644 ****
+  }
+  
+  #if defined(FEAT_GUI_MSWIN) || defined(PROTO)
+- /*ARGSUSED*/
+      void
+! mch_settmode(int tmode)
+  {
+      /* nothing to do */
+  }
+--- 633,640 ----
+  }
+  
+  #if defined(FEAT_GUI_MSWIN) || defined(PROTO)
+      void
+! mch_settmode(int tmode UNUSED)
+  {
+      /* nothing to do */
+  }
+***************
+*** 817,826 ****
+  /*
+   * set screen mode, always fails.
+   */
+- /*ARGSUSED*/
+      int
+! mch_screenmode(
+!     char_u *arg)
+  {
+      EMSG(_(e_screenmode));
+      return FAIL;
+--- 813,820 ----
+  /*
+   * set screen mode, always fails.
+   */
+      int
+! mch_screenmode(char_u *arg UNUSED)
+  {
+      EMSG(_(e_screenmode));
+      return FAIL;
+***************
+*** 996,1005 ****
+  /*
+   * Debugging helper: expose the MCH_WRITE_DUMP stuff to other modules
+   */
+- /*ARGSUSED*/
+      void
+! DumpPutS(
+!     const char *psz)
+  {
+  # ifdef MCH_WRITE_DUMP
+      if (fdDump)
+--- 990,997 ----
+  /*
+   * Debugging helper: expose the MCH_WRITE_DUMP stuff to other modules
+   */
+      void
+! DumpPutS(const char *psz UNUSED)
+  {
+  # ifdef MCH_WRITE_DUMP
+      if (fdDump)
+***************
+*** 1173,1181 ****
+  # define PDP_RETVAL INT_PTR
+  #endif
+  
+- /*ARGSUSED*/
+      static PDP_RETVAL CALLBACK
+! PrintDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+  {
+  #ifdef FEAT_GETTEXT
+      NONCLIENTMETRICS nm;
+--- 1165,1176 ----
+  # define PDP_RETVAL INT_PTR
+  #endif
+  
+      static PDP_RETVAL CALLBACK
+! PrintDlgProc(
+! 	HWND hDlg,
+! 	UINT message,
+! 	WPARAM wParam UNUSED,
+! 	LPARAM lParam UNUSED)
+  {
+  #ifdef FEAT_GETTEXT
+      NONCLIENTMETRICS nm;
+***************
+*** 1236,1244 ****
+      return FALSE;
+  }
+  
+- /*ARGSUSED*/
+      static BOOL CALLBACK
+! AbortProc(HDC hdcPrn, int iCode)
+  {
+      MSG msg;
+  
+--- 1231,1238 ----
+      return FALSE;
+  }
+  
+      static BOOL CALLBACK
+! AbortProc(HDC hdcPrn UNUSED, int iCode UNUSED)
+  {
+      MSG msg;
+  
+***************
+*** 1683,1691 ****
+      return (ret > 0);
+  }
+  
+- /*ARGSUSED*/
+      void
+! mch_print_end(prt_settings_T *psettings)
+  {
+      EndDoc(prt_dlg.hDC);
+      if (!*bUserAbort)
+--- 1677,1684 ----
+      return (ret > 0);
+  }
+  
+      void
+! mch_print_end(prt_settings_T *psettings UNUSED)
+  {
+      EndDoc(prt_dlg.hDC);
+      if (!*bUserAbort)
+***************
+*** 2764,2775 ****
+      return pixels;
+  }
+  
+- /*ARGSUSED*/
+      static int CALLBACK
+  font_enumproc(
+      ENUMLOGFONT	    *elf,
+!     NEWTEXTMETRIC   *ntm,
+!     int		    type,
+      LPARAM	    lparam)
+  {
+      /* Return value:
+--- 2757,2767 ----
+      return pixels;
+  }
+  
+      static int CALLBACK
+  font_enumproc(
+      ENUMLOGFONT	    *elf,
+!     NEWTEXTMETRIC   *ntm UNUSED,
+!     int		    type UNUSED,
+      LPARAM	    lparam)
+  {
+      /* Return value:
+*** ../vim-8.0.0280/src/os_w32exe.c	2016-08-29 22:42:20.000000000 +0200
+--- src/os_w32exe.c	2017-02-01 13:42:23.632839303 +0100
+***************
+*** 38,50 ****
+  static void (_cdecl *pSaveInst)(HINSTANCE);
+  #endif
+  
+- /*ARGSUSED*/
+      int WINAPI
+  WinMain(
+!     HINSTANCE	hInstance,
+!     HINSTANCE	hPrevInst,
+      LPSTR	lpszCmdLine,
+!     int		nCmdShow)
+  {
+      int		argc = 0;
+      char	**argv;
+--- 38,49 ----
+  static void (_cdecl *pSaveInst)(HINSTANCE);
+  #endif
+  
+      int WINAPI
+  WinMain(
+!     HINSTANCE	hInstance UNUSED,
+!     HINSTANCE	hPrevInst UNUSED,
+      LPSTR	lpszCmdLine,
+!     int		nCmdShow UNUSED)
+  {
+      int		argc = 0;
+      char	**argv;
+*** ../vim-8.0.0280/src/winclip.c	2016-08-29 22:42:21.000000000 +0200
+--- src/winclip.c	2017-02-01 13:42:34.778139655 +0100
+***************
+*** 10,16 ****
+  /*
+   * winclip.c
+   *
+!  * Routines common to both Win16 and Win32 for clipboard handling.
+   * Also used by Cygwin, using os_unix.c.
+   */
+  
+--- 10,16 ----
+  /*
+   * winclip.c
+   *
+!  * Routines for Win32 clipboard handling.
+   * Also used by Cygwin, using os_unix.c.
+   */
+  
+***************
+*** 214,222 ****
+  /*
+   * Make vim the owner of the current selection.  Return OK upon success.
+   */
+- /*ARGSUSED*/
+      int
+! clip_mch_own_selection(VimClipboard *cbd)
+  {
+      /*
+       * Never actually own the clipboard.  If another application sets the
+--- 214,221 ----
+  /*
+   * Make vim the owner of the current selection.  Return OK upon success.
+   */
+      int
+! clip_mch_own_selection(VimClipboard *cbd UNUSED)
+  {
+      /*
+       * Never actually own the clipboard.  If another application sets the
+***************
+*** 228,236 ****
+  /*
+   * Make vim NOT the owner of the current selection.
+   */
+- /*ARGSUSED*/
+      void
+! clip_mch_lose_selection(VimClipboard *cbd)
+  {
+      /* Nothing needs to be done here */
+  }
+--- 227,234 ----
+  /*
+   * Make vim NOT the owner of the current selection.
+   */
+      void
+! clip_mch_lose_selection(VimClipboard *cbd UNUSED)
+  {
+      /* Nothing needs to be done here */
+  }
+*** ../vim-8.0.0280/src/version.c	2017-02-01 13:14:11.026177020 +0100
+--- src/version.c	2017-02-01 13:42:50.871112496 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     281,
+  /**/
+
+-- 
+An indication you must be a manager:
+You can explain to somebody the difference between "re-engineering",
+"down-sizing", "right-sizing", and "firing people's asses".
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,82 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0566
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0566
+Problem:    Setting nocompatible for the tiny version moves the cursor.
+Solution:   Use another trick to skip commands when the +eval feature is
+            present. (Christian Brabandt, closes #1630)
+Files:      runtime/defaults.vim
+
+
+*** ../vim-8.0.0565/runtime/defaults.vim	2017-04-01 16:59:25.194170493 +0200
+--- runtime/defaults.vim	2017-04-12 21:13:08.153039333 +0200
+***************
+*** 1,7 ****
+  " The default vimrc file.
+  "
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last change:	2017 Apr 01
+  "
+  " This is loaded if no vimrc file was found.
+  " Except when Vim is run with "-u NONE" or "-C".
+--- 1,7 ----
+  " The default vimrc file.
+  "
+  " Maintainer:	Bram Moolenaar <Bram@vim.org>
+! " Last change:	2017 Apr 12
+  "
+  " This is loaded if no vimrc file was found.
+  " Except when Vim is run with "-u NONE" or "-C".
+***************
+*** 28,40 ****
+  
+  " When the +eval feature is missing, the set command above will be skipped.
+  " Use a trick to reset compatible only when the +eval feature is missing.
+! if 1
+!   nnoremap : :"
+! endif
+! silent normal :set nocompatible
+! if 1
+!   nunmap :
+! endif
+  
+  " Allow backspacing over everything in insert mode.
+  set backspace=indent,eol,start
+--- 28,36 ----
+  
+  " When the +eval feature is missing, the set command above will be skipped.
+  " Use a trick to reset compatible only when the +eval feature is missing.
+! silent! while 0
+!   set nocompatible
+! silent! endwhile
+  
+  " Allow backspacing over everything in insert mode.
+  set backspace=indent,eol,start
+*** ../vim-8.0.0565/src/version.c	2017-04-15 15:22:47.508245073 +0200
+--- src/version.c	2017-04-15 15:36:41.326977831 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     566,
+  /**/
+
+-- 
+GUARD #2:  Wait a minute -- supposing two swallows carried it together?
+GUARD #1:  No, they'd have to have it on a line.
+GUARD #2:  Well, simple!  They'd just use a standard creeper!
+GUARD #1:  What, held under the dorsal guiding feathers?
+GUARD #2:  Well, why not?
+                                  The Quest for the Holy Grail (Monty Python)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

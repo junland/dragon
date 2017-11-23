@@ -1,0 +1,192 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1048
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1048
+Problem:    No test for what 8.0.1020 fixes.
+Solution:   Add test_feedinput().  Add a test. (Ozaki Kiichi, closes #2046)
+Files:      runtime/doc/eval.txt, src/evalfunc.c, src/testdir/test_timers.vim,
+            src/ui.c
+
+
+*** ../vim-8.0.1047/runtime/doc/eval.txt	2017-09-02 19:51:40.734765887 +0200
+--- runtime/doc/eval.txt	2017-09-03 15:41:07.870093382 +0200
+***************
+*** 2410,2415 ****
+--- 2410,2416 ----
+  test_alloc_fail({id}, {countdown}, {repeat})
+  				none	make memory allocation fail
+  test_autochdir()		none	enable 'autochdir' during startup
++ test_feedinput()		none	add key sequence to input buffer
+  test_garbagecollect_now()	none	free memory right now for testing
+  test_ignore_error({expr})	none	ignore a specific error
+  test_null_channel()		Channel	null value for testing
+***************
+*** 8194,8199 ****
+--- 8197,8207 ----
+  		Set a flag to enable the effect of 'autochdir' before Vim
+  		startup has finished.
+  
++ test_feedinput({string})				*test_feedinput()*
++ 		Characters in {string} are queued for processing as if they
++ 		were typed by the user. This uses a low level input buffer.
++ 		This function works only when with |+unix| or GUI is running.
++ 
+  test_garbagecollect_now()			 *test_garbagecollect_now()*
+  		Like garbagecollect(), but executed right away.  This must
+  		only be called directly to avoid any structure to exist
+*** ../vim-8.0.1047/src/evalfunc.c	2017-09-02 19:45:00.041425462 +0200
+--- src/evalfunc.c	2017-09-03 15:37:30.019391836 +0200
+***************
+*** 393,398 ****
+--- 393,399 ----
+  static void f_tempname(typval_T *argvars, typval_T *rettv);
+  static void f_test_alloc_fail(typval_T *argvars, typval_T *rettv);
+  static void f_test_autochdir(typval_T *argvars, typval_T *rettv);
++ static void f_test_feedinput(typval_T *argvars, typval_T *rettv);
+  static void f_test_override(typval_T *argvars, typval_T *rettv);
+  static void f_test_garbagecollect_now(typval_T *argvars, typval_T *rettv);
+  static void f_test_ignore_error(typval_T *argvars, typval_T *rettv);
+***************
+*** 851,856 ****
+--- 852,858 ----
+  #endif
+      {"test_alloc_fail",	3, 3, f_test_alloc_fail},
+      {"test_autochdir",	0, 0, f_test_autochdir},
++     {"test_feedinput",	1, 1, f_test_feedinput},
+      {"test_garbagecollect_now",	0, 0, f_test_garbagecollect_now},
+      {"test_ignore_error",	1, 1, f_test_ignore_error},
+  #ifdef FEAT_JOB_CHANNEL
+***************
+*** 12517,12522 ****
+--- 12519,12541 ----
+  #endif
+  }
+  
++ /*
++  * "test_feedinput()"
++  */
++     static void
++ f_test_feedinput(typval_T *argvars, typval_T *rettv UNUSED)
++ {
++ #ifdef USE_INPUT_BUF
++     char_u	*val = get_tv_string_chk(&argvars[0]);
++ 
++     if (val != NULL)
++     {
++ 	trash_input_buf();
++ 	add_to_input_buf_csi(val, (int)STRLEN(val));
++     }
++ #endif
++ }
++ 
+  /*
+   * "test_disable({name}, {val})" function
+   */
+*** ../vim-8.0.1047/src/testdir/test_timers.vim	2017-07-08 22:37:02.019229190 +0200
+--- src/testdir/test_timers.vim	2017-09-03 15:37:30.019391836 +0200
+***************
+*** 206,210 ****
+--- 206,229 ----
+    call assert_equal(3, g:call_count)
+  endfunc
+  
++ func FeedAndPeek(timer)
++   call test_feedinput('a')
++   call getchar(1)
++ endfunc
++ 
++ func Interrupt(timer)
++   call test_feedinput("\<C-C>")
++ endfunc
++ 
++ func Test_peek_and_get_char()
++   if !has('unix') && !has('gui_running')
++     return
++   endif
++   call timer_start(0, 'FeedAndPeek')
++   let intr = timer_start(100, 'Interrupt')
++   let c = getchar()
++   call assert_equal(char2nr('a'), c)
++   call timer_stop(intr)
++ endfunc
+  
+  " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.1047/src/ui.c	2017-08-16 22:45:57.689683993 +0200
+--- src/ui.c	2017-09-03 15:37:30.019391836 +0200
+***************
+*** 1651,1661 ****
+      }
+  }
+  
+- #if defined(FEAT_GUI) \
+- 	|| defined(FEAT_MOUSE_GPM) || defined(FEAT_SYSMOUSE) \
+- 	|| defined(FEAT_XCLIPBOARD) || defined(VMS) \
+- 	|| defined(FEAT_CLIENTSERVER) \
+- 	|| defined(PROTO)
+  /*
+   * Add the given bytes to the input buffer
+   * Special keys start with CSI.  A real CSI must have been translated to
+--- 1651,1656 ----
+***************
+*** 1676,1690 ****
+      while (len--)
+  	inbuf[inbufcount++] = *s++;
+  }
+- #endif
+  
+- #if ((defined(FEAT_XIM) || defined(FEAT_DND)) && defined(FEAT_GUI_GTK)) \
+- 	|| defined(FEAT_GUI_MSWIN) \
+- 	|| defined(FEAT_GUI_MAC) \
+- 	|| (defined(FEAT_MBYTE) && defined(FEAT_MBYTE_IME)) \
+- 	|| (defined(FEAT_GUI) && (!defined(USE_ON_FLY_SCROLL) \
+- 		|| defined(FEAT_MENU))) \
+- 	|| defined(PROTO)
+  /*
+   * Add "str[len]" to the input buffer while escaping CSI bytes.
+   */
+--- 1671,1677 ----
+***************
+*** 1706,1712 ****
+  	}
+      }
+  }
+- #endif
+  
+  #if defined(FEAT_HANGULIN) || defined(PROTO)
+      void
+--- 1693,1698 ----
+***************
+*** 1744,1750 ****
+  /*
+   * Read as much data from the input buffer as possible up to maxlen, and store
+   * it in buf.
+-  * Note: this function used to be Read() in unix.c
+   */
+      int
+  read_from_input_buf(char_u *buf, long maxlen)
+--- 1730,1735 ----
+*** ../vim-8.0.1047/src/version.c	2017-09-03 15:17:43.682972182 +0200
+--- src/version.c	2017-09-03 15:39:35.418647548 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1048,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+60. As your car crashes through the guardrail on a mountain road, your first
+    instinct is to search for the "back" button.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,75 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1288
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1288
+Problem:    GUI: cannot drag the statusline of a terminal window.
+Solution:   Handle the TERMINAL state. (Hirohito Higashi)
+Files:      src/gui.c
+
+
+*** ../vim-8.0.1287/src/gui.c	2017-11-09 18:33:22.404374768 +0100
+--- src/gui.c	2017-11-11 17:06:15.623146807 +0100
+***************
+*** 3118,3132 ****
+      {
+  	case NORMAL_BUSY:
+  	case OP_PENDING:
+  	case NORMAL:		checkfor = MOUSE_NORMAL;	break;
+  	case VISUAL:		checkfor = MOUSE_VISUAL;	break;
+  	case SELECTMODE:	checkfor = MOUSE_VISUAL;	break;
+  	case REPLACE:
+  	case REPLACE+LANGMAP:
+! #ifdef FEAT_VREPLACE
+  	case VREPLACE:
+  	case VREPLACE+LANGMAP:
+! #endif
+  	case INSERT:
+  	case INSERT+LANGMAP:	checkfor = MOUSE_INSERT;	break;
+  	case ASKMORE:
+--- 3118,3135 ----
+      {
+  	case NORMAL_BUSY:
+  	case OP_PENDING:
++ # ifdef FEAT_TERMINAL
++ 	case TERMINAL:
++ # endif
+  	case NORMAL:		checkfor = MOUSE_NORMAL;	break;
+  	case VISUAL:		checkfor = MOUSE_VISUAL;	break;
+  	case SELECTMODE:	checkfor = MOUSE_VISUAL;	break;
+  	case REPLACE:
+  	case REPLACE+LANGMAP:
+! # ifdef FEAT_VREPLACE
+  	case VREPLACE:
+  	case VREPLACE+LANGMAP:
+! # endif
+  	case INSERT:
+  	case INSERT+LANGMAP:	checkfor = MOUSE_INSERT;	break;
+  	case ASKMORE:
+*** ../vim-8.0.1287/src/version.c	2017-11-11 16:45:14.782308811 +0100
+--- src/version.c	2017-11-11 17:07:31.234007268 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1288,
+  /**/
+
+-- 
+OLD WOMAN: Well, how did you become king, then?
+ARTHUR: The Lady of the Lake, her arm clad in the purest shimmering samite,
+        held Excalibur aloft from the bosom of the water to signify by Divine
+        Providence ...  that I, Arthur, was to carry Excalibur ...  That is
+        why I am your king!
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,93 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1015
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1015 (after 8.0.1013)
+Problem:    Missing update to terminal test.
+Solution:   Add the changes to the test.
+Files:      src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.1014/src/testdir/test_terminal.vim	2017-08-29 20:42:01.849092215 +0200
+--- src/testdir/test_terminal.vim	2017-08-29 22:38:47.410458506 +0200
+***************
+*** 84,89 ****
+--- 84,90 ----
+  
+  func Test_terminal_hide_buffer()
+    let buf = Run_shell_in_terminal({})
++   setlocal bufhidden=hide
+    quit
+    for nr in range(1, winnr('$'))
+      call assert_notequal(winbufnr(nr), buf)
+***************
+*** 356,368 ****
+    call assert_equal(1, winnr('$'))
+  
+    exe 'terminal ++open ' . cmd
+!   close
+    call WaitFor("winnr('$') == 2", waittime)
+    call assert_equal(2, winnr('$'))
+    bwipe
+  
+    call term_start(cmd, {'term_finish': 'open'})
+!   close
+    call WaitFor("winnr('$') == 2", waittime)
+    call assert_equal(2, winnr('$'))
+    bwipe
+--- 357,369 ----
+    call assert_equal(1, winnr('$'))
+  
+    exe 'terminal ++open ' . cmd
+!   close!
+    call WaitFor("winnr('$') == 2", waittime)
+    call assert_equal(2, winnr('$'))
+    bwipe
+  
+    call term_start(cmd, {'term_finish': 'open'})
+!   close!
+    call WaitFor("winnr('$') == 2", waittime)
+    call assert_equal(2, winnr('$'))
+    bwipe
+***************
+*** 385,391 ****
+    call assert_fails("call term_start(cmd, {'term_opencmd': 'split % and %d'})", 'E475:')
+  
+    call term_start(cmd, {'term_finish': 'open', 'term_opencmd': '4split | buffer %d'})
+!   close
+    call WaitFor("winnr('$') == 2", waittime)
+    call assert_equal(2, winnr('$'))
+    call assert_equal(4, winheight(0))
+--- 386,392 ----
+    call assert_fails("call term_start(cmd, {'term_opencmd': 'split % and %d'})", 'E475:')
+  
+    call term_start(cmd, {'term_finish': 'open', 'term_opencmd': '4split | buffer %d'})
+!   close!
+    call WaitFor("winnr('$') == 2", waittime)
+    call assert_equal(2, winnr('$'))
+    call assert_equal(4, winheight(0))
+*** ../vim-8.0.1014/src/version.c	2017-08-30 13:22:24.544288824 +0200
+--- src/version.c	2017-08-30 13:31:16.216712477 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1015,
+  /**/
+
+-- 
+Give a man a computer program and you give him a headache,
+but teach him to program computers and you give him the power
+to create headaches for others for the rest of his life...
+        R. B. Forest
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

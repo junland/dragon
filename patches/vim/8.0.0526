@@ -1,0 +1,80 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0526
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0526
+Problem:    Coverity complains about possible negative value.
+Solution:   Check return value of ftell() not to be negative.
+Files:      src/os_unix.c
+
+
+*** ../vim-8.0.0525/src/os_unix.c	2017-03-25 20:16:23.652639953 +0100
+--- src/os_unix.c	2017-03-30 21:15:31.604133703 +0200
+***************
+*** 6006,6011 ****
+--- 6006,6012 ----
+  {
+      int		i;
+      size_t	len;
++     long	llen;
+      char_u	*p;
+      int		dir;
+  
+***************
+*** 6292,6300 ****
+  	goto notfound;
+      }
+      fseek(fd, 0L, SEEK_END);
+!     len = ftell(fd);			/* get size of temp file */
+      fseek(fd, 0L, SEEK_SET);
+!     buffer = alloc(len + 1);
+      if (buffer == NULL)
+      {
+  	/* out of memory */
+--- 6293,6305 ----
+  	goto notfound;
+      }
+      fseek(fd, 0L, SEEK_END);
+!     llen = ftell(fd);			/* get size of temp file */
+      fseek(fd, 0L, SEEK_SET);
+!     if (llen < 0)
+! 	/* just in case ftell() would fail */
+! 	buffer = NULL;
+!     else
+! 	buffer = alloc(llen + 1);
+      if (buffer == NULL)
+      {
+  	/* out of memory */
+***************
+*** 6303,6308 ****
+--- 6308,6314 ----
+  	fclose(fd);
+  	return FAIL;
+      }
++     len = llen;
+      i = fread((char *)buffer, 1, len, fd);
+      fclose(fd);
+      mch_remove(tempname);
+*** ../vim-8.0.0525/src/version.c	2017-03-29 21:26:57.347685534 +0200
+--- src/version.c	2017-03-30 21:12:17.449330352 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     526,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+237. You tattoo your email address on your forehead.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,108 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0032
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0032
+Problem:    Tests may change the input file when something goes wrong.
+Solution:   Avoid writing the input file.
+Files:      src/testdir/test51.in, src/testdir/test67.in,
+            src/testdir/test97.in, src/testdir/test_tabpage.vim
+
+
+*** ../vim-8.0.0031/src/testdir/test51.in	2012-11-15 22:30:32.000000000 +0100
+--- src/testdir/test51.in	2016-10-12 16:53:02.513047817 +0200
+***************
+*** 24,30 ****
+  :hi Crash term='asdf
+  :redir END
+  :" filter ctermfg and ctermbg, the numbers depend on the terminal
+! :e test.out
+  :%s/ctermfg=\d*/ctermfg=2/
+  :%s/ctermbg=\d*/ctermbg=3/
+  :" filter out possibly translated error message
+--- 24,30 ----
+  :hi Crash term='asdf
+  :redir END
+  :" filter ctermfg and ctermbg, the numbers depend on the terminal
+! :e! test.out
+  :%s/ctermfg=\d*/ctermfg=2/
+  :%s/ctermbg=\d*/ctermbg=3/
+  :" filter out possibly translated error message
+*** ../vim-8.0.0031/src/testdir/test67.in	2012-11-15 22:30:49.000000000 +0100
+--- src/testdir/test67.in	2016-10-12 16:54:27.692445533 +0200
+***************
+*** 24,30 ****
+  :call add(results, "#BufEnter#<buffer>: " . exists("#BufEnter#<buffer>"))
+  :edit testfile2.test
+  :call add(results, "#BufEnter#<buffer>: " . exists("#BufEnter#<buffer>"))
+! :e test.out
+  :call append(0, results)
+  :$d
+  :w
+--- 24,30 ----
+  :call add(results, "#BufEnter#<buffer>: " . exists("#BufEnter#<buffer>"))
+  :edit testfile2.test
+  :call add(results, "#BufEnter#<buffer>: " . exists("#BufEnter#<buffer>"))
+! :e! test.out
+  :call append(0, results)
+  :$d
+  :w
+*** ../vim-8.0.0031/src/testdir/test97.in	2014-05-08 11:42:37.000000000 +0200
+--- src/testdir/test97.in	2016-10-12 16:55:32.683985962 +0200
+***************
+*** 7,13 ****
+  :set shell=doesnotexist
+  :" consistent sorting of file names
+  :set nofileignorecase
+! :e test.out
+  :$put =glob('Xxx\{')
+  :$put =glob('Xxx\$')
+  :w! Xxx{
+--- 7,13 ----
+  :set shell=doesnotexist
+  :" consistent sorting of file names
+  :set nofileignorecase
+! :e! test.out
+  :$put =glob('Xxx\{')
+  :$put =glob('Xxx\$')
+  :w! Xxx{
+*** ../vim-8.0.0031/src/testdir/test_tabpage.vim	2016-09-06 21:31:11.000000000 +0200
+--- src/testdir/test_tabpage.vim	2016-09-29 20:07:58.098576056 +0200
+***************
+*** 11,16 ****
+--- 11,17 ----
+    0tabnew
+    1tabnew
+    $tabnew
++   %del
+    tabdo call append(line('$'), tabpagenr())
+    tabclose! 2
+    tabrewind
+*** ../vim-8.0.0031/src/version.c	2016-10-12 17:45:13.642857417 +0200
+--- src/version.c	2016-10-12 17:51:56.632003323 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     32,
+  /**/
+
+-- 
+ARTHUR:          What does it say?
+BROTHER MAYNARD: It reads ... "Here may be found the last words of Joseph of
+                 Aramathea." "He who is valorous and pure of heart may find
+                 the Holy Grail in the aaaaarrrrrrggghhh..."
+ARTHUR:          What?
+BROTHER MAYNARD: "The Aaaaarrrrrrggghhh..."
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

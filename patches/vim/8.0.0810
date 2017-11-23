@@ -1,0 +1,49 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0810
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0810
+Problem:    MS-Windows: tests still hang.
+Solution:   Only create the XfakeHOME directory if it does not exist yet.
+Files:      src/testdir/setup.vim
+
+
+*** ../vim-8.0.0809/src/testdir/setup.vim	2017-07-29 22:21:14.203653289 +0200
+--- src/testdir/setup.vim	2017-07-30 13:24:01.126775974 +0200
+***************
+*** 24,28 ****
+    " Make sure $HOME does not get read or written.
+    " It must exist, gnome tries to create $HOME/.gnome2
+    let $HOME = getcwd() . '/XfakeHOME'
+!   call mkdir($HOME)
+  endif
+--- 24,30 ----
+    " Make sure $HOME does not get read or written.
+    " It must exist, gnome tries to create $HOME/.gnome2
+    let $HOME = getcwd() . '/XfakeHOME'
+!   if !isdirectory($HOME)
+!     call mkdir($HOME)
+!   endif
+  endif
+*** ../vim-8.0.0809/src/version.c	2017-07-29 23:01:53.630564352 +0200
+--- src/version.c	2017-07-30 13:24:48.794445536 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     810,
+  /**/
+
+-- 
+Eight Megabytes And Continually Swapping.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

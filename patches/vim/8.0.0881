@@ -1,0 +1,128 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0881
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0881
+Problem:    win32.mak no longer included in Windows SDK.
+Solution:   Do not include win32.mak. (Ken Takata)
+Files:      src/GvimExt/Makefile, src/Make_mvc.mak
+
+
+*** ../vim-8.0.0880/src/GvimExt/Makefile	2017-06-13 15:22:08.966768971 +0200
+--- src/GvimExt/Makefile	2017-08-06 17:27:37.838566016 +0200
+***************
+*** 36,43 ****
+  
+  !ifdef SDK_INCLUDE_DIR
+  !include $(SDK_INCLUDE_DIR)\Win32.mak
+! !else
+  !include <Win32.mak>
+  !endif
+  
+  # include CPUARG
+--- 36,51 ----
+  
+  !ifdef SDK_INCLUDE_DIR
+  !include $(SDK_INCLUDE_DIR)\Win32.mak
+! !elseif "$(USE_WIN32MAK)"=="yes"
+  !include <Win32.mak>
++ !else
++ cc = cl
++ link = link
++ rc = rc
++ cflags = -nologo -c
++ lflags = -incremental:no -nologo
++ rcflags = /r
++ olelibsdll = ole32.lib uuid.lib oleaut32.lib user32.lib gdi32.lib advapi32.lib
+  !endif
+  
+  # include CPUARG
+*** ../vim-8.0.0880/src/Make_mvc.mak	2017-07-28 14:19:15.897799623 +0200
+--- src/Make_mvc.mak	2017-08-06 17:30:30.401305912 +0200
+***************
+*** 15,21 ****
+  # This will build the console version of Vim with no additional interfaces.
+  # To add features, define any of the following:
+  #
+! # 	For MSVC 11 you need to specify where the Win32.mak file is, e.g.:
+  # 	   SDK_INCLUDE_DIR="C:\Program Files\Microsoft SDKs\Windows\v7.1\Include"
+  #
+  #	!!!!  After changing features do "nmake clean" first  !!!!
+--- 15,22 ----
+  # This will build the console version of Vim with no additional interfaces.
+  # To add features, define any of the following:
+  #
+! # 	For MSVC 11, if you want to include Win32.mak, you need to specify
+! # 	where the file is, e.g.:
+  # 	   SDK_INCLUDE_DIR="C:\Program Files\Microsoft SDKs\Windows\v7.1\Include"
+  #
+  #	!!!!  After changing features do "nmake clean" first  !!!!
+***************
+*** 212,218 ****
+  OBJDIR = $(OBJDIR)d
+  !endif
+  
+! # Win32.mak requires that CPU be set appropriately.
+  # To cross-compile for Win64, set CPU=AMD64 or CPU=IA64.
+  
+  !ifdef PROCESSOR_ARCHITECTURE
+--- 213,219 ----
+  OBJDIR = $(OBJDIR)d
+  !endif
+  
+! # If you include Win32.mak, it requires that CPU be set appropriately.
+  # To cross-compile for Win64, set CPU=AMD64 or CPU=IA64.
+  
+  !ifdef PROCESSOR_ARCHITECTURE
+***************
+*** 253,264 ****
+  !endif
+  
+  
+! # Get all sorts of useful, standard macros from the Platform SDK.
+  
+  !ifdef SDK_INCLUDE_DIR
+  !include $(SDK_INCLUDE_DIR)\Win32.mak
+! !else
+  !include <Win32.mak>
+  !endif
+  
+  
+--- 254,268 ----
+  !endif
+  
+  
+! # Get all sorts of useful, standard macros from the Platform SDK,
+! # if SDK_INCLUDE_DIR is set or USE_WIN32MAK is set to "yes".
+  
+  !ifdef SDK_INCLUDE_DIR
+  !include $(SDK_INCLUDE_DIR)\Win32.mak
+! !elseif "$(USE_WIN32MAK)"=="yes"
+  !include <Win32.mak>
++ !else
++ link = link
+  !endif
+  
+  
+*** ../vim-8.0.0880/src/version.c	2017-08-06 17:05:47.220142038 +0200
+--- src/version.c	2017-08-06 17:31:18.988951157 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     881,
+  /**/
+
+-- 
+Why isn't there mouse-flavored cat food?
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,767 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0885
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0885
+Problem:    Terminal window scrollback is stored inefficiently.
+Solution:   Store the text in the Vim buffer.
+Files:      src/terminal.c, src/testdir/test_terminal.vim
+
+
+*** ../vim-8.0.0884/src/terminal.c	2017-08-06 19:06:59.579629273 +0200
+--- src/terminal.c	2017-08-06 21:19:34.611813432 +0200
+***************
+*** 36,43 ****
+   * that buffer, attributes come from the scrollback buffer tl_scrollback.
+   *
+   * TODO:
+-  * - For the scrollback buffer store lines in the buffer, only attributes in
+-  *   tl_scrollback.
+   * - When the job ends:
+   *   - Need an option or argument to drop the window+buffer right away, to be
+   *     used for a shell or Vim. 'termfinish'; "close", "open" (open window when
+--- 36,41 ----
+***************
+*** 97,105 ****
+  
+  #include "libvterm/include/vterm.h"
+  
+  typedef struct sb_line_S {
+!     int		    sb_cols;	/* can differ per line */
+!     VTermScreenCell *sb_cells;	/* allocated */
+  } sb_line_T;
+  
+  /* typedef term_T in structs.h */
+--- 95,110 ----
+  
+  #include "libvterm/include/vterm.h"
+  
++ /* This is VTermScreenCell without the characters, thus much smaller. */
++ typedef struct {
++   VTermScreenCellAttrs	attrs;
++   char			width;
++   VTermColor		fg, bg;
++ } cellattr_T;
++ 
+  typedef struct sb_line_S {
+!     int		sb_cols;	/* can differ per line */
+!     cellattr_T	*sb_cells;	/* allocated */
+  } sb_line_T;
+  
+  /* typedef term_T in structs.h */
+***************
+*** 688,716 ****
+   * Add the last line of the scrollback buffer to the buffer in the window.
+   */
+      static void
+! add_scrollback_line_to_buffer(term_T *term)
+  {
+      linenr_T	    lnum = term->tl_scrollback.ga_len - 1;
+-     sb_line_T	    *line = (sb_line_T *)term->tl_scrollback.ga_data + lnum;
+-     garray_T	    ga;
+-     int		    c;
+-     int		    col;
+-     int		    i;
+- 
+-     ga_init2(&ga, 1, 100);
+-     for (col = 0; col < line->sb_cols; col += line->sb_cells[col].width)
+-     {
+- 	if (ga_grow(&ga, MB_MAXBYTES) == FAIL)
+- 	    goto failed;
+- 	for (i = 0; (c = line->sb_cells[col].chars[i]) > 0 || i == 0; ++i)
+- 	    ga.ga_len += mb_char2bytes(c == NUL ? ' ' : c,
+- 					 (char_u *)ga.ga_data + ga.ga_len);
+-     }
+-     if (ga_grow(&ga, 1) == FAIL)
+- 	goto failed;
+-     *((char_u *)ga.ga_data + ga.ga_len) = NUL;
+-     ml_append_buf(term->tl_buffer, lnum, ga.ga_data, ga.ga_len + 1, FALSE);
+  
+      if (lnum == 0)
+      {
+  	/* Delete the empty line that was in the empty buffer. */
+--- 693,703 ----
+   * Add the last line of the scrollback buffer to the buffer in the window.
+   */
+      static void
+! add_scrollback_line_to_buffer(term_T *term, char_u *text, int len)
+  {
+      linenr_T	    lnum = term->tl_scrollback.ga_len - 1;
+  
++     ml_append_buf(term->tl_buffer, lnum, text, len + 1, FALSE);
+      if (lnum == 0)
+      {
+  	/* Delete the empty line that was in the empty buffer. */
+***************
+*** 718,731 ****
+  	ml_delete(2, FALSE);
+  	curbuf = curwin->w_buffer;
+      }
+- 
+- failed:
+-     ga_clear(&ga);
+  }
+  
+  /*
+   * Add the current lines of the terminal to scrollback and to the buffer.
+!  * Called after the job has ended and when switching to Terminal mode.
+   */
+      static void
+  move_terminal_to_buffer(term_T *term)
+--- 705,715 ----
+  	ml_delete(2, FALSE);
+  	curbuf = curwin->w_buffer;
+      }
+  }
+  
+  /*
+   * Add the current lines of the terminal to scrollback and to the buffer.
+!  * Called after the job has ended and when switching to Terminal-Normal mode.
+   */
+      static void
+  move_terminal_to_buffer(term_T *term)
+***************
+*** 735,741 ****
+      int		    lines_skipped = 0;
+      VTermPos	    pos;
+      VTermScreenCell cell;
+!     VTermScreenCell *p;
+      VTermScreen	    *screen;
+  
+      if (term->tl_vterm == NULL)
+--- 719,725 ----
+      int		    lines_skipped = 0;
+      VTermPos	    pos;
+      VTermScreenCell cell;
+!     cellattr_T	    *p;
+      VTermScreen	    *screen;
+  
+      if (term->tl_vterm == NULL)
+***************
+*** 766,793 ****
+  		    line->sb_cells = NULL;
+  		    ++term->tl_scrollback.ga_len;
+  
+! 		    add_scrollback_line_to_buffer(term);
+  		}
+  	    }
+  
+! 	    p = (VTermScreenCell *)alloc((int)sizeof(VTermScreenCell) * len);
+  	    if (p != NULL && ga_grow(&term->tl_scrollback, 1) == OK)
+  	    {
+! 		sb_line_T *line = (sb_line_T *)term->tl_scrollback.ga_data
+  						  + term->tl_scrollback.ga_len;
+  
+! 		for (pos.col = 0; pos.col < len; ++pos.col)
+  		{
+  		    if (vterm_screen_get_cell(screen, pos, &cell) == 0)
+! 			vim_memset(p + pos.col, 0, sizeof(cell));
+  		    else
+! 			p[pos.col] = cell;
+  		}
+  		line->sb_cols = len;
+  		line->sb_cells = p;
+  		++term->tl_scrollback.ga_len;
+  
+! 		add_scrollback_line_to_buffer(term);
+  	    }
+  	    else
+  		vim_free(p);
+--- 750,810 ----
+  		    line->sb_cells = NULL;
+  		    ++term->tl_scrollback.ga_len;
+  
+! 		    add_scrollback_line_to_buffer(term, (char_u *)"", 0);
+  		}
+  	    }
+  
+! 	    p = (cellattr_T *)alloc((int)sizeof(cellattr_T) * len);
+  	    if (p != NULL && ga_grow(&term->tl_scrollback, 1) == OK)
+  	    {
+! 		garray_T    ga;
+! 		int	    width;
+! 		sb_line_T   *line = (sb_line_T *)term->tl_scrollback.ga_data
+  						  + term->tl_scrollback.ga_len;
+  
+! 		ga_init2(&ga, 1, 100);
+! 		for (pos.col = 0; pos.col < len; pos.col += width)
+  		{
+  		    if (vterm_screen_get_cell(screen, pos, &cell) == 0)
+! 		    {
+! 			width = 1;
+! 			vim_memset(p + pos.col, 0, sizeof(cellattr_T));
+! 			if (ga_grow(&ga, 1) == OK)
+! 			    ga.ga_len += mb_char2bytes(' ',
+! 					     (char_u *)ga.ga_data + ga.ga_len);
+! 		    }
+  		    else
+! 		    {
+! 			width = cell.width;
+! 
+! 			p[pos.col].width = cell.width;
+! 			p[pos.col].attrs = cell.attrs;
+! 			p[pos.col].fg = cell.fg;
+! 			p[pos.col].bg = cell.bg;
+! 
+! 			if (ga_grow(&ga, MB_MAXBYTES) == OK)
+! 			{
+! 			    int	    i;
+! 			    int	    c;
+! 
+! 			    for (i = 0; (c = cell.chars[i]) > 0 || i == 0; ++i)
+! 				ga.ga_len += mb_char2bytes(c == NUL ? ' ' : c,
+! 					     (char_u *)ga.ga_data + ga.ga_len);
+! 			}
+! 		    }
+  		}
+  		line->sb_cols = len;
+  		line->sb_cells = p;
+  		++term->tl_scrollback.ga_len;
+  
+! 		if (ga_grow(&ga, 1) == FAIL)
+! 		    add_scrollback_line_to_buffer(term, (char_u *)"", 0);
+! 		else
+! 		{
+! 		    *((char_u *)ga.ga_data + ga.ga_len) = NUL;
+! 		    add_scrollback_line_to_buffer(term, ga.ga_data, ga.ga_len);
+! 		}
+! 		ga_clear(&ga);
+  	    }
+  	    else
+  		vim_free(p);
+***************
+*** 1312,1324 ****
+      term_T	*term = (term_T *)user;
+  
+      /* TODO: Limit the number of lines that are stored. */
+-     /* TODO: put the text in the buffer. */
+      if (ga_grow(&term->tl_scrollback, 1) == OK)
+      {
+! 	VTermScreenCell *p = NULL;
+  	int		len = 0;
+  	int		i;
+  	sb_line_T	*line;
+  
+  	/* do not store empty cells at the end */
+  	for (i = 0; i < cols; ++i)
+--- 1329,1343 ----
+      term_T	*term = (term_T *)user;
+  
+      /* TODO: Limit the number of lines that are stored. */
+      if (ga_grow(&term->tl_scrollback, 1) == OK)
+      {
+! 	cellattr_T	*p = NULL;
+  	int		len = 0;
+  	int		i;
++ 	int		c;
++ 	int		col;
+  	sb_line_T	*line;
++ 	garray_T	ga;
+  
+  	/* do not store empty cells at the end */
+  	for (i = 0; i < cols; ++i)
+***************
+*** 1326,1334 ****
+  		len = i + 1;
+  
+  	if (len > 0)
+! 	    p = (VTermScreenCell *)alloc((int)sizeof(VTermScreenCell) * len);
+  	if (p != NULL)
+! 	    mch_memmove(p, cells, sizeof(VTermScreenCell) * len);
+  
+  	line = (sb_line_T *)term->tl_scrollback.ga_data
+  						  + term->tl_scrollback.ga_len;
+--- 1345,1378 ----
+  		len = i + 1;
+  
+  	if (len > 0)
+! 	    p = (cellattr_T *)alloc((int)sizeof(cellattr_T) * len);
+  	if (p != NULL)
+! 	{
+! 	    ga_init2(&ga, 1, 100);
+! 	    for (col = 0; col < len; col += cells[col].width)
+! 	    {
+! 		if (ga_grow(&ga, MB_MAXBYTES) == FAIL)
+! 		{
+! 		    ga.ga_len = 0;
+! 		    break;
+! 		}
+! 		for (i = 0; (c = cells[col].chars[i]) > 0 || i == 0; ++i)
+! 		    ga.ga_len += mb_char2bytes(c == NUL ? ' ' : c,
+! 					     (char_u *)ga.ga_data + ga.ga_len);
+! 		p[col].width = cells[col].width;
+! 		p[col].attrs = cells[col].attrs;
+! 		p[col].fg = cells[col].fg;
+! 		p[col].bg = cells[col].bg;
+! 	    }
+! 	}
+! 	if (ga_grow(&ga, 1) == FAIL)
+! 	    add_scrollback_line_to_buffer(term, (char_u *)"", 0);
+! 	else
+! 	{
+! 	    *((char_u *)ga.ga_data + ga.ga_len) = NUL;
+! 	    add_scrollback_line_to_buffer(term, ga.ga_data, ga.ga_len);
+! 	}
+! 	ga_clear(&ga);
+  
+  	line = (sb_line_T *)term->tl_scrollback.ga_data
+  						  + term->tl_scrollback.ga_len;
+***************
+*** 1336,1343 ****
+  	line->sb_cells = p;
+  	++term->tl_scrollback.ga_len;
+  	++term->tl_scrollback_scrolled;
+- 
+- 	add_scrollback_line_to_buffer(term);
+      }
+      return 0; /* ignored */
+  }
+--- 1380,1385 ----
+***************
+*** 1510,1528 ****
+   * Convert the attributes of a vterm cell into an attribute index.
+   */
+      static int
+! cell2attr(VTermScreenCell *cell)
+  {
+      int attr = 0;
+  
+!     if (cell->attrs.bold)
+  	attr |= HL_BOLD;
+!     if (cell->attrs.underline)
+  	attr |= HL_UNDERLINE;
+!     if (cell->attrs.italic)
+  	attr |= HL_ITALIC;
+!     if (cell->attrs.strike)
+  	attr |= HL_STANDOUT;
+!     if (cell->attrs.reverse)
+  	attr |= HL_INVERSE;
+  
+  #ifdef FEAT_GUI
+--- 1552,1570 ----
+   * Convert the attributes of a vterm cell into an attribute index.
+   */
+      static int
+! cell2attr(VTermScreenCellAttrs cellattrs, VTermColor cellfg, VTermColor cellbg)
+  {
+      int attr = 0;
+  
+!     if (cellattrs.bold)
+  	attr |= HL_BOLD;
+!     if (cellattrs.underline)
+  	attr |= HL_UNDERLINE;
+!     if (cellattrs.italic)
+  	attr |= HL_ITALIC;
+!     if (cellattrs.strike)
+  	attr |= HL_STANDOUT;
+!     if (cellattrs.reverse)
+  	attr |= HL_INVERSE;
+  
+  #ifdef FEAT_GUI
+***************
+*** 1530,1537 ****
+      {
+  	guicolor_T fg, bg;
+  
+! 	fg = gui_mch_get_rgb_color(cell->fg.red, cell->fg.green, cell->fg.blue);
+! 	bg = gui_mch_get_rgb_color(cell->bg.red, cell->bg.green, cell->bg.blue);
+  	return get_gui_attr_idx(attr, fg, bg);
+      }
+      else
+--- 1572,1579 ----
+      {
+  	guicolor_T fg, bg;
+  
+! 	fg = gui_mch_get_rgb_color(cellfg.red, cellfg.green, cellfg.blue);
+! 	bg = gui_mch_get_rgb_color(cellbg.red, cellbg.green, cellbg.blue);
+  	return get_gui_attr_idx(attr, fg, bg);
+      }
+      else
+***************
+*** 1541,1548 ****
+      {
+  	guicolor_T fg, bg;
+  
+! 	fg = gui_get_rgb_color_cmn(cell->fg.red, cell->fg.green, cell->fg.blue);
+! 	bg = gui_get_rgb_color_cmn(cell->bg.red, cell->bg.green, cell->bg.blue);
+  
+  	return get_tgc_attr_idx(attr, fg, bg);
+      }
+--- 1583,1590 ----
+      {
+  	guicolor_T fg, bg;
+  
+! 	fg = gui_get_rgb_color_cmn(cellfg.red, cellfg.green, cellfg.blue);
+! 	bg = gui_get_rgb_color_cmn(cellbg.red, cellbg.green, cellbg.blue);
+  
+  	return get_tgc_attr_idx(attr, fg, bg);
+      }
+***************
+*** 1550,1557 ****
+  #endif
+      {
+  	int bold = MAYBE;
+! 	int fg = color2index(&cell->fg, TRUE, &bold);
+! 	int bg = color2index(&cell->bg, FALSE, &bold);
+  
+  	/* with 8 colors set the bold attribute to get a bright foreground */
+  	if (bold == TRUE)
+--- 1592,1599 ----
+  #endif
+      {
+  	int bold = MAYBE;
+! 	int fg = color2index(&cellfg, TRUE, &bold);
+! 	int bg = color2index(&cellbg, FALSE, &bold);
+  
+  	/* with 8 colors set the bold attribute to get a bright foreground */
+  	if (bold == TRUE)
+***************
+*** 1660,1666 ****
+  		    ScreenLines[off] = c;
+  #endif
+  		}
+! 		ScreenAttrs[off] = cell2attr(&cell);
+  
+  		++pos.col;
+  		++off;
+--- 1702,1708 ----
+  		    ScreenLines[off] = c;
+  #endif
+  		}
+! 		ScreenAttrs[off] = cell2attr(cell.attrs, cell.fg, cell.bg);
+  
+  		++pos.col;
+  		++off;
+***************
+*** 1734,1748 ****
+      int
+  term_get_attr(buf_T *buf, linenr_T lnum, int col)
+  {
+!     term_T *term = buf->b_term;
+!     sb_line_T *line;
+  
+      if (lnum > term->tl_scrollback.ga_len)
+  	return 0;
+      line = (sb_line_T *)term->tl_scrollback.ga_data + lnum - 1;
+      if (col >= line->sb_cols)
+  	return 0;
+!     return cell2attr(line->sb_cells + col);
+  }
+  
+  /*
+--- 1776,1792 ----
+      int
+  term_get_attr(buf_T *buf, linenr_T lnum, int col)
+  {
+!     term_T	*term = buf->b_term;
+!     sb_line_T	*line;
+!     cellattr_T	*cellattr;
+  
+      if (lnum > term->tl_scrollback.ga_len)
+  	return 0;
+      line = (sb_line_T *)term->tl_scrollback.ga_data + lnum - 1;
+      if (col >= line->sb_cols)
+  	return 0;
+!     cellattr = line->sb_cells + col;
+!     return cell2attr(cellattr->attrs, cellattr->fg, cellattr->bg);
+  }
+  
+  /*
+***************
+*** 2086,2106 ****
+      VTermPos	    pos;
+      list_T	    *l;
+      term_T	    *term;
+  
+      if (rettv_list_alloc(rettv) == FAIL)
+  	return;
+      if (buf == NULL)
+  	return;
+      term = buf->b_term;
+-     if (term->tl_vterm != NULL)
+- 	screen = vterm_obtain_screen(term->tl_vterm);
+  
+      l = rettv->vval.v_list;
+      pos.row = get_row_number(&argvars[1], term);
+      for (pos.col = 0; pos.col < term->tl_cols; )
+      {
+  	dict_T		*dcell;
+! 	VTermScreenCell cell;
+  	char_u		rgb[8];
+  	char_u		mbs[MB_MAXBYTES * VTERM_MAX_CHARS_PER_CELL + 1];
+  	int		off = 0;
+--- 2130,2165 ----
+      VTermPos	    pos;
+      list_T	    *l;
+      term_T	    *term;
++     char_u	    *p;
++     sb_line_T	    *line;
+  
+      if (rettv_list_alloc(rettv) == FAIL)
+  	return;
+      if (buf == NULL)
+  	return;
+      term = buf->b_term;
+  
+      l = rettv->vval.v_list;
+      pos.row = get_row_number(&argvars[1], term);
++ 
++     if (term->tl_vterm != NULL)
++ 	screen = vterm_obtain_screen(term->tl_vterm);
++     else
++     {
++ 	linenr_T	lnum = pos.row + term->tl_scrollback_scrolled;
++ 
++ 	if (lnum < 0 || lnum >= term->tl_scrollback.ga_len)
++ 	    return;
++ 	p = ml_get_buf(buf, lnum + 1, FALSE);
++ 	line = (sb_line_T *)term->tl_scrollback.ga_data + lnum;
++     }
++ 
+      for (pos.col = 0; pos.col < term->tl_cols; )
+      {
+  	dict_T		*dcell;
+! 	int		width;
+! 	VTermScreenCellAttrs attrs;
+! 	VTermColor	fg, bg;
+  	char_u		rgb[8];
+  	char_u		mbs[MB_MAXBYTES * VTERM_MAX_CHARS_PER_CELL + 1];
+  	int		off = 0;
+***************
+*** 2108,2150 ****
+  
+  	if (screen == NULL)
+  	{
+! 	    linenr_T lnum = pos.row + term->tl_scrollback_scrolled;
+! 	    sb_line_T *line;
+  
+  	    /* vterm has finished, get the cell from scrollback */
+- 	    if (lnum < 0 || lnum >= term->tl_scrollback.ga_len)
+- 		break;
+- 	    line = (sb_line_T *)term->tl_scrollback.ga_data + lnum;
+  	    if (pos.col >= line->sb_cols)
+  		break;
+! 	    cell = line->sb_cells[pos.col];
+  	}
+! 	else if (vterm_screen_get_cell(screen, pos, &cell) == 0)
+! 	    break;
+! 	dcell = dict_alloc();
+! 	list_append_dict(l, dcell);
+! 
+! 	for (i = 0; i < VTERM_MAX_CHARS_PER_CELL; ++i)
+  	{
+! 	    if (cell.chars[i] == 0)
+  		break;
+! 	    off += (*utf_char2bytes)((int)cell.chars[i], mbs + off);
+  	}
+! 	mbs[off] = NUL;
+  	dict_add_nr_str(dcell, "chars", 0, mbs);
+  
+  	vim_snprintf((char *)rgb, 8, "#%02x%02x%02x",
+! 				     cell.fg.red, cell.fg.green, cell.fg.blue);
+  	dict_add_nr_str(dcell, "fg", 0, rgb);
+  	vim_snprintf((char *)rgb, 8, "#%02x%02x%02x",
+! 				     cell.bg.red, cell.bg.green, cell.bg.blue);
+  	dict_add_nr_str(dcell, "bg", 0, rgb);
+  
+! 	dict_add_nr_str(dcell, "attr", cell2attr(&cell), NULL);
+! 	dict_add_nr_str(dcell, "width", cell.width, NULL);
+  
+  	++pos.col;
+! 	if (cell.width == 2)
+  	    ++pos.col;
+      }
+  }
+--- 2167,2223 ----
+  
+  	if (screen == NULL)
+  	{
+! 	    cellattr_T	*cellattr;
+! 	    int		len;
+  
+  	    /* vterm has finished, get the cell from scrollback */
+  	    if (pos.col >= line->sb_cols)
+  		break;
+! 	    cellattr = line->sb_cells + pos.col;
+! 	    width = cellattr->width;
+! 	    attrs = cellattr->attrs;
+! 	    fg = cellattr->fg;
+! 	    bg = cellattr->bg;
+! 	    len = MB_PTR2LEN(p);
+! 	    mch_memmove(mbs, p, len);
+! 	    mbs[len] = NUL;
+! 	    p += len;
+  	}
+! 	else
+  	{
+! 	    VTermScreenCell cell;
+! 	    if (vterm_screen_get_cell(screen, pos, &cell) == 0)
+  		break;
+! 	    for (i = 0; i < VTERM_MAX_CHARS_PER_CELL; ++i)
+! 	    {
+! 		if (cell.chars[i] == 0)
+! 		    break;
+! 		off += (*utf_char2bytes)((int)cell.chars[i], mbs + off);
+! 	    }
+! 	    mbs[off] = NUL;
+! 	    width = cell.width;
+! 	    attrs = cell.attrs;
+! 	    fg = cell.fg;
+! 	    bg = cell.bg;
+  	}
+! 	dcell = dict_alloc();
+! 	list_append_dict(l, dcell);
+! 
+  	dict_add_nr_str(dcell, "chars", 0, mbs);
+  
+  	vim_snprintf((char *)rgb, 8, "#%02x%02x%02x",
+! 				     fg.red, fg.green, fg.blue);
+  	dict_add_nr_str(dcell, "fg", 0, rgb);
+  	vim_snprintf((char *)rgb, 8, "#%02x%02x%02x",
+! 				     bg.red, bg.green, bg.blue);
+  	dict_add_nr_str(dcell, "bg", 0, rgb);
+  
+! 	dict_add_nr_str(dcell, "attr",
+! 				cell2attr(attrs, fg, bg), NULL);
+! 	dict_add_nr_str(dcell, "width", width, NULL);
+  
+  	++pos.col;
+! 	if (width == 2)
+  	    ++pos.col;
+      }
+  }
+*** ../vim-8.0.0884/src/testdir/test_terminal.vim	2017-08-05 17:13:43.932522086 +0200
+--- src/testdir/test_terminal.vim	2017-08-06 21:34:44.297505567 +0200
+***************
+*** 97,103 ****
+  endfunc
+  
+  func Test_terminal_nasty_cb()
+!   let cmd = Get_cat_cmd()
+    let g:buf = term_start(cmd, {'exit_cb': function('s:Nasty_exit_cb')})
+    let g:job = term_getjob(g:buf)
+  
+--- 97,103 ----
+  endfunc
+  
+  func Test_terminal_nasty_cb()
+!   let cmd = Get_cat_123_cmd()
+    let g:buf = term_start(cmd, {'exit_cb': function('s:Nasty_exit_cb')})
+    let g:job = term_getjob(g:buf)
+  
+***************
+*** 135,141 ****
+    call assert_equal('123', l)
+  endfunc
+  
+! func Get_cat_cmd()
+    if has('win32')
+      return 'cmd /c "cls && color 2 && echo 123"'
+    else
+--- 135,141 ----
+    call assert_equal('123', l)
+  endfunc
+  
+! func Get_cat_123_cmd()
+    if has('win32')
+      return 'cmd /c "cls && color 2 && echo 123"'
+    else
+***************
+*** 144,151 ****
+    endif
+  endfunc
+  
+! func Test_terminal_scrape()
+!   let cmd = Get_cat_cmd()
+    let buf = term_start(cmd)
+  
+    let termlist = term_list()
+--- 144,151 ----
+    endif
+  endfunc
+  
+! func Test_terminal_scrape_123()
+!   let cmd = Get_cat_123_cmd()
+    let buf = term_start(cmd)
+  
+    let termlist = term_list()
+***************
+*** 172,179 ****
+    call delete('Xtext')
+  endfunc
+  
+  func Test_terminal_size()
+!   let cmd = Get_cat_cmd()
+  
+    exe '5terminal ' . cmd
+    let size = term_getsize('')
+--- 172,217 ----
+    call delete('Xtext')
+  endfunc
+  
++ func Test_terminal_scrape_multibyte()
++   if !has('multi_byte')
++     return
++   endif
++   call writefile(["léttまrs"], 'Xtext')
++   if has('win32')
++     let cmd = 'cmd /c "type Xtext"'
++   else
++     let cmd = "cat Xtext"
++   endif
++   let buf = term_start(cmd)
++ 
++   call term_wait(buf)
++   if has('win32')
++     " TODO: this should not be needed
++     sleep 100m
++   endif
++ 
++   let l = term_scrape(buf, 1)
++   call assert_true(len(l) >= 7)
++   call assert_equal('l', l[0].chars)
++   call assert_equal('é', l[1].chars)
++   call assert_equal(1, l[1].width)
++   call assert_equal('t', l[2].chars)
++   call assert_equal('t', l[3].chars)
++   call assert_equal('ま', l[4].chars)
++   call assert_equal(2, l[4].width)
++   call assert_equal('r', l[5].chars)
++   call assert_equal('s', l[6].chars)
++ 
++   let g:job = term_getjob(buf)
++   call WaitFor('job_status(g:job) == "dead"')
++   call term_wait(buf)
++ 
++   exe buf . 'bwipe'
++   call delete('Xtext')
++ endfunc
++ 
+  func Test_terminal_size()
+!   let cmd = Get_cat_123_cmd()
+  
+    exe '5terminal ' . cmd
+    let size = term_getsize('')
+*** ../vim-8.0.0884/src/version.c	2017-08-06 19:06:59.583629245 +0200
+--- src/version.c	2017-08-06 21:35:18.849265762 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     885,
+  /**/
+
+-- 
+An indication you must be a manager:
+You feel sorry for Dilbert's boss.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

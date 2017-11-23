@@ -1,0 +1,89 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0458
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0458
+Problem:    Potential crash if adding list or dict to dict fails.
+Solution:   Make sure the reference count is correct. (Nikolai Pavlov, closes
+            #1555)
+Files:      src/dict.c
+
+
+*** ../vim-8.0.0457/src/dict.c	2017-02-25 14:59:29.898090477 +0100
+--- src/dict.c	2017-03-14 22:09:48.527007348 +0100
+***************
+*** 356,367 ****
+      item->di_tv.v_lock = 0;
+      item->di_tv.v_type = VAR_LIST;
+      item->di_tv.vval.v_list = list;
+      if (dict_add(d, item) == FAIL)
+      {
+  	dictitem_free(item);
+  	return FAIL;
+      }
+-     ++list->lv_refcount;
+      return OK;
+  }
+  
+--- 356,367 ----
+      item->di_tv.v_lock = 0;
+      item->di_tv.v_type = VAR_LIST;
+      item->di_tv.vval.v_list = list;
++     ++list->lv_refcount;
+      if (dict_add(d, item) == FAIL)
+      {
+  	dictitem_free(item);
+  	return FAIL;
+      }
+      return OK;
+  }
+  
+***************
+*** 380,391 ****
+      item->di_tv.v_lock = 0;
+      item->di_tv.v_type = VAR_DICT;
+      item->di_tv.vval.v_dict = dict;
+      if (dict_add(d, item) == FAIL)
+      {
+  	dictitem_free(item);
+  	return FAIL;
+      }
+-     ++dict->dv_refcount;
+      return OK;
+  }
+  
+--- 380,391 ----
+      item->di_tv.v_lock = 0;
+      item->di_tv.v_type = VAR_DICT;
+      item->di_tv.vval.v_dict = dict;
++     ++dict->dv_refcount;
+      if (dict_add(d, item) == FAIL)
+      {
+  	dictitem_free(item);
+  	return FAIL;
+      }
+      return OK;
+  }
+  
+*** ../vim-8.0.0457/src/version.c	2017-03-14 21:53:54.114075276 +0100
+--- src/version.c	2017-03-14 22:11:29.090264816 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     458,
+  /**/
+
+-- 
+I have a watch cat! Just break in and she'll watch.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

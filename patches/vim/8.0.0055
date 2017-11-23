@@ -1,0 +1,109 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0055
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0055
+Problem:    Minor comment and style deficiencies.
+Solution:   Update comments and fix style.
+Files:      src/buffer.c, src/misc2.c, src/os_unix.c
+
+
+*** ../vim-8.0.0054/src/buffer.c	2016-09-11 14:36:14.000000000 +0200
+--- src/buffer.c	2016-10-08 16:28:50.059483141 +0200
+***************
+*** 451,457 ****
+      int		nwindows;
+      bufref_T	bufref;
+  # ifdef FEAT_WINDOWS
+!     int		is_curwin = (curwin!= NULL && curwin->w_buffer == buf);
+      win_T	*the_curwin = curwin;
+      tabpage_T	*the_curtab = curtab;
+  # endif
+--- 451,457 ----
+      int		nwindows;
+      bufref_T	bufref;
+  # ifdef FEAT_WINDOWS
+!     int		is_curwin = (curwin != NULL && curwin->w_buffer == buf);
+      win_T	*the_curwin = curwin;
+      tabpage_T	*the_curtab = curtab;
+  # endif
+***************
+*** 1649,1658 ****
+  #ifdef FEAT_AUTOCMD
+      if (!apply_autocmds(EVENT_BUFLEAVE, NULL, NULL, FALSE, curbuf)
+  # ifdef FEAT_EVAL
+! 	    || (bufref_valid(&bufref) && !aborting()))
+  # else
+! 	    || bufref_valid(&bufref))
+  # endif
+  #endif
+      {
+  #ifdef FEAT_SYN_HL
+--- 1649,1659 ----
+  #ifdef FEAT_AUTOCMD
+      if (!apply_autocmds(EVENT_BUFLEAVE, NULL, NULL, FALSE, curbuf)
+  # ifdef FEAT_EVAL
+! 	    || (bufref_valid(&bufref) && !aborting())
+  # else
+! 	    || bufref_valid(&bufref)
+  # endif
++        )
+  #endif
+      {
+  #ifdef FEAT_SYN_HL
+*** ../vim-8.0.0054/src/misc2.c	2016-10-12 14:19:55.746357751 +0200
+--- src/misc2.c	2016-10-27 18:27:13.667291651 +0200
+***************
+*** 6256,6261 ****
+--- 6256,6262 ----
+  #if defined(MESSAGE_QUEUE) || defined(PROTO)
+  /*
+   * Process messages that have been queued for netbeans or clientserver.
++  * Also check if any jobs have ended.
+   * These functions can call arbitrary vimscript and should only be called when
+   * it is safe to do so.
+   */
+*** ../vim-8.0.0054/src/os_unix.c	2016-10-27 20:00:03.661357429 +0200
+--- src/os_unix.c	2016-10-29 14:50:00.921937360 +0200
+***************
+*** 5390,5395 ****
+--- 5390,5399 ----
+      return NULL;
+  }
+  
++ /*
++  * Send a (deadly) signal to "job".
++  * Return FAIL if "how" is not a valid name.
++  */
+      int
+  mch_stop_job(job_T *job, char_u *how)
+  {
+*** ../vim-8.0.0054/src/version.c	2016-10-29 14:54:56.628135821 +0200
+--- src/version.c	2016-10-30 21:57:08.786668736 +0100
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     55,
+  /**/
+
+-- 
+Any resemblance between the above views and those of my employer, my terminal,
+or the view out my window are purely coincidental.  Any resemblance between
+the above and my own views is non-deterministic.  The question of the
+existence of views in the absence of anyone to hold them is left as an
+exercise for the reader.  The question of the existence of the reader is left
+as an exercise for the second god coefficient.  (A discussion of
+non-orthogonal, non-integral polytheism is beyond the scope of this article.)
+						(Ralph Jennings)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

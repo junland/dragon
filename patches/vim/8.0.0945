@@ -1,0 +1,57 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0945
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0945
+Problem:    64-bit compiler warnings.
+Solution:   Use "size_t" instead of "int". (Mike Williams)
+Files:      src/os_win32.c
+
+
+*** ../vim-8.0.0944/src/os_win32.c	2017-08-12 16:39:01.377461483 +0200
+--- src/os_win32.c	2017-08-14 23:23:07.994736233 +0200
+***************
+*** 5072,5079 ****
+  	    --todo;
+  	    if (wkey != NULL && wval != NULL)
+  	    {
+! 		int n, lkey = wcslen(wkey), lval = wcslen(wval);
+! 		if (ga_grow(gap, lkey + lval + 2) != OK)
+  		    continue;
+  		for (n = 0; n < lkey; n++)
+  		    *((WCHAR*)gap->ga_data + gap->ga_len++) = wkey[n];
+--- 5072,5082 ----
+  	    --todo;
+  	    if (wkey != NULL && wval != NULL)
+  	    {
+! 		int	n;
+! 		size_t	lkey = wcslen(wkey);
+! 		size_t	lval = wcslen(wval);
+! 
+! 		if (ga_grow(gap, (int)(lkey + lval + 2)) != OK)
+  		    continue;
+  		for (n = 0; n < lkey; n++)
+  		    *((WCHAR*)gap->ga_data + gap->ga_len++) = wkey[n];
+*** ../vim-8.0.0944/src/version.c	2017-08-14 23:13:26.054283184 +0200
+--- src/version.c	2017-08-14 23:24:15.838323622 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     945,
+  /**/
+
+-- 
+People who want to share their religious views with you
+almost never want you to share yours with them.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

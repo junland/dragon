@@ -1,0 +1,92 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0545
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0545
+Problem:    Edit test may fail on some systems.
+Solution:   If creating a directory with a very long path fails, bail out.
+Files:      src/testdir/test_edit.vim
+
+
+*** ../vim-8.0.0544/src/testdir/test_edit.vim	2017-04-04 22:41:04.724342925 +0200
+--- src/testdir/test_edit.vim	2017-04-07 14:07:45.017940108 +0200
+***************
+*** 1324,1345 ****
+  endfunc
+  
+  func Test_edit_complete_very_long_name()
+!   if !has('unix') || has('mac')
+      " Long directory names only work on Unix.
+      return
+    endif
+    " Try to get the Vim window position before setting 'columns'.
+    let winposx = getwinposx()
+    let winposy = getwinposy()
+    let save_columns = &columns
+    set columns=2000
+    call assert_equal(2000, &columns)
+    set noswapfile
+  
+-   let dirname = getcwd() . "/Xdir"
+-   let longdirname = dirname . repeat('/' . repeat('d', 255), 4)
+    let longfilename = longdirname . '/' . repeat('a', 255)
+-   call mkdir(longdirname, 'p')
+    call writefile(['Totum', 'Table'], longfilename)
+    new
+    exe "next Xfile " . longfilename
+--- 1324,1354 ----
+  endfunc
+  
+  func Test_edit_complete_very_long_name()
+!   if !has('unix')
+      " Long directory names only work on Unix.
+      return
+    endif
++ 
++   let dirname = getcwd() . "/Xdir"
++   let longdirname = dirname . repeat('/' . repeat('d', 255), 4)
++   try
++     call mkdir(longdirname, 'p')
++   catch /E739:/
++     " Long directory name probably not supported.
++     call delete(dirname, 'rf')
++     return
++   endtry
++ 
+    " Try to get the Vim window position before setting 'columns'.
+    let winposx = getwinposx()
+    let winposy = getwinposy()
+    let save_columns = &columns
++   " Need at least about 1100 columns to reproduce the problem.
+    set columns=2000
+    call assert_equal(2000, &columns)
+    set noswapfile
+  
+    let longfilename = longdirname . '/' . repeat('a', 255)
+    call writefile(['Totum', 'Table'], longfilename)
+    new
+    exe "next Xfile " . longfilename
+*** ../vim-8.0.0544/src/version.c	2017-04-07 14:01:54.848119739 +0200
+--- src/version.c	2017-04-07 14:09:54.049137229 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     545,
+  /**/
+
+-- 
+Microsoft: "Windows NT 4.0 now has the same user-interface as Windows 95"
+    Windows 95: "Press CTRL-ALT-DEL to reboot"
+Windows NT 4.0: "Press CTRL-ALT-DEL to login"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

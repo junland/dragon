@@ -1,0 +1,262 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1034
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1034
+Problem:    Sending buffer lines to terminal doesn't work on MS-Windows.
+Solution:   Send CTRL-D to mark the end of the text. (Yasuhiro Matsumoto,
+            closes #2043) Add the "eof_chars" option.
+Files:      src/channel.c, src/proto/terminal.pro, src/terminal.c,
+            src/testdir/test_terminal.vim, src/structs.h
+
+
+*** ../vim-8.0.1033/src/channel.c	2017-08-27 14:50:43.229759900 +0200
+--- src/channel.c	2017-09-02 14:46:15.747715738 +0200
+***************
+*** 1417,1422 ****
+--- 1417,1429 ----
+      in_part->ch_buf_top = lnum;
+      if (lnum > buf->b_ml.ml_line_count || lnum > in_part->ch_buf_bot)
+      {
++ #if defined(WIN32) && defined(FEAT_TERMINAL)
++ 	/* Send CTRL-D or "eof_chars" to close stdin on Windows. A console
++ 	 * application doesn't treat closing stdin like UNIX. */
++ 	if (channel->ch_job != NULL)
++ 	    term_send_eof(channel);
++ #endif
++ 
+  	/* Writing is done, no longer need the buffer. */
+  	in_part->ch_bufref.br_buf = NULL;
+  	ch_log(channel, "Finished writing all lines to channel");
+***************
+*** 4626,4631 ****
+--- 4633,4654 ----
+  		    return FAIL;
+  		}
+  	    }
++ 	    else if (STRCMP(hi->hi_key, "eof_chars") == 0)
++ 	    {
++ # ifdef WIN3264
++ 		char_u *p;
++ 
++ 		if (!(supported2 & JO2_EOF_CHARS))
++ 		    break;
++ 		opt->jo_set2 |= JO2_EOF_CHARS;
++ 		p = opt->jo_eof_chars = get_tv_string_chk(item);
++ 		if (p == NULL)
++ 		{
++ 		    EMSG2(_(e_invarg2), "term_opencmd");
++ 		    return FAIL;
++ 		}
++ # endif
++ 	    }
+  	    else if (STRCMP(hi->hi_key, "term_rows") == 0)
+  	    {
+  		if (!(supported2 & JO2_TERM_ROWS))
+*** ../vim-8.0.1033/src/proto/terminal.pro	2017-08-17 14:39:01.438293834 +0200
+--- src/proto/terminal.pro	2017-09-02 14:29:01.942508022 +0200
+***************
+*** 16,21 ****
+--- 16,22 ----
+  int term_is_finished(buf_T *buf);
+  int term_show_buffer(buf_T *buf);
+  void term_change_in_curbuf(void);
++ void term_send_eof(channel_T *ch);
+  int term_get_attr(buf_T *buf, linenr_T lnum, int col);
+  char_u *term_get_status_text(term_T *term);
+  int set_ref_in_term(int copyID);
+*** ../vim-8.0.1033/src/terminal.c	2017-08-30 15:57:29.692981323 +0200
+--- src/terminal.c	2017-09-02 14:40:50.245858122 +0200
+***************
+*** 114,119 ****
+--- 114,120 ----
+  #ifdef WIN3264
+      void	*tl_winpty_config;
+      void	*tl_winpty;
++     char_u	*tl_eof_chars;
+  #endif
+  
+      /* last known vterm size */
+***************
+*** 389,394 ****
+--- 390,400 ----
+      if (opt->jo_term_opencmd != NULL)
+  	term->tl_opencmd = vim_strsave(opt->jo_term_opencmd);
+  
++ # ifdef WIN3264
++     if (opt->jo_eof_chars != NULL)
++ 	term->tl_eof_chars = vim_strsave(opt->jo_eof_chars);
++ # endif
++ 
+      set_string_option_direct((char_u *)"buftype", -1,
+  				  (char_u *)"terminal", OPT_FREE|OPT_LOCAL, 0);
+  
+***************
+*** 570,575 ****
+--- 576,584 ----
+      vim_free(term->tl_title);
+      vim_free(term->tl_status_text);
+      vim_free(term->tl_opencmd);
++ # ifdef WIN3264
++     vim_free(term->tl_eof_chars);
++ # endif
+      vim_free(term->tl_cursor_color);
+      vim_free(term);
+      buf->b_term = NULL;
+***************
+*** 2821,2827 ****
+  		    + JO_EXIT_CB + JO_CLOSE_CALLBACK,
+  		JO2_TERM_NAME + JO2_TERM_FINISH + JO2_HIDDEN + JO2_TERM_OPENCMD
+  		    + JO2_TERM_COLS + JO2_TERM_ROWS + JO2_VERTICAL + JO2_CURWIN
+! 		    + JO2_CWD + JO2_ENV) == FAIL)
+  	return;
+  
+      if (opt.jo_vertical)
+--- 2830,2836 ----
+  		    + JO_EXIT_CB + JO_CLOSE_CALLBACK,
+  		JO2_TERM_NAME + JO2_TERM_FINISH + JO2_HIDDEN + JO2_TERM_OPENCMD
+  		    + JO2_TERM_COLS + JO2_TERM_ROWS + JO2_VERTICAL + JO2_CURWIN
+! 		    + JO2_CWD + JO2_ENV + JO2_EOF_CHARS) == FAIL)
+  	return;
+  
+      if (opt.jo_vertical)
+***************
+*** 3188,3193 ****
+--- 3197,3216 ----
+      return dyn_winpty_init(FALSE) == OK;
+  }
+  
++ /*
++  * Called when a channel has sent all the lines to a terminal.
++  * Send a CTRL-D to mark the end of the text.
++  */
++     void
++ term_send_eof(channel_T *ch)
++ {
++     term_T	*term;
++ 
++     for (term = first_term; term != NULL; term = term->tl_next)
++ 	if (term->tl_job == ch->ch_job)
++ 	    channel_send(ch, PART_IN, term->tl_eof_chars != NULL
++ 			 ? term->tl_eof_chars : (char_u *)"\004\r\n", 3, NULL);
++ }
+  
+  # else
+  
+*** ../vim-8.0.1033/src/testdir/test_terminal.vim	2017-08-30 13:31:45.968512934 +0200
+--- src/testdir/test_terminal.vim	2017-09-02 14:29:07.482471738 +0200
+***************
+*** 489,510 ****
+  endfunc
+  
+  func Test_terminal_write_stdin()
+!   " Todo: make this work on all systems.
+!   if !has('unix')
+      return
+    endif
+    new
+    call setline(1, ['one', 'two', 'three'])
+    %term wc
+    call WaitFor('getline(1) != ""')
+!   let nrs = split(getline(1))
+    call assert_equal(['3', '3', '14'], nrs)
+    bwipe
+  
+    call setline(1, ['one', 'two', 'three', 'four'])
+    2,3term wc
+    call WaitFor('getline(1) != ""')
+!   let nrs = split(getline(1))
+    call assert_equal(['2', '2', '10'], nrs)
+    bwipe
+  
+--- 489,510 ----
+  endfunc
+  
+  func Test_terminal_write_stdin()
+!   if !executable('wc')
+!     call ch_log('Test_terminal_write_stdin() is skipped because system doesn''t have wc command')
+      return
+    endif
+    new
+    call setline(1, ['one', 'two', 'three'])
+    %term wc
+    call WaitFor('getline(1) != ""')
+!   let nrs = split(getline('$'))
+    call assert_equal(['3', '3', '14'], nrs)
+    bwipe
+  
+    call setline(1, ['one', 'two', 'three', 'four'])
+    2,3term wc
+    call WaitFor('getline(1) != ""')
+!   let nrs = split(getline('$'))
+    call assert_equal(['2', '2', '10'], nrs)
+    bwipe
+  
+*** ../vim-8.0.1033/src/structs.h	2017-08-26 22:02:45.869432874 +0200
+--- src/structs.h	2017-09-02 14:37:54.723012857 +0200
+***************
+*** 1713,1719 ****
+  #define JO2_CURWIN	    0x0200	/* "curwin" */
+  #define JO2_HIDDEN	    0x0400	/* "hidden" */
+  #define JO2_TERM_OPENCMD    0x0800	/* "term_opencmd" */
+! #define JO2_ALL		    0x0FFF
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+  #define JO_CB_ALL \
+--- 1713,1720 ----
+  #define JO2_CURWIN	    0x0200	/* "curwin" */
+  #define JO2_HIDDEN	    0x0400	/* "hidden" */
+  #define JO2_TERM_OPENCMD    0x0800	/* "term_opencmd" */
+! #define JO2_EOF_CHARS	    0x1000	/* "eof_chars" */
+! #define JO2_ALL		    0x1FFF
+  
+  #define JO_MODE_ALL	(JO_MODE + JO_IN_MODE + JO_OUT_MODE + JO_ERR_MODE)
+  #define JO_CB_ALL \
+***************
+*** 1779,1784 ****
+--- 1780,1788 ----
+      char_u	*jo_term_name;
+      char_u	*jo_term_opencmd;
+      int		jo_term_finish;
++ # ifdef WIN3264
++     char_u	*jo_eof_chars;
++ # endif
+  #endif
+  } jobopt_T;
+  
+*** ../vim-8.0.1033/src/version.c	2017-09-01 20:23:58.756539582 +0200
+--- src/version.c	2017-09-02 14:47:12.639339337 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1034,
+  /**/
+
+-- 
+The real
+trick is
+this: to
+keep the
+lines as
+short as
+possible
+and keep
+the size
+the same
+yet free
+from the
+need for
+hyphena-
+Dammit!!  (Matthew Winn)
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

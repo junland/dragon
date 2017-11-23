@@ -1,0 +1,495 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1260
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1260 (after 8.0.1259)
+Problem:    Using global variables for WaitFor().
+Solution:   Use a lambda function instead.  Don't check a condition if
+            WaitFor() already checked it.
+Files:      src/testdir/test_popup.vim, src/testdir/test_terminal.vim,
+            src/testdir/test_channel.vim, src/test_clientserver.vim,
+            src/testdir/test_job_fails.vim, src/testdir/test_quotestar.vim
+
+
+*** ../vim-8.0.1259/src/testdir/test_popup.vim	2017-11-02 17:50:09.901161926 +0100
+--- src/testdir/test_popup.vim	2017-11-04 19:00:06.614425265 +0100
+***************
+*** 638,667 ****
+      return
+    endif
+    let rows = h / 3
+!   let g:buf = term_start([GetVimProg(), '--clean', '-c', 'set noswapfile'], {'term_rows': rows})
+!   call term_sendkeys(g:buf, (h / 3 - 1) . "o\<esc>")
+    " Wait for the nested Vim to exit insert mode, where it will show the ruler.
+    " Need to trigger a redraw.
+!   call WaitFor(printf('execute("redraw") == "" && term_getline(g:buf, %d) =~ "\\<%d,.*Bot"', rows, rows))
+  
+!   call term_sendkeys(g:buf, "Gi\<c-x>")
+!   call term_sendkeys(g:buf, "\<c-v>")
+!   call term_wait(g:buf, 100)
+    " popup first entry "!" must be at the top
+!   call WaitFor('term_getline(g:buf, 1) =~ "^!"')
+!   call assert_match('^!\s*$', term_getline(g:buf, 1))
+    exe 'resize +' . (h - 1)
+!   call term_wait(g:buf, 100)
+    redraw!
+    " popup shifted down, first line is now empty
+!   call WaitFor('term_getline(g:buf, 1) == ""')
+!   call assert_equal('', term_getline(g:buf, 1))
+    sleep 100m
+    " popup is below cursor line and shows first match "!"
+!   call WaitFor('term_getline(g:buf, term_getcursor(g:buf)[0] + 1) =~ "^!"')
+!   call assert_match('^!\s*$', term_getline(g:buf, term_getcursor(g:buf)[0] + 1))
+    " cursor line also shows !
+!   call assert_match('^!\s*$', term_getline(g:buf, term_getcursor(g:buf)[0]))
+    bwipe!
+  endfunc
+  
+--- 638,667 ----
+      return
+    endif
+    let rows = h / 3
+!   let buf = term_start([GetVimProg(), '--clean', '-c', 'set noswapfile'], {'term_rows': rows})
+!   call term_sendkeys(buf, (h / 3 - 1) . "o\<esc>")
+    " Wait for the nested Vim to exit insert mode, where it will show the ruler.
+    " Need to trigger a redraw.
+!   call WaitFor({-> execute("redraw") == "" && term_getline(buf, rows) =~ '\<' . rows . ',.*Bot'})
+  
+!   call term_sendkeys(buf, "Gi\<c-x>")
+!   call term_sendkeys(buf, "\<c-v>")
+!   call term_wait(buf, 100)
+    " popup first entry "!" must be at the top
+!   call WaitFor({-> term_getline(buf, 1) =~ "^!"})
+!   call assert_match('^!\s*$', term_getline(buf, 1))
+    exe 'resize +' . (h - 1)
+!   call term_wait(buf, 100)
+    redraw!
+    " popup shifted down, first line is now empty
+!   call WaitFor({-> term_getline(buf, 1) == ""})
+!   call assert_equal('', term_getline(buf, 1))
+    sleep 100m
+    " popup is below cursor line and shows first match "!"
+!   call WaitFor({-> term_getline(buf, term_getcursor(buf)[0] + 1) =~ "^!"})
+!   call assert_match('^!\s*$', term_getline(buf, term_getcursor(buf)[0] + 1))
+    " cursor line also shows !
+!   call assert_match('^!\s*$', term_getline(buf, term_getcursor(buf)[0]))
+    bwipe!
+  endfunc
+  
+*** ../vim-8.0.1259/src/testdir/test_terminal.vim	2017-11-02 16:57:54.379496792 +0100
+--- src/testdir/test_terminal.vim	2017-11-04 19:08:11.639701000 +0100
+***************
+*** 189,203 ****
+    call term_wait(1234)
+  
+    call term_wait(buf)
+-   let g:buf = buf
+    " On MS-Windows we first get a startup message of two lines, wait for the
+    " "cls" to happen, after that we have one line with three characters.
+!   call WaitFor('len(term_scrape(g:buf, 1)) == 3')
+    call Check_123(buf)
+  
+    " Must still work after the job ended.
+!   let g:job = term_getjob(buf)
+!   call WaitFor('job_status(g:job) == "dead"')
+    call term_wait(buf)
+    call Check_123(buf)
+  
+--- 189,202 ----
+    call term_wait(1234)
+  
+    call term_wait(buf)
+    " On MS-Windows we first get a startup message of two lines, wait for the
+    " "cls" to happen, after that we have one line with three characters.
+!   call WaitFor({-> len(term_scrape(buf, 1)) == 3})
+    call Check_123(buf)
+  
+    " Must still work after the job ended.
+!   let job = term_getjob(buf)
+!   call WaitFor({-> job_status(job) == "dead"})
+    call term_wait(buf)
+    call Check_123(buf)
+  
+***************
+*** 213,229 ****
+    if has('win32')
+      " Run cmd with UTF-8 codepage to make the type command print the expected
+      " multibyte characters.
+!     let g:buf = term_start("cmd /K chcp 65001")
+!     call term_sendkeys(g:buf, "type Xtext\<CR>")
+!     call term_sendkeys(g:buf, "exit\<CR>")
+!     let g:line = 4
+    else
+!     let g:buf = term_start("cat Xtext")
+!     let g:line = 1
+    endif
+  
+!   call WaitFor('len(term_scrape(g:buf, g:line)) >= 7 && term_scrape(g:buf, g:line)[0].chars == "l"')
+!   let l = term_scrape(g:buf, g:line)
+    call assert_true(len(l) >= 7)
+    call assert_equal('l', l[0].chars)
+    call assert_equal('é', l[1].chars)
+--- 212,228 ----
+    if has('win32')
+      " Run cmd with UTF-8 codepage to make the type command print the expected
+      " multibyte characters.
+!     let buf = term_start("cmd /K chcp 65001")
+!     call term_sendkeys(buf, "type Xtext\<CR>")
+!     call term_sendkeys(buf, "exit\<CR>")
+!     let line = 4
+    else
+!     let buf = term_start("cat Xtext")
+!     let line = 1
+    endif
+  
+!   call WaitFor({-> len(term_scrape(buf, line)) >= 7 && term_scrape(buf, line)[0].chars == "l"})
+!   let l = term_scrape(buf, line)
+    call assert_true(len(l) >= 7)
+    call assert_equal('l', l[0].chars)
+    call assert_equal('é', l[1].chars)
+***************
+*** 235,247 ****
+    call assert_equal('r', l[5].chars)
+    call assert_equal('s', l[6].chars)
+  
+!   let g:job = term_getjob(g:buf)
+!   call WaitFor('job_status(g:job) == "dead"')
+!   call term_wait(g:buf)
+  
+!   exe g:buf . 'bwipe'
+!   unlet g:buf
+!   unlet g:line
+    call delete('Xtext')
+  endfunc
+  
+--- 234,244 ----
+    call assert_equal('r', l[5].chars)
+    call assert_equal('s', l[6].chars)
+  
+!   let job = term_getjob(buf)
+!   call WaitFor({-> job_status(job) == "dead"})
+!   call term_wait(buf)
+  
+!   exe buf . 'bwipe'
+    call delete('Xtext')
+  endfunc
+  
+***************
+*** 254,261 ****
+    endif
+    let buf = term_start(cmd)
+  
+!   let g:job = term_getjob(buf)
+!   call WaitFor('job_status(g:job) == "dead"')
+    call term_wait(buf)
+    if has('win32')
+      " TODO: this should not be needed
+--- 251,258 ----
+    endif
+    let buf = term_start(cmd)
+  
+!   let job = term_getjob(buf)
+!   call WaitFor({-> job_status(job) == "dead"})
+    call term_wait(buf)
+    if has('win32')
+      " TODO: this should not be needed
+***************
+*** 483,489 ****
+  endfunction
+  
+  func Test_terminal_noblock()
+!   let g:buf = term_start(&shell)
+    if has('mac')
+      " The shell or something else has a problem dealing with more than 1000
+      " characters at the same time.
+--- 480,486 ----
+  endfunction
+  
+  func Test_terminal_noblock()
+!   let buf = term_start(&shell)
+    if has('mac')
+      " The shell or something else has a problem dealing with more than 1000
+      " characters at the same time.
+***************
+*** 493,518 ****
+    endif
+  
+    for c in ['a','b','c','d','e','f','g','h','i','j','k']
+!     call term_sendkeys(g:buf, 'echo ' . repeat(c, len) . "\<cr>")
+    endfor
+!   call term_sendkeys(g:buf, "echo done\<cr>")
+  
+    " On MS-Windows there is an extra empty line below "done".  Find "done" in
+    " the last-but-one or the last-but-two line.
+!   let g:lnum = term_getsize(g:buf)[0] - 1
+!   call WaitFor('term_getline(g:buf, g:lnum) =~ "done" || term_getline(g:buf, g:lnum - 1) =~ "done"', 3000)
+!   let line = term_getline(g:buf, g:lnum)
+    if line !~ 'done'
+!     let line = term_getline(g:buf, g:lnum - 1)
+    endif
+    call assert_match('done', line)
+  
+!   let g:job = term_getjob(g:buf)
+!   call Stop_shell_in_terminal(g:buf)
+!   call term_wait(g:buf)
+!   unlet g:buf
+    unlet g:job
+-   unlet g:lnum
+    bwipe
+  endfunc
+  
+--- 490,513 ----
+    endif
+  
+    for c in ['a','b','c','d','e','f','g','h','i','j','k']
+!     call term_sendkeys(buf, 'echo ' . repeat(c, len) . "\<cr>")
+    endfor
+!   call term_sendkeys(buf, "echo done\<cr>")
+  
+    " On MS-Windows there is an extra empty line below "done".  Find "done" in
+    " the last-but-one or the last-but-two line.
+!   let lnum = term_getsize(buf)[0] - 1
+!   call WaitFor({-> term_getline(buf, lnum) =~ "done" || term_getline(buf, lnum - 1) =~ "done"}, 3000)
+!   let line = term_getline(buf, lnum)
+    if line !~ 'done'
+!     let line = term_getline(buf, lnum - 1)
+    endif
+    call assert_match('done', line)
+  
+!   let g:job = term_getjob(buf)
+!   call Stop_shell_in_terminal(buf)
+!   call term_wait(buf)
+    unlet g:job
+    bwipe
+  endfunc
+  
+*** ../vim-8.0.1259/src/testdir/test_channel.vim	2017-11-02 16:57:54.379496792 +0100
+--- src/testdir/test_channel.vim	2017-11-04 19:11:31.674579429 +0100
+***************
+*** 274,285 ****
+    " Test that it works while waiting on a numbered message.
+    call assert_equal('ok', ch_evalexpr(handle, 'call me'))
+    call WaitFor('"we called you" == g:Ch_reply')
+-   call assert_equal('we called you', g:Ch_reply)
+  
+    " Test that it works while not waiting on a numbered message.
+    call ch_sendexpr(handle, 'call me again')
+    call WaitFor('"we did call you" == g:Ch_reply')
+-   call assert_equal('we did call you', g:Ch_reply)
+  endfunc
+  
+  func Test_channel_handler()
+--- 274,283 ----
+***************
+*** 322,328 ****
+    call assert_equal('sent zero', ch_evalexpr(handle, 'send zero'))
+    if s:has_handler
+      call WaitFor('"zero index" == g:Ch_reply')
+-     call assert_equal('zero index', g:Ch_reply)
+    else
+      sleep 20m
+      call assert_equal('', g:Ch_reply)
+--- 320,325 ----
+***************
+*** 338,344 ****
+    else
+      call assert_equal('', g:Ch_reply)
+    endif
+-   call assert_equal('sent zero', g:Ch_zero_reply)
+  endfunc
+  
+  func Test_zero_reply()
+--- 335,340 ----
+***************
+*** 1468,1474 ****
+    let g:exit_cb_val = {'start': reltime(), 'end': 0, 'process': 0}
+    let job = job_start([s:python, '-c', 'import time;time.sleep(0.5)'], {'exit_cb': 'MyExitTimeCb'})
+    let g:exit_cb_val.process = job_info(job).process
+!   call WaitFor('type(g:exit_cb_val.end) != v:t_number || g:exit_cb_val.end != 0')
+    let elapsed = reltimefloat(g:exit_cb_val.end)
+    call assert_true(elapsed > 0.5)
+    call assert_true(elapsed < 1.0)
+--- 1464,1470 ----
+    let g:exit_cb_val = {'start': reltime(), 'end': 0, 'process': 0}
+    let job = job_start([s:python, '-c', 'import time;time.sleep(0.5)'], {'exit_cb': 'MyExitTimeCb'})
+    let g:exit_cb_val.process = job_info(job).process
+!   call WaitFor('type(g:exit_cb_val.end) != v:t_number || g:exit_cb_val.end != 0', 2000)
+    let elapsed = reltimefloat(g:exit_cb_val.end)
+    call assert_true(elapsed > 0.5)
+    call assert_true(elapsed < 1.0)
+*** ../vim-8.0.1259/src/testdir/test_clientserver.vim	2017-11-02 19:22:58.664420704 +0100
+--- src/testdir/test_clientserver.vim	2017-11-04 19:16:12.640979073 +0100
+***************
+*** 27,38 ****
+  
+    let name = 'XVIMTEST'
+    let cmd .= ' --servername ' . name
+!   let g:job = job_start(cmd, {'stoponexit': 'kill', 'out_io': 'null'})
+!   call WaitFor('job_status(g:job) == "run"')
+!   if job_status(g:job) != 'run'
+!     call assert_report('Cannot run the Vim server')
+!     return
+!   endif
+  
+    " Takes a short while for the server to be active.
+    " When using valgrind it takes much longer.
+--- 27,34 ----
+  
+    let name = 'XVIMTEST'
+    let cmd .= ' --servername ' . name
+!   let job = job_start(cmd, {'stoponexit': 'kill', 'out_io': 'null'})
+!   call WaitFor({-> job_status(job) == "run"})
+  
+    " Takes a short while for the server to be active.
+    " When using valgrind it takes much longer.
+***************
+*** 83,89 ****
+    call remote_send(name, ":call server2client(expand('<client>'), 'another')\<CR>", 'g:myserverid')
+    let peek_result = 'nothing'
+    let r = remote_peek(g:myserverid, 'peek_result')
+!   " unpredictable whether the result is already avaialble.
+    if r > 0
+      call assert_equal('another', peek_result)
+    elseif r == 0
+--- 79,85 ----
+    call remote_send(name, ":call server2client(expand('<client>'), 'another')\<CR>", 'g:myserverid')
+    let peek_result = 'nothing'
+    let r = remote_peek(g:myserverid, 'peek_result')
+!   " unpredictable whether the result is already available.
+    if r > 0
+      call assert_equal('another', peek_result)
+    elseif r == 0
+***************
+*** 97,107 ****
+    call assert_equal('another', remote_read(g:myserverid, 2))
+  
+    call remote_send(name, ":qa!\<CR>")
+!   call WaitFor('job_status(g:job) == "dead"')
+!   if job_status(g:job) != 'dead'
+!     call assert_report('Server did not exit')
+!     call job_stop(g:job, 'kill')
+!   endif
+  endfunc
+  
+  " Uncomment this line to get a debugging log
+--- 93,106 ----
+    call assert_equal('another', remote_read(g:myserverid, 2))
+  
+    call remote_send(name, ":qa!\<CR>")
+!   try
+!     call WaitFor({-> job_status(job) == "dead"})
+!   finally
+!     if job_status(job) != 'dead'
+!       call assert_report('Server did not exit')
+!       call job_stop(job, 'kill')
+!     endif
+!   endtry
+  endfunc
+  
+  " Uncomment this line to get a debugging log
+*** ../vim-8.0.1259/src/testdir/test_job_fails.vim	2016-08-05 19:27:24.000000000 +0200
+--- src/testdir/test_job_fails.vim	2017-11-04 19:17:19.936597352 +0100
+***************
+*** 6,19 ****
+  
+  func Test_job_start_fails()
+    if has('job')
+!     let g:job = job_start('axdfxsdf')
+      if has('unix')
+!       call WaitFor('job_status(g:job) == "dead"')
+!       call assert_equal('dead', job_status(g:job))
+      else
+!       call WaitFor('job_status(g:job) == "fail"')
+!       call assert_equal('fail', job_status(g:job))
+      endif
+-     unlet g:job
+    endif
+  endfunc
+--- 6,16 ----
+  
+  func Test_job_start_fails()
+    if has('job')
+!     let job = job_start('axdfxsdf')
+      if has('unix')
+!       call WaitFor({-> job_status(job) == "dead"})
+      else
+!       call WaitFor({-> job_status(job) == "fail"})
+      endif
+    endif
+  endfunc
+*** ../vim-8.0.1259/src/testdir/test_quotestar.vim	2017-07-19 19:55:54.494463778 +0200
+--- src/testdir/test_quotestar.vim	2017-11-04 19:19:02.832014658 +0100
+***************
+*** 60,71 ****
+    call assert_notmatch(name, serverlist())
+  
+    let cmd .= ' --servername ' . name
+!   let g:job = job_start(cmd, {'stoponexit': 'kill', 'out_io': 'null'})
+!   call WaitFor('job_status(g:job) == "run"')
+!   if job_status(g:job) != 'run'
+!     call assert_report('Cannot run the Vim server')
+!     return ''
+!   endif
+  
+    " Takes a short while for the server to be active.
+    call WaitFor('serverlist() =~ "' . name . '"')
+--- 60,67 ----
+    call assert_notmatch(name, serverlist())
+  
+    let cmd .= ' --servername ' . name
+!   let job = job_start(cmd, {'stoponexit': 'kill', 'out_io': 'null'})
+!   call WaitFor({-> job_status(job) == "run"})
+  
+    " Takes a short while for the server to be active.
+    call WaitFor('serverlist() =~ "' . name . '"')
+***************
+*** 124,134 ****
+    endif
+  
+    call remote_send(name, ":qa!\<CR>")
+!   call WaitFor('job_status(g:job) == "dead"')
+!   if job_status(g:job) != 'dead'
+!     call assert_report('Server did not exit')
+!     call job_stop(g:job, 'kill')
+!   endif
+  
+    return ''
+  endfunc
+--- 120,133 ----
+    endif
+  
+    call remote_send(name, ":qa!\<CR>")
+!   try
+!     call WaitFor({-> job_status(job) == "dead"})
+!   finally
+!     if job_status(job) != 'dead'
+!       call assert_report('Server did not exit')
+!       call job_stop(job, 'kill')
+!     endif
+!   endtry
+  
+    return ''
+  endfunc
+*** ../vim-8.0.1259/src/version.c	2017-11-04 18:48:39.174316914 +0100
+--- src/version.c	2017-11-04 19:23:35.794473131 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1260,
+  /**/
+
+-- 
+No man may purchase alcohol without written consent from his wife.
+		[real standing law in Pennsylvania, United States of America]
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

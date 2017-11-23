@@ -1,0 +1,338 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1012
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1012
+Problem:    MS-Windows: Problem with $HOME when is was set internally.
+Solution:   Only use the $HOME default internally. (Yasuhiro Matsumoto, closes
+            #2013)
+Files:      src/misc1.c, src/testdir/Make_all.mak, src/Makefile,
+            src/testdir/test_windows_home.vim
+
+
+*** ../vim-8.0.1011/src/misc1.c	2017-08-26 17:48:57.578995190 +0200
+--- src/misc1.c	2017-08-29 21:41:28.560976549 +0200
+***************
+*** 3750,3760 ****
+      var = mch_getenv((char_u *)"HOME");
+  #endif
+  
+-     if (var != NULL && *var == NUL)	/* empty is same as not set */
+- 	var = NULL;
+- 
+  #ifdef WIN3264
+      /*
+       * Weird but true: $HOME may contain an indirect reference to another
+       * variable, esp. "%USERPROFILE%".  Happens when $USERPROFILE isn't set
+       * when $HOME is being set.
+--- 3750,3783 ----
+      var = mch_getenv((char_u *)"HOME");
+  #endif
+  
+  #ifdef WIN3264
+      /*
++      * Typically, $HOME is not defined on Windows, unless the user has
++      * specifically defined it for Vim's sake.  However, on Windows NT
++      * platforms, $HOMEDRIVE and $HOMEPATH are automatically defined for
++      * each user.  Try constructing $HOME from these.
++      */
++     if (var == NULL || *var == NULL)
++     {
++ 	char_u *homedrive, *homepath;
++ 
++ 	homedrive = mch_getenv((char_u *)"HOMEDRIVE");
++ 	homepath = mch_getenv((char_u *)"HOMEPATH");
++ 	if (homepath == NULL || *homepath == NUL)
++ 	    homepath = (char_u *)"\\";
++ 	if (homedrive != NULL
++ 			   && STRLEN(homedrive) + STRLEN(homepath) < MAXPATHL)
++ 	{
++ 	    sprintf((char *)NameBuff, "%s%s", homedrive, homepath);
++ 	    if (NameBuff[0] != NUL)
++ 		var = NameBuff;
++ 	}
++     }
++ 
++     if (var == NULL)
++ 	var = mch_getenv((char_u *)"USERPROFILE");
++ 
++     /*
+       * Weird but true: $HOME may contain an indirect reference to another
+       * variable, esp. "%USERPROFILE%".  Happens when $USERPROFILE isn't set
+       * when $HOME is being set.
+***************
+*** 3774,3813 ****
+  	    {
+  		vim_snprintf((char *)NameBuff, MAXPATHL, "%s%s", exp, p + 1);
+  		var = NameBuff;
+- 		/* Also set $HOME, it's needed for _viminfo. */
+- 		vim_setenv((char_u *)"HOME", NameBuff);
+  	    }
+  	}
+      }
+  
+!     /*
+!      * Typically, $HOME is not defined on Windows, unless the user has
+!      * specifically defined it for Vim's sake.  However, on Windows NT
+!      * platforms, $HOMEDRIVE and $HOMEPATH are automatically defined for
+!      * each user.  Try constructing $HOME from these.
+!      */
+!     if (var == NULL)
+!     {
+! 	char_u *homedrive, *homepath;
+! 
+! 	homedrive = mch_getenv((char_u *)"HOMEDRIVE");
+! 	homepath = mch_getenv((char_u *)"HOMEPATH");
+! 	if (homepath == NULL || *homepath == NUL)
+! 	    homepath = (char_u *)"\\";
+! 	if (homedrive != NULL
+! 			   && STRLEN(homedrive) + STRLEN(homepath) < MAXPATHL)
+! 	{
+! 	    sprintf((char *)NameBuff, "%s%s", homedrive, homepath);
+! 	    if (NameBuff[0] != NUL)
+! 	    {
+! 		var = NameBuff;
+! 		/* Also set $HOME, it's needed for _viminfo. */
+! 		vim_setenv((char_u *)"HOME", NameBuff);
+! 	    }
+! 	}
+!     }
+  
+! # if defined(FEAT_MBYTE)
+      if (enc_utf8 && var != NULL)
+      {
+  	int	len;
+--- 3797,3810 ----
+  	    {
+  		vim_snprintf((char *)NameBuff, MAXPATHL, "%s%s", exp, p + 1);
+  		var = NameBuff;
+  	    }
+  	}
+      }
+  
+!     if (var != NULL && *var == NUL)	/* empty is same as not set */
+! 	var = NULL;
+  
+! # ifdef FEAT_MBYTE
+      if (enc_utf8 && var != NULL)
+      {
+  	int	len;
+***************
+*** 3823,3831 ****
+  	}
+      }
+  # endif
+- #endif
+  
+- #if defined(MSWIN)
+      /*
+       * Default home dir is C:/
+       * Best assumption we can make in such a situation.
+--- 3820,3826 ----
+***************
+*** 3833,3838 ****
+--- 3828,3834 ----
+      if (var == NULL)
+  	var = (char_u *)"C:/";
+  #endif
++ 
+      if (var != NULL)
+      {
+  #ifdef UNIX
+***************
+*** 4662,4667 ****
+--- 4658,4667 ----
+  #else
+      homedir_env_orig = homedir_env = mch_getenv((char_u *)"HOME");
+  #endif
++ #ifdef WIN3264
++     if (homedir_env == NULL)
++ 	homedir_env_orig = homedir_env = mch_getenv((char_u *)"USERPROFILE");
++ #endif
+      /* Empty is the same as not set. */
+      if (homedir_env != NULL && *homedir_env == NUL)
+  	homedir_env = NULL;
+*** ../vim-8.0.1011/src/testdir/Make_all.mak	2017-08-07 22:02:09.319624624 +0200
+--- src/testdir/Make_all.mak	2017-08-29 21:31:11.229009974 +0200
+***************
+*** 205,211 ****
+  	    test_writefile.res \
+  	    test_alot_latin.res \
+  	    test_alot_utf8.res \
+! 	    test_alot.res
+  
+  
+  # Explicit dependencies.
+--- 205,212 ----
+  	    test_writefile.res \
+  	    test_alot_latin.res \
+  	    test_alot_utf8.res \
+! 	    test_alot.res \
+! 	    test_windows_home.res
+  
+  
+  # Explicit dependencies.
+*** ../vim-8.0.1011/src/Makefile	2017-08-22 22:12:12.936882219 +0200
+--- src/Makefile	2017-08-29 21:42:01.332762485 +0200
+***************
+*** 2278,2283 ****
+--- 2278,2284 ----
+  	test_visual \
+  	test_window_cmd \
+  	test_window_id \
++ 	test_windows_home \
+  	test_writefile \
+  	test_alot_latin \
+  	test_alot_utf8 \
+*** ../vim-8.0.1011/src/testdir/test_windows_home.vim	2017-08-29 21:44:31.443782267 +0200
+--- src/testdir/test_windows_home.vim	2017-08-29 21:42:53.988418569 +0200
+***************
+*** 0 ****
+--- 1,124 ----
++ " Test for $HOME on Windows.
++ 
++ if !has('win32')
++   finish
++ endif
++ 
++ let s:env = {}
++ 
++ func s:restore_env()
++   for i in keys(s:env)
++     exe 'let ' . i . '=s:env["' . i . '"]'
++   endfor
++ endfunc
++ 
++ func s:save_env(...)
++   for i in a:000
++     exe 'let s:env["' . i . '"]=' . i
++   endfor
++ endfunc
++ 
++ func s:unlet_env(...)
++   for i in a:000
++     exe 'let ' . i . '=""'
++   endfor
++ endfunc
++ 
++ func CheckHomeIsMissingFromSubprocessEnvironment()
++   silent! let out = system('set')
++   let env = filter(split(out, "\n"), 'v:val=~"^HOME="')
++   call assert_equal(0, len(env))
++ endfunc
++ 
++ func CheckHomeIsInSubprocessEnvironment(exp)
++   silent! let out = system('set')
++   let env = filter(split(out, "\n"), 'v:val=~"^HOME="')
++   let home = len(env) == 0 ? "" : substitute(env[0], '[^=]\+=', '', '')
++   call assert_equal(a:exp, home)
++ endfunc
++ 
++ func CheckHome(exp, ...)
++   "call assert_equal(a:exp, $HOME)
++   "call assert_equal(a:exp, expand('~', ':p'))
++   if !a:0
++     call CheckHomeIsMissingFromSubprocessEnvironment()
++   else
++     call CheckHomeIsInSubprocessEnvironment(a:exp)
++   endif
++ endfunc
++ 
++ func TestWindowsHome()
++   command! -nargs=* SaveEnv call <SID>save_env(<f-args>)
++   command! -nargs=* RestoreEnv call <SID>restore_env()
++   command! -nargs=* UnletEnv call <SID>unlet_env(<f-args>)
++ 
++   SaveEnv $HOME $USERPROFILE $HOMEDRIVE $HOMEPATH
++   try
++     RestoreEnv
++     UnletEnv $HOME $USERPROFILE $HOMEPATH
++     let $HOMEDRIVE = 'C:'
++     call CheckHome('C:\')
++ 
++     RestoreEnv
++     UnletEnv $HOME $USERPROFILE
++     let $HOMEDRIVE = 'C:'
++     let $HOMEPATH = '\foobar'
++     call CheckHome('C:\foobar')
++ 
++     RestoreEnv
++     UnletEnv $HOME $HOMEDRIVE $HOMEPATH
++     let $USERPROFILE = 'C:\foo'
++     call CheckHome('C:\foo')
++ 
++     RestoreEnv
++     UnletEnv $HOME
++     let $USERPROFILE = 'C:\foo'
++     let $HOMEDRIVE = 'C:'
++     let $HOMEPATH = '\baz'
++     call CheckHome('C:\foo')
++ 
++     RestoreEnv
++     let $HOME = 'C:\bar'
++     let $USERPROFILE = 'C:\foo'
++     let $HOMEDRIVE = 'C:'
++     let $HOMEPATH = '\baz'
++     call CheckHome('C:\bar', 1)
++ 
++     RestoreEnv
++     let $HOME = '%USERPROFILE%\bar'
++     let $USERPROFILE = 'C:\foo'
++     let $HOMEDRIVE = 'C:'
++     let $HOMEPATH = '\baz'
++     call CheckHome('%USERPROFILE%\bar', 1)
++ 
++     RestoreEnv
++     let $HOME = '%USERPROFILE'
++     let $USERPROFILE = 'C:\foo'
++     let $HOMEDRIVE = 'C:'
++     let $HOMEPATH = '\baz'
++     call CheckHome('%USERPROFILE', 1)
++ 
++     RestoreEnv
++     let $HOME = 'C:\%USERPROFILE%'
++     let $USERPROFILE = 'C:\foo'
++     let $HOMEDRIVE = 'C:'
++     let $HOMEPATH = '\baz'
++     call CheckHome('C:\%USERPROFILE%', 1)
++ 
++     if has('channel')
++       RestoreEnv
++       UnletEnv $HOME
++       let env = ''
++       let job = job_start('cmd /c set', {'out_cb': {ch,x->[env,execute('let env=x')]}})
++       sleep 1
++       let env = filter(split(env, "\n"), 'v:val=="HOME"')
++       let home = len(env) == 0 ? "" : env[0]
++       call assert_equal('', home)
++     endif
++   finally
++     RestoreEnv
++     delcommand SaveEnv
++     delcommand RestoreEnv
++     delcommand UnletEnv
++   endtry
++ endfunc
+*** ../vim-8.0.1011/src/version.c	2017-08-29 20:42:01.853092187 +0200
+--- src/version.c	2017-08-29 21:36:09.051063567 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1012,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+29. Your phone bill comes to your doorstep in a box.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

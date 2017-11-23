@@ -1,0 +1,68 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0631
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0631
+Problem:    Perl 5.26 also needs S_TOPMARK and S_POPMARK defined.
+Solution:   Define the functions when needed. (Jesin, closes #1748)
+Files:      src/if_perl.xs
+
+
+*** ../vim-8.0.0630/src/if_perl.xs	2017-04-30 20:12:53.378810666 +0200
+--- src/if_perl.xs	2017-06-10 15:45:32.062585438 +0200
+***************
+*** 633,638 ****
+--- 633,662 ----
+  }
+  # endif
+  
++ /* perl-5.26 also needs S_TOPMARK and S_POPMARK. */
++ # if (PERL_REVISION == 5) && (PERL_VERSION >= 26)
++ PERL_STATIC_INLINE I32
++ S_TOPMARK(pTHX)
++ {
++     DEBUG_s(DEBUG_v(PerlIO_printf(Perl_debug_log,
++ 				 "MARK top  %p %" IVdf "\n",
++ 				  PL_markstack_ptr,
++ 				  (IV)*PL_markstack_ptr)));
++     return *PL_markstack_ptr;
++ }
++ 
++ PERL_STATIC_INLINE I32
++ S_POPMARK(pTHX)
++ {
++     DEBUG_s(DEBUG_v(PerlIO_printf(Perl_debug_log,
++ 				 "MARK pop  %p %" IVdf "\n",
++ 				  (PL_markstack_ptr-1),
++ 				  (IV)*(PL_markstack_ptr-1))));
++     assert((PL_markstack_ptr > PL_markstack) || !"MARK underflow");
++     return *PL_markstack_ptr--;
++ }
++ # endif
++ 
+  /*
+   * Make all runtime-links of perl.
+   *
+*** ../vim-8.0.0630/src/version.c	2017-06-10 14:29:26.766871128 +0200
+--- src/version.c	2017-06-10 15:46:13.606324480 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     631,
+  /**/
+
+-- 
+How To Keep A Healthy Level Of Insanity:
+11. Specify that your drive-through order is "to go".
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

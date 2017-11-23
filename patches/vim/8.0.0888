@@ -1,0 +1,93 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0888
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0888
+Problem:    Compiler warnings with 64 bit build.
+Solution:   Add type cast of change the type. (Mike Williams)
+Files:      src/message.c, src/os_mswin.c, src/os_win32.c
+
+
+*** ../vim-8.0.0887/src/message.c	2017-08-03 18:54:54.857872933 +0200
+--- src/message.c	2017-08-07 21:15:13.088266920 +0200
+***************
+*** 2639,2645 ****
+  # if defined(FEAT_MBYTE) && !defined(FEAT_GUI_MSWIN)
+      if (enc_codepage >= 0 && (int)GetConsoleCP() != enc_codepage)
+      {
+! 	int	inlen = STRLEN(str);
+  	int	outlen;
+  	WCHAR	*widestr = (WCHAR *)enc_to_utf16(str, &inlen);
+  
+--- 2639,2645 ----
+  # if defined(FEAT_MBYTE) && !defined(FEAT_GUI_MSWIN)
+      if (enc_codepage >= 0 && (int)GetConsoleCP() != enc_codepage)
+      {
+! 	int	inlen = (int)STRLEN(str);
+  	int	outlen;
+  	WCHAR	*widestr = (WCHAR *)enc_to_utf16(str, &inlen);
+  
+*** ../vim-8.0.0887/src/os_mswin.c	2017-08-05 23:09:26.750452793 +0200
+--- src/os_mswin.c	2017-08-07 21:16:43.903605211 +0200
+***************
+*** 453,460 ****
+  
+      if (*p == '`')
+      {
+  	/* don't replace backslash in backtick quoted strings */
+- 	int len = STRLEN(p);
+  	if (len > 2 && *(p + len - 1) == '`')
+  	    return;
+      }
+--- 453,461 ----
+  
+      if (*p == '`')
+      {
++ 	size_t len = STRLEN(p);
++ 
+  	/* don't replace backslash in backtick quoted strings */
+  	if (len > 2 && *(p + len - 1) == '`')
+  	    return;
+      }
+*** ../vim-8.0.0887/src/os_win32.c	2017-08-05 23:09:26.754452764 +0200
+--- src/os_win32.c	2017-08-07 21:17:00.379485159 +0200
+***************
+*** 7031,7037 ****
+  	     * main.c, so this part add str as literal. */
+  	    if (literal == FALSE)
+  	    {
+! 		int len = STRLEN(str);
+  		if (len > 2 && *str == '`' && *(str + len - 1) == '`')
+  		    literal = TRUE;
+  	    }
+--- 7031,7038 ----
+  	     * main.c, so this part add str as literal. */
+  	    if (literal == FALSE)
+  	    {
+! 		size_t len = STRLEN(str);
+! 
+  		if (len > 2 && *str == '`' && *(str + len - 1) == '`')
+  		    literal = TRUE;
+  	    }
+*** ../vim-8.0.0887/src/version.c	2017-08-07 20:51:39.658616239 +0200
+--- src/version.c	2017-08-07 21:16:18.115793112 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     888,
+  /**/
+
+-- 
+I just planted an Algebra tree. It has square roots.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

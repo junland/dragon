@@ -1,0 +1,76 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0862
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0862 (after 8.0.0862)
+Problem:    File size test fails on MS-Windows.
+Solution:   Set fileformat after opening new buffer.  Strip CR.
+Files:      src/testdir/test_file_size.vim
+
+
+*** ../vim-8.0.0861/src/testdir/test_file_size.vim	2017-08-04 22:36:01.566927258 +0200
+--- src/testdir/test_file_size.vim	2017-08-04 22:55:26.736518438 +0200
+***************
+*** 11,27 ****
+    if !executable('cksum')
+        return
+    endif
+-   set belloff=all fileformat=unix undolevels=-1
+  
+    new
+    for i in range(1, 2000000, 100)
+        call append(i, range(i, i + 99))
+    endfor
+  
+    1delete
+    w! Xtest
+!   let l = systemlist('cksum Xtest')
+!   call assert_equal('3678979763 14888896 Xtest', l[0])
+  
+    enew!
+    call delete('Xtest')
+--- 11,28 ----
+    if !executable('cksum')
+        return
+    endif
+  
+    new
++   set belloff=all fileformat=unix undolevels=-1
+    for i in range(1, 2000000, 100)
+        call append(i, range(i, i + 99))
+    endfor
+  
+    1delete
+    w! Xtest
+!   let res = systemlist('cksum Xtest')[0]
+!   let res = substitute(res, "\r", "", "")
+!   call assert_equal('3678979763 14888896 Xtest', res)
+  
+    enew!
+    call delete('Xtest')
+*** ../vim-8.0.0861/src/version.c	2017-08-04 22:36:01.566927258 +0200
+--- src/version.c	2017-08-04 22:55:58.230103965 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     862,
+  /**/
+
+-- 
+CONCORDE:  Quickly, sir, come this way!
+LAUNCELOT: No!  It's not right for my idiom.  I must escape more  ... more ...
+CONCORDE:  Dramatically, sir?
+LAUNCELOT: Dramatically.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

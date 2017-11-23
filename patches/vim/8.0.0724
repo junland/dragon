@@ -1,0 +1,143 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0724
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0724
+Problem:    The message for yanking doesn't indicate the register.
+Solution:   Show the register name in the "N lines yanked" message. (Lemonboy,
+            closes #1803, closes #1809)
+Files:      src/ops.c, src/Makefile, src/testdir/test_registers.vim,
+            src/testdir/Make_all.mak
+
+
+*** ../vim-8.0.0723/src/ops.c	2017-06-27 15:39:10.245139234 +0200
+--- src/ops.c	2017-07-16 17:37:07.109956587 +0200
+***************
+*** 3167,3185 ****
+  	/* Some versions of Vi use ">=" here, some don't...  */
+  	if (yanklines > p_report)
+  	{
+  	    /* redisplay now, so message is not deleted */
+  	    update_topline_redraw();
+  	    if (yanklines == 1)
+  	    {
+  		if (oap->block_mode)
+! 		    MSG(_("block of 1 line yanked"));
+  		else
+! 		    MSG(_("1 line yanked"));
+  	    }
+  	    else if (oap->block_mode)
+! 		smsg((char_u *)_("block of %ld lines yanked"), yanklines);
+  	    else
+! 		smsg((char_u *)_("%ld lines yanked"), yanklines);
+  	}
+      }
+  
+--- 3167,3195 ----
+  	/* Some versions of Vi use ">=" here, some don't...  */
+  	if (yanklines > p_report)
+  	{
++ 	    char namebuf[100];
++ 
++ 	    if (oap->regname == NUL)
++ 		*namebuf = NUL;
++ 	    else
++ 		vim_snprintf(namebuf, sizeof(namebuf),
++ 						   " into \"%c", oap->regname);
++ 
+  	    /* redisplay now, so message is not deleted */
+  	    update_topline_redraw();
+  	    if (yanklines == 1)
+  	    {
+  		if (oap->block_mode)
+! 		    smsg((char_u *)_("block of 1 line yanked%s"), namebuf);
+  		else
+! 		    smsg((char_u *)_("1 line yanked%s"), namebuf);
+  	    }
+  	    else if (oap->block_mode)
+! 		smsg((char_u *)_("block of %ld lines yanked%s"),
+! 		     yanklines, namebuf);
+  	    else
+! 		smsg((char_u *)_("%ld lines yanked%s"), yanklines,
+! 		     namebuf);
+  	}
+      }
+  
+*** ../vim-8.0.0723/src/Makefile	2017-07-11 22:34:47.523932120 +0200
+--- src/Makefile	2017-07-16 17:40:21.488512925 +0200
+***************
+*** 2227,2232 ****
+--- 2227,2233 ----
+  	test_regex_char_classes \
+  	test_regexp_latin \
+  	test_regexp_utf8 \
++ 	test_registers \
+  	test_reltime \
+  	test_retab \
+  	test_ruby \
+*** ../vim-8.0.0723/src/testdir/test_registers.vim	2017-07-16 17:54:30.230153051 +0200
+--- src/testdir/test_registers.vim	2017-07-16 17:47:27.417320982 +0200
+***************
+*** 0 ****
+--- 1,27 ----
++ 
++ func Test_yank_shows_register()
++     enew
++     set report=0
++     call setline(1, ['foo', 'bar'])
++     " Line-wise
++     exe 'norm! yy'
++     call assert_equal('1 line yanked', v:statusmsg)
++     exe 'norm! "zyy'
++     call assert_equal('1 line yanked into "z', v:statusmsg)
++     exe 'norm! yj'
++     call assert_equal('2 lines yanked', v:statusmsg)
++     exe 'norm! "zyj'
++     call assert_equal('2 lines yanked into "z', v:statusmsg)
++ 
++     " Block-wise
++     exe "norm! \<C-V>y"
++     call assert_equal('block of 1 line yanked', v:statusmsg)
++     exe "norm! \<C-V>\"zy"
++     call assert_equal('block of 1 line yanked into "z', v:statusmsg)
++     exe "norm! \<C-V>jy"
++     call assert_equal('block of 2 lines yanked', v:statusmsg)
++     exe "norm! \<C-V>j\"zy"
++     call assert_equal('block of 2 lines yanked into "z', v:statusmsg)
++ 
++     bwipe!
++ endfunc
+*** ../vim-8.0.0723/src/testdir/Make_all.mak	2017-07-11 21:45:26.613831235 +0200
+--- src/testdir/Make_all.mak	2017-07-16 17:43:26.699132933 +0200
+***************
+*** 184,189 ****
+--- 184,190 ----
+  	    test_quickfix.res \
+  	    test_quotestar.res \
+  	    test_retab.res \
++ 	    test_registers.res \
+  	    test_ruby.res \
+  	    test_search.res \
+  	    test_signs.res \
+*** ../vim-8.0.0723/src/version.c	2017-07-16 16:42:08.066725876 +0200
+--- src/version.c	2017-07-16 17:54:02.646359383 +0200
+***************
+*** 771,772 ****
+--- 771,774 ----
+  {   /* Add new patch number below this line */
++ /**/
++     724,
+  /**/
+
+-- 
+Keep America beautiful.  Swallow your beer cans.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

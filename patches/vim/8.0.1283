@@ -1,0 +1,67 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1283
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1283
+Problem:    Test 86 fails under ASAN.
+Solution:   Fix that an item was added to a dictionary twice.
+Files:      src/if_py_both.h
+
+
+*** ../vim-8.0.1282/src/if_py_both.h	2017-11-09 19:56:00.849332961 +0100
+--- src/if_py_both.h	2017-11-09 22:06:56.483708904 +0100
+***************
+*** 1996,2001 ****
+--- 1996,2002 ----
+  		PyObject	*todecref;
+  		char_u		*key;
+  		dictitem_T	*di;
++ 		hashitem_T	*hi;
+  
+  		if (!(fast = PySequence_Fast(item, "")))
+  		{
+***************
+*** 2052,2058 ****
+  
+  		Py_DECREF(fast);
+  
+! 		if (dict_add(dict, di) == FAIL)
+  		{
+  		    RAISE_KEY_ADD_FAIL(di->di_key);
+  		    Py_DECREF(iterator);
+--- 2053,2060 ----
+  
+  		Py_DECREF(fast);
+  
+! 		hi = hash_find(&dict->dv_hashtab, di->di_key);
+! 		if (!HASHITEM_EMPTY(hi) || dict_add(dict, di) == FAIL)
+  		{
+  		    RAISE_KEY_ADD_FAIL(di->di_key);
+  		    Py_DECREF(iterator);
+*** ../vim-8.0.1282/src/version.c	2017-11-09 21:05:27.266425176 +0100
+--- src/version.c	2017-11-09 22:09:10.641722577 +0100
+***************
+*** 763,764 ****
+--- 763,766 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1283,
+  /**/
+
+-- 
+CART DRIVER: Bring out your dead!
+   There are legs stick out of windows and doors.  Two MEN are fighting in the
+   mud - covered from head to foot in it.  Another MAN is on his hands in
+   knees shovelling mud into his mouth.  We just catch sight of a MAN falling
+   into a well.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

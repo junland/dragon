@@ -1,0 +1,122 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.0550
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.0550
+Problem:    Some etags format tags file use 0x01, breaking the parsing.
+Solution:   Use 0x02 for TAG_SEP. (James McCoy, closes #1614)
+Files:      src/tag.c, src/testdir/test_taglist.vim
+
+
+*** ../vim-8.0.0549/src/tag.c	2017-03-25 15:03:41.372056986 +0100
+--- src/tag.c	2017-04-07 20:28:15.608892372 +0200
+***************
+*** 2355,2372 ****
+  		}
+  		else
+  		{
+! #define TAG_SEP 0x01
+  		    size_t tag_fname_len = STRLEN(tag_fname);
+  #ifdef FEAT_EMACS_TAGS
+  		    size_t ebuf_len = 0;
+  #endif
+  
+  		    /* Save the tag in a buffer.
+! 		     * Use 0x01 to separate fields (Can't use NUL, because the
+! 		     * hash key is terminated by NUL).
+! 		     * Emacs tag: <mtt><tag_fname><0x01><ebuf><0x01><lbuf><NUL>
+! 		     * other tag: <mtt><tag_fname><0x01><0x01><lbuf><NUL>
+! 		     * without Emacs tags: <mtt><tag_fname><0x01><lbuf><NUL>
+  		     * Here <mtt> is the "mtt" value plus 1 to avoid NUL.
+  		     */
+  		    len = (int)tag_fname_len + (int)STRLEN(lbuf) + 3;
+--- 2355,2373 ----
+  		}
+  		else
+  		{
+! #define TAG_SEP 0x02
+  		    size_t tag_fname_len = STRLEN(tag_fname);
+  #ifdef FEAT_EMACS_TAGS
+  		    size_t ebuf_len = 0;
+  #endif
+  
+  		    /* Save the tag in a buffer.
+! 		     * Use 0x02 to separate fields (Can't use NUL because the
+! 		     * hash key is terminated by NUL, or Ctrl_A because that is
+! 		     * part of some Emacs tag files -- see parse_tag_line).
+! 		     * Emacs tag: <mtt><tag_fname><0x02><ebuf><0x02><lbuf><NUL>
+! 		     * other tag: <mtt><tag_fname><0x02><0x02><lbuf><NUL>
+! 		     * without Emacs tags: <mtt><tag_fname><0x02><lbuf><NUL>
+  		     * Here <mtt> is the "mtt" value plus 1 to avoid NUL.
+  		     */
+  		    len = (int)tag_fname_len + (int)STRLEN(lbuf) + 3;
+*** ../vim-8.0.0549/src/testdir/test_taglist.vim	2017-03-21 17:08:46.678923883 +0100
+--- src/testdir/test_taglist.vim	2017-04-07 20:27:54.297024595 +0200
+***************
+*** 19,21 ****
+--- 19,58 ----
+    bwipe
+  endfunc
+  
++ func Test_taglist_native_etags()
++   if !has('emacs_tags')
++     return
++   endif
++   call writefile([
++ 	\ "\x0c",
++ 	\ "src/os_unix.c,13491",
++ 	\ "set_signals(\x7f1335,32699",
++ 	\ "reset_signals(\x7f1407,34136",
++ 	\ ], 'Xtags')
++ 
++   set tags=Xtags
++ 
++   call assert_equal([['set_signals', '1335,32699'], ['reset_signals', '1407,34136']],
++ 	\ map(taglist('set_signals'), {i, v -> [v.name, v.cmd]}))
++ 
++   call delete('Xtags')
++ endfunc
++ 
++ func Test_taglist_ctags_etags()
++   if !has('emacs_tags')
++     return
++   endif
++   call writefile([
++ 	\ "\x0c",
++ 	\ "src/os_unix.c,13491",
++ 	\ "set_signals(void)\x7fset_signals\x011335,32699",
++ 	\ "reset_signals(void)\x7freset_signals\x011407,34136",
++ 	\ ], 'Xtags')
++ 
++   set tags=Xtags
++ 
++   call assert_equal([['set_signals', '1335,32699'], ['reset_signals', '1407,34136']],
++ 	\ map(taglist('set_signals'), {i, v -> [v.name, v.cmd]}))
++ 
++   call delete('Xtags')
++ endfunc
+*** ../vim-8.0.0549/src/version.c	2017-04-07 20:09:47.311773995 +0200
+--- src/version.c	2017-04-07 20:29:30.188429723 +0200
+***************
+*** 766,767 ****
+--- 766,769 ----
+  {   /* Add new patch number below this line */
++ /**/
++     550,
+  /**/
+
+-- 
+FIRST HEAD:  Oh! quick! get the sword out I want to cut his head off.
+THIRD HEAD:  Oh, cut your own head off.
+SECOND HEAD: Yes - do us all a favour.
+                 "Monty Python and the Holy Grail" PYTHON (MONTY) PICTURES LTD
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///
