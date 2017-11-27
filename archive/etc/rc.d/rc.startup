@@ -213,8 +213,12 @@ fi
 
 # Load kernel modules
 
-echo "(Startup) Refreshing kernel modules: depmod -A"
-depmod -A
+echo "(Startup) Refreshing kernel module list: depmod --quick"
+if ! depmod --quick
+then
+    echo "Trying to generate kernel module dependency list" 1>&2
+    depmod
+fi
 
 if test -x /etc/rc.d/rc.modules
 then
