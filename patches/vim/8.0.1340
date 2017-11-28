@@ -1,0 +1,67 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1340
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1340
+Problem:    MS-Windows: cannot build GUI without IME.
+Solution:   Define im_get_status() and im_set_active() when IME is not used.
+Files:      src/mbyte.c
+
+
+*** ../vim-8.0.1339/src/mbyte.c	2017-11-25 17:14:29.604189538 +0100
+--- src/mbyte.c	2017-11-25 17:40:47.575638528 +0100
+***************
+*** 6473,6479 ****
+  
+  #else /* !defined(FEAT_XIM) */
+  
+! # ifndef FEAT_GUI_W32
+  static int im_was_set_active = FALSE;
+  
+      int
+--- 6473,6479 ----
+  
+  #else /* !defined(FEAT_XIM) */
+  
+! # if !defined(FEAT_GUI_W32) || !(defined(FEAT_MBYTE_IME) || defined(GLOBAL_IME))
+  static int im_was_set_active = FALSE;
+  
+      int
+***************
+*** 6499,6504 ****
+--- 6499,6511 ----
+      }
+  #  endif
+  }
++ 
++ #  ifdef FEAT_GUI
++     void
++ im_set_position(int row, int col)
++ {
++ }
++ #  endif
+  # endif
+  
+  #endif /* FEAT_XIM */
+*** ../vim-8.0.1339/src/version.c	2017-11-25 17:24:05.638587905 +0100
+--- src/version.c	2017-11-25 17:48:15.185564001 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1340,
+  /**/
+
+-- 
+To define recursion, we must first define recursion.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

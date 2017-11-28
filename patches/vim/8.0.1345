@@ -1,0 +1,397 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1345
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1345
+Problem:    Race condition between stat() and open() for the viminfo temp
+            file. (Simon Ruderich)
+Solution:   use open() with O_EXCL to atomically check if the file exists.
+            Don't try using a temp file, renaming it will fail anyway.
+Files:      src/ex_cmds.c
+
+
+*** ../vim-8.0.1344/src/ex_cmds.c	2017-11-11 16:45:14.782308811 +0100
+--- src/ex_cmds.c	2017-11-26 15:55:07.274872225 +0100
+***************
+*** 1825,1831 ****
+      FILE	*fp_out = NULL;	/* output viminfo file */
+      char_u	*tempname = NULL;	/* name of temp viminfo file */
+      stat_T	st_new;		/* mch_stat() of potential new file */
+-     char_u	*wp;
+  #if defined(UNIX) || defined(VMS)
+      mode_t	umask_save;
+  #endif
+--- 1825,1830 ----
+***************
+*** 1847,1873 ****
+      fp_in = mch_fopen((char *)fname, READBIN);
+      if (fp_in == NULL)
+      {
+  	/* if it does exist, but we can't read it, don't try writing */
+  	if (mch_stat((char *)fname, &st_new) == 0)
+  	    goto end;
+! #if defined(UNIX) || defined(VMS)
+! 	/*
+! 	 * For Unix we create the .viminfo non-accessible for others,
+! 	 * because it may contain text from non-accessible documents.
+! 	 */
+! 	umask_save = umask(077);
+! #endif
+! 	fp_out = mch_fopen((char *)fname, WRITEBIN);
+! #if defined(UNIX) || defined(VMS)
+! 	(void)umask(umask_save);
+! #endif
+      }
+      else
+      {
+  	/*
+  	 * There is an existing viminfo file.  Create a temporary file to
+  	 * write the new viminfo into, in the same directory as the
+! 	 * existing viminfo file, which will be renamed later.
+  	 */
+  #ifdef UNIX
+  	/*
+--- 1846,1874 ----
+      fp_in = mch_fopen((char *)fname, READBIN);
+      if (fp_in == NULL)
+      {
++ 	int fd;
++ 
+  	/* if it does exist, but we can't read it, don't try writing */
+  	if (mch_stat((char *)fname, &st_new) == 0)
+  	    goto end;
+! 
+! 	/* Create the new .viminfo non-accessible for others, because it may
+! 	 * contain text from non-accessible documents. It is up to the user to
+! 	 * widen access (e.g. to a group). This may also fail if there is a
+! 	 * race condition, then just give up. */
+! 	fd = mch_open((char *)fname,
+! 			    O_CREAT|O_EXTRA|O_EXCL|O_WRONLY|O_NOFOLLOW, 0600);
+! 	if (fd < 0)
+! 	    goto end;
+! 	fp_out = fdopen(fd, WRITEBIN);
+      }
+      else
+      {
+  	/*
+  	 * There is an existing viminfo file.  Create a temporary file to
+  	 * write the new viminfo into, in the same directory as the
+! 	 * existing viminfo file, which will be renamed once all writing is
+! 	 * successful.
+  	 */
+  #ifdef UNIX
+  	/*
+***************
+*** 1901,1912 ****
+  #endif
+  
+  	/*
+! 	 * Make tempname.
+  	 * May try twice: Once normal and once with shortname set, just in
+  	 * case somebody puts his viminfo file in an 8.3 filesystem.
+  	 */
+  	for (;;)
+  	{
+  	    tempname = buf_modname(
+  #ifdef UNIX
+  				    shortname,
+--- 1902,1919 ----
+  #endif
+  
+  	/*
+! 	 * Make tempname, find one that does not exist yet.
+! 	 * Beware of a race condition: If someone logs out and all Vim
+! 	 * instances exit at the same time a temp file might be created between
+! 	 * stat() and open().  Use mch_open() with O_EXCL to avoid that.
+  	 * May try twice: Once normal and once with shortname set, just in
+  	 * case somebody puts his viminfo file in an 8.3 filesystem.
+  	 */
+  	for (;;)
+  	{
++ 	    int		next_char = 'z';
++ 	    char_u	*wp;
++ 
+  	    tempname = buf_modname(
+  #ifdef UNIX
+  				    shortname,
+***************
+*** 1924,2050 ****
+  		break;
+  
+  	    /*
+! 	     * Check if tempfile already exists.  Never overwrite an
+! 	     * existing file!
+  	     */
+! 	    if (mch_stat((char *)tempname, &st_new) == 0)
+  	    {
+- #ifdef UNIX
+  		/*
+! 		 * Check if tempfile is same as original file.  May happen
+! 		 * when modname() gave the same file back.  E.g.  silly
+! 		 * link, or file name-length reached.  Try again with
+! 		 * shortname set.
+  		 */
+! 		if (!shortname && st_new.st_dev == st_old.st_dev
+! 					    && st_new.st_ino == st_old.st_ino)
+! 		{
+! 		    vim_free(tempname);
+! 		    tempname = NULL;
+! 		    shortname = TRUE;
+! 		    continue;
+! 		}
+! #endif
+! 		/*
+! 		 * Try another name.  Change one character, just before
+! 		 * the extension.  This should also work for an 8.3
+! 		 * file name, when after adding the extension it still is
+! 		 * the same file as the original.
+! 		 */
+! 		wp = tempname + STRLEN(tempname) - 5;
+! 		if (wp < gettail(tempname))	    /* empty file name? */
+! 		    wp = gettail(tempname);
+! 		for (*wp = 'z'; mch_stat((char *)tempname, &st_new) == 0;
+! 								    --*wp)
+  		{
+  		    /*
+! 		     * They all exist?  Must be something wrong! Don't
+! 		     * write the viminfo file then.
+  		     */
+! 		    if (*wp == 'a')
+  		    {
+- 			EMSG2(_("E929: Too many viminfo temp files, like %s!"),
+- 								    tempname);
+  			vim_free(tempname);
+  			tempname = NULL;
+  			break;
+  		    }
+  		}
+! 	    }
+! 	    break;
+! 	}
+! 
+! 	if (tempname != NULL)
+! 	{
+  #ifdef VMS
+! 	    /* fdopen() fails for some reason */
+! 	    umask_save = umask(077);
+! 	    fp_out = mch_fopen((char *)tempname, WRITEBIN);
+! 	    (void)umask(umask_save);
+  #else
+! 	    int	fd;
+  
+! 	    /* Use mch_open() to be able to use O_NOFOLLOW and set file
+! 	     * protection:
+! 	     * Unix: same as original file, but strip s-bit.  Reset umask to
+! 	     * avoid it getting in the way.
+! 	     * Others: r&w for user only. */
+  # ifdef UNIX
+! 	    umask_save = umask(0);
+! 	    fd = mch_open((char *)tempname,
+! 		    O_CREAT|O_EXTRA|O_EXCL|O_WRONLY|O_NOFOLLOW,
+! 				       (int)((st_old.st_mode & 0777) | 0600));
+! 	    (void)umask(umask_save);
+  # else
+! 	    fd = mch_open((char *)tempname,
+! 			    O_CREAT|O_EXTRA|O_EXCL|O_WRONLY|O_NOFOLLOW, 0600);
+  # endif
+! 	    if (fd < 0)
+! 		fp_out = NULL;
+! 	    else
+! 		fp_out = fdopen(fd, WRITEBIN);
+  #endif /* VMS */
+  
+! 	    /*
+! 	     * If we can't create in the same directory, try creating a
+! 	     * "normal" temp file.  This is just an attempt, renaming the temp
+! 	     * file might fail as well.
+! 	     */
+! 	    if (fp_out == NULL)
+! 	    {
+! 		vim_free(tempname);
+! 		if ((tempname = vim_tempname('o', TRUE)) != NULL)
+! 		    fp_out = mch_fopen((char *)tempname, WRITEBIN);
+  	    }
+  
+  #if defined(UNIX) && defined(HAVE_FCHOWN)
+  	    /*
+  	     * Make sure the original owner can read/write the tempfile and
+  	     * otherwise preserve permissions, making sure the group matches.
+  	     */
+! 	    if (fp_out != NULL)
+  	    {
+! 		stat_T	tmp_st;
+! 
+! 		if (mch_stat((char *)tempname, &tmp_st) >= 0)
+! 		{
+! 		    if (st_old.st_uid != tmp_st.st_uid)
+! 			/* Changing the owner might fail, in which case the
+! 			 * file will now owned by the current user, oh well. */
+! 			ignored = fchown(fileno(fp_out), st_old.st_uid, -1);
+! 		    if (st_old.st_gid != tmp_st.st_gid
+! 			    && fchown(fileno(fp_out), -1, st_old.st_gid) == -1)
+! 			/* can't set the group to what it should be, remove
+! 			 * group permissions */
+! 			(void)mch_setperm(tempname, 0600);
+! 		}
+! 		else
+! 		    /* can't stat the file, set conservative permissions */
+  		    (void)mch_setperm(tempname, 0600);
+  	    }
+! #endif
+  	}
+      }
+  
+      /*
+       * Check if the new viminfo file can be written to.
+--- 1931,2059 ----
+  		break;
+  
+  	    /*
+! 	     * Try a series of names.  Change one character, just before
+! 	     * the extension.  This should also work for an 8.3
+! 	     * file name, when after adding the extension it still is
+! 	     * the same file as the original.
+  	     */
+! 	    wp = tempname + STRLEN(tempname) - 5;
+! 	    if (wp < gettail(tempname))	    /* empty file name? */
+! 		wp = gettail(tempname);
+! 	    for (;;)
+  	    {
+  		/*
+! 		 * Check if tempfile already exists.  Never overwrite an
+! 		 * existing file!
+  		 */
+! 		if (mch_stat((char *)tempname, &st_new) == 0)
+  		{
++ #ifdef UNIX
+  		    /*
+! 		     * Check if tempfile is same as original file.  May happen
+! 		     * when modname() gave the same file back.  E.g.  silly
+! 		     * link, or file name-length reached.  Try again with
+! 		     * shortname set.
+  		     */
+! 		    if (!shortname && st_new.st_dev == st_old.st_dev
+! 						&& st_new.st_ino == st_old.st_ino)
+  		    {
+  			vim_free(tempname);
+  			tempname = NULL;
++ 			shortname = TRUE;
+  			break;
+  		    }
++ #endif
+  		}
+! 		else
+! 		{
+! 		    /* Try creating the file exclusively.  This may fail if
+! 		     * another Vim tries to do it at the same time. */
+  #ifdef VMS
+! 		    /* fdopen() fails for some reason */
+! 		    umask_save = umask(077);
+! 		    fp_out = mch_fopen((char *)tempname, WRITEBIN);
+! 		    (void)umask(umask_save);
+  #else
+! 		    int	fd;
+  
+! 		    /* Use mch_open() to be able to use O_NOFOLLOW and set file
+! 		     * protection:
+! 		     * Unix: same as original file, but strip s-bit.  Reset
+! 		     * umask to avoid it getting in the way.
+! 		     * Others: r&w for user only. */
+  # ifdef UNIX
+! 		    umask_save = umask(0);
+! 		    fd = mch_open((char *)tempname,
+! 			    O_CREAT|O_EXTRA|O_EXCL|O_WRONLY|O_NOFOLLOW,
+! 					(int)((st_old.st_mode & 0777) | 0600));
+! 		    (void)umask(umask_save);
+  # else
+! 		    fd = mch_open((char *)tempname,
+! 			     O_CREAT|O_EXTRA|O_EXCL|O_WRONLY|O_NOFOLLOW, 0600);
+  # endif
+! 		    if (fd < 0)
+! 		    {
+! 			fp_out = NULL;
+! # ifdef EEXIST
+! 			/* Avoid trying lots of names while the problem is lack
+! 			 * of premission, only retry if the file already
+! 			 * exists. */
+! 			if (errno != EEXIST)
+! 			    break;
+! # endif
+! 		    }
+! 		    else
+! 			fp_out = fdopen(fd, WRITEBIN);
+  #endif /* VMS */
++ 		    if (fp_out != NULL)
++ 			break;
++ 		}
+  
+! 		/* Assume file exists, try again with another name. */
+! 		if (next_char == 'a' - 1)
+! 		{
+! 		    /* They all exist?  Must be something wrong! Don't write
+! 		     * the viminfo file then. */
+! 		    EMSG2(_("E929: Too many viminfo temp files, like %s!"),
+! 								     tempname);
+! 		    break;
+! 		}
+! 		*wp = next_char;
+! 		--next_char;
+  	    }
+  
++ 	    if (tempname != NULL)
++ 		break;
++ 	    /* continue if shortname was set */
++ 	}
++ 
+  #if defined(UNIX) && defined(HAVE_FCHOWN)
++ 	if (tempname != NULL && fp_out != NULL)
++ 	{
++ 		stat_T	tmp_st;
++ 
+  	    /*
+  	     * Make sure the original owner can read/write the tempfile and
+  	     * otherwise preserve permissions, making sure the group matches.
+  	     */
+! 	    if (mch_stat((char *)tempname, &tmp_st) >= 0)
+  	    {
+! 		if (st_old.st_uid != tmp_st.st_uid)
+! 		    /* Changing the owner might fail, in which case the
+! 		     * file will now owned by the current user, oh well. */
+! 		    ignored = fchown(fileno(fp_out), st_old.st_uid, -1);
+! 		if (st_old.st_gid != tmp_st.st_gid
+! 			&& fchown(fileno(fp_out), -1, st_old.st_gid) == -1)
+! 		    /* can't set the group to what it should be, remove
+! 		     * group permissions */
+  		    (void)mch_setperm(tempname, 0600);
+  	    }
+! 	    else
+! 		/* can't stat the file, set conservative permissions */
+! 		(void)mch_setperm(tempname, 0600);
+  	}
+      }
++ #endif
+  
+      /*
+       * Check if the new viminfo file can be written to.
+*** ../vim-8.0.1344/src/version.c	2017-11-26 14:56:11.128133277 +0100
+--- src/version.c	2017-11-26 15:57:59.209925680 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1345,
+  /**/
+
+-- 
+Change is inevitable, except from a vending machine.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

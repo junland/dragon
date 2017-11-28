@@ -1,0 +1,141 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1333
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1333
+Problem:    Some tests are run twice.
+Solution:   Invoked most utf8 tests only from test_alot_utf8. (Yegappan
+            Lakshmanan, closes #2369)
+Files:      src/testdir/Make_all.mak, src/testdir/test_alot_utf8.vim,
+            src/testdir/test_mksession_utf8.vim
+
+
+*** ../vim-8.0.1332/src/testdir/Make_all.mak	2017-11-21 11:43:04.083900999 +0100
+--- src/testdir/Make_all.mak	2017-11-23 22:47:27.191256123 +0100
+***************
+*** 79,85 ****
+  	    test_cdo.res \
+  	    test_channel.res \
+  	    test_charsearch.res \
+- 	    test_charsearch_utf8.res \
+  	    test_cindent.res \
+  	    test_clientserver.res \
+  	    test_close_count.res \
+--- 79,84 ----
+***************
+*** 98,104 ****
+  	    test_exec_while_if.res \
+  	    test_exists.res \
+  	    test_exists_autocmd.res \
+- 	    test_expr_utf8.res \
+  	    test_farsi.res \
+  	    test_file_size.res \
+  	    test_find_complete.res \
+--- 97,102 ----
+***************
+*** 128,143 ****
+  	    test_listchars.res \
+  	    test_listdict.res \
+  	    test_listlbr.res \
+- 	    test_listlbr_utf8.res \
+  	    test_lua.res \
+  	    test_makeencoding.res \
+  	    test_man.res \
+  	    test_maparg.res \
+  	    test_marks.res \
+  	    test_matchadd_conceal.res \
+- 	    test_matchadd_conceal_utf8.res \
+  	    test_mksession.res \
+- 	    test_mksession_utf8.res \
+  	    test_nested_function.res \
+  	    test_netbeans.res \
+  	    test_normal.res \
+--- 126,138 ----
+***************
+*** 156,163 ****
+  	    test_quickfix.res \
+  	    test_quotestar.res \
+  	    test_regex_char_classes.res \
+- 	    test_regexp_latin.res \
+- 	    test_regexp_utf8.res \
+  	    test_registers.res \
+  	    test_retab.res \
+  	    test_ruby.res \
+--- 151,156 ----
+***************
+*** 165,174 ****
+  	    test_search.res \
+  	    test_signs.res \
+  	    test_smartindent.res \
+- 	    test_source_utf8.res \
+  	    test_spell.res \
+  	    test_startup.res \
+- 	    test_startup_utf8.res \
+  	    test_stat.res \
+  	    test_substitute.res \
+  	    test_swap.res \
+--- 158,165 ----
+***************
+*** 183,190 ****
+  	    test_undo.res \
+  	    test_user_func.res \
+  	    test_usercommands.res \
+- 	    test_utf8.res \
+- 	    test_utf8_comparisons.res \
+  	    test_viminfo.res \
+  	    test_vimscript.res \
+  	    test_visual.res \
+--- 174,179 ----
+*** ../vim-8.0.1332/src/testdir/test_alot_utf8.vim	2017-10-15 22:07:35.203683210 +0200
+--- src/testdir/test_alot_utf8.vim	2017-11-23 22:47:27.191256123 +0100
+***************
+*** 7,14 ****
+--- 7,17 ----
+  
+  source test_charsearch_utf8.vim
+  source test_expr_utf8.vim
++ source test_listlbr_utf8.vim
+  source test_matchadd_conceal_utf8.vim
++ source test_mksession_utf8.vim
+  source test_regexp_utf8.vim
+  source test_source_utf8.vim
++ source test_startup_utf8.vim
+  source test_utf8.vim
+  source test_utf8_comparisons.vim
+*** ../vim-8.0.1332/src/testdir/test_mksession_utf8.vim	2016-12-01 18:47:06.595684409 +0100
+--- src/testdir/test_mksession_utf8.vim	2017-11-23 22:47:27.191256123 +0100
+***************
+*** 99,104 ****
+--- 99,105 ----
+    call delete('test_mks.out')
+    call delete(tmpfile)
+    let &wrap = wrap_save
++   set sessionoptions& splitbelow& fileencoding&
+  endfunc
+  
+  " vim: shiftwidth=2 sts=2 expandtab
+*** ../vim-8.0.1332/src/version.c	2017-11-23 22:05:41.156900903 +0100
+--- src/version.c	2017-11-23 22:48:38.474841327 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1333,
+  /**/
+
+-- 
+Apparently, 1 in 5 people in the world are Chinese.  And there are 5
+people in my family, so it must be one of them.  It's either my mum
+or my dad.  Or my older brother Colin.  Or my younger brother
+Ho-Cha-Chu.  But I think it's Colin.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

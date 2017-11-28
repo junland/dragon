@@ -1,0 +1,69 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1341
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1341
+Problem:    'imactivatefunc' test fails on MS-Windows.
+Solution:   Skip the text.
+Files:      src/testdir/test_iminsert.vim, runtime/doc/options.txt
+
+
+*** ../vim-8.0.1340/src/testdir/test_iminsert.vim	2017-11-25 15:19:45.097464854 +0100
+--- src/testdir/test_iminsert.vim	2017-11-25 17:56:39.474767588 +0100
+***************
+*** 17,22 ****
+--- 17,25 ----
+  endfunc
+  
+  func Test_iminsert2()
++   if has('gui_win32')
++     return
++   endif
+    set imactivatefunc=IM_activatefunc
+    set imstatusfunc=IM_statusfunc
+    set iminsert=2
+*** ../vim-8.0.1340/runtime/doc/options.txt	2017-11-25 15:19:45.089464894 +0100
+--- runtime/doc/options.txt	2017-11-25 17:53:12.440114247 +0100
+***************
+*** 4164,4169 ****
+--- 4259,4265 ----
+  			{only available when compiled with |+mbyte|}
+  	This option specifies a function that will be called to
+  	activate/inactivate Input Method.
++ 	Does not work in the MS-Windows GUI version.
+  
+  	Example: >
+  		function ImActivateFunc(active)
+***************
+*** 4279,4284 ****
+--- 4375,4381 ----
+  			{only available when compiled with |+mbyte|}
+  	This option specifies a function that is called to obtain the status
+  	of Input Method.  It must return a positive number when IME is active.
++ 	Does not work in the MS-Windows GUI version.
+  
+  	Example: >
+  		function ImStatusFunc()
+*** ../vim-8.0.1340/src/version.c	2017-11-25 17:48:28.509499894 +0100
+--- src/version.c	2017-11-25 17:57:22.770483635 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1341,
+  /**/
+
+-- 
+Have you heard about the new Beowulf cluster? It's so fast, it executes
+an infinite loop in 6 seconds.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

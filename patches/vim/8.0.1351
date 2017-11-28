@@ -1,0 +1,136 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1351
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1351
+Problem:    Warning for unused variables building with MinGW.
+Solution:   Change a few #ifdefs (suggested by John Marriott). Remove
+            superfluous checks of FEAT_MBYTE.
+Files:      src/gui_w32.c
+
+
+*** ../vim-8.0.1350/src/gui_w32.c	2017-11-26 14:29:24.847931598 +0100
+--- src/gui_w32.c	2017-11-27 23:20:43.198515361 +0100
+***************
+*** 498,506 ****
+   *
+   * These LOGFONT used for IME.
+   */
+! #ifdef FEAT_MBYTE
+  /* holds LOGFONT for 'guifontwide' if available, otherwise 'guifont' */
+  static LOGFONT norm_logfont;
+  /* holds LOGFONT for 'guifont' always. */
+  static LOGFONT sub_logfont;
+  #endif
+--- 498,508 ----
+   *
+   * These LOGFONT used for IME.
+   */
+! #if defined(FEAT_MBYTE_IME) || defined(GLOBAL_IME)
+  /* holds LOGFONT for 'guifontwide' if available, otherwise 'guifont' */
+  static LOGFONT norm_logfont;
++ #endif
++ #ifdef FEAT_MBYTE_IME
+  /* holds LOGFONT for 'guifont' always. */
+  static LOGFONT sub_logfont;
+  #endif
+***************
+*** 3361,3366 ****
+--- 3363,3370 ----
+  	font_name = (char_u *)lf.lfFaceName;
+  #if defined(FEAT_MBYTE_IME) || defined(GLOBAL_IME)
+      norm_logfont = lf;
++ #endif
++ #ifdef FEAT_MBYTE_IME
+      sub_logfont = lf;
+  #endif
+  #ifdef FEAT_MBYTE_IME
+***************
+*** 5794,5808 ****
+      gui.currSpColor = color;
+  }
+  
+! #if defined(FEAT_MBYTE) && defined(FEAT_MBYTE_IME)
+  /*
+   * Multi-byte handling, originally by Sung-Hoon Baek.
+   * First static functions (no prototypes generated).
+   */
+! #ifdef _MSC_VER
+! # include <ime.h>   /* Apparently not needed for Cygwin, MingW or Borland. */
+! #endif
+! #include <imm.h>
+  
+  /*
+   * handle WM_IME_NOTIFY message
+--- 5798,5812 ----
+      gui.currSpColor = color;
+  }
+  
+! #ifdef FEAT_MBYTE_IME
+  /*
+   * Multi-byte handling, originally by Sung-Hoon Baek.
+   * First static functions (no prototypes generated).
+   */
+! # ifdef _MSC_VER
+! #  include <ime.h>   /* Apparently not needed for Cygwin, MingW or Borland. */
+! # endif
+! # include <imm.h>
+  
+  /*
+   * handle WM_IME_NOTIFY message
+***************
+*** 5954,5960 ****
+  #endif
+  
+  /* For global functions we need prototypes. */
+! #if (defined(FEAT_MBYTE) && defined(FEAT_MBYTE_IME)) || defined(PROTO)
+  
+  /*
+   * set font to IM.
+--- 5958,5964 ----
+  #endif
+  
+  /* For global functions we need prototypes. */
+! #if defined(FEAT_MBYTE_IME) || defined(PROTO)
+  
+  /*
+   * set font to IM.
+***************
+*** 6079,6085 ****
+      return status;
+  }
+  
+! #endif /* FEAT_MBYTE && FEAT_MBYTE_IME */
+  
+  #if defined(FEAT_MBYTE) && !defined(FEAT_MBYTE_IME) && defined(GLOBAL_IME)
+  /* Win32 with GLOBAL IME */
+--- 6083,6089 ----
+      return status;
+  }
+  
+! #endif /* FEAT_MBYTE_IME */
+  
+  #if defined(FEAT_MBYTE) && !defined(FEAT_MBYTE_IME) && defined(GLOBAL_IME)
+  /* Win32 with GLOBAL IME */
+*** ../vim-8.0.1350/src/version.c	2017-11-27 22:48:57.913206792 +0100
+--- src/version.c	2017-11-27 23:23:23.129576747 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1351,
+  /**/
+
+-- 
+Never overestimate a man's ability to underestimate a woman.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,153 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1348
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1348
+Problem:    Make testclean deletes script file on MS-Windows.
+Solution:   Rename file to avoid it starting with an "x".
+Files:      src/testdir/xterm_ramp.vim, src/testdir/color_ramp.vim, Filelist
+
+
+*** ../vim-8.0.1347/src/testdir/xterm_ramp.vim	2017-11-05 18:22:56.608624599 +0100
+--- src/testdir/xterm_ramp.vim	1970-01-01 01:00:00.000000000 +0100
+***************
+*** 1,40 ****
+- " Script to generate a file that shows al 256 xterm colors
+- 
+- new
+- call setline(1, 'ANSI')
+- 
+- " ANSI colors
+- let s = ''
+- for nr in range(0, 7)
+-   let s .= "\033[4" . nr . "m    "
+- endfor
+- for nr in range(8, 15)
+-   let s .= "\033[10" . (nr - 8) . "m    "
+- endfor
+- let s .= "\033[107m|"
+- call setline(2, s)
+- 
+- " 6 x 6 x 6 color cube
+- call setline(3, 'color cube')
+- for high in range(0, 5)
+-   let s = ''
+-   for low in range(0, 35)
+-     let nr = low + high * 36
+-     let s .= "\033[48;5;" . (nr + 16) . "m  "
+-   endfor
+-   let s .= "\033[107m|"
+-   call setline(high + 4, s)
+- endfor
+- 
+- " 24 shades of grey
+- call setline(10, 'grey ramp')
+- let s = ''
+- for nr in range(0, 23)
+-     let s .= "\033[48;5;" . (nr + 232) . "m   "
+- endfor
+- let s .= "\033[107m|"
+- call setline(11, s)
+- 
+- set binary
+- write! <sfile>:h/xterm_ramp.txt
+- quit
+--- 0 ----
+*** ../vim-8.0.1347/src/testdir/color_ramp.vim	2017-11-26 17:17:30.539298675 +0100
+--- src/testdir/color_ramp.vim	2017-11-26 17:14:38.620589745 +0100
+***************
+*** 0 ****
+--- 1,41 ----
++ " Script to generate a file that shows al 256 xterm colors
++ 
++ new
++ call setline(1, 'ANSI')
++ 
++ " ANSI colors
++ let s = ''
++ for nr in range(0, 7)
++   let s .= "\033[4" . nr . "m    "
++ endfor
++ for nr in range(8, 15)
++   let s .= "\033[10" . (nr - 8) . "m    "
++ endfor
++ " Add | in original color pair to see white background.
++ let s .= "\033[m|"
++ call setline(2, s)
++ 
++ " 6 x 6 x 6 color cube
++ call setline(3, 'color cube')
++ for high in range(0, 5)
++   let s = ''
++   for low in range(0, 35)
++     let nr = low + high * 36
++     let s .= "\033[48;5;" . (nr + 16) . "m  "
++   endfor
++   let s .= "\033[m|"
++   call setline(high + 4, s)
++ endfor
++ 
++ " 24 shades of grey
++ call setline(10, 'grey ramp')
++ let s = ''
++ for nr in range(0, 23)
++     let s .= "\033[48;5;" . (nr + 232) . "m   "
++ endfor
++ let s .= "\033[m|"
++ call setline(11, s)
++ 
++ set binary
++ write! <sfile>:h/color_ramp.txt
++ quit
+*** ../vim-8.0.1347/Filelist	2017-11-21 13:52:10.224556826 +0100
+--- Filelist	2017-11-26 17:08:35.622563947 +0100
+***************
+*** 119,125 ****
+  		src/testdir/test[0-9]*a.ok \
+  		src/testdir/test_[a-z]*.ok \
+  		src/testdir/test49.vim \
+- 		src/testdir/test60.vim \
+  		src/testdir/test83-tags? \
+  		src/testdir/test77a.com \
+  		src/testdir/test_*.vim \
+--- 119,124 ----
+***************
+*** 138,144 ****
+  		src/testdir/samples/*.txt \
+  		src/testdir/samples/test000 \
+  		src/testdir/if_ver*.vim \
+! 		src/testdir/xterm_ramp.vim \
+  		src/proto.h \
+  		src/proto/arabic.pro \
+  		src/proto/beval.pro \
+--- 137,143 ----
+  		src/testdir/samples/*.txt \
+  		src/testdir/samples/test000 \
+  		src/testdir/if_ver*.vim \
+! 		src/testdir/color_ramp.vim \
+  		src/proto.h \
+  		src/proto/arabic.pro \
+  		src/proto/beval.pro \
+*** ../vim-8.0.1347/src/version.c	2017-11-26 17:07:58.450765432 +0100
+--- src/version.c	2017-11-26 17:17:18.047396110 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1348,
+  /**/
+
+-- 
+You have the right to remain silent. Anything you say will be
+misquoted, then used against you.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

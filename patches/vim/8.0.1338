@@ -1,0 +1,1119 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1338
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1338 (after 8.0.1337)
+Problem:    USE_IM_CONTROL is confusing and incomplete.
+Solution:   Just use FEAT_MBYTE.  Call 'imactivatefunc' also without GUI.
+Files:      src/vim.h, src/edit.c, src/ex_getln.c, src/getchar.c, src/gui.c,
+            src/gui_mac.c, src/gui_w32.c, src/mbyte.c, src/normal.c,
+            src/option.c, src/ui.c, src/globals.h, src/option.h
+
+
+*** ../vim-8.0.1337/src/vim.h	2017-11-25 15:19:45.097464854 +0100
+--- src/vim.h	2017-11-25 16:27:03.139436691 +0100
+***************
+*** 534,546 ****
+  #endif
+  
+  /*
+-  * Check input method control.
+-  */
+- #if defined(FEAT_MBYTE)
+- # define USE_IM_CONTROL
+- #endif
+- 
+- /*
+   * For dynamically loaded gettext library.  Currently, only for Win32.
+   */
+  #ifdef DYNAMIC_GETTEXT
+--- 534,539 ----
+*** ../vim-8.0.1337/src/edit.c	2017-11-18 18:51:08.121770760 +0100
+--- src/edit.c	2017-11-25 16:21:11.997441611 +0100
+***************
+*** 516,522 ****
+       */
+      if (curbuf->b_p_iminsert == B_IMODE_LMAP)
+  	State |= LANGMAP;
+! #ifdef USE_IM_CONTROL
+      im_set_active(curbuf->b_p_iminsert == B_IMODE_IM);
+  #endif
+  
+--- 516,522 ----
+       */
+      if (curbuf->b_p_iminsert == B_IMODE_LMAP)
+  	State |= LANGMAP;
+! #ifdef FEAT_MBYTE
+      im_set_active(curbuf->b_p_iminsert == B_IMODE_IM);
+  #endif
+  
+***************
+*** 8372,8378 ****
+      ++no_u_sync;
+      if (regname == '=')
+      {
+! # ifdef USE_IM_CONTROL
+  	int	im_on = im_get_status();
+  # endif
+  	/* Sync undo when evaluating the expression calls setline() or
+--- 8372,8378 ----
+      ++no_u_sync;
+      if (regname == '=')
+      {
+! # ifdef FEAT_MBYTE
+  	int	im_on = im_get_status();
+  # endif
+  	/* Sync undo when evaluating the expression calls setline() or
+***************
+*** 8380,8386 ****
+  	u_sync_once = 2;
+  
+  	regname = get_expr_register();
+! # ifdef USE_IM_CONTROL
+  	/* Restore the Input Method. */
+  	if (im_on)
+  	    im_set_active(TRUE);
+--- 8380,8386 ----
+  	u_sync_once = 2;
+  
+  	regname = get_expr_register();
+! # ifdef FEAT_MBYTE
+  	/* Restore the Input Method. */
+  	if (im_on)
+  	    im_set_active(TRUE);
+***************
+*** 8509,8520 ****
+  	{
+  	    curbuf->b_p_iminsert = B_IMODE_LMAP;
+  	    State |= LANGMAP;
+! #ifdef USE_IM_CONTROL
+  	    im_set_active(FALSE);
+  #endif
+  	}
+      }
+! #ifdef USE_IM_CONTROL
+      else
+      {
+  	/* There are no ":lmap" mappings, toggle IM */
+--- 8509,8520 ----
+  	{
+  	    curbuf->b_p_iminsert = B_IMODE_LMAP;
+  	    State |= LANGMAP;
+! #ifdef FEAT_MBYTE
+  	    im_set_active(FALSE);
+  #endif
+  	}
+      }
+! #ifdef FEAT_MBYTE
+      else
+      {
+  	/* There are no ":lmap" mappings, toggle IM */
+***************
+*** 8661,8667 ****
+  	}
+      }
+  
+! #ifdef USE_IM_CONTROL
+      /* Disable IM to allow typing English directly for Normal mode commands.
+       * When ":lmap" is enabled don't change 'iminsert' (IM can be enabled as
+       * well). */
+--- 8661,8667 ----
+  	}
+      }
+  
+! #ifdef FEAT_MBYTE
+      /* Disable IM to allow typing English directly for Normal mode commands.
+       * When ":lmap" is enabled don't change 'iminsert' (IM can be enabled as
+       * well). */
+*** ../vim-8.0.1337/src/ex_getln.c	2017-11-18 18:51:08.121770760 +0100
+--- src/ex_getln.c	2017-11-25 16:21:35.957303091 +0100
+***************
+*** 359,369 ****
+  	    b_im_ptr = &curbuf->b_p_imsearch;
+  	if (*b_im_ptr == B_IMODE_LMAP)
+  	    State |= LANGMAP;
+! #ifdef USE_IM_CONTROL
+  	im_set_active(*b_im_ptr == B_IMODE_IM);
+  #endif
+      }
+! #ifdef USE_IM_CONTROL
+      else if (p_imcmdline)
+  	im_set_active(TRUE);
+  #endif
+--- 359,369 ----
+  	    b_im_ptr = &curbuf->b_p_imsearch;
+  	if (*b_im_ptr == B_IMODE_LMAP)
+  	    State |= LANGMAP;
+! #ifdef FEAT_MBYTE
+  	im_set_active(*b_im_ptr == B_IMODE_IM);
+  #endif
+      }
+! #ifdef FEAT_MBYTE
+      else if (p_imcmdline)
+  	im_set_active(TRUE);
+  #endif
+***************
+*** 1119,1125 ****
+  		{
+  		    /* ":lmap" mappings exists, toggle use of mappings. */
+  		    State ^= LANGMAP;
+! #ifdef USE_IM_CONTROL
+  		    im_set_active(FALSE);	/* Disable input method */
+  #endif
+  		    if (b_im_ptr != NULL)
+--- 1119,1125 ----
+  		{
+  		    /* ":lmap" mappings exists, toggle use of mappings. */
+  		    State ^= LANGMAP;
+! #ifdef FEAT_MBYTE
+  		    im_set_active(FALSE);	/* Disable input method */
+  #endif
+  		    if (b_im_ptr != NULL)
+***************
+*** 1130,1136 ****
+  			    *b_im_ptr = B_IMODE_NONE;
+  		    }
+  		}
+! #ifdef USE_IM_CONTROL
+  		else
+  		{
+  		    /* There are no ":lmap" mappings, toggle IM.  When
+--- 1130,1136 ----
+  			    *b_im_ptr = B_IMODE_NONE;
+  		    }
+  		}
+! #ifdef FEAT_MBYTE
+  		else
+  		{
+  		    /* There are no ":lmap" mappings, toggle IM.  When
+***************
+*** 2143,2149 ****
+  #endif
+  
+      State = save_State;
+! #ifdef USE_IM_CONTROL
+      if (b_im_ptr != NULL && *b_im_ptr != B_IMODE_LMAP)
+  	im_save_status(b_im_ptr);
+      im_set_active(FALSE);
+--- 2143,2149 ----
+  #endif
+  
+      State = save_State;
+! #ifdef FEAT_MBYTE
+      if (b_im_ptr != NULL && *b_im_ptr != B_IMODE_LMAP)
+  	im_save_status(b_im_ptr);
+      im_set_active(FALSE);
+*** ../vim-8.0.1337/src/getchar.c	2017-11-18 22:13:04.753908641 +0100
+--- src/getchar.c	2017-11-25 16:21:46.337243182 +0100
+***************
+*** 2890,2896 ****
+  						     + typebuf.tb_len] != NUL)
+  			typebuf.tb_noremap[typebuf.tb_off
+  						 + typebuf.tb_len++] = RM_YES;
+! #ifdef USE_IM_CONTROL
+  		    /* Get IM status right after getting keys, not after the
+  		     * timeout for a mapping (focus may be lost by then). */
+  		    vgetc_im_active = im_get_status();
+--- 2890,2896 ----
+  						     + typebuf.tb_len] != NUL)
+  			typebuf.tb_noremap[typebuf.tb_off
+  						 + typebuf.tb_len++] = RM_YES;
+! #ifdef FEAT_MBYTE
+  		    /* Get IM status right after getting keys, not after the
+  		     * timeout for a mapping (focus may be lost by then). */
+  		    vgetc_im_active = im_get_status();
+*** ../vim-8.0.1337/src/gui.c	2017-11-18 22:13:04.737908886 +0100
+--- src/gui.c	2017-11-25 16:22:20.429046783 +0100
+***************
+*** 1078,1084 ****
+  	gui_undraw_cursor();
+  	if (gui.row < 0)
+  	    return;
+! #ifdef USE_IM_CONTROL
+  	if (gui.row != gui.cursor_row || gui.col != gui.cursor_col)
+  	    im_set_position(gui.row, gui.col);
+  #endif
+--- 1078,1084 ----
+  	gui_undraw_cursor();
+  	if (gui.row < 0)
+  	    return;
+! #ifdef FEAT_MBYTE
+  	if (gui.row != gui.cursor_row || gui.col != gui.cursor_col)
+  	    im_set_position(gui.row, gui.col);
+  #endif
+***************
+*** 1136,1142 ****
+  	if (id > 0)
+  	{
+  	    cattr = syn_id2colors(id, &cfg, &cbg);
+! #if defined(USE_IM_CONTROL) || defined(FEAT_HANGULIN)
+  	    {
+  		static int iid;
+  		guicolor_T fg, bg;
+--- 1136,1142 ----
+  	if (id > 0)
+  	{
+  	    cattr = syn_id2colors(id, &cfg, &cbg);
+! #if defined(FEAT_MBYTE) || defined(FEAT_HANGULIN)
+  	    {
+  		static int iid;
+  		guicolor_T fg, bg;
+*** ../vim-8.0.1337/src/gui_mac.c	2017-10-28 21:08:38.983456981 +0200
+--- src/gui_mac.c	2017-11-25 16:32:05.769738108 +0100
+***************
+*** 2024,2038 ****
+  	switch (eventKind)
+  	{
+  	    case kEventWindowActivated:
+! #if defined(USE_IM_CONTROL)
+  		im_on_window_switch(TRUE);
+! #endif
+  		return noErr;
+  
+  	    case kEventWindowDeactivated:
+! #if defined(USE_IM_CONTROL)
+  		im_on_window_switch(FALSE);
+! #endif
+  		return noErr;
+  	}
+      }
+--- 2024,2038 ----
+  	switch (eventKind)
+  	{
+  	    case kEventWindowActivated:
+! # if defined(FEAT_MBYTE)
+  		im_on_window_switch(TRUE);
+! # endif
+  		return noErr;
+  
+  	    case kEventWindowDeactivated:
+! # if defined(FEAT_MBYTE)
+  		im_on_window_switch(FALSE);
+! # endif
+  		return noErr;
+  	}
+      }
+***************
+*** 6230,6236 ****
+  #endif
+  }
+  
+! #if (defined(USE_IM_CONTROL) || defined(PROTO)) && defined(USE_CARBONKEYHANDLER)
+  /*
+   * Input Method Control functions.
+   */
+--- 6230,6236 ----
+  #endif
+  }
+  
+! #if (defined(FEAT_MBYTE) || defined(PROTO)) && defined(USE_CARBONKEYHANDLER)
+  /*
+   * Input Method Control functions.
+   */
+***************
+*** 6317,6323 ****
+      ScriptLanguageRecord *slptr = NULL;
+      OSStatus err;
+  
+!     if (! gui.in_use)
+  	return;
+  
+      if (im_initialized == 0)
+--- 6317,6323 ----
+      ScriptLanguageRecord *slptr = NULL;
+      OSStatus err;
+  
+!     if (!gui.in_use)
+  	return;
+  
+      if (im_initialized == 0)
+***************
+*** 6379,6385 ****
+      return im_is_active;
+  }
+  
+! #endif /* defined(USE_IM_CONTROL) || defined(PROTO) */
+  
+  
+  
+--- 6379,6385 ----
+      return im_is_active;
+  }
+  
+! #endif /* defined(FEAT_MBYTE) || defined(PROTO) */
+  
+  
+  
+*** ../vim-8.0.1337/src/gui_w32.c	2017-11-18 22:13:04.741908825 +0100
+--- src/gui_w32.c	2017-11-25 16:23:12.568747488 +0100
+***************
+*** 485,496 ****
+   * These LOGFONT used for IME.
+   */
+  #ifdef FEAT_MBYTE
+- # ifdef USE_IM_CONTROL
+  /* holds LOGFONT for 'guifontwide' if available, otherwise 'guifont' */
+  static LOGFONT norm_logfont;
+  /* holds LOGFONT for 'guifont' always. */
+  static LOGFONT sub_logfont;
+- # endif
+  #endif
+  
+  #ifdef FEAT_MBYTE_IME
+--- 485,494 ----
+*** ../vim-8.0.1337/src/mbyte.c	2017-11-25 15:24:52.255886543 +0100
+--- src/mbyte.c	2017-11-25 17:08:08.106619187 +0100
+***************
+*** 4794,4799 ****
+--- 4794,4819 ----
+  	argv[0] = (char_u *)"0";
+      (void)call_func_retnr(p_imaf, 1, argv, FALSE);
+  }
++ 
++     static int
++ call_imstatusfunc(void)
++ {
++     int is_active;
++ 
++     /* FIXME: Don't execute user function in unsafe situation. */
++     if (exiting
++ #   ifdef FEAT_AUTOCMD
++ 	    || is_autocmd_blocked()
++ #   endif
++ 	    )
++ 	return FALSE;
++     /* FIXME: :py print 'xxx' is shown duplicate result.
++      * Use silent to avoid it. */
++     ++msg_silent;
++     is_active = call_func_retnr(p_imsf, 0, NULL, FALSE);
++     --msg_silent;
++     return (is_active > 0);
++ }
+  #endif
+  
+  #if defined(FEAT_XIM) || defined(PROTO)
+***************
+*** 4838,4851 ****
+      im_is_active = (active && !p_imdisable);
+  
+      if (im_is_active != was_active)
+!     {
+! #ifdef FEAT_EVAL
+! 	if (p_imaf[0] != NUL)
+! 	    call_imactivatefunc(im_is_active);
+! 	else
+! #endif
+! 	    xim_reset();
+!     }
+  }
+  
+      void
+--- 4858,4864 ----
+      im_is_active = (active && !p_imdisable);
+  
+      if (im_is_active != was_active)
+! 	xim_reset();
+  }
+  
+      void
+***************
+*** 5675,5680 ****
+--- 5688,5698 ----
+      void
+  xim_reset(void)
+  {
++ #ifdef FEAT_EVAL
++     if (p_imaf[0] != NUL)
++ 	call_imactivatefunc(im_is_active);
++     else
++ #endif
+      if (xic != NULL)
+      {
+  	gtk_im_context_reset(xic);
+***************
+*** 5685,5696 ****
+  	{
+  	    xim_set_focus(gui.in_focus);
+  
+! #  ifdef FEAT_EVAL
+! 	    if (p_imaf[0] != NUL)
+! 		call_imactivatefunc(im_is_active);
+! 	    else
+! #  endif
+! 		if (im_activatekey_keyval != GDK_VoidSymbol)
+  	    {
+  		if (im_is_active)
+  		{
+--- 5703,5709 ----
+  	{
+  	    xim_set_focus(gui.in_focus);
+  
+! 	    if (im_activatekey_keyval != GDK_VoidSymbol)
+  	    {
+  		if (im_is_active)
+  		{
+***************
+*** 5856,5878 ****
+  {
+  #  ifdef FEAT_EVAL
+      if (p_imsf[0] != NUL)
+!     {
+! 	int is_active;
+! 
+! 	/* FIXME: Don't execute user function in unsafe situation. */
+! 	if (exiting
+! #   ifdef FEAT_AUTOCMD
+! 		|| is_autocmd_blocked()
+! #   endif
+! 		)
+! 	    return FALSE;
+! 	/* FIXME: :py print 'xxx' is shown duplicate result.
+! 	 * Use silent to avoid it. */
+! 	++msg_silent;
+! 	is_active = call_func_retnr(p_imsf, 0, NULL, FALSE);
+! 	--msg_silent;
+! 	return (is_active > 0);
+!     }
+  #  endif
+      return im_is_active;
+  }
+--- 5869,5875 ----
+  {
+  #  ifdef FEAT_EVAL
+      if (p_imsf[0] != NUL)
+! 	return call_imstatusfunc();
+  #  endif
+      return im_is_active;
+  }
+***************
+*** 5894,5923 ****
+  static int	xim_is_active = FALSE;  /* XIM should be active in the current
+  					   mode */
+  static int	xim_has_focus = FALSE;	/* XIM is really being used for Vim */
+! #ifdef FEAT_GUI_X11
+  static XIMStyle	input_style;
+  static int	status_area_enabled = TRUE;
+! #endif
+  
+  /*
+   * Switch using XIM on/off.  This is used by the code that changes "State".
+   */
+      void
+! im_set_active(int active)
+  {
+!     if (xic == NULL)
+! 	return;
+  
+      /* If 'imdisable' is set, XIM is never active. */
+      if (p_imdisable)
+  	active = FALSE;
+! #if !defined(FEAT_GUI_GTK)
+      else if (input_style & XIMPreeditPosition)
+  	/* There is a problem in switching XIM off when preediting is used,
+  	 * and it is not clear how this can be solved.  For now, keep XIM on
+  	 * all the time, like it was done in Vim 5.8. */
+  	active = TRUE;
+! #endif
+  
+      /* Remember the active state, it is needed when Vim gets keyboard focus. */
+      xim_is_active = active;
+--- 5891,5935 ----
+  static int	xim_is_active = FALSE;  /* XIM should be active in the current
+  					   mode */
+  static int	xim_has_focus = FALSE;	/* XIM is really being used for Vim */
+! #  ifdef FEAT_GUI_X11
+  static XIMStyle	input_style;
+  static int	status_area_enabled = TRUE;
+! #  endif
+  
+  /*
+   * Switch using XIM on/off.  This is used by the code that changes "State".
++  * When 'imactivatefunc' is defined use that function instead.
+   */
+      void
+! im_set_active(int active_arg)
+  {
+!     int active = active_arg;
+  
+      /* If 'imdisable' is set, XIM is never active. */
+      if (p_imdisable)
+  	active = FALSE;
+! #  if !defined(FEAT_GUI_GTK)
+      else if (input_style & XIMPreeditPosition)
+  	/* There is a problem in switching XIM off when preediting is used,
+  	 * and it is not clear how this can be solved.  For now, keep XIM on
+  	 * all the time, like it was done in Vim 5.8. */
+  	active = TRUE;
+! #  endif
+! 
+! #  if defined(FEAT_EVAL)
+!     if (p_imaf[0] != NUL)
+!     {
+! 	if (active != im_get_status())
+! 	{
+! 	    call_imactivatefunc(active);
+! 	    im_is_active = active;
+! 	}
+! 	return;
+!     }
+! #  endif
+! 
+!     if (xic == NULL)
+! 	return;
+  
+      /* Remember the active state, it is needed when Vim gets keyboard focus. */
+      xim_is_active = active;
+***************
+*** 6019,6037 ****
+      }
+  }
+  
+! #if defined(FEAT_GUI_X11)
+  static char e_xim[] = N_("E285: Failed to create input context");
+! #endif
+  
+! #if defined(FEAT_GUI_X11) || defined(PROTO)
+! # if defined(XtSpecificationRelease) && XtSpecificationRelease >= 6 && !defined(SUN_SYSTEM)
+! #  define USE_X11R6_XIM
+! # endif
+  
+  static int xim_real_init(Window x11_window, Display *x11_display);
+  
+  
+! #ifdef USE_X11R6_XIM
+  static void xim_destroy_cb(XIM im, XPointer client_data, XPointer call_data);
+  
+      static void
+--- 6031,6049 ----
+      }
+  }
+  
+! #  if defined(FEAT_GUI_X11)
+  static char e_xim[] = N_("E285: Failed to create input context");
+! #  endif
+  
+! #  if defined(FEAT_GUI_X11) || defined(PROTO)
+! #   if defined(XtSpecificationRelease) && XtSpecificationRelease >= 6 && !defined(SUN_SYSTEM)
+! #    define USE_X11R6_XIM
+! #   endif
+  
+  static int xim_real_init(Window x11_window, Display *x11_display);
+  
+  
+! #  ifdef USE_X11R6_XIM
+  static void xim_destroy_cb(XIM im, XPointer client_data, XPointer call_data);
+  
+      static void
+***************
+*** 6043,6051 ****
+      Window	x11_window;
+      Display	*x11_display;
+  
+! #ifdef XIM_DEBUG
+      xim_log("xim_instantiate_cb()\n");
+! #endif
+  
+      gui_get_x11_windis(&x11_window, &x11_display);
+      if (display != x11_display)
+--- 6055,6063 ----
+      Window	x11_window;
+      Display	*x11_display;
+  
+! #   ifdef XIM_DEBUG
+      xim_log("xim_instantiate_cb()\n");
+! #   endif
+  
+      gui_get_x11_windis(&x11_window, &x11_display);
+      if (display != x11_display)
+***************
+*** 6067,6075 ****
+      Window	x11_window;
+      Display	*x11_display;
+  
+! #ifdef XIM_DEBUG
+      xim_log("xim_destroy_cb()\n");
+! #endif
+      gui_get_x11_windis(&x11_window, &x11_display);
+  
+      xic = NULL;
+--- 6079,6087 ----
+      Window	x11_window;
+      Display	*x11_display;
+  
+! #   ifdef XIM_DEBUG
+      xim_log("xim_destroy_cb()\n");
+!    #endif
+      gui_get_x11_windis(&x11_window, &x11_display);
+  
+      xic = NULL;
+***************
+*** 6080,6086 ****
+      XRegisterIMInstantiateCallback(x11_display, NULL, NULL, NULL,
+  				   xim_instantiate_cb, NULL);
+  }
+! #endif
+  
+      void
+  xim_init(void)
+--- 6092,6098 ----
+      XRegisterIMInstantiateCallback(x11_display, NULL, NULL, NULL,
+  				   xim_instantiate_cb, NULL);
+  }
+! #  endif
+  
+      void
+  xim_init(void)
+***************
+*** 6088,6096 ****
+      Window	x11_window;
+      Display	*x11_display;
+  
+! #ifdef XIM_DEBUG
+      xim_log("xim_init()\n");
+! #endif
+  
+      gui_get_x11_windis(&x11_window, &x11_display);
+  
+--- 6100,6108 ----
+      Window	x11_window;
+      Display	*x11_display;
+  
+! #  ifdef XIM_DEBUG
+      xim_log("xim_init()\n");
+! #  endif
+  
+      gui_get_x11_windis(&x11_window, &x11_display);
+  
+***************
+*** 6101,6110 ****
+  
+      gui_set_shellsize(FALSE, FALSE, RESIZE_BOTH);
+  
+! #ifdef USE_X11R6_XIM
+      XRegisterIMInstantiateCallback(x11_display, NULL, NULL, NULL,
+  				   xim_instantiate_cb, NULL);
+! #endif
+  }
+  
+      static int
+--- 6113,6122 ----
+  
+      gui_set_shellsize(FALSE, FALSE, RESIZE_BOTH);
+  
+! #  ifdef USE_X11R6_XIM
+      XRegisterIMInstantiateCallback(x11_display, NULL, NULL, NULL,
+  				   xim_instantiate_cb, NULL);
+! #  endif
+  }
+  
+      static int
+***************
+*** 6116,6122 ****
+  		*ns,
+  		*end,
+  		tmp[1024];
+! #define IMLEN_MAX 40
+      char	buf[IMLEN_MAX + 7];
+      XIM		xim = NULL;
+      XIMStyles	*xim_styles;
+--- 6128,6134 ----
+  		*ns,
+  		*end,
+  		tmp[1024];
+! #  define IMLEN_MAX 40
+      char	buf[IMLEN_MAX + 7];
+      XIM		xim = NULL;
+      XIMStyles	*xim_styles;
+***************
+*** 6181,6187 ****
+  	return FALSE;
+      }
+  
+! #ifdef USE_X11R6_XIM
+      {
+  	XIMCallback destroy_cb;
+  
+--- 6193,6199 ----
+  	return FALSE;
+      }
+  
+! #  ifdef USE_X11R6_XIM
+      {
+  	XIMCallback destroy_cb;
+  
+***************
+*** 6190,6196 ****
+  	if (XSetIMValues(xim, XNDestroyCallback, &destroy_cb, NULL))
+  	    EMSG(_("E287: Warning: Could not set destroy callback to IM"));
+      }
+! #endif
+  
+      if (XGetIMValues(xim, XNQueryInputStyle, &xim_styles, NULL) || !xim_styles)
+      {
+--- 6202,6208 ----
+  	if (XSetIMValues(xim, XNDestroyCallback, &destroy_cb, NULL))
+  	    EMSG(_("E287: Warning: Could not set destroy callback to IM"));
+      }
+! #  endif
+  
+      if (XGetIMValues(xim, XNQueryInputStyle, &xim_styles, NULL) || !xim_styles)
+      {
+***************
+*** 6266,6272 ****
+  
+      /* A crash was reported when trying to pass gui.norm_font as XNFontSet,
+       * thus that has been removed.  Hopefully the default works... */
+! #ifdef FEAT_XFONTSET
+      if (gui.fontset != NOFONTSET)
+      {
+  	preedit_list = XVaCreateNestedList(0,
+--- 6278,6284 ----
+  
+      /* A crash was reported when trying to pass gui.norm_font as XNFontSet,
+       * thus that has been removed.  Hopefully the default works... */
+! #  ifdef FEAT_XFONTSET
+      if (gui.fontset != NOFONTSET)
+      {
+  	preedit_list = XVaCreateNestedList(0,
+***************
+*** 6282,6288 ****
+  				NULL);
+      }
+      else
+! #endif
+      {
+  	preedit_list = XVaCreateNestedList(0,
+  				XNSpotLocation, &over_spot,
+--- 6294,6300 ----
+  				NULL);
+      }
+      else
+! #  endif
+      {
+  	preedit_list = XVaCreateNestedList(0,
+  				XNSpotLocation, &over_spot,
+***************
+*** 6324,6330 ****
+      return TRUE;
+  }
+  
+! #endif /* FEAT_GUI_X11 */
+  
+  /*
+   * Get IM status.  When IM is on, return TRUE.  Else return FALSE.
+--- 6336,6342 ----
+      return TRUE;
+  }
+  
+! #  endif /* FEAT_GUI_X11 */
+  
+  /*
+   * Get IM status.  When IM is on, return TRUE.  Else return FALSE.
+***************
+*** 6335,6340 ****
+--- 6347,6356 ----
+      int
+  im_get_status(void)
+  {
++ #  ifdef FEAT_EVAL
++     if (p_imsf[0] != NUL)
++ 	return call_imstatusfunc();
++ #  endif
+      return xim_has_focus;
+  }
+  
+***************
+*** 6458,6495 ****
+  #else /* !defined(FEAT_XIM) */
+  
+  # ifndef FEAT_GUI_W32
+      int
+  im_get_status()
+  {
+  #  ifdef FEAT_EVAL
+      if (p_imsf[0] != NUL)
+!     {
+! 	int is_active;
+! 
+! 	/* FIXME: Don't execute user function in unsafe situation. */
+! 	if (exiting
+! #   ifdef FEAT_AUTOCMD
+! 		|| is_autocmd_blocked()
+! #   endif
+! 		)
+! 	    return FALSE;
+! 	/* FIXME: :py print 'xxx' is shown duplicate result.
+! 	 * Use silent to avoid it. */
+! 	++msg_silent;
+! 	is_active = call_func_retnr(p_imsf, 0, NULL, FALSE);
+! 	--msg_silent;
+! 	return (is_active > 0);
+!     }
+  #  endif
+!     return FALSE;
+  }
+  
+      void
+! im_set_active(int active)
+  {
+! #  if defined(USE_IM_CONTROL) && defined(FEAT_EVAL)
+!     if (p_imaf[0] != NUL)
+! 	call_imactivatefunc(p_imdisable ? FALSE : active);
+  #  endif
+  }
+  # endif
+--- 6474,6502 ----
+  #else /* !defined(FEAT_XIM) */
+  
+  # ifndef FEAT_GUI_W32
++ static int im_was_set_active = FALSE;
++ 
+      int
+  im_get_status()
+  {
+  #  ifdef FEAT_EVAL
+      if (p_imsf[0] != NUL)
+! 	return call_imstatusfunc();
+  #  endif
+!     return im_was_set_active;
+  }
+  
+      void
+! im_set_active(int active_arg)
+  {
+! #  if defined(FEAT_MBYTE) && defined(FEAT_EVAL)
+!     int	    active = !p_imdisable && active_arg;
+! 
+!     if (p_imaf[0] != NUL && active != im_get_status())
+!     {
+! 	call_imactivatefunc(active);
+! 	im_was_set_active = active;
+!     }
+  #  endif
+  }
+  # endif
+*** ../vim-8.0.1337/src/normal.c	2017-11-20 21:49:08.803167930 +0100
+--- src/normal.c	2017-11-25 16:25:25.799987829 +0100
+***************
+*** 892,898 ****
+  	int	lit = FALSE;	/* get extra character literally */
+  	int	langmap_active = FALSE;    /* using :lmap mappings */
+  	int	lang;		/* getting a text character */
+! #ifdef USE_IM_CONTROL
+  	int	save_smd;	/* saved value of p_smd */
+  #endif
+  
+--- 892,898 ----
+  	int	lit = FALSE;	/* get extra character literally */
+  	int	langmap_active = FALSE;    /* using :lmap mappings */
+  	int	lang;		/* getting a text character */
+! #ifdef FEAT_MBYTE
+  	int	save_smd;	/* saved value of p_smd */
+  #endif
+  
+***************
+*** 957,963 ****
+  		    State = LANGMAP;
+  		langmap_active = TRUE;
+  	    }
+! #ifdef USE_IM_CONTROL
+  	    save_smd = p_smd;
+  	    p_smd = FALSE;	/* Don't let the IM code show the mode here */
+  	    if (lang && curbuf->b_p_iminsert == B_IMODE_IM)
+--- 957,963 ----
+  		    State = LANGMAP;
+  		langmap_active = TRUE;
+  	    }
+! #ifdef FEAT_MBYTE
+  	    save_smd = p_smd;
+  	    p_smd = FALSE;	/* Don't let the IM code show the mode here */
+  	    if (lang && curbuf->b_p_iminsert == B_IMODE_IM)
+***************
+*** 973,979 ****
+  		++allow_keys;
+  		State = NORMAL_BUSY;
+  	    }
+! #ifdef USE_IM_CONTROL
+  	    if (lang)
+  	    {
+  		if (curbuf->b_p_iminsert != B_IMODE_LMAP)
+--- 973,979 ----
+  		++allow_keys;
+  		State = NORMAL_BUSY;
+  	    }
+! #ifdef FEAT_MBYTE
+  	    if (lang)
+  	    {
+  		if (curbuf->b_p_iminsert != B_IMODE_LMAP)
+*** ../vim-8.0.1337/src/option.c	2017-11-25 15:19:45.097464854 +0100
+--- src/option.c	2017-11-25 16:25:49.027856046 +0100
+***************
+*** 1539,1545 ****
+  			    (char_u *)&p_ic, PV_NONE,
+  			    {(char_u *)FALSE, (char_u *)0L} SCRIPTID_INIT},
+      {"imactivatefunc","imaf",P_STRING|P_VI_DEF|P_SECURE,
+! #if defined(FEAT_EVAL) && defined(USE_IM_CONTROL)
+  			    (char_u *)&p_imaf, PV_NONE,
+  			    {(char_u *)"", (char_u *)NULL}
+  # else
+--- 1539,1545 ----
+  			    (char_u *)&p_ic, PV_NONE,
+  			    {(char_u *)FALSE, (char_u *)0L} SCRIPTID_INIT},
+      {"imactivatefunc","imaf",P_STRING|P_VI_DEF|P_SECURE,
+! #if defined(FEAT_EVAL) && defined(FEAT_MBYTE)
+  			    (char_u *)&p_imaf, PV_NONE,
+  			    {(char_u *)"", (char_u *)NULL}
+  # else
+***************
+*** 1555,1568 ****
+  #endif
+  			    {(char_u *)"", (char_u *)0L} SCRIPTID_INIT},
+      {"imcmdline",   "imc",  P_BOOL|P_VI_DEF,
+! #ifdef USE_IM_CONTROL
+  			    (char_u *)&p_imcmdline, PV_NONE,
+  #else
+  			    (char_u *)NULL, PV_NONE,
+  #endif
+  			    {(char_u *)FALSE, (char_u *)0L} SCRIPTID_INIT},
+      {"imdisable",   "imd",  P_BOOL|P_VI_DEF,
+! #ifdef USE_IM_CONTROL
+  			    (char_u *)&p_imdisable, PV_NONE,
+  #else
+  			    (char_u *)NULL, PV_NONE,
+--- 1555,1568 ----
+  #endif
+  			    {(char_u *)"", (char_u *)0L} SCRIPTID_INIT},
+      {"imcmdline",   "imc",  P_BOOL|P_VI_DEF,
+! #ifdef FEAT_MBYTE
+  			    (char_u *)&p_imcmdline, PV_NONE,
+  #else
+  			    (char_u *)NULL, PV_NONE,
+  #endif
+  			    {(char_u *)FALSE, (char_u *)0L} SCRIPTID_INIT},
+      {"imdisable",   "imd",  P_BOOL|P_VI_DEF,
+! #ifdef FEAT_MBYTE
+  			    (char_u *)&p_imdisable, PV_NONE,
+  #else
+  			    (char_u *)NULL, PV_NONE,
+***************
+*** 1582,1588 ****
+  			    {(char_u *)B_IMODE_USE_INSERT, (char_u *)0L}
+  			    SCRIPTID_INIT},
+      {"imstatusfunc","imsf",P_STRING|P_VI_DEF|P_SECURE,
+! #if defined(FEAT_EVAL) && defined(USE_IM_CONTROL)
+  			    (char_u *)&p_imsf, PV_NONE,
+  			    {(char_u *)"", (char_u *)NULL}
+  #else
+--- 1582,1588 ----
+  			    {(char_u *)B_IMODE_USE_INSERT, (char_u *)0L}
+  			    SCRIPTID_INIT},
+      {"imstatusfunc","imsf",P_STRING|P_VI_DEF|P_SECURE,
+! #if defined(FEAT_EVAL) && defined(FEAT_MBYTE)
+  			    (char_u *)&p_imsf, PV_NONE,
+  			    {(char_u *)"", (char_u *)NULL}
+  #else
+***************
+*** 8469,8475 ****
+      }
+  #endif
+  
+! #ifdef USE_IM_CONTROL
+      /* 'imdisable' */
+      else if ((int *)varp == &p_imdisable)
+      {
+--- 8469,8475 ----
+      }
+  #endif
+  
+! #ifdef FEAT_MBYTE
+      /* 'imdisable' */
+      else if ((int *)varp == &p_imdisable)
+      {
+*** ../vim-8.0.1337/src/ui.c	2017-11-18 22:13:04.753908641 +0100
+--- src/ui.c	2017-11-25 16:26:06.835755130 +0100
+***************
+*** 3307,3313 ****
+  }
+  #endif
+  
+! #if defined(USE_IM_CONTROL) || defined(PROTO)
+  /*
+   * Save current Input Method status to specified place.
+   */
+--- 3307,3313 ----
+  }
+  #endif
+  
+! #if defined(FEAT_MBYTE) || defined(PROTO)
+  /*
+   * Save current Input Method status to specified place.
+   */
+*** ../vim-8.0.1337/src/globals.h	2017-11-18 22:13:04.757908578 +0100
+--- src/globals.h	2017-11-25 16:26:11.691727630 +0100
+***************
+*** 1022,1028 ****
+  
+  EXTERN int	KeyTyped;		/* TRUE if user typed current char */
+  EXTERN int	KeyStuffed;		/* TRUE if current char from stuffbuf */
+! #ifdef USE_IM_CONTROL
+  EXTERN int	vgetc_im_active;	/* Input Method was active for last
+  					   character obtained from vgetc() */
+  #endif
+--- 1022,1028 ----
+  
+  EXTERN int	KeyTyped;		/* TRUE if user typed current char */
+  EXTERN int	KeyStuffed;		/* TRUE if current char from stuffbuf */
+! #ifdef FEAT_MBYTE
+  EXTERN int	vgetc_im_active;	/* Input Method was active for last
+  					   character obtained from vgetc() */
+  #endif
+*** ../vim-8.0.1337/src/option.h	2017-11-25 15:19:45.097464854 +0100
+--- src/option.h	2017-11-25 16:26:47.683524016 +0100
+***************
+*** 585,595 ****
+  #define IM_OVER_THE_SPOT	1L
+  EXTERN long	p_imst;		/* 'imstyle' */
+  #endif
+! #if defined(FEAT_EVAL) && defined(USE_IM_CONTROL)
+  EXTERN char_u	*p_imaf;	/* 'imactivatefunc' */
+  EXTERN char_u	*p_imsf;	/* 'imstatusfunc' */
+  #endif
+! #ifdef USE_IM_CONTROL
+  EXTERN int	p_imcmdline;	/* 'imcmdline' */
+  EXTERN int	p_imdisable;	/* 'imdisable' */
+  #endif
+--- 585,595 ----
+  #define IM_OVER_THE_SPOT	1L
+  EXTERN long	p_imst;		/* 'imstyle' */
+  #endif
+! #if defined(FEAT_EVAL) && defined(FEAT_MBYTE)
+  EXTERN char_u	*p_imaf;	/* 'imactivatefunc' */
+  EXTERN char_u	*p_imsf;	/* 'imstatusfunc' */
+  #endif
+! #ifdef FEAT_MBYTE
+  EXTERN int	p_imcmdline;	/* 'imcmdline' */
+  EXTERN int	p_imdisable;	/* 'imdisable' */
+  #endif
+*** ../vim-8.0.1337/src/version.c	2017-11-25 15:24:52.255886543 +0100
+--- src/version.c	2017-11-25 17:12:23.756983670 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1338,
+  /**/
+
+-- 
+My sister Cecilia opened a computer store in Hawaii.
+She sells C shells by the seashore.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

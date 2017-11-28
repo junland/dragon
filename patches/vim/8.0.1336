@@ -1,0 +1,539 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1336
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1336
+Problem:    Cannot use imactivatefunc() unless compiled with +xim.
+Solution:   Allow using imactivatefunc() when not compiled with +xim.
+            (Yasuhiro Matsumoto, closes #2349)
+Files:      runtime/doc/options.txt, runtime/doc/mbyte.txt, src/mbyte.c,
+            src/option.c, src/option.h, src/structs.h,
+            src/testdir/test_iminsert.vim, src/Makefile,
+            src/testdir/Make_all.mak, src/vim.h
+
+
+*** ../vim-8.0.1335/runtime/doc/options.txt	2017-11-18 18:51:08.133770582 +0100
+--- runtime/doc/options.txt	2017-11-25 14:47:53.883093512 +0100
+***************
+*** 4161,4168 ****
+  'imactivatefunc' 'imaf'	string (default "")
+  			global
+  			{not in Vi}
+! 			{only available when compiled with |+xim| and
+! 			|+GUI_GTK|}
+  	This option specifies a function that will be called to
+  	activate/inactivate Input Method.
+  
+--- 4256,4262 ----
+  'imactivatefunc' 'imaf'	string (default "")
+  			global
+  			{not in Vi}
+! 			{only available when compiled with |+mbyte|}
+  	This option specifies a function that will be called to
+  	activate/inactivate Input Method.
+  
+***************
+*** 4213,4220 ****
+  'imcmdline' 'imc'	boolean (default off)
+  			global
+  			{not in Vi}
+! 			{only available when compiled with the |+xim|,
+! 			|+multi_byte_ime| or |global-ime| features}
+  	When set the Input Method is always on when starting to edit a command
+  	line, unless entering a search pattern (see 'imsearch' for that).
+  	Setting this option is useful when your input method allows entering
+--- 4307,4313 ----
+  'imcmdline' 'imc'	boolean (default off)
+  			global
+  			{not in Vi}
+! 			{only available when compiled with |+mbyte|}
+  	When set the Input Method is always on when starting to edit a command
+  	line, unless entering a search pattern (see 'imsearch' for that).
+  	Setting this option is useful when your input method allows entering
+***************
+*** 4225,4232 ****
+  'imdisable' 'imd'	boolean (default off, on for some systems (SGI))
+  			global
+  			{not in Vi}
+! 			{only available when compiled with the |+xim|,
+! 			|+multi_byte_ime| or |global-ime| features}
+  	When set the Input Method is never used.  This is useful to disable
+  	the IM when it doesn't work properly.
+  	Currently this option is on by default for SGI/IRIX machines.  This
+--- 4318,4324 ----
+  'imdisable' 'imd'	boolean (default off, on for some systems (SGI))
+  			global
+  			{not in Vi}
+! 			{only available when compiled with |+mbyte|}
+  	When set the Input Method is never used.  This is useful to disable
+  	the IM when it doesn't work properly.
+  	Currently this option is on by default for SGI/IRIX machines.  This
+***************
+*** 4241,4248 ****
+  		0	:lmap is off and IM is off
+  		1	:lmap is ON and IM is off
+  		2	:lmap is off and IM is ON
+- 	2 is available only when compiled with the |+multi_byte_ime|, |+xim|
+- 	or |global-ime|.
+  	To always reset the option to zero when leaving Insert mode with <Esc>
+  	this can be used: >
+  		:inoremap <ESC> <ESC>:set iminsert=0<CR>
+--- 4333,4338 ----
+***************
+*** 4255,4260 ****
+--- 4345,4354 ----
+  	The value 0 may not work correctly with Athena and Motif with some XIM
+  	methods.  Use 'imdisable' to disable XIM then.
+  
++ 	You can set 'imactivatefunc' and 'imstatusfunc' to handle IME/XIM
++ 	via external command if vim is not compiled with the |+xim|,
++ 	|+multi_byte_ime| or |global-ime|.
++ 
+  						*'imsearch'* *'ims'*
+  'imsearch' 'ims'	number (default -1)
+  			local to buffer
+***************
+*** 4277,4284 ****
+  'imstatusfunc' 'imsf'	string (default "")
+  			global
+  			{not in Vi}
+! 			{only available when compiled with |+xim| and
+! 			|+GUI_GTK|}
+  	This option specifies a function that is called to obtain the status
+  	of Input Method.  It must return a positive number when IME is active.
+  
+--- 4371,4377 ----
+  'imstatusfunc' 'imsf'	string (default "")
+  			global
+  			{not in Vi}
+! 			{only available when compiled with |+mbyte|}
+  	This option specifies a function that is called to obtain the status
+  	of Input Method.  It must return a positive number when IME is active.
+  
+***************
+*** 4297,4309 ****
+  			{not in Vi}
+  			{only available when compiled with |+xim| and
+  			|+GUI_GTK|}
+! 	This option specifies the input style of Input Method.
+! 	Set to zero if you want to use on-the-spot style.
+! 	Set to one if you want to use over-the-spot style.
+  	See: |xim-input-style|
+  
+! 	For a long time on-the-spot sytle had been used in GTK version of vim,
+! 	however, it is known that it causes troubles when using mappings,
+  	|single-repeat|, etc.  Therefore over-the-spot style becomes the
+  	default now.  This should work fine for most people, however if you
+  	have any problem with it, try using on-the-spot style.
+--- 4390,4402 ----
+  			{not in Vi}
+  			{only available when compiled with |+xim| and
+  			|+GUI_GTK|}
+! 	This option specifies the input style of Input Method:
+! 	0   use on-the-spot style
+! 	1   over-the-spot style
+  	See: |xim-input-style|
+  
+! 	For a long time on-the-spot style had been used in the GTK version of
+! 	vim, however, it is known that it causes troubles when using mappings,
+  	|single-repeat|, etc.  Therefore over-the-spot style becomes the
+  	default now.  This should work fine for most people, however if you
+  	have any problem with it, try using on-the-spot style.
+*** ../vim-8.0.1335/runtime/doc/mbyte.txt	2017-08-30 22:00:16.362112681 +0200
+--- runtime/doc/mbyte.txt	2017-11-25 14:47:40.455170093 +0100
+***************
+*** 26,33 ****
+  7.  Input on X11			|mbyte-XIM|
+  8.  Input on MS-Windows			|mbyte-IME|
+  9.  Input with a keymap			|mbyte-keymap|
+! 10. Using UTF-8				|mbyte-utf8|
+! 11. Overview of options			|mbyte-options|
+  
+  NOTE: This file contains UTF-8 characters.  These may show up as strange
+  characters or boxes when using another encoding.
+--- 26,34 ----
+  7.  Input on X11			|mbyte-XIM|
+  8.  Input on MS-Windows			|mbyte-IME|
+  9.  Input with a keymap			|mbyte-keymap|
+! 10. Input with imactivatefunc()		|mbyte-func|
+! 11. Using UTF-8				|mbyte-utf8|
+! 12. Overview of options			|mbyte-options|
+  
+  NOTE: This file contains UTF-8 characters.  These may show up as strange
+  characters or boxes when using another encoding.
+***************
+*** 1254,1260 ****
+  ﭏ    0xfb4f  Xal  alef-lamed
+  
+  ==============================================================================
+! 10. Using UTF-8				*mbyte-utf8* *UTF-8* *utf-8* *utf8*
+  							*Unicode* *unicode*
+  The Unicode character set was designed to include all characters from other
+  character sets.  Therefore it is possible to write text in any language using
+--- 1255,1289 ----
+  ﭏ    0xfb4f  Xal  alef-lamed
+  
+  ==============================================================================
+! 10.  Input with imactivatefunc()				*mbyte-func*
+! 
+! Vim has |imactivatefunc()| and |imstatusfunc()|. This is useful to
+! activate/deativate input method from Vim in any way, also with an external
+! command. For example, fcitx provide fcitx-remote command: >
+! 
+! 	set iminsert=2
+! 	set imsearch=2
+! 	set imcmdline
+! 
+! 	set imactivatefunc=ImActivate
+! 	function! ImActivate(active)
+! 	  if a:active
+! 	    call system('fcitx-remote -o')
+! 	  else
+! 	    call system('fcitx-remote -c')
+! 	  endif
+! 	endfunction
+! 
+! 	set imstatusfunc=ImStatus
+! 	function! ImStatus()
+! 	  return system('fcitx-remote')[0] is# '2'
+! 	endfunction
+! 
+! Using this script, you can activate/deactivate XIM via Vim even when it is not
+! compiled with |+xim|.
+! 
+! ==============================================================================
+! 11. Using UTF-8				*mbyte-utf8* *UTF-8* *utf-8* *utf8*
+  							*Unicode* *unicode*
+  The Unicode character set was designed to include all characters from other
+  character sets.  Therefore it is possible to write text in any language using
+***************
+*** 1402,1408 ****
+  
+  
+  ==============================================================================
+! 11. Overview of options					*mbyte-options*
+  
+  These options are relevant for editing multi-byte files.  Check the help in
+  options.txt for detailed information.
+--- 1431,1437 ----
+  
+  
+  ==============================================================================
+! 12. Overview of options					*mbyte-options*
+  
+  These options are relevant for editing multi-byte files.  Check the help in
+  options.txt for detailed information.
+*** ../vim-8.0.1335/src/mbyte.c	2017-10-28 21:08:38.983456981 +0200
+--- src/mbyte.c	2017-11-25 15:10:14.304209156 +0100
+***************
+*** 4782,4787 ****
+--- 4782,4801 ----
+  
+  #endif /* FEAT_MBYTE */
+  
++ #ifdef FEAT_EVAL
++     static void
++ call_imactivatefunc(int active)
++ {
++     char_u *argv[1];
++ 
++     if (active)
++ 	argv[0] = (char_u *)"1";
++     else
++ 	argv[0] = (char_u *)"0";
++     (void)call_func_retnr(p_imaf, 1, argv, FALSE);
++ }
++ #endif
++ 
+  #if defined(FEAT_XIM) || defined(PROTO)
+  
+  # if defined(FEAT_GUI_GTK) || defined(PROTO)
+***************
+*** 4824,4830 ****
+      im_is_active = (active && !p_imdisable);
+  
+      if (im_is_active != was_active)
+! 	xim_reset();
+  }
+  
+      void
+--- 4838,4851 ----
+      im_is_active = (active && !p_imdisable);
+  
+      if (im_is_active != was_active)
+!     {
+! #ifdef FEAT_EVAL
+! 	if (p_imaf[0] != NUL)
+! 	    call_imactivatefunc(im_is_active);
+! 	else
+! #endif
+! 	    xim_reset();
+!     }
+  }
+  
+      void
+***************
+*** 5666,5680 ****
+  
+  #  ifdef FEAT_EVAL
+  	    if (p_imaf[0] != NUL)
+! 	    {
+! 		char_u *argv[1];
+! 
+! 		if (im_is_active)
+! 		    argv[0] = (char_u *)"1";
+! 		else
+! 		    argv[0] = (char_u *)"0";
+! 		(void)call_func_retnr(p_imaf, 1, argv, FALSE);
+! 	    }
+  	    else
+  #  endif
+  		if (im_activatekey_keyval != GDK_VoidSymbol)
+--- 5687,5693 ----
+  
+  #  ifdef FEAT_EVAL
+  	    if (p_imaf[0] != NUL)
+! 		call_imactivatefunc(im_is_active);
+  	    else
+  #  endif
+  		if (im_activatekey_keyval != GDK_VoidSymbol)
+***************
+*** 6442,6447 ****
+--- 6455,6499 ----
+  }
+  # endif
+  
++ #else /* !defined(FEAT_XIM) */
++ 
++ # ifndef FEAT_GUI_W32
++     int
++ im_get_status()
++ {
++ #  ifdef FEAT_EVAL
++     if (p_imsf[0] != NUL)
++     {
++ 	int is_active;
++ 
++ 	/* FIXME: Don't execute user function in unsafe situation. */
++ 	if (exiting
++ #   ifdef FEAT_AUTOCMD
++ 		|| is_autocmd_blocked()
++ #   endif
++ 		)
++ 	    return FALSE;
++ 	/* FIXME: :py print 'xxx' is shown duplicate result.
++ 	 * Use silent to avoid it. */
++ 	++msg_silent;
++ 	is_active = call_func_retnr(p_imsf, 0, NULL, FALSE);
++ 	--msg_silent;
++ 	return (is_active > 0);
++     }
++ #  endif
++     return FALSE;
++ }
++ 
++     void
++ im_set_active(int active)
++ {
++ #  ifdef(USE_IM_CONTROL) && defined(FEAT_EVAL)
++     if (p_imaf[0] != NUL)
++ 	call_imactivatefunc(p_imdisable ? FALSE : active);
++ #  endif
++ }
++ # endif
++ 
+  #endif /* FEAT_XIM */
+  
+  #if defined(FEAT_MBYTE) || defined(PROTO)
+*** ../vim-8.0.1335/src/option.c	2017-11-18 22:13:04.749908702 +0100
+--- src/option.c	2017-11-25 14:47:53.891093467 +0100
+***************
+*** 1539,1545 ****
+  			    (char_u *)&p_ic, PV_NONE,
+  			    {(char_u *)FALSE, (char_u *)0L} SCRIPTID_INIT},
+      {"imactivatefunc","imaf",P_STRING|P_VI_DEF|P_SECURE,
+! # if defined(FEAT_EVAL) && defined(FEAT_XIM) && defined(FEAT_GUI_GTK)
+  			    (char_u *)&p_imaf, PV_NONE,
+  			    {(char_u *)"", (char_u *)NULL}
+  # else
+--- 1539,1545 ----
+  			    (char_u *)&p_ic, PV_NONE,
+  			    {(char_u *)FALSE, (char_u *)0L} SCRIPTID_INIT},
+      {"imactivatefunc","imaf",P_STRING|P_VI_DEF|P_SECURE,
+! #if defined(FEAT_EVAL) && defined(USE_IM_CONTROL)
+  			    (char_u *)&p_imaf, PV_NONE,
+  			    {(char_u *)"", (char_u *)NULL}
+  # else
+***************
+*** 1582,1588 ****
+  			    {(char_u *)B_IMODE_USE_INSERT, (char_u *)0L}
+  			    SCRIPTID_INIT},
+      {"imstatusfunc","imsf",P_STRING|P_VI_DEF|P_SECURE,
+! #if defined(FEAT_EVAL) && defined(FEAT_XIM) && defined(FEAT_GUI_GTK)
+  			    (char_u *)&p_imsf, PV_NONE,
+  			    {(char_u *)"", (char_u *)NULL}
+  #else
+--- 1582,1588 ----
+  			    {(char_u *)B_IMODE_USE_INSERT, (char_u *)0L}
+  			    SCRIPTID_INIT},
+      {"imstatusfunc","imsf",P_STRING|P_VI_DEF|P_SECURE,
+! #if defined(FEAT_EVAL) && defined(USE_IM_CONTROL)
+  			    (char_u *)&p_imsf, PV_NONE,
+  			    {(char_u *)"", (char_u *)NULL}
+  #else
+*** ../vim-8.0.1335/src/option.h	2017-11-18 22:13:04.753908641 +0100
+--- src/option.h	2017-11-25 14:47:53.891093467 +0100
+***************
+*** 581,591 ****
+  EXTERN int	p_ic;		/* 'ignorecase' */
+  #if defined(FEAT_XIM) && defined(FEAT_GUI_GTK)
+  EXTERN char_u	*p_imak;	/* 'imactivatekey' */
+  EXTERN char_u	*p_imaf;	/* 'imactivatefunc' */
+  EXTERN char_u	*p_imsf;	/* 'imstatusfunc' */
+- EXTERN long	p_imst;		/* 'imstyle' */
+- # define IM_ON_THE_SPOT		0L
+- # define IM_OVER_THE_SPOT	1L
+  #endif
+  #ifdef USE_IM_CONTROL
+  EXTERN int	p_imcmdline;	/* 'imcmdline' */
+--- 581,593 ----
+  EXTERN int	p_ic;		/* 'ignorecase' */
+  #if defined(FEAT_XIM) && defined(FEAT_GUI_GTK)
+  EXTERN char_u	*p_imak;	/* 'imactivatekey' */
++ #define IM_ON_THE_SPOT		0L
++ #define IM_OVER_THE_SPOT	1L
++ EXTERN long	p_imst;		/* 'imstyle' */
++ #endif
++ #if defined(FEAT_EVAL) && defined(USE_IM_CONTROL)
+  EXTERN char_u	*p_imaf;	/* 'imactivatefunc' */
+  EXTERN char_u	*p_imsf;	/* 'imstatusfunc' */
+  #endif
+  #ifdef USE_IM_CONTROL
+  EXTERN int	p_imcmdline;	/* 'imcmdline' */
+*** ../vim-8.0.1335/src/structs.h	2017-10-28 21:08:38.991456926 +0200
+--- src/structs.h	2017-11-25 14:47:53.895093444 +0100
+***************
+*** 2091,2102 ****
+  #define B_IMODE_USE_INSERT -1	/*	Use b_p_iminsert value for search */
+  #define B_IMODE_NONE 0		/*	Input via none */
+  #define B_IMODE_LMAP 1		/*	Input via langmap */
+! #ifndef USE_IM_CONTROL
+! # define B_IMODE_LAST 1
+! #else
+! # define B_IMODE_IM 2		/*	Input via input method */
+! # define B_IMODE_LAST 2
+! #endif
+  
+  #ifdef FEAT_KEYMAP
+      short	b_kmap_state;	/* using "lmap" mappings */
+--- 2091,2098 ----
+  #define B_IMODE_USE_INSERT -1	/*	Use b_p_iminsert value for search */
+  #define B_IMODE_NONE 0		/*	Input via none */
+  #define B_IMODE_LMAP 1		/*	Input via langmap */
+! #define B_IMODE_IM 2		/*	Input via input method */
+! #define B_IMODE_LAST 2
+  
+  #ifdef FEAT_KEYMAP
+      short	b_kmap_state;	/* using "lmap" mappings */
+*** ../vim-8.0.1335/src/testdir/test_iminsert.vim	2017-11-25 15:16:56.642308300 +0100
+--- src/testdir/test_iminsert.vim	2017-11-25 15:04:13.337659836 +0100
+***************
+*** 0 ****
+--- 1,29 ----
++ if !has('multi_byte')
++   finish
++ endif
++ 
++ source view_util.vim
++ 
++ let s:imactivatefunc_called = 0
++ let s:imstatusfunc_called = 0
++ 
++ func IM_activatefunc(active)
++   let s:imactivatefunc_called = 1
++ endfunc
++ 
++ func IM_statusfunc()
++   let s:imstatusfunc_called = 1
++   return 0
++ endfunc
++ 
++ func Test_iminsert2()
++   set imactivatefunc=IM_activatefunc
++   set imstatusfunc=IM_statusfunc
++   set iminsert=2
++   normal! i
++   set iminsert=0
++   set imactivatefunc=
++   set imstatusfunc=
++   call assert_equal(1, s:imactivatefunc_called)
++   call assert_equal(1, s:imstatusfunc_called)
++ endfunc
+*** ../vim-8.0.1335/src/Makefile	2017-11-18 22:36:30.345138772 +0100
+--- src/Makefile	2017-11-25 15:01:50.490323740 +0100
+***************
+*** 2190,2195 ****
+--- 2194,2200 ----
+  	test_highlight \
+  	test_history \
+  	test_hlsearch \
++ 	test_iminsert \
+  	test_increment \
+  	test_increment_dbcs \
+  	test_ins_complete \
+*** ../vim-8.0.1335/src/testdir/Make_all.mak	2017-11-23 22:52:00.573675299 +0100
+--- src/testdir/Make_all.mak	2017-11-25 15:02:21.690145893 +0100
+***************
+*** 115,120 ****
+--- 115,121 ----
+  	    test_highlight.res \
+  	    test_history.res \
+  	    test_hlsearch.res \
++ 	    test_iminsert.res \
+  	    test_increment.res \
+  	    test_increment_dbcs.res \
+  	    test_ins_complete.res \
+*** ../vim-8.0.1335/src/vim.h	2017-11-25 14:19:39.280798655 +0100
+--- src/vim.h	2017-11-25 14:47:53.895093444 +0100
+***************
+*** 536,544 ****
+  /*
+   * Check input method control.
+   */
+! #if defined(FEAT_XIM) \
+!     || (defined(FEAT_GUI) && (defined(FEAT_MBYTE_IME) || defined(GLOBAL_IME))) \
+!     || (defined(FEAT_GUI_MAC) && defined(FEAT_MBYTE))
+  # define USE_IM_CONTROL
+  #endif
+  
+--- 536,542 ----
+  /*
+   * Check input method control.
+   */
+! #if defined(FEAT_MBYTE)
+  # define USE_IM_CONTROL
+  #endif
+  
+*** ../vim-8.0.1335/src/version.c	2017-11-25 14:37:05.414794034 +0100
+--- src/version.c	2017-11-25 15:16:19.726490250 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1336,
+  /**/
+
+-- 
+hundred-and-one symptoms of being an internet addict:
+31. You code your homework in HTML and give your instructor the URL.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

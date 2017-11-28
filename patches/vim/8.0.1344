@@ -1,0 +1,257 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1344
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1344
+Problem:    Using 'imactivatefunc' in the GUI does not work.
+Solution:   Do not use 'imactivatefunc' and 'imstatusfunc' in the GUI.
+Files:      runtime/doc/options.txt, src/mbyte.c,
+            src/testdir/test_iminsert.vim
+
+
+*** ../vim-8.0.1343/runtime/doc/options.txt	2017-11-26 14:29:24.843931614 +0100
+--- runtime/doc/options.txt	2017-11-26 14:32:30.995145021 +0100
+***************
+*** 4163,4170 ****
+  			{not in Vi}
+  			{only available when compiled with |+mbyte|}
+  	This option specifies a function that will be called to
+! 	activate/inactivate Input Method.
+! 	Does not work in the MS-Windows GUI version.
+  
+  	Example: >
+  		function ImActivateFunc(active)
+--- 4258,4265 ----
+  			{not in Vi}
+  			{only available when compiled with |+mbyte|}
+  	This option specifies a function that will be called to
+! 	activate or deactivate the Input Method.
+! 	It is not used in the GUI.
+  
+  	Example: >
+  		function ImActivateFunc(active)
+***************
+*** 4280,4286 ****
+  			{only available when compiled with |+mbyte|}
+  	This option specifies a function that is called to obtain the status
+  	of Input Method.  It must return a positive number when IME is active.
+! 	Does not work in the MS-Windows GUI version.
+  
+  	Example: >
+  		function ImStatusFunc()
+--- 4375,4381 ----
+  			{only available when compiled with |+mbyte|}
+  	This option specifies a function that is called to obtain the status
+  	of Input Method.  It must return a positive number when IME is active.
+! 	It is not used in the GUI.
+  
+  	Example: >
+  		function ImStatusFunc()
+*** ../vim-8.0.1343/src/mbyte.c	2017-11-25 21:07:25.337679963 +0100
+--- src/mbyte.c	2017-11-26 14:53:19.449018040 +0100
+***************
+*** 4782,4787 ****
+--- 4782,4795 ----
+  
+  #endif /* FEAT_MBYTE */
+  
++ #ifdef FEAT_GUI
++ # define USE_IMACTIVATEFUNC (!gui.in_use && *p_imaf != NUL)
++ # define USE_IMSTATUSFUNC (!gui.in_use && *p_imsf != NUL)
++ #else
++ # define USE_IMACTIVATEFUNC (*p_imaf != NUL)
++ # define USE_IMSTATUSFUNC (*p_imsf != NUL)
++ #endif
++ 
+  #ifdef FEAT_EVAL
+      static void
+  call_imactivatefunc(int active)
+***************
+*** 5689,5695 ****
+  xim_reset(void)
+  {
+  #ifdef FEAT_EVAL
+!     if (p_imaf[0] != NUL)
+  	call_imactivatefunc(im_is_active);
+      else
+  #endif
+--- 5697,5703 ----
+  xim_reset(void)
+  {
+  #ifdef FEAT_EVAL
+!     if (USE_IMACTIVATEFUNC)
+  	call_imactivatefunc(im_is_active);
+      else
+  #endif
+***************
+*** 5868,5874 ****
+  im_get_status(void)
+  {
+  #  ifdef FEAT_EVAL
+!     if (p_imsf[0] != NUL)
+  	return call_imstatusfunc();
+  #  endif
+      return im_is_active;
+--- 5876,5882 ----
+  im_get_status(void)
+  {
+  #  ifdef FEAT_EVAL
+!     if (USE_IMSTATUSFUNC)
+  	return call_imstatusfunc();
+  #  endif
+      return im_is_active;
+***************
+*** 5908,5923 ****
+      /* If 'imdisable' is set, XIM is never active. */
+      if (p_imdisable)
+  	active = FALSE;
+- #  if !defined(FEAT_GUI_GTK)
+      else if (input_style & XIMPreeditPosition)
+  	/* There is a problem in switching XIM off when preediting is used,
+  	 * and it is not clear how this can be solved.  For now, keep XIM on
+  	 * all the time, like it was done in Vim 5.8. */
+  	active = TRUE;
+- #  endif
+  
+  #  if defined(FEAT_EVAL)
+!     if (p_imaf[0] != NUL)
+      {
+  	if (active != im_get_status())
+  	{
+--- 5916,5929 ----
+      /* If 'imdisable' is set, XIM is never active. */
+      if (p_imdisable)
+  	active = FALSE;
+      else if (input_style & XIMPreeditPosition)
+  	/* There is a problem in switching XIM off when preediting is used,
+  	 * and it is not clear how this can be solved.  For now, keep XIM on
+  	 * all the time, like it was done in Vim 5.8. */
+  	active = TRUE;
+  
+  #  if defined(FEAT_EVAL)
+!     if (USE_IMACTIVATEFUNC)
+      {
+  	if (active != im_get_status())
+  	{
+***************
+*** 6328,6334 ****
+      }
+      else
+      {
+! 	EMSG(_(e_xim));
+  	XCloseIM(xim);
+  	return FALSE;
+      }
+--- 6334,6341 ----
+      }
+      else
+      {
+! 	if (!is_not_a_term())
+! 	    EMSG(_(e_xim));
+  	XCloseIM(xim);
+  	return FALSE;
+      }
+***************
+*** 6348,6354 ****
+  im_get_status(void)
+  {
+  #  ifdef FEAT_EVAL
+!     if (p_imsf[0] != NUL)
+  	return call_imstatusfunc();
+  #  endif
+      return xim_has_focus;
+--- 6355,6361 ----
+  im_get_status(void)
+  {
+  #  ifdef FEAT_EVAL
+!     if (USE_IMSTATUSFUNC)
+  	return call_imstatusfunc();
+  #  endif
+      return xim_has_focus;
+***************
+*** 6480,6486 ****
+  im_get_status()
+  {
+  #  ifdef FEAT_EVAL
+!     if (p_imsf[0] != NUL)
+  	return call_imstatusfunc();
+  #  endif
+      return im_was_set_active;
+--- 6487,6493 ----
+  im_get_status()
+  {
+  #  ifdef FEAT_EVAL
+!     if (USE_IMSTATUSFUNC)
+  	return call_imstatusfunc();
+  #  endif
+      return im_was_set_active;
+***************
+*** 6492,6498 ****
+  #  if defined(FEAT_MBYTE) && defined(FEAT_EVAL)
+      int	    active = !p_imdisable && active_arg;
+  
+!     if (p_imaf[0] != NUL && active != im_get_status())
+      {
+  	call_imactivatefunc(active);
+  	im_was_set_active = active;
+--- 6499,6505 ----
+  #  if defined(FEAT_MBYTE) && defined(FEAT_EVAL)
+      int	    active = !p_imdisable && active_arg;
+  
+!     if (USE_IMACTIVATEFUNC && active != im_get_status())
+      {
+  	call_imactivatefunc(active);
+  	im_was_set_active = active;
+*** ../vim-8.0.1343/src/testdir/test_iminsert.vim	2017-11-25 17:58:23.618091832 +0100
+--- src/testdir/test_iminsert.vim	2017-11-26 14:35:32.490323894 +0100
+***************
+*** 17,25 ****
+  endfunc
+  
+  func Test_iminsert2()
+-   if has('gui_win32')
+-     return
+-   endif
+    set imactivatefunc=IM_activatefunc
+    set imstatusfunc=IM_statusfunc
+    set iminsert=2
+--- 17,22 ----
+***************
+*** 27,32 ****
+    set iminsert=0
+    set imactivatefunc=
+    set imstatusfunc=
+!   call assert_equal(1, s:imactivatefunc_called)
+!   call assert_equal(1, s:imstatusfunc_called)
+  endfunc
+--- 24,31 ----
+    set iminsert=0
+    set imactivatefunc=
+    set imstatusfunc=
+! 
+!   let expected = has('gui_running') ? 0 : 1
+!   call assert_equal(expected, s:imactivatefunc_called)
+!   call assert_equal(expected, s:imstatusfunc_called)
+  endfunc
+*** ../vim-8.0.1343/src/version.c	2017-11-26 14:29:24.847931598 +0100
+--- src/version.c	2017-11-26 14:53:38.604919498 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1344,
+  /**/
+
+-- 
+A day without sunshine is like, well, night.
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

@@ -1,0 +1,59 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1335
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1335
+Problem:    Writefile() using fsync() may give an error for a device.
+            (Yasuhiro Matsumoto)
+Solution:   Ignore fsync() failing. (closes #2373)
+Files:      src/evalfunc.c
+
+
+*** ../vim-8.0.1334/src/evalfunc.c	2017-11-19 20:13:01.614509135 +0100
+--- src/evalfunc.c	2017-11-25 14:33:45.019939207 +0100
+***************
+*** 13449,13456 ****
+  	if (write_list(fd, list, binary) == FAIL)
+  	    ret = -1;
+  #ifdef HAVE_FSYNC
+! 	else if (do_fsync && fsync(fileno(fd)) != 0)
+! 	    EMSG(_(e_fsync));
+  #endif
+  	fclose(fd);
+      }
+--- 13449,13458 ----
+  	if (write_list(fd, list, binary) == FAIL)
+  	    ret = -1;
+  #ifdef HAVE_FSYNC
+! 	else if (do_fsync)
+! 	    /* Ignore the error, the user wouldn't know what to do about it.
+! 	     * May happen for a device. */
+! 	    ignored = fsync(fileno(fd));
+  #endif
+  	fclose(fd);
+      }
+*** ../vim-8.0.1334/src/version.c	2017-11-25 14:19:39.284798632 +0100
+--- src/version.c	2017-11-25 14:34:45.223595041 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1335,
+  /**/
+
+-- 
+Give a man a computer program and you give him a headache,
+but teach him to program computers and you give him the power
+to create headaches for others for the rest of his life...
+        R. B. Forest
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///

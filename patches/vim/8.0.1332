@@ -1,0 +1,126 @@
+To: vim_dev@googlegroups.com
+Subject: Patch 8.0.1332
+Fcc: outbox
+From: Bram Moolenaar <Bram@moolenaar.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+------------
+
+Patch 8.0.1332
+Problem:    Highlighting in quickfix window could be better. (Axel Bender)
+Solution:   Use the qfSeparator highlight item. (Yegappan Lakshmanan)
+Files:      src/quickfix.c
+
+
+*** ../vim-8.0.1331/src/quickfix.c	2017-09-24 19:39:03.257849176 +0200
+--- src/quickfix.c	2017-11-23 21:59:04.875074786 +0100
+***************
+*** 2654,2659 ****
+--- 2654,2662 ----
+      int		idx2 = -1;
+      char_u	*arg = eap->arg;
+      int		plus = FALSE;
++     int		qfFileAttr;
++     int		qfSepAttr;
++     int		qfLineAttr;
+      int		all = eap->forceit;	/* if not :cl!, only show
+  						   recognised errors */
+      qf_info_T	*qi = &ql_info;
+***************
+*** 2699,2704 ****
+--- 2702,2721 ----
+  	    idx2 = (-idx2 > i) ? 0 : idx2 + i + 1;
+      }
+  
++     /*
++      * Get the attributes for the different quickfix highlight items.  Note
++      * that this depends on syntax items defined in the qf.vim syntax file
++      */
++     qfFileAttr = syn_name2attr((char_u *)"qfFileName");
++     if (qfFileAttr == 0)
++ 	qfFileAttr = HL_ATTR(HLF_D);
++     qfSepAttr = syn_name2attr((char_u *)"qfSeparator");
++     if (qfSepAttr == 0)
++ 	qfSepAttr = HL_ATTR(HLF_D);
++     qfLineAttr = syn_name2attr((char_u *)"qfLineNr");
++     if (qfLineAttr == 0)
++ 	qfLineAttr = HL_ATTR(HLF_N);
++ 
+      if (qi->qf_lists[qi->qf_curlist].qf_nonevalid)
+  	all = TRUE;
+      qfp = qi->qf_lists[qi->qf_curlist].qf_start;
+***************
+*** 2724,2745 ****
+  		vim_snprintf((char *)IObuff, IOSIZE, "%2d %s",
+  							    i, (char *)fname);
+  	    msg_outtrans_attr(IObuff, i == qi->qf_lists[qi->qf_curlist].qf_index
+! 					   ? HL_ATTR(HLF_QFL) : HL_ATTR(HLF_D));
+  	    if (qfp->qf_lnum == 0)
+  		IObuff[0] = NUL;
+  	    else if (qfp->qf_col == 0)
+! 		sprintf((char *)IObuff, ":%ld", qfp->qf_lnum);
+  	    else
+! 		sprintf((char *)IObuff, ":%ld col %d",
+  						   qfp->qf_lnum, qfp->qf_col);
+! 	    sprintf((char *)IObuff + STRLEN(IObuff), "%s:",
+  				  (char *)qf_types(qfp->qf_type, qfp->qf_nr));
+! 	    msg_puts_attr(IObuff, HL_ATTR(HLF_N));
+  	    if (qfp->qf_pattern != NULL)
+  	    {
+  		qf_fmt_text(qfp->qf_pattern, IObuff, IOSIZE);
+- 		STRCAT(IObuff, ":");
+  		msg_puts(IObuff);
+  	    }
+  	    msg_puts((char_u *)" ");
+  
+--- 2741,2766 ----
+  		vim_snprintf((char *)IObuff, IOSIZE, "%2d %s",
+  							    i, (char *)fname);
+  	    msg_outtrans_attr(IObuff, i == qi->qf_lists[qi->qf_curlist].qf_index
+! 					   ? HL_ATTR(HLF_QFL) : qfFileAttr);
+! 
+! 	    if (qfp->qf_lnum != 0)
+! 		msg_puts_attr((char_u *)":", qfSepAttr);
+  	    if (qfp->qf_lnum == 0)
+  		IObuff[0] = NUL;
+  	    else if (qfp->qf_col == 0)
+! 		sprintf((char *)IObuff, "%ld", qfp->qf_lnum);
+  	    else
+! 		sprintf((char *)IObuff, "%ld col %d",
+  						   qfp->qf_lnum, qfp->qf_col);
+! 	    sprintf((char *)IObuff + STRLEN(IObuff), "%s",
+  				  (char *)qf_types(qfp->qf_type, qfp->qf_nr));
+! 	    msg_puts_attr(IObuff, qfLineAttr);
+! 	    msg_puts_attr((char_u *)":", qfSepAttr);
+  	    if (qfp->qf_pattern != NULL)
+  	    {
+  		qf_fmt_text(qfp->qf_pattern, IObuff, IOSIZE);
+  		msg_puts(IObuff);
++ 		msg_puts_attr((char_u *)":", qfSepAttr);
+  	    }
+  	    msg_puts((char_u *)" ");
+  
+*** ../vim-8.0.1331/src/version.c	2017-11-22 22:22:06.737567427 +0100
+--- src/version.c	2017-11-23 22:00:01.594754919 +0100
+***************
+*** 773,774 ****
+--- 773,776 ----
+  {   /* Add new patch number below this line */
++ /**/
++     1332,
+  /**/
+
+-- 
+The History of every major Galactic Civilization tends to pass through
+three distinct and recognizable phases, those of Survival, Inquiry and
+Sophistication, otherwise known as the How, Why and Where phases.
+For instance, the first phase is characterized by the question 'How can
+we eat?' the second by the question 'Why do we eat?' and the third by
+the question 'Where shall we have lunch?'
+		-- Douglas Adams, "The Hitchhiker's Guide to the Galaxy"
+
+ /// Bram Moolenaar -- Bram@Moolenaar.net -- http://www.Moolenaar.net   \\\
+///        sponsor Vim, vote for features -- http://www.Vim.org/sponsor/ \\\
+\\\  an exciting new programming language -- http://www.Zimbu.org        ///
+ \\\            help me help AIDS victims -- http://ICCF-Holland.org    ///
