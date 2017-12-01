@@ -50,19 +50,26 @@ build()
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
-     --with-app-defaults=/etc/X11/app-defaults \
-     --with-pcre \
      --enable-exec-xterm \
      --enable-256-color \
      --enable-88-color \
      --enable-luit \
      --enable-wide-chars \
+     --enable-dabbrev \
+     --enable-load-vt-fonts \
      --disable-full-tgetent \
      --disable-imake \
+     --with-pcre \
+     --with-app-defaults=/etc/X11/app-defaults \
+     --with-tty-group=tty \
+     --with-x \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
+
+    # To handle config files via graft(1)
+    touch "${destdir}/etc/X11/app-defaults/.graft-config"
 
     # Include desktop entries
     mkdir -p "${destdir}/usr/share/applications"
