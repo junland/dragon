@@ -698,10 +698,11 @@ install_mode()
     checkstatus_or_exit 3
 
     # Create package directory using 'name'
-    test -d "${packagedir}/$name" || {
+    if ! test -d "${packagedir}/$name"
+    then
         mkdir -p -- "${packagedir}/$name" || exit 2
         echo "mkdir: created directory '${packagedir}/$name'"
-    }
+    fi
 
     # Prepare to decompress the package
 
@@ -725,57 +726,52 @@ install_mode()
     graft -i -P $graft_v -t "$targetdir" "${packagedir}/$name"
     checkstatus_or_exit 2
 
-    # Avoid unnecessary description and post-install execution coming
-    # from the upgrade_mode() when a package is **pre-installed**
-    if test "$_isUpgrade" != isUpgrade
+    # Show package description
+
+    if test -r "${packagedir}/${name}/var/lib/qi/${name}.txt"
     then
-        # Show package description
+        grep '^#' "${packagedir}/${name}/var/lib/qi/${name}.txt"
+    elif test -r "${1}.txt"
+    then
+        # From the external meta file
+        grep '^#' "${1}.txt"
+    else
+        warn "Description file not found for '$name'."
+    fi
 
-        if test -r "${packagedir}/${name}/var/lib/qi/${name}.txt"
-        then
-            grep '^#' "${packagedir}/${name}/var/lib/qi/${name}.txt"
-        elif test -r "${1}.txt"
-        then
-            # From the external meta file
-            grep '^#' "${1}.txt"
-        else
-            warn "Description file not found for '$name'."
-        fi
+    # Check and run the post-install script if exist
 
-        # Check and run the post-install script if exist
+    if test -r "${packagedir}/${name}/var/lib/qi/${name}.sh"
+    then
+        echo "Running post-install script for \`${name}' ..."
+        (
+            cd -- "${targetdir}"/ && /bin/sh \
+             "${packagedir}/${name}/var/lib/qi/${name}.sh"
+        )
+    fi
 
-        if test -r "${packagedir}/${name}/var/lib/qi/${name}.sh"
-        then
-            echo "Running post-install script for \`${name}' ..."
-            (
-                cd -- "${targetdir}"/ && /bin/sh \
-                 "${packagedir}/${name}/var/lib/qi/${name}.sh"
-            )
-        fi
+    # Check if there are declared package names for replacement
 
-        # Check if there are declared package names for replacement
+    if test -r "${packagedir}/${name}/var/lib/qi/${name}.replace"
+    then
+        short_name=$(pkgbase $name)
 
-        if test -r "${packagedir}/${name}/var/lib/qi/${name}.replace"
-        then
-            short_name=$(pkgbase $name)
-
-            while read -r line
+        while read -r line
+        do
+            for replace in "${packagedir}/${line}"*
             do
-                for replace in "${packagedir}/${line}"*
-                do
-                    # The search of the package to replace cannot be
-                    # the same to the incoming package for install
-                    test "$(pkgbase $replace)" = "$short_name" && continue;
+                # The search of the package to replace cannot be
+                # the same to the incoming package on the installation
+                test "$(pkgbase $replace)" = "$short_name" && continue;
 
-                    warn "Replacing package \`${replace}' ..."
+                warn "Replacing package \`${replace}' ..."
 
-                    opt_force=opt_force opt_keep=opt_keep.off \
-                     delete_mode "$replace" > /dev/null
-                done
-            done < "${packagedir}/${name}/var/lib/qi/${name}.replace"
+                opt_force=opt_force opt_keep=opt_keep.off \
+                 delete_mode "$replace" > /dev/null
+            done
+        done < "${packagedir}/${name}/var/lib/qi/${name}.replace"
 
-            unset short_name
-        fi
+        unset short_name
     fi
 
     # Reset given signals
@@ -819,54 +815,38 @@ upgrade_mode()
     # Get the filename
     incoming=$(basename -- "$1" .tlz)
 
-    # Prepare the package to install it in a temporary location
+    # Install the package, first
+    install_mode "$1"
 
-    # Set random directory using packagedir as prefix and 'incoming' as suffix
-    PRVDIR=$(mktemp -dp "$packagedir" ${incoming}.XXXXXXXXXXXX) || exit 2
-
-    # Pre-install the package in the custom 'packagedir'
-
-    save_packagedir="$packagedir"
-    packagedir="$PRVDIR"
-
-    echo "Pre-installing package into $packagedir ..."
-    _isUpgrade=isUpgrade install_mode "$1" > /dev/null
-    unset _isUpgrade
-
-    # Remove old package names if the option -k was not given
-
-    # Restore 'packagedir' first
-    packagedir=$save_packagedir
-    unset save_packagedir
+    # Remove old package names; the package directory
+    # is preserved if the option -k is not given
 
     echo "Searching for previous installations under the same package name ..."
-    short_name=$(pkgbase $incoming)
+    short_name=$(pkgbase "$incoming")
 
     for long_name in "${packagedir}/$short_name"*
     do
-        # The search of the package to remove cannot be the
-        # same to the installation of the temporary package
-        test "$long_name" = "$PRVDIR" && continue;
-
-        if test "$short_name" = "$(pkgbase $long_name)"
+        # The search of the package to remove cannot be
+        # the same to the incoming package on the upgrade
+        if test "$incoming" != "${long_name##*/}"
         then
             echo "${long_name}:  Detected."
-            delete_mode "$long_name" > /dev/null 2>&1
+
+            if test "$opt_keep" != opt_keep
+            then
+                if test -d "$long_name"
+                then
+                    rm -rf -- "$long_name" || exit 2
+                    echo "removed directory: '$long_name'"
+                else
+                    warn "Package directory '$long_name' is no longer there."
+                fi
+            fi
         fi
     done
 
-    unset short_name long_name
-
-    # Re-install the package removing the temporary location
-
-    echo "Upgrading to $incoming ..."
-    install_mode "$1"
-
-    echo "Deleting temporary location ..."
-    rm -rf -- "$PRVDIR" && echo "removed directory: '$PRVDIR'"
-
-    # Remove remaining variables
-    unset incoming PRVDIR
+    # Remove used variables
+    unset incoming short_name long_name
 }
 
 extract_mode()
