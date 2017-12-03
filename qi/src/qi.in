@@ -338,14 +338,19 @@ build_mode()
 
                 if test ! -t 0
                 then
-                    printf "Do you want to rebuild this package? {y/n/N} " > /dev/tty
+                    printf "%b" \
+                     "Do you want to rebuild this package?\n"           \
+                     "(1) - Yes\n"                                      \
+                     "(2) - No\n"                                       \
+                     "(3) - Ignore old recipes (of any coming next)\n"  \
+                     "Choose option number: " > /dev/tty
                     IFS= read -r REPLY < /dev/tty || exit 2
                     case $REPLY in
-                    [yY]*)
+                    1*)
                         echo "$REPLY" > /dev/tty
                         unset REPLY
                         ;;
-                    N*)
+                    3*)
                         unset REPLY
                         _opt_ignoreqsts=_opt_ignoreqsts
                         readonly _opt_ignoreqsts
