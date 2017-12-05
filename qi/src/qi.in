@@ -51,10 +51,11 @@ usage()
      "  -f          force rebuild the package of a recipe,"             \
      "              force the removal of a package on CONFLICT;"        \
      "              only valid for -b and -d options"                   \
-     "  -k          keep (don't delete) srcdir or destdir;"             \
-     "              this is when the option -b is used"                 \
-     "              keep (don't delete) package directory;"             \
-     "              this is when the option -d is used"                 \
+     "  -k          keep (don't delete) srcdir or destdir"              \
+     "              from the build mode"                                \
+     "              keep (don't delete) package directories"            \
+     "              from a removal, this also keeps previous"           \
+     "              package names from an upgrade"                      \
      "  -v          be verbose (a 2nd -v gives more)"                   \
      ""                                                                 \
      "Options for 'build' mode (-b):"                                   \
@@ -208,6 +209,7 @@ build_mode()
 
     # Separate the directory name from the filename,
     # getting its absolute path name and base name
+
     CWD=$(CDPATH= cd -P -- $(dirname -- "$recipe") && printf "$PWD")
     recipe=$(basename -- "$recipe")
 
@@ -216,10 +218,10 @@ build_mode()
     is_readable "${CWD}/$recipe" || exit 4
 
     # Make tail directories if needed
-    test -d "${worktree}/archive" || mkdir -p -- "${worktree}/archive"
-    test -d "${worktree}/patches" || mkdir -p -- "${worktree}/patches"
-    test -d "${worktree}/recipes" || mkdir -p -- "${worktree}/recipes"
-    test -d "$tardir"             || mkdir -p -- "$tardir"
+    test -d "${worktree}/archive"  || mkdir -p -- "${worktree}/archive"
+    test -d "${worktree}/patches"  || mkdir -p -- "${worktree}/patches"
+    test -d "${worktree}/recipes"  || mkdir -p -- "${worktree}/recipes"
+    test -d "$tardir"              || mkdir -p -- "$tardir"
 
     # Variables treatment for the actual and the next recipe,
     # if there are more than one to process.
@@ -301,74 +303,73 @@ build_mode()
     # the user about it.  Rebuilding the package is also
     # possible (through the force ;-)
 
-    if test "$opt_nopkg" != opt_nopkg
+    if test "$opt_nopkg" != opt_nopkg && \
+     { test "$opt_force" != opt_force && \
+       test -r "${outdir}/${full_pkgname}.tlz" ; }
     then
-        if test "$opt_force" != opt_force -a -r "${outdir}/${full_pkgname}.tlz"
+        if test "${CWD}/$recipe" -nt "${outdir}/${full_pkgname}.tlz"
         then
-            if test "${CWD}/$recipe" -nt "${outdir}/${full_pkgname}.tlz"
+            warn \
+             ""                                                          \
+             "The recipe is newer than the detected package:"            \
+             ""                                                          \
+             "$( stat -c "%y %n" "${CWD}/$recipe" )"                     \
+             "$( stat -c "%y %n" "${outdir}/${full_pkgname}.tlz" )"      \
+             ""                                                          \
+             "    The recipe will be processed."                         \
+             ""
+        elif test "$_opt_ignoreqsts" = _opt_ignoreqsts
+        then
+            warn "Recipe for '${full_pkgname}.tlz':  Ignored."
+            return 0
+        else
+            warn \
+             ""                                                          \
+             "The recipe already produced the package:"                  \
+             "$( stat -c "%y %n" "${outdir}/${full_pkgname}.tlz" )"      \
+             ""                                                          \
+             "But the recipe is still older than the produced package:"  \
+             "$( stat -c "%y %n" "${CWD}/$recipe" )"                     \
+             ""                                                          \
+             "    Probably nothing has changed."                         \
+             ""
+
+            # In non-interactive mode, the user is asked about
+            # rebuilding the package.  In interactive mode,
+            # the user need to pass the option explicitly.
+
+            if test ! -t 0
             then
-                warn \
-                 ""                                                          \
-                 "The recipe is newer than the detected package:"            \
-                 ""                                                          \
-                 "$( stat -c "%y %n" "${CWD}/$recipe" )"                     \
-                 "$( stat -c "%y %n" "${outdir}/${full_pkgname}.tlz" )"      \
-                 ""                                                          \
-                 "    The recipe will be processed."                         \
-                 ""
-            elif test "$_opt_ignoreqsts" = _opt_ignoreqsts
-            then
-                warn "Recipe for '${full_pkgname}.tlz':  Ignored."
-                return 0
+                printf "%b" \
+                 "Do you want to rebuild this package?\n"         \
+                 "1) Yes\n"                                       \
+                 "2) No*\n"                                       \
+                 "3) Continue but ignoring processed recipes\n"   \
+                 "Choose an option number: " > /dev/tty
+                IFS= read -r REPLY < /dev/tty || exit 2
+                case $REPLY in
+                1*)
+                    echo "$REPLY" > /dev/tty
+                    unset REPLY
+                    ;;
+                3*)
+                    unset REPLY
+                    echo "Building unprocessed recipes and those with recents changes, if any ..." > /dev/tty
+                    echo ""
+                    _opt_ignoreqsts=_opt_ignoreqsts
+                    readonly _opt_ignoreqsts
+                    return 0
+                    ;;
+                *)
+                    unset REPLY
+                    echo "Recipe for '${full_pkgname}.tlz':  Cancelled." > /dev/tty
+                    echo ""
+                    return 0
+                    ;;
+                esac
             else
-                warn \
-                 ""                                                          \
-                 "The recipe already produced the package:"                  \
-                 "$( stat -c "%y %n" "${outdir}/${full_pkgname}.tlz" )"      \
-                 ""                                                          \
-                 "But the recipe is still older than the produced package:"  \
-                 "$( stat -c "%y %n" "${CWD}/$recipe" )"                     \
-                 ""                                                          \
-                 "    Probably nothing has changed."                         \
-                 ""
-
-                # In non-interactive mode, the user is asked about
-                # rebuilding the package.  In interactive mode,
-                # the user need to pass the option explicitly.
-
-                if test ! -t 0
-                then
-                    printf "%b" \
-                     "Do you want to rebuild this package?\n"           \
-                     "(1) - Yes\n"                                      \
-                     "(2) - No\n"                                       \
-                     "(3) - Ignore old recipes (of any coming next)\n"  \
-                     "Choose option number: " > /dev/tty
-                    IFS= read -r REPLY < /dev/tty || exit 2
-                    case $REPLY in
-                    1*)
-                        echo "$REPLY" > /dev/tty
-                        unset REPLY
-                        ;;
-                    3*)
-                        unset REPLY
-                        _opt_ignoreqsts=_opt_ignoreqsts
-                        readonly _opt_ignoreqsts
-                        echo "Ignoring old recipes (compared to the provided package) ..." > /dev/tty
-                        echo ""
-                        return 0
-                        ;;
-                    *)
-                        unset REPLY
-                        echo "Recipe for '${full_pkgname}.tlz':  Cancelled." > /dev/tty
-                        echo ""
-                        return 0
-                        ;;
-                    esac
-                else
-                    warn "(Use -f to reprocess ${CWD}/$recipe)." ""
-                    return 6;
-                fi
+                warn "Use -f to re-process ${CWD}/$recipe" ""
+                return 6;
             fi
         fi
     fi
@@ -380,7 +381,7 @@ build_mode()
     then
         for origin in $fetch
         do
-            _source=$(basename -- "$origin")
+            _source="${origin##*/}"
 
             echo "Looking for ${tardir}/$_source ..."
             test -e "${tardir}/$_source" && continue
@@ -444,13 +445,11 @@ build_mode()
     echo "${TMPDIR}/${srcdir}: Changing file mode bits to u+w,go-w,a+rX-s ..."
     chmod -R u+w,go-w,a+rX-s "${TMPDIR}/$srcdir" || exit 2
 
-    # Enter to 'TMPDIR' and run the main function in order to make the package
-
     echo "Entering to 'TMPDIR': $TMPDIR ..."
     cd -- "$TMPDIR" || exit 2
 
     # Set trap before to run the build() function in order
-    # to catch the return status, exit code is 2 in failure
+    # to catch the return status, exit code 2 if fails
 
     trap 'checkstatus_or_exit 2' EXIT HUP INT QUIT ABRT TERM
 
@@ -460,11 +459,10 @@ build_mode()
     # Reset given signals
     trap - EXIT HUP INT QUIT ABRT TERM
 
-    # Restore shell option (just in case)
-    set +e
-
-    # Remove build() function
     unset build
+
+    # Restore shell option(s) (just in case)
+    set +e ; set +x
 
     # If 'destdir' is empty, the package won't be created
     if rmdir -- "$destdir" 2> /dev/null
@@ -548,14 +546,12 @@ build_mode()
         fi   
     fi
 
-    # Install or update the package if -i or -u was given
-    if test "$opt_install" = opt_install -a "$opt_nopkg" != opt_nopkg
+    # Install or update the package if -i or -u was passed
+    if test "$opt_install" = opt_install && test "$opt_nopkg" != opt_nopkg
     then
-        echo ""
         install_mode "${outdir}/${full_pkgname}.tlz"
-    elif test "$opt_update" = opt_update -a "$opt_nopkg" != opt_nopkg
+    elif test "$opt_update" = opt_update && test "$opt_nopkg" != opt_nopkg
     then
-        echo ""
         upgrade_mode "${outdir}/${full_pkgname}.tlz"
     fi
 
@@ -596,10 +592,7 @@ create_mode()
     checkstatus_or_exit 3
 
     echo "${directory}/$name: Creating SHA256 checksum ..."
-    (
-        cd -- "$directory" && \
-        sha256sum $name > ${name}.sha256
-    )
+    ( cd -- "$directory" && sha256sum $name > ${name}.sha256 )
 
     # Remove used variables
     unset directory name
@@ -1158,7 +1151,7 @@ fi
 # Read standard input if FILE is -, or when FILE
 # is not connected to a terminal.
 
-if test "$1" = - -o ! -t 0
+if test "$1" = - || test ! -t 0
 then
     # Unset positional parameters setting $# to zero
     set --
