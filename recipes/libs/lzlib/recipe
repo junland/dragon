@@ -1,0 +1,71 @@
+# Build recipe for lzlib.
+#
+# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=lzlib
+version=1.9
+release=1
+
+tarname=${program}-${version}.tar.lz
+
+# Remote source(s)
+fetch=http://download.savannah.gnu.org/releases/lzip/lzlib/$tarname
+
+homepage=http://lzip.nongnu.org/lzlib.html
+license=GPLv2+
+
+description="
+A data compression library for the lzip format.
+
+Lzlib is a data compression library providing in-memory LZMA
+compression and decompression functions, including integrity checking
+of the decompressed data.  The compressed data format used by the
+library is the lzip format.  Lzlib is written in C.
+
+For more information, visit: $homepage
+"
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress info documents
+
+    rm -f "${destdir}/${infodir}/dir";	# Redundancy
+    lzip -9 "${destdir}/${infodir}/lzlib.info"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+

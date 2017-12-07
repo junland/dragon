@@ -1,0 +1,78 @@
+# Build recipe for plzip.
+#
+# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=plzip
+version=1.6
+release=1
+
+tarname=${program}-${version}.tar.lz
+
+# Remote source(s)
+fetch=http://download.savannah.gnu.org/releases/lzip/plzip/$tarname
+
+homepage=http://lzip.nongnu.org/plzip.html
+license=GPLv2+
+
+description="
+A massively parallel lossless data compressor.
+
+Plzip is a massively parallel (multi-threaded) lossless data compressor
+based on the lzlib compression library, with a user interface similar
+to the one of lzip, bzip2 or gzip.
+
+Plzip can compress/decompress large files on multiprocessor machines
+much faster than lzip, at the cost of a slightly reduced compression
+ratio (0.4 to 2 percent larger compressed files).  Note that the number
+of usable threads is limited by file size; on files larger than a
+few GB plzip can use hundreds of processors, but on files of only a
+few MB plzip is no faster than lzip.
+
+For more information, visit: $homepage
+"
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress info documents and manual page
+
+    rm -f "${destdir}/${infodir}/dir";	# Redundancy
+    lzip -9 \
+     "${destdir}/${infodir}/plzip.info" \
+     "${destdir}/${mandir}/man1/plzip.1"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
