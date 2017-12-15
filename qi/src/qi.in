@@ -320,7 +320,7 @@ build_mode()
              ""
         elif test "$_opt_ignoreqsts" = _opt_ignoreqsts
         then
-            warn "Recipe for '${full_pkgname}.tlz':  Ignored."
+            warn "Recipe for '${full_pkgname}.tlz':  Ignored." ""
             return 0
         else
             warn \
@@ -341,10 +341,10 @@ build_mode()
             if test ! -t 0
             then
                 printf "%b" \
-                 "Do you want to rebuild this package?\n"         \
-                 "1) Yes\n"                                       \
-                 "2) No*\n"                                       \
-                 "3) Continue but ignoring processed recipes\n"   \
+                 "Do you want to rebuild this package?\n"   \
+                 "1) Yes, built it\n"                       \
+                 "2) No, skipt it  [default]\n"             \
+                 "3) Resume, skipping completed recipes\n"  \
                  "Choose an option number: " > /dev/tty
                 IFS= read -r REPLY < /dev/tty || exit 2
                 case $REPLY in
@@ -354,7 +354,7 @@ build_mode()
                     ;;
                 3*)
                     unset REPLY
-                    echo "Building unprocessed recipes and those with recents changes, if any ..." > /dev/tty
+                    echo "Building unprocessed and/or modified recipes ..." > /dev/tty
                     echo ""
                     _opt_ignoreqsts=_opt_ignoreqsts
                     readonly _opt_ignoreqsts
@@ -456,13 +456,13 @@ build_mode()
     echo "Running build() ..."
     build
 
+    # Restore shell option(s)
+    set +e ; set +x
+
     # Reset given signals
     trap - EXIT HUP INT QUIT ABRT TERM
 
     unset build
-
-    # Restore shell option(s) (just in case)
-    set +e ; set +x
 
     # If 'destdir' is empty, the package won't be created
     if rmdir -- "$destdir" 2> /dev/null
@@ -503,12 +503,11 @@ build_mode()
 
         if test -n "$replace"
         then
-            rm -f "${destdir}/var/lib/qi/${full_pkgname}.replace"
-
             warn \
              "The following package names has been declared for replacement:" \
              "    $replace"
 
+            rm -f "${destdir}/var/lib/qi/${full_pkgname}.replace"
             for item in $replace
             do
                 echo "$replace" >> "${destdir}/var/lib/qi/${full_pkgname}.replace"
@@ -949,6 +948,7 @@ unpack()
             exit 1
         esac
     done
+    unset file
 }
 
 do_meta()
