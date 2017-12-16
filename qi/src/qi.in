@@ -235,8 +235,9 @@ build_mode()
     # The following variables must be restored later
     save_arch="${save_arch:=$arch}"
     save_jobs="${save_jobs:=$jobs}"
+    save_keepsrcdir="${save_keepsrcdir:=$keepsrcdir}"
 
-    unset arch jobs
+    unset arch jobs keepsrcdir
 
     # The following variables cannot be redefined in the recipe
     readonly outdir worktree netget rsync
@@ -343,7 +344,7 @@ build_mode()
                 printf "%b" \
                  "Do you want to rebuild this package?\n"   \
                  "1) Yes, built it\n"                       \
-                 "2) No, skipt it  [default]\n"             \
+                 "2) No, skipt it [default]\n"              \
                  "3) Resume, skipping completed recipes\n"  \
                  "Choose an option number: " > /dev/tty
                 IFS= read -r REPLY < /dev/tty || exit 2
@@ -368,7 +369,7 @@ build_mode()
                     ;;
                 esac
             else
-                warn "Use -f to re-process ${CWD}/$recipe" ""
+                warn "( Use '-f' to re-process ${CWD}/$recipe )" ""
                 return 6;
             fi
         fi
@@ -411,7 +412,7 @@ build_mode()
         done
         unset origin _source
     else
-        warn "${recipe}: The variable 'fetch' is empty."
+        warn "The variable 'fetch' is empty."
     fi
 
     # Prepare special directories for build the source,
@@ -419,13 +420,21 @@ build_mode()
 
     echo "Preparing directories ..."
 
-    if test -d "${TMPDIR}/$srcdir"
+    if test ! -d "${TMPDIR}/$srcdir"
     then
-        rm -rf -- "${TMPDIR}/$srcdir" || exit 2
-        echo "removed directory: '${TMPDIR}/$srcdir'"
+        mkdir -p -- "${TMPDIR}/$srcdir" || exit 2
+        echo "mkdir: created directory '${TMPDIR}/$srcdir'"
+    else
+        if test -z "$keepsrcdir"
+        then
+            rm -rf -- "${TMPDIR}/$srcdir" || exit 2
+            echo "removed directory: '${TMPDIR}/$srcdir'"
+        else
+            warn "The variable 'keepsrcdir' is set:" \
+                 "'${TMPDIR}/${srcdir%%/*}' will not be deleted."
+            keepsrcdir="${keepsrcdir:=$save_keepsrcdir}"
+        fi
     fi
-    mkdir -p -- "${TMPDIR}/$srcdir" || exit 2
-    echo "mkdir: created directory '${TMPDIR}/$srcdir'"
 
     if test -d "$destdir"
     then
@@ -991,6 +1000,7 @@ opt_incr_release=opt_incr_release.off
 opt_nopkg=opt_nopkg.off
 arch="$(uname -m)" || exit 2
 jobs=1
+keepsrcdir=""
 mode=""
 verbose=0
 graft_v=-v
