@@ -1,0 +1,53 @@
+# Build recipe for kernel/generic (build tree).
+#
+# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=linux
+version=4.9.46
+release=1
+
+# Recipe flags
+keepsrcdir=keepsrcdir
+pkgname=kernel-buildtree-generic
+
+description="
+The Linux kernel build tree.
+
+This package includes the kernel sources from the
+build tree generated for the 'generic' kernel.
+
+Note:
+  The package does not provide the documentation
+for the Linux kernel due to its huge size.
+*Check the original sources*
+"
+
+license="GPLv2 only"
+
+build()
+{
+    set -e
+
+    cd "$srcdir"
+
+    # Copy (build) kernel-tree into the package
+
+    mkdir -p "${destdir}/usr/src/${srcdir}"
+    cp -Rp ./* "${destdir}/usr/src/${srcdir}/"
+
+    # Too much in terms of size for the kernel documentation
+    rm -rf "${destdir}/usr/src/${srcdir}/Documentation"
+}
+
