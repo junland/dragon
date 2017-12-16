@@ -230,14 +230,13 @@ build_mode()
     # in the recipe not coming from ${sysconfdir}/qirc
 
     unset srcdir destdir pkgname pkgversion program version release \
-          fetch description homepage license replace
+          fetch description homepage license replace keep_srcdir
 
     # The following variables must be restored later
     save_arch="${save_arch:=$arch}"
     save_jobs="${save_jobs:=$jobs}"
-    save_keepsrcdir="${save_keepsrcdir:=$keepsrcdir}"
 
-    unset arch jobs keepsrcdir
+    unset arch jobs
 
     # The following variables cannot be redefined in the recipe
     readonly outdir worktree netget rsync
@@ -420,20 +419,10 @@ build_mode()
 
     echo "Preparing directories ..."
 
-    if test ! -d "${TMPDIR}/$srcdir"
+    if test -d "${TMPDIR}/$srcdir" && test -z "$keep_srcdir"
     then
-        mkdir -p -- "${TMPDIR}/$srcdir" || exit 2
-        echo "mkdir: created directory '${TMPDIR}/$srcdir'"
-    else
-        if test -z "$keepsrcdir"
-        then
-            rm -rf -- "${TMPDIR}/$srcdir" || exit 2
-            echo "removed directory: '${TMPDIR}/$srcdir'"
-        else
-            warn "The variable 'keepsrcdir' is set:" \
-                 "'${TMPDIR}/${srcdir%%/*}' will not be deleted."
-            keepsrcdir="${keepsrcdir:=$save_keepsrcdir}"
-        fi
+        rm -rf -- "${TMPDIR}/$srcdir" || exit 2
+        echo "removed directory: '${TMPDIR}/$srcdir'"
     fi
 
     if test -d "$destdir"
@@ -544,8 +533,14 @@ build_mode()
     then
         echo "Deleting temporary directories ..."
 
-        rm -rf -- "${TMPDIR}/${srcdir%%/*}" || exit 2
-        echo "removed directory: '${TMPDIR}/${srcdir%%/*}'"
+        if test -z "$keep_srcdir"
+        then
+            rm -rf -- "${TMPDIR}/${srcdir%%/*}" || exit 2
+            echo "removed directory: '${TMPDIR}/${srcdir%%/*}'"
+        else
+            warn "The variable 'keep_srcdir' is set:" \
+                 "'${TMPDIR}/${srcdir%%/*}' will not be deleted."
+        fi
 
         if test -d "$destdir"
         then
@@ -1000,7 +995,6 @@ opt_incr_release=opt_incr_release.off
 opt_nopkg=opt_nopkg.off
 arch="$(uname -m)" || exit 2
 jobs=1
-keepsrcdir=""
 mode=""
 verbose=0
 graft_v=-v
