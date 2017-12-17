@@ -1,6 +1,6 @@
 
 project		= qi
-version		= 1.0-rc16
+version		= 1.0-rc17
 
 ## DO NOT MAKE CHANGES HERE.
 #
