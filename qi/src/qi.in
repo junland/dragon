@@ -125,7 +125,7 @@ fnmatch()
     esac
 }
 
-checkstatus_or_exit()
+chkstatus_or_exit()
 {
     status=$?
 
@@ -450,7 +450,7 @@ build_mode()
     # Set trap before to run the build() function in order
     # to catch the return status, exit code 2 if fails
 
-    trap 'checkstatus_or_exit 2' EXIT HUP INT QUIT ABRT TERM
+    trap 'chkstatus_or_exit 2' EXIT HUP INT QUIT ABRT TERM
 
     echo "Running build() ..."
     build
@@ -593,7 +593,7 @@ create_mode()
 
     echo "${directory}: Creating package $name ..."
     ( umask 022 ; tar cvf - ./* | lzip -9cvv ) > "${directory}/$name"
-    checkstatus_or_exit 3
+    chkstatus_or_exit 3
 
     echo "${directory}/$name: Creating SHA256 checksum ..."
     ( cd -- "$directory" && sha256sum $name > ${name}.sha256 )
@@ -631,7 +631,7 @@ delete_mode()
     then
         echo "Checking for possible conflicts ..."
         graft -d -n -t "$targetdir" "$expunge" > /dev/null
-        checkstatus_or_exit 6
+        chkstatus_or_exit 6
     fi
 
     # Ignore some signals up to completing the (de)installation
@@ -644,11 +644,11 @@ delete_mode()
 
     echo "Pruning any conflict ..."
     graft -p -D -u -t "$targetdir" "$expunge"
-    checkstatus_or_exit 2
+    chkstatus_or_exit 2
 
     echo "Disabling links ..."
     graft -d -D -u $graft_v -t "$targetdir" "$expunge"
-    checkstatus_or_exit 2
+    chkstatus_or_exit 2
 
     # Delete package directory
     if test "$opt_keep" != opt_keep
@@ -692,7 +692,7 @@ install_mode()
 
     echo "Checking tarball integrity ..."
     tar -tf "$1" > /dev/null
-    checkstatus_or_exit 3
+    chkstatus_or_exit 3
 
     # Create package directory using 'name'
     if ! test -d "${packagedir}/$name"
@@ -708,7 +708,7 @@ install_mode()
 
     echo "Decompressing $1 ..."
     ( cd -- "${packagedir}/$name" && lzip -cd - | tar xpf - ) < "$1"
-    checkstatus_or_exit 3
+    chkstatus_or_exit 3
 
     # Transite package to Graft control
 
@@ -717,11 +717,11 @@ install_mode()
 
     echo "Pruning any conflict ..."
     graft -p -D -u -t "$targetdir" "${packagedir}/$name"
-    checkstatus_or_exit 2
+    chkstatus_or_exit 2
 
     echo "Enabling symbolic links ..."
     graft -i -P $graft_v -t "$targetdir" "${packagedir}/$name"
-    checkstatus_or_exit 2
+    chkstatus_or_exit 2
 
     # Show package description
 
@@ -930,23 +930,23 @@ unpack()
         case $file in
         *.tar | *.tar.* | *.t[gblx]z* )
             tar tf "$file" > /dev/null && tar xf "$file"
-            checkstatus_or_exit 3
+            chkstatus_or_exit 3
             ;;
         *.zip | *.ZIP )
             unzip -t "$file" && unzip "$file"
-            checkstatus_or_exit 3
+            chkstatus_or_exit 3
             ;;
         *.gz)
             gzip -t "$file" && gzip -cd "$file" > $(basename -- "$file" .gz)
-            checkstatus_or_exit 3
+            chkstatus_or_exit 3
             ;;
         *.bz2)
             bzip2 -t "$file" && bzip2 -cd "$file" > $(basename -- "$file" .bz2)
-            checkstatus_or_exit 3
+            chkstatus_or_exit 3
             ;;
         *.lz)
             lzip -t "$file" && lzip -cd "$file" > $(basename -- "$file" .lz)
-            checkstatus_or_exit 3
+            chkstatus_or_exit 3
             ;;
         *)
             warn "${PROGRAM}: cannot unpack ${file}: Unsupported extension"
