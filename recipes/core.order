@@ -21,91 +21,101 @@
 # For more information, type: info qi 'order file'
 #
 
-config/etc
-config/hierarchyfs
-kernel/headers
-libs/musl
-devel/m4
-libs/gmp
-libs/mpfr
-libs/mpc
-libs/isl
-libs/libz
-devel/bison
-devel/flex
-devel/binutils
-devel/gcc
-libs/libsigsegv
-libs/libffcall
-libs/libffi
-libs/libcap
-tools/attr
-tools/acl
-tools/sed
-devel/pkgconf
-libs/ncurses
-tools/shadow
-tools/util-linux
-tools/procps-ng
-tools/e2fsprogs
-tools/coreutils
-editors/ed
-tools/diffutils
-libs/readline
-tools/gawk
-config/iana-etc
-devel/libtool
-compressors/bzip2
-databases/gdbm
-databases/db
-devel/perl
-devel/autoconf
-devel/automake
-compressors/gzip
-compressors/clzip
+data/etc: data/hierarchyfs
+
+libs/musl:
+kernel/headers:
+devel/m4:
+libs/mpc: libs/mpfr libs/gmp
+libs/gmp:
+libs/mpfr: libs/gmp
+libs/isl: libs/gmp
+devel/flex: devel/bison
+devel/gcc: libs/libz devel/binutils
+libs/libsigsegv:
+
+# Extended attributes, access control lists support on filesystems
+tools/acl: tools/attr
+
+# Capabilities commands and library
+libs/libcap: tools/attr
+
+tools/sed:
+devel/pkgconf:
+libs/ncurses:
+tools/shadow:
+tools/util-linux:
+tools/procps-ng:
+tools/e2fsprogs:
+tools/coreutils:
+tools/diffutils: editors/ed
+devel/check: tools/gawk
+data/iana-etc: tools/gawk
+tools/gawk: libs/readline
+libs/readline: libs/ncurses
+devel/libtool:
+devel/perl: compressors/bzip2 databases/db databases/gdbm
+devel/automake: devel/autoconf
+
+# Compression commands and library
+compressors/bzip2:
+compressors/gzip:
+compressors/clzip:
 compressors/plzip: libs/lzlib
-compressors/xz
-compressors/unzip
-compressors/zutils
-tools/lziprecover
-tools/texinfo
-devel/check
-devel/bc
-tools/file
-tools/findutils
-tools/gettext
-libs/pcre
-tools/grep
-tools/groff
-tools/dialog
-tools/less
-devel/make
-libs/libpipeline
-tools/man-db
-tools/kbd
-tools/tar
-tools/patch
-shells/bash
-kernel/kmod
-shells/mksh
-tools/psmisc
-devel/gperf
-init/eudev
-init/sinit
-init/perp
-init/utmpset
-init/bootscripts
-config/tzdb
-daemons/scron
-tools/mlocate
-daemons/socklog
-kernel/generic
-boot/grub
-libs/hwids
-libs/libusb
-tools/pciutils
-tools/usbutils
-tools/graft
-tools/qi
-libs/glib2
-tools/mc
+compressors/xz:
+compressors/unzip:
+compressors/zutils: compressors/bzip2 compressors/gzip compressors/clzip compressors/xz
+tools/lziprecover:
+
+tools/texinfo:
+devel/bc:
+tools/file:
+tools/findutils: tools/mlocate
+tools/gettext:
+tools/grep: libs/pcre
+devel/make:
+
+# Manual page tool support
+tools/man-db: libs/libpipeline databases/gdbm tools/less tools/groff
+
+# Main shells
+shells/mksh:
+shells/bash: libs/readline
+
+tools/tar:
+tools/patch: editors/ed
+
+# Package managers
+tools/qi: tools/graft
+tools/graft: devel/perl
+
+# Programming languages, libraries
+devel/python2: devel/valgrind libs/libz libs/expat libs/libffi libs/readline networking/libressl
+libs/glib2: devel/python3
+devel/python3: devel/valgrind libs/libz libs/expat libs/libffi libs/readline networking/libressl
+#testing/clisp: libs/libffcall libs/libsigsegv
+
+# Kernel-related
+kernel/buildtree-generic: kernel/generic
+kernel/generic: kernel/kmod kernel/headers
+boot/eudev: kernel/kmod devel/gperf
+kernel/kmod: libs/libz
+
+# Time zone database
+data/tzdb:
+
+# PCI/USB user-space support
+tools/pciutils: kernel/kmod libs/hwids
+tools/usbutils: libs/libusb libs/hwids
+
+# System initialization
+boot/sinit: boot/bootscripts
+daemons/scron: boot/perp
+daemons/socklog: boot/perp
+boot/perp: boot/utmpset
+boot/grub:
+
+tools/psmisc: libs/ncurses
+tools/dialog: tools/groff
+tools/kbd:
+tools/mc: libs/glib2
