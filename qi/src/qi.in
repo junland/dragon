@@ -346,7 +346,7 @@ build_mode()
                  "2) No, skipt it [default]\n"              \
                  "3) Resume, skipping completed recipes\n"  \
                  "Choose an option number: " > /dev/tty
-                IFS= read -r REPLY < /dev/tty || exit 2
+                IFS= read -r REPLY < /dev/tty || chkstatus_or_exit
                 case $REPLY in
                 1*)
                     echo "$REPLY" > /dev/tty
@@ -421,31 +421,31 @@ build_mode()
 
     if test -d "${TMPDIR}/$srcdir" && test -z "$keep_srcdir"
     then
-        rm -rf -- "${TMPDIR}/$srcdir" || exit 2
+        rm -rf -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
         echo "removed directory: '${TMPDIR}/$srcdir'"
     fi
-    mkdir -p -- "${TMPDIR}/$srcdir" || exit 2
+    mkdir -p -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
 
     if test -d "$destdir"
     then
-        rm -rf -- "$destdir" || exit 2
+        rm -rf -- "$destdir" || chkstatus_or_exit
         echo "removed directory: '$destdir'"
     fi
-    mkdir -p -- "$destdir" || exit 2
+    mkdir -p -- "$destdir" || chkstatus_or_exit
     echo "mkdir: created directory '$destdir'"
 
     if test ! -d "$outdir"
     then
-        mkdir -p -- "$outdir" || exit 2
+        mkdir -p -- "$outdir" || chkstatus_or_exit
         echo "mkdir: created directory '$outdir'"
     fi
 
     # Set sane permissions for '${TMPDIR}/$srcdir'
     echo "${TMPDIR}/${srcdir}: Changing file mode bits to u+w,go-w,a+rX-s ..."
-    chmod -R u+w,go-w,a+rX-s "${TMPDIR}/$srcdir" || exit 2
+    chmod -R u+w,go-w,a+rX-s "${TMPDIR}/$srcdir" || chkstatus_or_exit
 
     echo "Entering to 'TMPDIR': $TMPDIR ..."
-    cd -- "$TMPDIR" || exit 2
+    cd -- "$TMPDIR" || chkstatus_or_exit
 
     # Set trap before to run the build() function in order
     # to catch the return status, exit code 2 if fails
@@ -478,15 +478,15 @@ build_mode()
         if test "$opt_incr_release" = opt_incr_release
         then
             echo ",s/^\(release\)=.*/\1=${release}/"$'\nw' | \
-             ed "${CWD}/$recipe" || exit 2
+             ed "${CWD}/$recipe" || chkstatus_or_exit
         fi
 
-        mkdir -p -- "${destdir}/var/lib/qi" || exit 2
+        mkdir -p -- "${destdir}/var/lib/qi" || chkstatus_or_exit
 
         # Include a recipe copy into the package
         cp -p "${CWD}/$recipe" \
               "${destdir}/var/lib/qi/${full_pkgname}.recipe" && \
-        chmod 644 "${destdir}/var/lib/qi/${full_pkgname}.recipe" || exit 2
+        chmod 644 "${destdir}/var/lib/qi/${full_pkgname}.recipe" || chkstatus_or_exit
 
         # Detect post-install script for inclusion
 
@@ -495,7 +495,7 @@ build_mode()
             echo "${CWD}/post-install:  Detected."
             cp -p "${CWD}/post-install" \
                   "${destdir}/var/lib/qi/${full_pkgname}.sh" && \
-            chmod 644 "${destdir}/var/lib/qi/${full_pkgname}.sh" || exit 2
+            chmod 644 "${destdir}/var/lib/qi/${full_pkgname}.sh" || chkstatus_or_exit
         fi
 
         # Detect declared package names for later replacement
@@ -516,18 +516,18 @@ build_mode()
 
         # Create meta file for the package information
         echo "Creating meta file ${full_pkgname}.tlz.txt ..."
-        do_meta > "${outdir}/${full_pkgname}.tlz.txt" || exit 2
+        do_meta > "${outdir}/${full_pkgname}.tlz.txt" || chkstatus_or_exit
 
         # Make a copy of it for the database
         cp -p "${outdir}/${full_pkgname}.tlz.txt" \
-              "${destdir}/var/lib/qi/${full_pkgname}.txt" || exit 2
+              "${destdir}/var/lib/qi/${full_pkgname}.txt" || chkstatus_or_exit
 
         # Produce the package
         cd -- "$destdir" && create_mode "${outdir}/${full_pkgname}.tlz"
     fi
 
     # Back to the current working directory
-    cd -- "$CWD" || exit 2
+    cd -- "$CWD" || chkstatus_or_exit
 
     # Delete 'srcdir' or 'destdir' if -k is not given
     if test "$opt_keep" != opt_keep
@@ -536,7 +536,7 @@ build_mode()
 
         if test -z "$keep_srcdir"
         then
-            rm -rf -- "${TMPDIR}/${srcdir%%/*}" || exit 2
+            rm -rf -- "${TMPDIR}/${srcdir%%/*}" || chkstatus_or_exit
             echo "removed directory: '${TMPDIR}/${srcdir%%/*}'"
         else
             warn "The variable 'keep_srcdir' is set:" \
@@ -545,7 +545,7 @@ build_mode()
 
         if test -d "$destdir"
         then
-            rm -rf -- "$destdir" || exit 2
+            rm -rf -- "$destdir" || chkstatus_or_exit
             echo "removed directory: '$destdir'"
         fi   
     fi
@@ -657,7 +657,7 @@ delete_mode()
 
         if test -d "$expunge"
         then
-            rm -rf -- "$expunge" || exit 2
+            rm -rf -- "$expunge" || chkstatus_or_exit
             echo "removed directory: '$expunge'"
         else
             warn "Package directory '$expunge' is no longer there."
@@ -697,7 +697,7 @@ install_mode()
     # Create package directory using 'name'
     if ! test -d "${packagedir}/$name"
     then
-        mkdir -p -- "${packagedir}/$name" || exit 2
+        mkdir -p -- "${packagedir}/$name" || chkstatus_or_exit
         echo "mkdir: created directory '${packagedir}/$name'"
     fi
 
@@ -833,7 +833,7 @@ upgrade_mode()
             then
                 if test -d "$long_name"
                 then
-                    rm -rf -- "$long_name" || exit 2
+                    rm -rf -- "$long_name" || chkstatus_or_exit
                     echo "removed directory: '$long_name'"
                 else
                     warn "Package directory '$long_name' is no longer there."
@@ -994,7 +994,7 @@ opt_force=opt_force.off
 opt_keep=opt_keep.off
 opt_incr_release=opt_incr_release.off
 opt_nopkg=opt_nopkg.off
-arch="$(uname -m)" || exit 2
+arch="$(uname -m)" || chkstatus_or_exit
 jobs=1
 mode=""
 verbose=0
@@ -1173,7 +1173,7 @@ fi
 
 if test ! -d "$TMPDIR"
 then
-    mkdir -p -- "$TMPDIR" || exit 2
+    mkdir -p -- "$TMPDIR" || chkstatus_or_exit
 fi
 readonly TMPDIR
 
