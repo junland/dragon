@@ -21,7 +21,24 @@ rm -f config.mak
 make clean
 
 # Copy our custom qirc to /tools
-cp -f "${worktree}/archive/qi/qirc" /tools/etc/
+cp -p "${worktree}/archive/qi/qirc" /tools/etc/
+chmod 644 /tools/etc/qirc
+
+# Set compiler options provided by default in Dragora
+case $arch in
+i586)
+    sed -i \
+     -e 's|#QICFLAGS=.*|QICFLAGS=-g0 -Os -march=i586 -mtune=i686|' \
+     -e 's|#QICXXFLAGS=.*|QICXXFLAGS=-g0 -Os -march=i586 -mtune=i686|' \
+     /tools/etc/qirc
+    ;;
+x86_64)
+    sed -i \
+     -e 's|#QICFLAGS=.*|QICFLAGS=-g0 -Os -mtune=generic|' \
+     -e 's|#QICXXFLAGS=.*|QICXXFLAGS=-g0 -Os -mtune=generic|' \
+     /tools/etc/qirc
+    ;;
+esac
 
 # Include additional settings from targets/
 
