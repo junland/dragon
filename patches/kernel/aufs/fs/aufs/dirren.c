@@ -57,7 +57,7 @@ static struct au_dr_hino *au_dr_hino_find(struct au_dr_br *dr, ino_t ino)
 
 	found = NULL;
 	idx = au_dr_ihash(ino);
-	hbl= dr->dr_h_ino + idx;
+	hbl = dr->dr_h_ino + idx;
 	hlist_bl_lock(hbl);
 	hlist_bl_for_each_entry(ent, pos, hbl, dr_hnode)
 		if (ent->dr_h_ino == ino) {
@@ -83,6 +83,7 @@ int au_dr_hino_test_add(struct au_dr_br *dr, ino_t ino,
 #if 0
 	{
 		struct hlist_bl_node *tmp;
+
 		hlist_bl_for_each_entry_safe(ent, pos, tmp, hbl, dr_hnode)
 			AuDbg("hi%llu\n", (unsigned long long)ent->dr_h_ino);
 	}
@@ -128,7 +129,7 @@ static int au_dr_hino_store(struct super_block *sb, struct au_branch *br,
 	int err, i;
 	ssize_t ssz;
 	loff_t pos, oldsize;
-	uint64_t u64;
+	__be64 u64;
 	struct inode *hinoinode;
 	struct hlist_bl_head *hbl;
 	struct hlist_bl_node *n1, *n2;
@@ -205,7 +206,7 @@ static int au_dr_hino_load(struct au_dr_br *dr, struct file *hinofile)
 			AuTraceErr(err);
 			goto out_free;
 		}
-		ent->dr_h_ino = be64_to_cpu(u64);
+		ent->dr_h_ino = be64_to_cpu((__force __be64)u64);
 		AuDbg("hi%llu, %pD2\n",
 		      (unsigned long long)ent->dr_h_ino, hinofile);
 		hidx = au_dr_ihash(ent->dr_h_ino);
@@ -416,7 +417,7 @@ static int au_brid_str(struct au_dr_brid *brid, struct inode *h_inode,
 	case AuBrid_Unset:
 		return -EINVAL;
 	case AuBrid_UUID:
-		err = snprintf(p, sz, "%pU", brid->uuid.__u_bits);
+		err = snprintf(p, sz, "%pU", brid->uuid.b);
 		break;
 	case AuBrid_FSID:
 		err = snprintf(p, sz, "%08x-%08x",
@@ -428,7 +429,7 @@ static int au_brid_str(struct au_dr_brid *brid, struct inode *h_inode,
 		if (major <= 0xff && minor <= 0xff)
 			err = snprintf(p, sz, "%02x%02x", major, minor);
 		else
-			err = snprintf(p, sz, "%03x:%05x",major, minor);
+			err = snprintf(p, sz, "%03x:%05x", major, minor);
 		break;
 	}
 	AuDebugOn(err > sz);
@@ -479,7 +480,7 @@ static int au_drinfo_construct(struct au_drinfo_fdata **fdata,
 	h_inode = d_inode(h_dentry);
 	qname = &h_dentry->d_name;
 	drinfo = &f->drinfo;
-	drinfo->ino = cpu_to_be64(h_inode->i_ino);
+	drinfo->ino = (__force uint64_t)cpu_to_be64(h_inode->i_ino);
 	drinfo->oldnamelen = qname->len;
 	if (*allocated < sizeof(*f) + qname->len) {
 		v = roundup_pow_of_two(*allocated + qname->len);
@@ -496,7 +497,8 @@ static int au_drinfo_construct(struct au_drinfo_fdata **fdata,
 	}
 	memcpy(drinfo->oldname, qname->name, qname->len);
 	AuDbg("i%llu, %.*s\n",
-	      be64_to_cpu(drinfo->ino), drinfo->oldnamelen, drinfo->oldname);
+	      be64_to_cpu((__force __be64)drinfo->ino), drinfo->oldnamelen,
+	      drinfo->oldname);
 
 out:
 	AuTraceErr(err);
@@ -521,7 +523,7 @@ static struct au_drinfo *au_drinfo_read_k(struct file *file, ino_t h_ino)
 		goto out;
 	}
 
-	fdata.magic = ntohl(fdata.magic);
+	fdata.magic = ntohl((__force __be32)fdata.magic);
 	switch (fdata.magic) {
 	case AUFS_DRINFO_MAGIC_V1:
 		break;
@@ -539,7 +541,7 @@ static struct au_drinfo *au_drinfo_read_k(struct file *file, ino_t h_ino)
 	}
 
 	ret = NULL;
-	drinfo->ino = be64_to_cpu(drinfo->ino);
+	drinfo->ino = be64_to_cpu((__force __be64)drinfo->ino);
 	if (unlikely(h_ino && drinfo->ino != h_ino)) {
 		AuDbg("ignored i%llu, i%llu, %pD2\n",
 		      (unsigned long long)drinfo->ino,
@@ -739,12 +741,12 @@ static int au_drinfo_store_work_init(struct au_drinfo_store *w,
 	w->no_sio = !!uid_eq(current_fsuid(), GLOBAL_ROOT_UID);
 
 	err = -ENOMEM;
-	w->fdata = kcalloc(w->allocated, 1, GFP_NOFS);
+	w->fdata = kcalloc(1, w->allocated, GFP_NOFS);
 	if (unlikely(!w->fdata)) {
 		AuTraceErr(err);
 		goto out;
 	}
-	w->fdata->magic = htonl(AUFS_DRINFO_MAGIC_V1);
+	w->fdata->magic = (__force uint32_t)htonl(AUFS_DRINFO_MAGIC_V1);
 	err = 0;
 
 out:
@@ -820,7 +822,7 @@ static int au_drinfo_store(struct dentry *dentry, aufs_bindex_t btgt,
 	btail = au_dbtaildir(dentry);
 	nelm = btail - btgt;
 	sz = sizeof(*rev) + sizeof(*elm) * nelm;
-	rev = kcalloc(sz, 1, GFP_NOFS);
+	rev = kcalloc(1, sz, GFP_NOFS);
 	if (unlikely(!rev)) {
 		AuTraceErr(err);
 		goto out_args;
@@ -854,7 +856,7 @@ static int au_drinfo_store(struct dentry *dentry, aufs_bindex_t btgt,
 						 work.infonamelen);
 		AuDbg("whname %.*s, i%llu, %.*s\n",
 		      work.whnamelen, work.whname,
-		      be64_to_cpu(work.fdata->drinfo.ino),
+		      be64_to_cpu((__force __be64)work.fdata->drinfo.ino),
 		      work.fdata->drinfo.oldnamelen,
 		      work.fdata->drinfo.oldname);
 
@@ -1155,8 +1157,9 @@ int au_dr_lkup(struct au_do_lookup_args *lkup, struct dentry *dentry,
 	bbot = au_sbbot(sb);
 	w.ninfo = bbot + 1;
 	if (!lkup->dirren.drinfo) {
-		lkup->dirren.drinfo = kcalloc(sizeof(*lkup->dirren.drinfo),
-					      w.ninfo, GFP_NOFS);
+		lkup->dirren.drinfo = kcalloc(w.ninfo,
+					      sizeof(*lkup->dirren.drinfo),
+					      GFP_NOFS);
 		if (unlikely(!lkup->dirren.drinfo)) {
 			err = -ENOMEM;
 			goto out;

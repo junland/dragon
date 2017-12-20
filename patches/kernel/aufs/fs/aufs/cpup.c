@@ -365,6 +365,59 @@ out:
 	return err;
 }
 
+static int au_do_copy(struct file *dst, struct file *src, loff_t len)
+{
+	int err;
+	struct super_block *h_src_sb;
+	struct inode *h_src_inode;
+
+	h_src_inode = file_inode(src);
+	h_src_sb = h_src_inode->i_sb;
+
+	/* XFS acquires inode_lock */
+	if (!au_test_xfs(h_src_sb))
+		err = au_copy_file(dst, src, len);
+	else {
+		inode_unlock_shared(h_src_inode);
+		err = au_copy_file(dst, src, len);
+		vfsub_inode_lock_shared_nested(h_src_inode, AuLsc_I_CHILD);
+	}
+
+	return err;
+}
+
+static int au_clone_or_copy(struct file *dst, struct file *src, loff_t len)
+{
+	int err;
+	struct super_block *h_src_sb;
+	struct inode *h_src_inode;
+
+	h_src_inode = file_inode(src);
+	h_src_sb = h_src_inode->i_sb;
+	if (h_src_sb != file_inode(dst)->i_sb
+	    || !dst->f_op->clone_file_range) {
+		err = au_do_copy(dst, src, len);
+		goto out;
+	}
+
+	if (!au_test_nfs(h_src_sb)) {
+		inode_unlock_shared(h_src_inode);
+		err = vfsub_clone_file_range(src, dst, len);
+		vfsub_inode_lock_shared_nested(h_src_inode, AuLsc_I_CHILD);
+	} else
+		err = vfsub_clone_file_range(src, dst, len);
+	/* older XFS has a condition in cloning */
+	if (unlikely(err != -EOPNOTSUPP))
+		goto out;
+
+	/* the backend fs on NFS may not support cloning */
+	err = au_do_copy(dst, src, len);
+
+out:
+	AuTraceErr(err);
+	return err;
+}
+
 /*
  * to support a sparse file which is opened with O_APPEND,
  * we need to close the file.
@@ -414,32 +467,13 @@ static int au_cp_regular(struct au_cp_generic *cpg)
 	h_src_sb = h_src_inode->i_sb;
 	if (!au_test_nfs(h_src_sb))
 		IMustLock(h_src_inode);
-
-	if (h_src_sb != file_inode(file[DST].file)->i_sb
-	    || !file[DST].file->f_op->clone_file_range)
-		err = au_copy_file(file[DST].file, file[SRC].file, cpg->len);
-	else {
-		if (!au_test_nfs(h_src_sb)) {
-			inode_unlock_shared(h_src_inode);
-			err = vfsub_clone_file_range(file[SRC].file,
-						     file[DST].file, cpg->len);
-			vfsub_inode_lock_shared_nested(h_src_inode, AuLsc_I_CHILD);
-		} else
-			err = vfsub_clone_file_range(file[SRC].file,
-						     file[DST].file, cpg->len);
-		if (unlikely(err == -EOPNOTSUPP && au_test_nfs(h_src_sb)))
-			/* the backend fs on NFS may not support cloning */
-			err = au_copy_file(file[DST].file, file[SRC].file,
-					   cpg->len);
-		AuTraceErr(err);
-	}
+	err = au_clone_or_copy(file[DST].file, file[SRC].file, cpg->len);
 
 	/* i wonder if we had O_NO_DELAY_FPUT flag */
 	if (tsk->flags & PF_KTHREAD)
 		__fput_sync(file[DST].file);
 	else {
-		WARN(1, "%pD\nPlease report this warning to aufs-users ML",
-		     file[DST].file);
+		/* it happend actually */
 		fput(file[DST].file);
 		/*
 		 * too bad.
@@ -480,10 +514,10 @@ static int au_do_cpup_regular(struct au_cp_generic *cpg,
 		h_path.mnt = au_sbr_mnt(cpg->dentry->d_sb, cpg->bsrc);
 		h_src_attr->iflags = h_src_inode->i_flags;
 		if (!au_test_nfs(h_src_inode->i_sb))
-			err = vfs_getattr(&h_path, &h_src_attr->st);
+			err = vfsub_getattr(&h_path, &h_src_attr->st);
 		else {
 			inode_unlock_shared(h_src_inode);
-			err = vfs_getattr(&h_path, &h_src_attr->st);
+			err = vfsub_getattr(&h_path, &h_src_attr->st);
 			vfsub_inode_lock_shared_nested(h_src_inode,
 						       AuLsc_I_CHILD);
 		}
@@ -524,12 +558,6 @@ static int au_do_cpup_symlink(struct path *h_path, struct dentry *h_src,
 		char *k;
 		char __user *u;
 	} sym;
-	struct inode *h_inode = d_inode(h_src);
-	const struct inode_operations *h_iop = h_inode->i_op;
-
-	err = -ENOSYS;
-	if (unlikely(!h_iop->readlink))
-		goto out;
 
 	err = -ENOMEM;
 	sym.k = (void *)__get_free_page(GFP_NOFS);
@@ -539,7 +567,7 @@ static int au_do_cpup_symlink(struct path *h_path, struct dentry *h_src,
 	/* unnecessary to support mmap_sem since symlink is not mmap-able */
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
-	symlen = h_iop->readlink(h_src, sym.u, PATH_MAX);
+	symlen = vfs_readlink(h_src, sym.u, PATH_MAX);
 	err = symlen;
 	set_fs(old_fs);
 

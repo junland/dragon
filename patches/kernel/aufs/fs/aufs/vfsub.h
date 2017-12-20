@@ -78,7 +78,7 @@ static inline void vfsub_dead_dir(struct inode *inode)
 
 static inline int vfsub_native_ro(struct inode *inode)
 {
-	return (inode->i_sb->s_flags & MS_RDONLY)
+	return sb_rdonly(inode->i_sb)
 		|| IS_RDONLY(inode)
 		/* || IS_APPEND(inode) */
 		|| IS_IMMUTABLE(inode);
@@ -325,6 +325,11 @@ int vfsub_notify_change(struct path *path, struct iattr *ia,
 			struct inode **delegated_inode);
 int vfsub_unlink(struct inode *dir, struct path *path,
 		 struct inode **delegated_inode, int force);
+
+static inline int vfsub_getattr(const struct path *path, struct kstat *st)
+{
+	return vfs_getattr(path, st, STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
+}
 
 /* ---------------------------------------------------------------------- */
 
