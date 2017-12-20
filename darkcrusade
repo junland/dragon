@@ -82,7 +82,7 @@ do
     fi
 done
 
-# Set and compose flags to be used as CC and CXX
+# Set and compose flags to be used as CC/CXX
 
 BTCC="$BTCC -static -Wl,-Bstatic -static-libgcc"
 BTCXX="$BTCXX -static -Wl,-Bstatic -static-libgcc"
@@ -102,20 +102,16 @@ do
     ${CWD}/bootstrap -s0 -a $target -o $phase_two 2>&1 | \
      tee ${output}/${tarname}-${target}.log
 
-    # Compress log file
+    # Provide log file, tarball plus checkum
+
     lzip -9 ${output}/${tarname}-${target}.log
 
-    # Prepare tarball
-    cd $output
-    rm -f ${tarname}-${target}.tar ${tarname}-${target}.tar.lz
+    cd $output && rm -f ${tarname}-${target}.tar ${tarname}-${target}.tar.lz
 
-    cd $phase_two
-    tar -H ustar -c ./cross | lzip -9vv \
+    cd $phase_two && tar -H ustar -c ./cross | lzip -9vv \
      > ${output}/${tarname}-${target}.tar.lz
 
-    # Create the checksum
-    cd $output
-    sha256sum ${tarname}-${target}.tar.lz \
+    cd $output && sha256sum ${tarname}-${target}.tar.lz  \
       > ${tarname}-${target}.tar.lz.sha256
 
     # Back to the current working directory
