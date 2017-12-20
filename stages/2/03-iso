@@ -63,7 +63,8 @@ rm -f ./dragora.sfs
 
 mksquashfs ./* "${CDROM}/dragora.sfs" \
  -comp gzip -b 256K -Xcompression-level 9 -keep-as-directory \
- -e ./tools ./var/cache/qi/packages ./root/.ash_history
+ -e ./tools ./var/cache/qi/packages ./root/.ash_history \
+    ./usr/pkg/kernel-buildtree-* ./usr/src/linux-* ./usr/src/qi
 
 # Produce hybrid ISO-9660 image
 cd -- "$CDROM"
@@ -79,7 +80,6 @@ mkisofs -v -o "${CDROM}/dragora-live.iso"                 \
 echo "Applying \"hybrid booting\" to the ISO image ..."
 "${worktree}"/archive/isolinux/isohybrid.pl "${CDROM}/dragora-live.iso"
 
-# Make check sum
 sha256sum "${CDROM}/dragora-live.iso" > "${CDROM}/dragora-live.iso.sha256"
 
 echo "Finish ..."
