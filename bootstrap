@@ -128,7 +128,7 @@ BTCFLAGS="${BTCFLAGS:=-g0 -Os}"
 BTCXXFLAGS="${BTCXXFLAGS:=$BTCFLAGS}"
 BTLDFLAGS="${BTLDFLAGS:=-s}"
 worktree="$CWD"
-arch="$(uname -m)" || exit 2
+arch="$(uname -m)" || chkstatus_or_exit
 jobs=1
 opt_keep=opt_keep.off
 output=${worktree}/OUTPUT.${PROGRAM}
@@ -212,9 +212,9 @@ fi
 
 if test -n "$BTCC"
 then
-    host="$(${BTCC} -dumpmachine)" || exit 2
+    host="$(${BTCC} -dumpmachine)" || chkstatus_or_exit
 else
-    host="$(cc -dumpmachine)" || exit 2
+    host="$(cc -dumpmachine)" || chkstatus_or_exit
 fi
 
 # If the host and the target are the same triplet, it won't work.
@@ -257,11 +257,11 @@ umask 022
 # Create required directories
 if test ! -d "$output"
 then
-    mkdir -p -- "$output" || exit 2
+    mkdir -p -- "$output" || chkstatus_or_exit
 fi
 if test ! -d "$TMPDIR"
 then
-    mkdir -p -- "$TMPDIR" || exit 2
+    mkdir -p -- "$TMPDIR" || chkstatus_or_exit
 fi
 
 # Set default path and propagate variables
@@ -291,11 +291,11 @@ do
 
     if test "$stage" = 0
     then
-        mkdir -p -- "${crossdir}/$target" || exit 2
+        mkdir -p -- "${crossdir}/$target" || chkstatus_or_exit
 
         if test ! -e "${crossdir}/${target}/usr"
         then
-            ln -sf . "${crossdir}/${target}/usr" || exit 2
+            ln -sf . "${crossdir}/${target}/usr" || chkstatus_or_exit
         fi
 
         # Ensure toolchain sanity for multilib purposes
@@ -303,7 +303,7 @@ do
         i586 | *x32 | x86_64 )
             if test ! -e "${crossdir}/lib" -a -n "$libSuffix"
             then
-                ln -sf lib${libSuffix} "${crossdir}/lib" || exit 2
+                ln -sf lib${libSuffix} "${crossdir}/lib" || chkstatus_or_exit
             fi
             ;;
         esac
@@ -314,11 +314,11 @@ do
     then
         if test ! -d "${rootdir}/tools"
         then
-            mkdir -p -- "${rootdir}/tools" || exit 2
+            mkdir -p -- "${rootdir}/tools" || chkstatus_or_exit
         fi
 
         # Make required symlink
-        ln -sf "${rootdir}/tools" / || exit 2
+        ln -sf "${rootdir}/tools" / || chkstatus_or_exit
     fi
 
     #### Load the file containing the instruction
@@ -328,7 +328,7 @@ do
     # Exit immediately on any error
     set -e
 
-    . "${CWD}/stages/${stage}/$file" || chkstatus_or_exit 2
+    . "${CWD}/stages/${stage}/$file" || chkstatus_or_exit
 
     # Deactivate shell option
     set +e
@@ -344,6 +344,6 @@ do
     fi
 
     # Back to the current working directory
-    cd -- "$CWD" || exit 2
+    cd -- "$CWD" || chkstatus_or_exit
 done
 
