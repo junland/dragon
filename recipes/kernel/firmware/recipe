@@ -1,0 +1,60 @@
+# Build recipe for linux-libre-firmware.
+#
+# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=linux-libre-firmware
+version=1.0
+release=1
+
+tarname=${program}-${version}.tar.lz
+
+# Remote source(s)
+fetch=http://jxself.org/firmware/$tarname
+
+description="
+GNU Linux-libre firmware.
+
+The release of free firmware for use with the kernel Linux-libre.
+
+For more information, see:
+http://jxself.org/free-firmware.shtml
+"
+
+homepage=http://jxself.org/firmware
+license=Custom
+
+# Source documentation
+docs="GPL-2 GPL-3 MPL-2 README WHENCE"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Prepare package to copy the firmwares (data)
+
+    mkdir -p "${destdir}/lib/firmware"
+    cp -R -p bin/* "${destdir}/lib/firmware/"
+    chown -R root:root "${destdir}/lib/firmware/"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cd src && cp -p $docs "${destdir}${docsdir}"
+}
+
