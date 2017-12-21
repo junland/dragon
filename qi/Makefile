@@ -166,7 +166,7 @@ install-man :
 		  	
 	@echo "*** Installing manual pages on $(DESTDIR)${mandir}/man1 ..."
 
-	$(INSTALL_PROGRAM) doc/qi.1 "$(DESTDIR)${mandir}/man1"
+	$(INSTALL_DATA) doc/qi.1 "$(DESTDIR)${mandir}/man1"
 
 uninstall : uninstall-info uninstall-man
 
