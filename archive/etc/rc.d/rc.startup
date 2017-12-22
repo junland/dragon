@@ -211,19 +211,15 @@ else
     echo "Could not find ip(8) or ifconfig(1)." 1>&2
 fi
 
-# Load kernel modules
+# Update kernel modules
 
-echo "(Startup) Refreshing kernel module list: depmod --quick"
-if ! depmod --quick
+if test -f /lib/modules/"$(uname -r)"/modules.dep
 then
-    echo "Trying to generate kernel module dependency list" 1>&2
-    depmod
-fi
-
-if test -x /etc/rc.d/rc.modules
-then
-    echo "(Startup) Loading kernel modules from /etc/rc.d/rc.modules"
-    /etc/rc.d/rc.modules
+    echo "(Startup) Refreshing kernel module list: depmod --quick"
+    depmod --quick
+else
+    echo "(Startup) Generating kernel module dependency list: depmod --all"
+    depmod --all
 fi
 
 # Configure ISA Plug-and-Play devices
@@ -282,7 +278,7 @@ find /var/lock /var/run  \
 
 # Start to monitor services through perpd(8) instances
 
-echo "(Startup) Monitoring services *through* perpd(8) instances"
+echo "(Startup) Monitoring services through perpd(8) instances"
 if type perpboot > /dev/null
 then
     PERP_BASE=/etc/perp perpboot -d
