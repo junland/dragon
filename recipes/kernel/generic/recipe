@@ -81,16 +81,10 @@ build()
     esac
 
     make -j${jobs} bzImage
-
-    # Modules
     make -j${jobs} modules
     make INSTALL_MOD_PATH="$destdir" modules_install
 
-    # Extract any additional kernel string
-    strver="$(ls -d "${destdir}"/lib/modules/*)"
-    strver="${strver##*/}"
-
-    # Image
+    # Install kernel images
     mkdir -p "${destdir}/boot"
     cp -p .config "${destdir}/boot/config"
     cp -p System.map "${destdir}/boot/System.map"
@@ -98,8 +92,13 @@ build()
 
     # Insert post-install script manually
 
+    # This will be recreated on the post-install,
+    # we need to extract the kernel string for it
     rm -f "${destdir}"/lib/modules/${strver}/build \
           "${destdir}"/lib/modules/${strver}/source
+
+    strver="$(ls -d "${destdir}"/lib/modules/*)"
+    strver="${strver##*/}"
 
     mkdir -p "${destdir}/var/lib/qi"
     cat << EOF > "${destdir}/var/lib/qi/${full_pkgname}.sh"
