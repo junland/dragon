@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=coreutils
-version=8.28
+version=8.29
 release=1
 
 tarname=${program}-${version}.tar.xz
@@ -45,11 +45,6 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
-
-    # A known issue with the uname program from this package is that
-    # the -p switch always returns unknown.  The following patch fixes
-    # this behavior for all architectures (thanks to BLFS)
-    #patch -Np1 -i "${worktree}/patches/coreutils/coreutils-8.23-uname-1.patch"
 
     ./configure FORCE_UNSAFE_CONFIGURE="1" DEFAULT_POSIX2_VERSION="199209" \
     CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
@@ -109,10 +104,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
