@@ -59,6 +59,14 @@ build() {
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f | xargs file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
+
+    find "$destdir" -type f | xargs file | awk '/current ar archive/' | \
+     cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
+
     # Compress manual pages
     if [ -d "${destdir}/$mandir" ] ; then
 	(

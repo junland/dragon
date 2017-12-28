@@ -51,6 +51,11 @@ build() {
     make -j${jobs} V=1 docdir=$docsdir
     make -j${jobs} DESTDIR="$destdir" install
 
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f | xargs file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
+
     # Clean up inventory file for Perl
 
     # This line removes 'destdir' adding the suffix '.lz' for manpages

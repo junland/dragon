@@ -94,6 +94,14 @@ build()
     # Replace hard links on manual pages
     ( cd "${destdir}/${mandir}/man1" && ln -sf c2ph.1 pstruct.1 )
 
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f | xargs file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
+
+    find "$destdir" -type f | xargs file | awk '/current ar archive/' | \
+     cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
+
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
     then
@@ -117,10 +125,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
