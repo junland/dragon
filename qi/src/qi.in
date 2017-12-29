@@ -751,24 +751,22 @@ install_mode()
 
     if test -r "${packagedir}/${name}/var/lib/qi/${name}.replace"
     then
-        short_name=$(pkgbase $name)
-
         while read -r line
         do
-            for replace in "${packagedir}/${line}"*
+            for replace in "${packagedir}/$(pkgbase $line)"-*
             do
-                # The search of the package to replace cannot be
-                # the same to the incoming package on the installation
-                test "$(pkgbase $replace)" = "$short_name" && continue;
+                warn "" "*** Replacing package \`${replace}' ..."
 
-                warn "Replacing package \`${replace}' ..."
+                test -e "$replace" || {
+                    warn "WARNING: declared package directory does not exist."
+                    continue;
+                }
 
                 opt_force=opt_force opt_keep=opt_keep.off \
                  delete_mode "$replace" > /dev/null
             done
         done < "${packagedir}/${name}/var/lib/qi/${name}.replace"
-
-        unset short_name
+        unset line
     fi
 
     # Reset given signals
@@ -815,35 +813,37 @@ upgrade_mode()
     # Install the package, first
     install_mode "$1"
 
-    # Remove old package names; the package directory
-    # is preserved if the option -k is not given
+    echo ""
+    echo "Looking for previous installations ..."
 
-    echo "Searching for previous installations under the same package name ..."
-    short_name=$(pkgbase "$incoming")
-
-    for long_name in "${packagedir}/$short_name"*
+    for long_name in "${packagedir}/$(pkgbase $incoming)"*
     do
-        # The search of the package to remove cannot be
-        # the same to the incoming package on the upgrade
-        if test "$incoming" != "${long_name##*/}"
-        then
-            echo "${long_name}:  Detected."
+        found="${long_name##*/}"
 
-            if test "$opt_keep" != opt_keep
+        # The search for the package to be deleted can not
+        # be equal to the incoming package in an update,
+        # this is filtered using its short name
+
+        fnmatch "$(pkgbase $found)*" "$incoming" || continue;
+        test "$found" = "$incoming" && continue;
+
+        echo "${long_name}:  Detected."
+
+        # A package directory is preserved if -k is passed
+        if test "$opt_keep" != opt_keep
+        then
+            if test -d "$long_name"
             then
-                if test -d "$long_name"
-                then
-                    rm -rf -- "$long_name" || chkstatus_or_exit
-                    echo "removed directory: '$long_name'"
-                else
-                    warn "Package directory '$long_name' is no longer there."
-                fi
+                rm -rf -- "$long_name" || chkstatus_or_exit
+                echo "removed directory: '$long_name'"
+            else
+                warn "Package directory '$long_name' is no longer there."
             fi
         fi
     done
 
     # Remove used variables
-    unset incoming short_name long_name
+    unset incoming long_name found
 }
 
 extract_mode()
@@ -902,21 +902,13 @@ pkgbase()
 
     # Match cases to print the package name
     case $dashes in
-    0 | "")
-        # NAME or null
-        echo "$string"
-        ;;
     1)
         # NAME-VERSION
         echo "${string%-*}"
         ;;
-    2 | 3)
+    *)
         # NAME_[-LONG]-VERSION-ARCH+release
         echo "${string%-*-*}"
-        ;;
-    *)
-        # NAME_[-LONG][-VERYLONG]-VERSION-ARCH+release
-        echo "$string" | cut -f 1-$((dashes - 2)) -d -
         ;;
     esac
 
