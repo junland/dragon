@@ -1,0 +1,78 @@
+# Build recipe for rsync.
+#
+# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=rsync
+version=3.1.2
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=https://download.samba.org/pub/rsync/src/$tarname
+
+description="
+A fast, versatile, remote (and local) file-copying tool.
+
+Rsync is a fast and extraordinarily versatile file copying tool.
+It can copy locally, to/from another host over any remote shell,
+or to/from a remote rsync daemon.
+"
+
+homepage=http://rsync.samba.org
+license=GPLv3+
+
+# Source documentation
+docs="COPYING NEWS README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --disable-debug \
+     --without-included-zlib \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
