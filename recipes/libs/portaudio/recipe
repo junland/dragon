@@ -1,0 +1,73 @@
+# Build recipe for portaudio.
+#
+# Copyright (c) 2018 Thiago Seus, <thiago.seus@yahoo.com.br>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=portaudio
+version=v190600_20161030
+release=1
+
+tarname=pa_stable_${version}.tgz
+
+# Remote source(s)
+fetch=http://www.portaudio.com/archives/$tarname
+
+description="
+Portable real-time audio library.
+
+PortAudio is a free, cross-platform, open-source , audio I/O library.
+It lets you write simple audio programs in C or C++ that will compile
+and run on many platforms.
+"
+
+homepage=http://www.portaudio.com
+license=BSD
+
+# Source documentation
+docs="LICENSE.txt README.txt"
+docsdir="${docdir}/${program}-${version}"
+
+# The package has a custom source directory
+srcdir=portaudio
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --docdir=$docsdir \
+     --enable-cxx \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Strip remaining libraries
+    strip --strip-unneeded \
+     "${destdir}/usr/lib${libSuffix}"/*.so.?.* 2> /dev/null || true
+    strip --strip-debug \
+     "${destdir}/usr/lib${libSuffix}"/*.a 2> /dev/null || true
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
