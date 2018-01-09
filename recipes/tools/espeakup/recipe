@@ -1,0 +1,64 @@
+# Build recipe for espeakup.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=espeakup
+version=0.80
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://github.com/williamh/espeakup/archive/v${version}/$tarname
+
+description="
+eSpeakup connector.
+
+espeakup is a program which makes it possible for speakup to use the
+eSpeak software synthesizer.  It does this by reading speakup's
+softsynth device and passing the text to espeak which actually speaks.
+"
+
+homepage=http://github.com/williamh/espeakup
+license=GPLv3+
+
+# Source documentation
+docs="ChangeLog COPYING README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # To support extra compilation/linker flags
+    patch -p1 < "${worktree}/patches/espeakup/Makefile.diff"
+
+    make -j${jobs} EXTRA_CFLAGS="$QICFLAGS" EXTRA_LDFLAGS="$QILDFLAGS" \
+     PREFIX=/usr MANDIR=$mandir
+
+    make -j${jobs} PREFIX=/usr MANDIR=$mandir \
+     DESTDIR="$destdir" install
+
+    lzip -9 "${destdir}/${mandir}/man8/espeakup.8"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
