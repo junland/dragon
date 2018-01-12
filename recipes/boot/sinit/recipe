@@ -1,6 +1,6 @@
 # Build recipe for sinit.
 #
-# Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -61,11 +61,11 @@ build()
 
     mkdir -p "${destdir}/usr/sbin"
 
-    # Make symlink for the main 'init'
-    ( cd "${destdir}/usr/sbin" && ln -s sinit init )
+    # Set sinit as the default system init
+    ( cd "${destdir}/usr/sbin" && mv sinit init )
 
     # Provide halt and killall5 implementation from "ubase",
-    # modifications of Dimitris Papastamos (sin)
+    # modifications of Dimitris Papastamos (aka sin)
 
     mkdir -p halt killall5
     cp -p "${worktree}"/archive/sinit/halt/* halt/
@@ -94,10 +94,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
