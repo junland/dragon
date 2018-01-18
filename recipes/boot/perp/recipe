@@ -1,6 +1,6 @@
 # Build recipe for perp.
 #
-# Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -96,10 +96,12 @@ build()
     for i in 1 2 3
     do
         mkdir -p "${destdir}/etc/perp/agetty-tty${i}"
+        cp -p "${worktree}/archive/perp/etc/perp/agetty-tty${i}/rc.log" \
+              "${destdir}/etc/perp/agetty-tty${i}/"
         cp -p "${worktree}/archive/perp/etc/perp/agetty-tty${i}/rc.main" \
-              "${destdir}/etc/perp/agetty-tty${i}"
+              "${destdir}/etc/perp/agetty-tty${i}/"
         chmod +t "${destdir}/etc/perp/agetty-tty${i}"
-        chmod 755 "${destdir}/etc/perp/agetty-tty${i}/rc.main"
+        chmod 755 "${destdir}/etc/perp/agetty-tty${i}"/rc.*
         touch "${destdir}/etc/perp/agetty-tty${i}/.graft-config"
     done
     unset i
@@ -135,10 +137,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
