@@ -2,7 +2,7 @@
 #
 # Boot-time system initialization script
 #
-# Copyright (c) 2017 Matias Fonzo.
+# Copyright (c) 2017-2018 Matias Fonzo.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,10 +46,15 @@ ctrlaltdel soft
 echo "(Startup): Mounting kernel based file systems"
 mount -v -n -o nosuid,noexec,nodev -t proc proc /proc
 mount -v -n -o nosuid,noexec,nodev -t sysfs sysfs /sys
-mount -v -n -t devtmpfs devtmpfs /dev
+if ! mountpoint -q /dev
+then
+    mount -v -n -t devtmpfs devtmpfs /dev
+else
+    # Re-mount devtmpfs if necessary due to an initramfs
+    mount -v -n -o remount -t devtmpfs devtmpfs /dev
+fi
 
 mkdir -p /dev/pts /dev/shm
-
 mount -v -n -o mode=0620,gid=5 -t devpts devpts /dev/pts
 mount -v -n -o defaults -t tmpfs none /dev/shm
 mount -v -n -o defaults -t tmpfs tmpfs /run
