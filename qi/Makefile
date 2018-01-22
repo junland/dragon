@@ -1,6 +1,6 @@
 # Makefile for Qi.
 #
-# Copyright (c) 2015-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2015-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 1.0-rc18
+version		= 1.0-rc19
 
 ## DO NOT MAKE CHANGES HERE.
 #

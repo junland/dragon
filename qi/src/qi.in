@@ -1,5 +1,5 @@
 #! /bin/sh -
-#  Copyright (C) 2016-2017 Matias Fonzo <selk@dragora.org>
+#  Copyright (C) 2016-2018 Matias Fonzo <selk@dragora.org>
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -85,7 +85,7 @@ version()
 {
     printf "%s\n" \
      "$PROGRAM @VERSION@" \
-     "Copyright (C) 2016-2017 Matias Andres Fonzo." \
+     "Copyright (C) 2016-2018 Matias Andres Fonzo." \
      "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>" \
      "This is free software: you are free to change and redistribute it." \
      "There is NO WARRANTY, to the extent permitted by law."
@@ -630,8 +630,14 @@ delete_mode()
     if test "$opt_force" != opt_force
     then
         echo "Checking for possible conflicts ..."
-        graft -d -n -t "$targetdir" "$expunge" > /dev/null
-        chkstatus_or_exit 6
+        if graft -d -n -t "$targetdir" "$expunge" 2>&1 | grep ^CONFLICT
+        then
+            warn \
+             ""                                             \
+             "    A conflict occurred during the removal;"  \
+             "The package will be PRESERVED, unless the -f option is given."
+            exit 6
+        fi
     fi
 
     # Ignore some signals up to completing the (de)installation
