@@ -54,7 +54,7 @@ usage()
      "  -k          keep (don't delete) srcdir or destdir"              \
      "              from the build mode"                                \
      "              keep (don't delete) package directories"            \
-     "              from a removal, this also keeps previous"           \
+     "              from a removal, this also keep previous"            \
      "              package names from an upgrade"                      \
      "  -v          be verbose (a 2nd -v gives more)"                   \
      ""                                                                 \
@@ -248,7 +248,8 @@ build_mode()
 
     # Load the recipe
 
-    echo "Loading ${CWD}/$recipe ..."
+    echo "@@ Building from ${CWD}/$recipe ..."
+
     . "${CWD}/$recipe"
 
     # Check for required variables
@@ -311,7 +312,7 @@ build_mode()
         then
             warn \
              ""                                                          \
-             "The recipe is newer than the detected package:"            \
+             "The recipe is NEWER than the detected package:"            \
              ""                                                          \
              "$( stat -c "%y %n" "${CWD}/$recipe" )"                     \
              "$( stat -c "%y %n" "${outdir}/${full_pkgname}.tlz" )"      \
@@ -325,7 +326,7 @@ build_mode()
         else
             warn \
              ""                                                          \
-             "The recipe already produced the package:"                  \
+             "The recipe ALREADY produced the package:"                  \
              "$( stat -c "%y %n" "${outdir}/${full_pkgname}.tlz" )"      \
              ""                                                          \
              "But the recipe is still older than the produced package:"  \
@@ -368,7 +369,7 @@ build_mode()
                     ;;
                 esac
             else
-                warn "Use '-f' to re-process ${CWD}/$recipe." ""
+                warn "Use the -f option to re-process ${CWD}/$recipe." ""
                 return 6;
             fi
         fi
@@ -388,7 +389,7 @@ build_mode()
 
             # Download the source if does not exist
 
-            warn "Cannot find $_source in $tardir:" \
+            warn "    Can not find $_source in ${tardir};" \
                  "attempting to get it from ${origin%/*} ..."
 
             case $origin in
@@ -626,6 +627,8 @@ delete_mode()
 
     is_readable "$expunge" || exit 4
 
+    echo "-- Deleting package $expunge ..."
+
     # Scan for possible conflicts, stop if arise
     if test "$opt_force" != opt_force
     then
@@ -633,9 +636,9 @@ delete_mode()
         if graft -d -n -t "$targetdir" "$expunge" 2>&1 | grep ^CONFLICT
         then
             warn \
-             ""                                             \
-             "    A conflict occurred during the removal;"  \
-             "The package will be PRESERVED, unless the -f option is given."
+             ""                                                \
+             "    A conflict occurred during uninstallation;"  \
+             "the package will be PRESERVED, unless the -f option is given."
             exit 6
         fi
     fi
@@ -692,6 +695,8 @@ install_mode()
     fi
 
     # Make preparations to install the package
+
+    echo "++ Installing package $1 ..."
 
     # Get the filename
     name=$(basename -- "$1" .tlz)
@@ -812,6 +817,8 @@ upgrade_mode()
         warn "${PROGRAM}: \`${1}' is not a regular file."
         exit 4
     }
+
+    echo "^^ Upgrading package to $1 ..."
 
     # Get the filename
     incoming=$(basename -- "$1" .tlz)
