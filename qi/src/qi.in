@@ -39,7 +39,7 @@ usage()
      "  -d          delete packages"                                    \
      "  -i          install packages"                                   \
      "  -o          resolve build order through .order files"           \
-     "  -u          update packages"                                    \
+     "  -u          update packages (implies -i, -d with -f)"           \
      "  -x          extract packages for debugging purposes"            \
      ""                                                                 \
      "Common options:"                                                  \
@@ -662,7 +662,7 @@ delete_mode()
     # Delete package directory
     if test "$opt_keep" != opt_keep
     then
-        warn "Deleting package directory, if present ..."
+        echo "Deleting package directory, if present ..."
 
         if test -d "$expunge"
         then
@@ -734,50 +734,57 @@ install_mode()
     graft -i -P $graft_v -t "$targetdir" "${packagedir}/$name"
     chkstatus_or_exit 2
 
-    # Show package description
+    # Avoid unnecessary runs coming from the upgrade_mode(),
+    # this is when the incoming package is **pre-installed**
 
-    if test -r "${packagedir}/${name}/var/lib/qi/${name}.txt"
+    if test "$_isUpgrade" != isUpgrade.true
     then
-        grep '^#' "${packagedir}/${name}/var/lib/qi/${name}.txt"
-    elif test -r "${1}.txt"
-    then
-        # From the external meta file
-        grep '^#' "${1}.txt"
-    else
-        warn "Description file not found for '$name'."
-    fi
+        # Show package description
+        if test -r "${packagedir}/${name}/var/lib/qi/${name}.txt"
+        then
+            grep '^#' "${packagedir}/${name}/var/lib/qi/${name}.txt"
+        elif test -r "${1}.txt"
+        then
+            # From the external meta file
+            grep '^#' "${1}.txt"
+        else
+            warn "Description file not found for '$name'."
+        fi
 
-    # Check and run the post-install script if exist
+        # Check and run the post-install script if exist
+        if test -r "${packagedir}/${name}/var/lib/qi/${name}.sh"
+        then
+            echo "Running post-install script for \`${name}' ..."
+            (
+                cd -- "${targetdir}"/ && /bin/sh \
+                 "${packagedir}/${name}/var/lib/qi/${name}.sh"
+            )
+        fi
 
-    if test -r "${packagedir}/${name}/var/lib/qi/${name}.sh"
-    then
-        echo "Running post-install script for \`${name}' ..."
-        (
-            cd -- "${targetdir}"/ && /bin/sh \
-             "${packagedir}/${name}/var/lib/qi/${name}.sh"
-        )
-    fi
-
-    # Check if there are declared package names for replacement
-
-    if test -r "${packagedir}/${name}/var/lib/qi/${name}.replace"
-    then
-        while read -r line
-        do
-            for replace in "${packagedir}/$(pkgbase $line)"-*
+        # Check if there are declared package names for replacement
+        if test -r "${packagedir}/${name}/var/lib/qi/${name}.replace"
+        then
+            while read -r line
             do
-                warn "" "*** Replacing package \`${replace}' ..."
+                for replace in "${packagedir}/$(pkgbase $line)"-*
+                do
+                    warn "" "*** Replacing package \`${replace}' ..."
 
-                test -e "$replace" || {
-                    warn "WARNING: declared package directory does not exist."
-                    continue;
-                }
+                    test -e "$replace" || {
+                        warn "WARNING: declared package does not exist."
+                        continue;
+                    }
 
-                opt_force=opt_force opt_keep=opt_keep.off \
-                 delete_mode "$replace" > /dev/null
-            done
-        done < "${packagedir}/${name}/var/lib/qi/${name}.replace"
-        unset line
+                    # The search for the package to be replaced can not be
+                    # the same to the temporary location coming from upgrade
+                    test "$replace" = "$PRVLOC" && continue;
+
+                    opt_force=opt_force opt_keep=opt_keep.off \
+                     delete_mode "$replace" > /dev/null
+                done
+            done < "${packagedir}/${name}/var/lib/qi/${name}.replace"
+            unset line
+        fi
     fi
 
     # Reset given signals
@@ -818,45 +825,57 @@ upgrade_mode()
         exit 4
     }
 
-    echo "^^ Upgrading package to $1 ..."
-
     # Get the filename
     incoming=$(basename -- "$1" .tlz)
 
-    # Install the package, first
-    install_mode "$1"
+    echo "^^ Upgrading to $incoming ..."
 
-    echo ""
-    echo "Looking for previous installations ..."
+    # Prepare the package to install it in a temporary location
 
+    # Set random directory using packagedir as prefix and 'incoming' as suffix
+    PRVLOC=$(mktemp -dp "$packagedir" ${incoming}.XXXXXXXXXXXX) || exit 2
+
+    # Pre-install the package in the custom 'packagedir'
+
+    save_packagedir="$packagedir"
+    packagedir="$PRVLOC"
+
+    echo "Pre-installing package in temporary location ..."
+    _isUpgrade=_isUpgrade.true install_mode "$1" > /dev/null
+    _isUpgrade=_isUpgrade.false
+
+    # Restore variable before looking for old packages
+    packagedir=$save_packagedir
+    unset save_packagedir
+
+    echo "Looking for other installations under the same package name ..."
     for long_name in "${packagedir}/$(pkgbase $incoming)"*
     do
         found="${long_name##*/}"
 
-        # The search for the package to be deleted can not
-        # be equal to the incoming package in an update,
-        # this is filtered using its short name
+        # The search for the package to be deleted can not be
+        # the same to the temporary location
+        test "$long_name" = "$PRVLOC" && continue;
 
         fnmatch "$(pkgbase $found)*" "$incoming" || continue;
-        test "$found" = "$incoming" && continue;
 
         echo "${long_name}:  Detected."
 
-        # A package directory is preserved if -k is passed
-        if test "$opt_keep" != opt_keep
-        then
-            if test -d "$long_name"
-            then
-                rm -rf -- "$long_name" || chkstatus_or_exit
-                echo "removed directory: '$long_name'"
-            else
-                warn "Package directory '$long_name' is no longer there."
-            fi
-        fi
+        # A package directory is preserved if -k is given
+        opt_force=opt_force delete_mode "$long_name" > /dev/null
     done
+    unset long_name found
 
-    # Remove used variables
-    unset incoming long_name found
+    # Re-install the package removing the temporary location
+
+    install_mode "$1"
+
+    echo ""
+    echo "Deleting temporary location ..."
+    rm -rf -- "$PRVLOC" && echo "removed directory: '$PRVLOC'"
+
+    # Remove remaining variables
+    unset incoming PRVLOC
 }
 
 extract_mode()
@@ -994,7 +1013,7 @@ packagedir=@PACKAGEDIR@
 targetdir=@TARGETDIR@
 RC=RC
 RCFILE=@SYSCONFDIR@/qirc
-opt_update=""
+opt_update=opt_update.off
 opt_force=opt_force.off
 opt_keep=opt_keep.off
 opt_incr_release=opt_incr_release.off
@@ -1004,6 +1023,7 @@ jobs=1
 mode=""
 verbose=0
 graft_v=-v
+_isUpgrade=_isUpgrade.false
 _opt_ignoreqsts=_opt_ignoreqsts.off
 TMPDIR="${TMPDIR:=/usr/src/qi/build}"
 QICFLAGS="${QICFLAGS:=-g0 -Os}"
