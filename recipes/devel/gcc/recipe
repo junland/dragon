@@ -1,6 +1,6 @@
 # Build recipe for GCC.
 #
-# Copyright (c) 2015-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2015-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=gcc
-version=6.4.0
+version=7.3.0
 release=1
 
 tarname=${program}-${version}.tar.gz
@@ -53,14 +53,17 @@ build()
     cd "$srcdir"
 
     # Apply specific patches for the support in musl.
-    #
-    # http://port70.net/~nsz/musl/gcc-trunk/
-    #
-    patch -Np1 -i "${worktree}/patches/gcc/0001-libgcc_s.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0005-libatomic-test-fix.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0006-libgomp-test-fix.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0007-libitm-test-fix.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0008-libvtv-test-fix.patch"
+    # http://port70.net/~nsz/musl/gcc-7.3.0
+
+    patch -Np1 -i "${worktree}/patches/gcc/0001-ssp_nonshared.diff"
+    patch -Np1 -i "${worktree}/patches/gcc/0002-posix_memalign.diff"
+    patch -Np1 -i "${worktree}/patches/gcc/0003-cilkrts.diff"
+    patch -Np1 -i "${worktree}/patches/gcc/0004-libatomic-test-fix.diff"
+    patch -Np1 -i "${worktree}/patches/gcc/0005-libgomp-test-fix.diff"
+    patch -Np1 -i "${worktree}/patches/gcc/0006-libitm-test-fix.diff"
+    patch -Np1 -i "${worktree}/patches/gcc/0007-libvtv-test-fix.diff"
+    patch -Np1 -i "${worktree}/patches/gcc/0008-j2.diff"
+    patch -Np1 -i "${worktree}/patches/gcc/0009-s390x-muslldso.diff"
 
     # Create a separate build directory
     rm -rf ../gcc-build
@@ -176,11 +179,7 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}/"
 
     # Delete temporary build directory
     cd -- "$TMPDIR"
