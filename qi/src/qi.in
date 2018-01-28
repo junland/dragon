@@ -248,7 +248,9 @@ build_mode()
 
     # Load the recipe
 
-    echo "@@ Building from ${CWD}/$recipe ..."
+    echo "===@"
+    echo "    Building from ${CWD}/$recipe ..."
+    echo "===@"
 
     . "${CWD}/$recipe"
 
@@ -587,9 +589,14 @@ create_mode()
         exit 4
     }
 
-    echo "${directory}: Creating package $name ..."
+    echo "===("
+    echo "    Creating package $name at $directory ..."
+    echo "===("
+
     ( umask 022 ; tar cvf - ./* | lzip -9cvv ) > "${directory}/$name"
     chkstatus_or_exit 3
+
+    echo "Package created \"${directory}/${name}\"."
 
     echo "${directory}/$name: Creating SHA256 checksum ..."
     ( cd -- "$directory" && sha256sum $name > ${name}.sha256 )
@@ -601,6 +608,10 @@ create_mode()
 delete_mode()
 {
     expunge=$1
+
+    echo "<==="
+    echo "    Deleting package $expunge ..."
+    echo "<==="
 
     # If package is not a fully qualified directory, prepend it with
     # the value of packagedir.  The solely '/' does not qualify here.
@@ -621,8 +632,6 @@ delete_mode()
     # Complain if the package directory cannot be well-read
 
     is_readable "$expunge" || exit 4
-
-    echo "-- Deleting package $expunge ..."
 
     # Scan for possible conflicts, stop if arise
     if test "$opt_force" != opt_force
@@ -689,7 +698,9 @@ install_mode()
 
     # Make preparations to install the package
 
-    echo "++ Installing package $1 ..."
+    echo "===>"
+    echo "    Installing package $1 ..."
+    echo "===>"
 
     # Get the filename
     name=$(basename -- "$1" .tlz)
@@ -821,8 +832,6 @@ upgrade_mode()
     # Get the filename
     incoming=$(basename -- "$1" .tlz)
 
-    echo "^^ Upgrading to $incoming ..."
-
     # Prepare the package to install it in a temporary location
 
     # Set random directory using packagedir as prefix and 'incoming' as suffix
@@ -863,9 +872,10 @@ upgrade_mode()
 
     install_mode "$1"
 
-    echo ""
     echo "Deleting temporary location ..."
     rm -rf -- "$PRVLOC" && echo "removed directory: '$PRVLOC'"
+
+    echo "Successful upgrade to ${incoming}."
 
     # Remove remaining variables
     unset incoming PRVLOC
