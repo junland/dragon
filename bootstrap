@@ -2,7 +2,7 @@
 #
 # Builder of custom stages (cross compilers, GNU/Linux distributions)
 #
-# Copyright (c) 2014-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2014-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -71,8 +71,8 @@ usage() {
 version()
 {
     printf "%s\n" \
-     "$PROGRAM 3.16" \
-     "Copyright (C) 2014-2017 Matias Andres Fonzo." \
+     "$PROGRAM 3.17" \
+     "Copyright (C) 2014-2018 Matias Andres Fonzo." \
      "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>" \
      "This is free software: you are free to change and redistribute it." \
      "There is NO WARRANTY, to the extent permitted by law."
@@ -98,16 +98,24 @@ chkstatus_or_exit()
 
 # Function to test and extract tarball files
 untar() {
-    tar tf "$1" > /dev/null && {
-        cd -- "$2" && tar xpf "$1"
-    }
+    echo "Checking tarball integrity ..."
+    tar tf "$1" > /dev/null
+    chkstatus_or_exit 3
+
+    if test -n "$2"
+    then
+        cd -- "$2" || exit $?
+    fi
+
+    echo "Decompressing $1 ..."
+    tar xpf "$1"
     chkstatus_or_exit 3
 }
 
-#### Warning for good practices
-
-# Recommended practices is to set variables in front of `configure',
-# or make(1), see also:
+# Warning for good practices.
+#
+# Recommended practices is to set variables
+# in front of `configure', or make(1), see:
 #
 # http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Defining-Variables.html
 # http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Setting-Output-Variables.html
@@ -326,7 +334,7 @@ do
     echo "${PROGRAM}: Processing $file from stage $stage ..."
 
     # Set trap before to run the script in order to
-    # catch the return status, exit code 2 if fails
+    # catch the return status, return code 2 if fails
 
     trap 'chkstatus_or_exit 2' EXIT HUP INT QUIT ABRT TERM
 
@@ -336,7 +344,7 @@ do
     . "${CWD}/stages/${stage}/$file"
 
     # Deactivate shell option(s)
-    set +e ; set +x
+    set +e
 
     # Reset given signals
     trap - EXIT HUP INT QUIT ABRT TERM
@@ -346,7 +354,7 @@ do
     then
         if type cleanup 1> /dev/null 2> /dev/null
         then
-            cleanup || chkstatus_or_exit 2
+            cleanup ; chkstatus_or_exit 2
             unset cleanup
         fi
     fi
