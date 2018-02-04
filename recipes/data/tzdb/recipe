@@ -1,6 +1,7 @@
 # Build recipe for tzdb.
 #
 # Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018 Matias P. Rodrigues, <mprodrigues@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,7 +54,7 @@ build()
     cd "$srcdir"
 
     make -j${jobs} CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
-     TOPDIR=/usr \
+     TOPDIR=/ \
      TZDIR=/etc/zoneinfo \
      ETCDIR=/usr/sbin \
      LIBDIR=/usr/lib${libSuffix} \
@@ -62,7 +63,7 @@ build()
      DESTDIR="$destdir" install
 
     # We do not offer 'tzselect'
-    rm -f "${destdir}/usr/sbin/tzselect"
+    rm -f "${destdir}/usr/bin/tzselect"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -82,4 +83,3 @@ build()
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}"
 }
-
