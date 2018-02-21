@@ -1,5 +1,5 @@
 #! /bin/sh -
-# Copyright (c) 2017 Matias Fonzo.
+# Copyright (c) 2017-2018 Matias Fonzo.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,24 +15,38 @@
 
 if test $# -eq 0
 then
-    echo "An alternative to Debian's run-parts"
+    echo "An alternative to Debian/Slackware run-parts(8)"
     echo ""
-    echo "Usage: $0 <cron_directory>"
+    echo "Usage: $0 <directory>"
     exit 0
 fi
-
 if test ! -d "$1"
 then
     echo "Error '$1' is not a valid directory." 1>&2
+    echo "Usage: $0 <directory>" 1>&2
     exit 1
 fi
 
-for cronfile in "$1"/*
+SUFFIXES_TO_IGNORE="~ ^ , .bak .new"
+
+# Loop
+for script in "$1"/*
 do
-    if test -f "$cronfile" -a -x "$cronfile"
+    test -f "$script" || continue;
+
+    for suffix in $SUFFIXES_TO_IGNORE
+    do
+        case "$script" in
+        *${suffix})
+            continue 2
+            ;;
+        esac
+    done
+    unset suffix
+
+    if test -x "$script"
     then
-        "$cronfile"
+        "$script" || echo "$script failed." 1>&2
     fi
 done
-unset cronfile
 
