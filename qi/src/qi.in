@@ -387,28 +387,30 @@ build_mode()
             _source="${origin##*/}"
 
             echo "Looking for ${tardir}/$_source ..."
-            test -e "${tardir}/$_source" && continue
 
-            # Download the source if does not exist
+            # Download the source or resume it if allowed
 
-            warn "    Can not find $_source in ${tardir};" \
-                 "attempting to get it from ${origin%/*} ..."
+            if test ! -e "${tardir}/$_source"
+            then
+                warn "    Can't find $_source in ${tardir};" \
+                     "attempting to get it from ${origin%/*} ..."
+            fi
 
             case $origin in
             rsync://*)
                     (
-                        cd -- "$tardir" && $rsync $origin && \
-                        sha256sum $_source > ${_source}.sha256
+                        cd -- "$tardir" && { $rsync $origin && \
+                        sha256sum $_source > ${_source}.sha256 ; }
                     )
                 ;;
             *://*)
                     (
-                        cd -- "$tardir" && $netget $origin && \
-                        sha256sum $_source > ${_source}.sha256
+                        cd -- "$tardir" && { $netget $origin && \
+                        sha256sum $_source > ${_source}.sha256 ; }
                     )
                 ;;
             *)
-                warn "${PROGRAM}: Unrecognized protocol for $origin"
+                warn "${PROGRAM}: Unrecognized protocol for ${origin}."
                 exit 4
             esac
         done
