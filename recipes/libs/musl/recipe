@@ -48,6 +48,13 @@ build()
 
     patch -Np0 -i "${worktree}/patches/musl/musl-utmp_path.diff"
 
+    # Do not use the compiler runtime library from the temporary system,
+    # the toolchain must be adjusted until the native GCC take place
+    if cc -print-libgcc-file-name | grep -q '^/tools'
+    then
+        patch -Np1 -i "${worktree}/patches/musl/musl-nolibcc_stage1.diff"
+    fi
+
     ./configure $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --syslibdir=/lib \
