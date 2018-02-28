@@ -4,13 +4,18 @@
 #
 
 set -e
-umask 022
 ionice -c 3 -p $$
+umask 022
 
-for INFODIR in /usr/local/share/info/ /usr/share/info/
+for infodir in /usr/local/share/info/ /usr/share/info/
 do
-    find $INFODIR -maxdepth 1 \( -type f -a ! -name dir \) \
-     -exec install-info '{}' ${INFODIR}/dir \;
+    if ! test -d "$infodir"
+    then
+        echo "WARNING: ${0}: '$infodir' is not a directory." 1>&2
+        continue;
+    fi
+
+    find $infodir -maxdepth 1 \( -type f -a ! -name dir \) \
+     -exec install-info '{}' ${infodir}/dir \;
 done
-unset INFODIR
 
