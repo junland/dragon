@@ -223,8 +223,7 @@ build_mode()
     test -d "${worktree}/recipes"  || mkdir -p -- "${worktree}/recipes"
     test -d "$tardir"              || mkdir -p -- "$tardir"
 
-    # Variables treatment for the actual and the next recipe,
-    # if there are more than one to process.
+    # Variables treatment for the current and next recipe.
     #
     # Unset special variables that can only be predefined
     # in the recipe not coming from ${sysconfdir}/qirc
@@ -238,20 +237,16 @@ build_mode()
 
     unset arch jobs
 
-    # The following variables cannot be redefined in the recipe
+    # The following variables can not be redefined on the recipe
     readonly outdir worktree netget rsync
 
-    # Recommended practices is to set variables in front of `configure'
-    # or in front of make(1).  Refer to the documentation of Qi.
-
+    # Recommended practices is to set variables in front of
+    # `configure'/make(1), see documentation of Qi for details.
     unset CFLAGS CXXFLAGS LDFLAGS
 
     # Load the recipe
 
-    echo "===@"
-    echo "    Building from ${CWD}/$recipe ..."
-    echo "===@"
-
+    echo "{@} Building from ${CWD}/$recipe ..."
     . "${CWD}/$recipe"
 
     # Check for required variables
@@ -292,7 +287,7 @@ build_mode()
     srcdir="${srcdir:=${program}-$version}"
     destdir="${destdir:=${TMPDIR}/package-$pkgname}"
 
-    # Restore default values if they were not given in the recipe
+    # Restore default values if they were not given on the recipe
     arch="${arch:=$save_arch}"
     jobs="${jobs:=$save_jobs}"
 
@@ -604,9 +599,7 @@ create_mode()
         exit 4
     }
 
-    echo "===("
-    echo "    Creating package $name at $directory ..."
-    echo "===("
+    echo "{#} Creating package $name at $directory ..."
 
     ( umask 022 ; tar cvf - ./* | lzip -9cvv ) > "${directory}/$name"
     chkstatus_or_exit 3
@@ -624,9 +617,7 @@ delete_mode()
 {
     expunge=$1
 
-    echo "<==="
-    echo "    Deleting package $expunge ..."
-    echo "<==="
+    echo "<<< Deleting package $expunge ..."
 
     # If package is not a fully qualified directory, prepend it with
     # the value of packagedir.  The solely '/' does not qualify here.
@@ -713,9 +704,7 @@ install_mode()
 
     # Make preparations to install the package
 
-    echo "===>"
-    echo "    Installing package $1 ..."
-    echo "===>"
+    echo ">>> Installing package $1 ..."
 
     # Get the filename
     name=$(basename -- "$1" .tlz)
@@ -890,7 +879,8 @@ upgrade_mode()
     echo "Deleting temporary location ..."
     rm -rf -- "$PRVLOC" && echo "removed directory: '$PRVLOC'"
 
-    echo "Successful upgrade to ${incoming}."
+    echo ""
+    echo "Successful upgrade to '${incoming}'."
 
     # Remove remaining variables
     unset incoming PRVLOC
