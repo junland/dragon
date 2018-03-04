@@ -176,34 +176,33 @@ build_mode()
     # has priority over the working tree (or where the recipes reside).
     # The 'worktree' is the second place where to find a recipe.  Also,
     # we complete the possibility of using the directory name to invoke
-    # a recipe if it contains "recipe" as the file name.
+    # a recipe if it contains "recipe" as valid file name.
 
-    if test ! -f "$recipe"
+    if test ! -r "$recipe"
     then
-        if test -f "${PWD}/${recipe}/recipe"
+        if test -r "${recipe}/recipe"
         then
-            recipe="${PWD}/${recipe}/recipe"
-        elif test -f "${worktree}/$recipe"
-        then
-            recipe="${worktree}/$recipe"
-        elif test -f "${worktree}/${recipe}/recipe"
-        then
-            recipe="${worktree}/${recipe}/recipe"
-        elif test -f "${worktree}/recipes/${recipe}"
-        then
-            recipe="${worktree}/recipes/${recipe}"
-        elif test -f "${worktree}/recipes/${recipe}/recipe"
+            recipe="${recipe}/recipe"
+        elif test -r "${worktree}/recipes/${recipe}/recipe"
         then
             recipe="${worktree}/recipes/${recipe}/recipe"
         fi
     fi
 
-    # Perform sanity checks
-
     test -f "$recipe" || {
         warn "${PROGRAM}: \`${recipe}' is not a regular file."
         exit 4
     }
+
+    # Complain if the file name is not "recipe"
+
+    if test "${recipe##*/}" = recipe
+    then
+        true
+    else
+        warn "${PROGRAM}: \`${recipe}' is not a valid recipe name."
+        exit 4
+    fi
 
     # Start preparations to import the recipe
 
@@ -225,8 +224,8 @@ build_mode()
 
     # Variables treatment for the current and next recipe.
     #
-    # Unset special variables that can only be predefined
-    # in the recipe not coming from ${sysconfdir}/qirc
+    # Unset special variables that can only be predefined on
+    # the recipe and not coming from ${sysconfdir}/qirc
 
     unset srcdir destdir pkgname pkgversion program version release \
           fetch description homepage license replace keep_srcdir
@@ -244,7 +243,7 @@ build_mode()
     # `configure'/make(1), see documentation of Qi for details.
     unset CFLAGS CXXFLAGS LDFLAGS
 
-    # Load the recipe
+    # Load recipe
 
     echo "{@} Building from ${CWD}/$recipe ..."
     . "${CWD}/$recipe"
