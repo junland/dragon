@@ -383,12 +383,11 @@ build_mode()
 
             echo "Looking for \"$_source\" ..."
 
-            echo "verifying checksum: '${tardir}/${_source}.sha256'"
+            echo "Verifying checksum file \"${_source}.sha256\" from '${tardir}'"
             if test -e "${tardir}/${_source}.sha256"
             then
-                cd -- "$tardir" || chkstatus_or_exit
-                sha256sum < ${_source}.sha256 > /dev/null || chkstatus_or_exit
-                cd -- - > /dev/null || chkstatus_or_exit
+                ( cd -- "$tardir" && sha256sum - ) < "${tardir}/${_source}.sha256"
+                chkstatus_or_exit
                 continue;
             else
                 warn "${_source}.sha256: Checksum file does not exist, yet."
@@ -405,15 +404,13 @@ build_mode()
             case $origin in
             rsync://*)
                     (
-                        cd -- "$tardir" || exit 2
-                        $rsync $origin || chkstatus_or_exit
+                        cd -- "$tardir" && $rsync $origin || chkstatus_or_exit
                         sha256sum $_source > ${_source}.sha256
                     )
                 ;;
             *://*)
                     (
-                        cd -- "$tardir" || exit 2
-                        $netget $origin || chkstatus_or_exit
+                        cd -- "$tardir" && $netget $origin || chkstatus_or_exit
                         sha256sum $_source > ${_source}.sha256
                     )
                 ;;
