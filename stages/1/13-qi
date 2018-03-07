@@ -17,23 +17,21 @@
 echo "Making Qi from ${CWD}/qi ..."
 
 cd -- "${CWD}/qi"
+
 make clean
 
 ./configure --prefix=/tools
 
 make
-rm -f /tools/etc/qirc
 make install
 
 # Clean up the source repository
 rm -f config.mak
 make clean
 
-# Adjust prefixes to look for /usr
-sed -i \
- -e 's|/tools|/usr|g' \
- -e 's|/usr/etc|/etc|' \
- -e 's|/usr/var|/var|' /tools/etc/qirc
+# Copy our custom qirc to /tools
+cp -p "${worktree}/archive/qi/qirc" /tools/etc/
+chmod 644 /tools/etc/qirc
 
 # Set compiler options provided by default in Dragora
 case $arch in
