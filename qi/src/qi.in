@@ -44,24 +44,22 @@ usage()
      ""                                                                 \
      "Common options:"                                                  \
      "  -N          don't read the configuration file"                  \
-     "  -P  <DIR>   directory for package (de)installation;"            \
+     "  -p  <DIR>   directory for package (de)installation;"            \
      "              only valid for -i, -d, -or -u options"              \
      "  -t  <DIR>   target directory for symbolic links;"               \
      "              only valid for -i, -d, or -u options"               \
-     "  -f          force rebuild the package of a recipe,"             \
+     "  -f          force rebuild package of a recipe, or"              \
      "              force the removal of a package on CONFLICT;"        \
-     "              only valid for -b and -d options"                   \
+     "              this is only valid for -b and -d options"           \
      "  -k          keep (don't delete) srcdir or destdir"              \
-     "              from the build mode"                                \
-     "              keep (don't delete) package directories"            \
-     "              from a removal, this also keeps previous"           \
-     "              package names from an upgrade"                      \
+     "              keep (don't delete) package directory"              \
+     "              this refers to the -b, -d or -u options"            \
      "  -v          be verbose (a 2nd -v gives more)"                   \
      ""                                                                 \
      "Options for 'build' mode (-b):"                                   \
-     "  -O  <DIR>   where the produced packages are written"            \
-     "  -W  <DIR>   where archives, patches, and recipes are expected"  \
-     "  -Z  <DIR>   where the sources will be found"                    \
+     "  -o  <DIR>   where the produced packages are written"            \
+     "  -w  <DIR>   where archives, patches, and recipes are expected"  \
+     "  -z  <DIR>   where (compressed) sources will be found"           \
      "  -a          architecture to use"                                \
      "  -j          parallel jobs for the compiler"                     \
      "  -1          increment release number (release + 1)"             \
@@ -77,7 +75,7 @@ usage()
      "  QICXXFLAGS  C++ compiler flags"                                 \
      "  QILDFLAGS   linker flags"                                       \
      ""                                                                 \
-     "When FILE is -, read standard input."                             \
+     "With no FILE, or when FILE is -, read standard input."            \
      ""
 }
 
@@ -1045,7 +1043,7 @@ docdir=@DOCDIR@
 
 #### Parse options
 
-while getopts :bcdiouxNP:t:fkvO:W:Z:a:j:1nhV name
+while getopts :bcdiouxNp:t:fkvo:w:z:a:j:1nhV name
 do
     case $name in
     b)
@@ -1093,7 +1091,7 @@ do
     N)
         RC=RC.off
         ;;
-    P)
+    p)
         packagedir="$OPTARG"
         ;;
     t)
@@ -1108,13 +1106,13 @@ do
     v)
         verbose=$(( verbose + 1 ))
         ;;
-    O)
+    o)
         outdir="$OPTARG"
         ;;
-    W)
+    w)
         worktree="$OPTARG"
         ;;
-    Z)
+    z)
         tardir="$OPTARG"
         ;;
     a)
