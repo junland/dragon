@@ -1,7 +1,7 @@
 # Build script for perl and perl-cross.
 # Perl-cross URL: http://arsv.github.io/perl-cross/
 #
-# Copyright (c) 2014-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2014-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,17 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version=5.24.1
-cross_ver=1.1.4
+version=5.26.1
 
 rm -rf -- "${TMPDIR}/perl-${version}" \
-          "${TMPDIR}/perl-cross-${cross_ver}"
-untar "${worktree}/sources/perl-${version}.tar.gz" "$TMPDIR"
-untar "${worktree}/sources/perl-cross-${cross_ver}.tar.gz" "$TMPDIR"
+          "${TMPDIR}/perl-cross-static"
+untar "${worktree}/sources/perl-${version}.tar.bz2" "$TMPDIR"
+untar "${worktree}/sources/perl-cross-static.tar.lz" "$TMPDIR"
 
-# Copy perl-cross files over perl-<version>
+# Copy perl-cross-static over Perl distribution
 cd -- "$TMPDIR"
-cp -f -r "perl-cross-${cross_ver}"/* "perl-${version}"
+cp -f -r "perl-cross-static"/* "perl-${version}/"
 
 # Build instructions
 cd "perl-${version}"
@@ -39,17 +38,16 @@ sed -i 's/-fstack-protector/-fnostack-protector/g' ./Configure
  --all-static \
  -Dprivlib=/tools/lib${libSuffix}/perl5 \
  -Dsitelib=/tools/lib${libSuffix}/perl5/site_perl \
- -A ldflags="$BTLDFLAGS -static"
+ -Dldflags="$BTLDFLAGS -static"
 
-make
+make -j1
 
 mkdir -p -- "${rootdir}/tools/bin" "${rootdir}/tools/lib${libSuffix}/perl5"
-
 cp -f perl cpan/podlators/scripts/pod2man "${rootdir}/tools/bin"
 cp -R lib/* "${rootdir}/tools/lib${libSuffix}/perl5"
 
 cleanup()
 {
-    cd -- "$TMPDIR" && rm -rf "perl-${version}" "perl-cross-${cross_ver}"
+    cd -- "$TMPDIR" && rm -rf "perl-${version}" "perl-cross-static"
 }
 

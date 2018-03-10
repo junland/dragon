@@ -1,6 +1,6 @@
 # Build recipe for perl.
 #
-# Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,13 +15,16 @@
 # limitations under the License.
 
 program=perl
-version=5.24.1
+version=5.26.1
 release=1
 
-tarname=${program}-${version}.tar.gz
+tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch=http://www.cpan.org/src/5.0/$tarname
+fetch="
+    http://www.cpan.org/src/5.0/$tarname
+    http://rsync.dragora.org/current/sources/perl-cross-static.tar.lz
+"
 
 description="
 Practical Extraction and Report Language.
@@ -44,18 +47,27 @@ license="Artistic | GPLv1"
 docs="AUTHORS Artistic Changes Copying README README.linux"
 docsdir="${docdir}/${program}-${version}"
 
+# Limit parallel jobs to '1' due to perl-cross-static
+jobs=1
+
 build()
 {
     set -e
 
     unpack "${tardir}/$tarname"
 
+    # Decompress and copy perl-cross-static over Perl distribution
+    rm -rf -- "${TMPDIR}/perl-cross-static"
+    unpack "${tardir}/perl-cross-static.tar.lz"
+    cp -f -r "${TMPDIR}/perl-cross-static"/* "${srcdir}/"
+
     cd "$srcdir"
 
     # Don't use -fstack-protector* (troubles)
     sed -i 's/-fstack-protector/-fnostack-protector/g' ./Configure
 
-    ./Configure -de \
+    # Build all XS modules as static.  This does not imply --no-dynaloader
+    ./configure --all-static \
      -Dprefix=/usr \
      -Dinstallprefix=/usr \
      -Dsiteprefix=/usr/local \
@@ -68,13 +80,12 @@ build()
      -Dvendorarch=/usr/lib${libSuffix}/perl5/vendor_perl \
      -Dlibpth="/usr/local/lib${libSuffix} /usr/lib${libSuffix} /lib${libSuffix}" \
      -Dscriptdir=/usr/bin \
-     -Duseshrplib \
      -Ubincompat5005 \
      -Uversiononly \
      -Duselargefiles \
      -Dusemymalloc=n \
      -Dusethreads \
-     -A ldflags="$QILDFLAGS" \
+     -Dldflags="$QILDFLAGS -static" \
      -Doptimize="$QICFLAGS" \
      -Dman1dir="${mandir}/man1" \
      -Dman3dir="${mandir}/man3" \
@@ -87,7 +98,7 @@ build()
     # Replace hard links on binaries
     (
         cd "${destdir}/usr/bin" || exit 1
-        ln -sf perl${version} perl
+        #ln -sf perl${version} perl
         ln -sf c2ph pstruct
     )
 
@@ -126,5 +137,12 @@ build()
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}"
+
+    # Delete remaining build directory
+    cd -- "$TMPDIR"
+    if test -d ./perl-cross-static
+    then
+        rm -rf ./perl-cross-static
+    fi
 }
 
