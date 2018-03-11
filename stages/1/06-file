@@ -1,6 +1,6 @@
 # Build script for file.
 #
-# Copyright (c) 2014-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2014-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,10 +28,10 @@ cd -- "${TMPDIR}/file-${version}"
  --prefix="$crossdir" \
  --disable-fsect-man5
 
-make V=1
-make install
+make -j1 V=1
+make -j1 install
 
-make clean
+make -j1 clean
 
 # Import and export toolchain variables
 . "${worktree}/stages/env.d/cross-staticenv"
@@ -45,14 +45,14 @@ CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
  --host=$target \
  --disable-fsect-man5
 
-make V=1
-make install
+make -j1 V=1
+make -j1 install
 
 # Unset some imported variables from file
 unset AR AS LD RANLIB READELF STRIP
 
 cleanup()
 {
-    cd -- "$TMPDIR" && rm -rf file-*
+    cd -- "$TMPDIR" && rm -rf file-${version}
 }
 
