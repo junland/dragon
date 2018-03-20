@@ -1,0 +1,76 @@
+# Sample and complete recipe for clzip (dynamically-linked).
+#
+# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=clzip
+version=1.10
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://download.savannah.gnu.org/releases/lzip/clzip/$tarname
+
+description="
+C version of the high-quality data compressor Lzip.
+
+Clzip is a lossless data compressor with a user interface similar to
+the one of gzip or bzip2.  Clzip is about as fast as gzip, compresses
+most files more than bzip2, and is better than both from a data
+recovery perspective.
+
+Clzip uses the lzip file format; the files produced by clzip are fully
+compatible with lzip-1.4 or newer, and can be rescued with lziprecover.
+
+Clzip is in fact a C language version of lzip, intended for embedded
+devices or systems lacking a C++ compiler.
+"
+
+homepage=http://lzip.nongnu.org/clzip.html
+license=GPLv2+
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install-as-lzip
+
+    # Compress info documents and manual page
+
+    rm -f "${destdir}/${infodir}/dir";	# Redundancy
+    lzip -9 \
+     "${destdir}/${infodir}/clzip.info" \
+     "${destdir}/${mandir}/man1/clzip.1"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
