@@ -120,7 +120,7 @@ dist : doc
 	  $(DISTNAME)/NEWS \
 	  $(DISTNAME)/README \
 	  $(DISTNAME)/configure \
-	  $(DISTNAME)/doc/clzip.recipe \
+	  $(DISTNAME)/doc/recipe \
 	  $(DISTNAME)/doc/document*.css \
 	  $(DISTNAME)/doc/example.order \
 	  $(DISTNAME)/doc/fdl.texi \
