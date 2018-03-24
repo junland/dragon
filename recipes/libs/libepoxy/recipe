@@ -1,6 +1,7 @@
 # Build recipe for liepoxy.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues, <mprodrigues@dragora.org>.
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 # limitations under the License.
 
 program=libepoxy
-version=1.4.3
+version=1.5.0
 release=1
 
 tarname=${program}-${version}.tar.xz
@@ -24,7 +25,12 @@ tarname=${program}-${version}.tar.xz
 fetch=http://github.com/anholt/libepoxy/releases/download/${version}/$tarname
 
 description="
-libepoxy is a library for handling OpenGL function pointer management.
+A library for handling OpenGL function pointer management.
+
+It hides the complexity of `dlopen()`, `dlsym()`, `glXGetProcAddress()`,
+`eglGetProcAddress()`, etc. from the app developer, with very little
+knowledge needed on their part.  They get to read GL specs and write
+code using undecorated function names like `glCompileShader()`.
 "
 
 homepage=https://github.com/anholt/libepoxy
@@ -76,9 +82,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}/"
 }
+
