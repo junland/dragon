@@ -1,7 +1,7 @@
 # Build recipe for libffcall.
 #
 # Copyright (c) 2017 MMPG, <mmpg@vp.pl>.
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=libffcall
-version=2.0
+version=2.1
 release=1
 
 tarname=${program}-${version}.tar.gz
@@ -68,16 +68,15 @@ build()
      --mandir=$mandir \
      --docdir=$docsdir \
      --htmldir=${docsdir}/html \
-     --enable-shared \
      --enable-static \
-     --enable-threads=posix \
+     --disable-shared \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs}
-    make -k check
+    #make -k check
     make -j${jobs} DESTDIR="$destdir" install
 
-    strip --strip-unneeded "${destdir}/usr/lib${libSuffix}"/*.so.0
+    #strip --strip-unneeded "${destdir}/usr/lib${libSuffix}"/*.so.0
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
