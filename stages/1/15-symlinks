@@ -22,20 +22,29 @@ do
     ln -sf "/tools/bin/${file}" "${rootdir}/bin"
 done
 
-ln -sf gcc                                    /tools/bin/cc
-ln -sf /tools/bin/perl                        "${rootdir}/usr/bin"
-ln -sf /tools/bin/install                     "${rootdir}/usr/bin"
-ln -sf /proc/self/mounts                      "${rootdir}/etc/mtab"
+ln -sf gcc                 /tools/bin/cc
+ln -sf /tools/bin/perl     "${rootdir}/usr/bin"
+ln -sf /tools/bin/install  "${rootdir}/usr/bin"
+ln -sf /proc/self/mounts   "${rootdir}/etc/mtab"
 
 # Libraries
-ln -sf /tools/lib${libSuffix}/libgcc_s.so     "${rootdir}/usr/lib${libSuffix}"
-ln -sf /tools/lib${libSuffix}/libgcc_s.so.1   "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libgcc_s.so         "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libgcc_s.so.1       "${rootdir}/usr/lib${libSuffix}"
 
-ln -sf /tools/lib${libSuffix}/libstdc++.so    "${rootdir}/usr/lib${libSuffix}"
-ln -sf /tools/lib${libSuffix}/libstdc++.so.6  "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libstdc++.so        "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libstdc++.so.6      "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libstdc++.a         "${rootdir}/usr/lib${libSuffix}"
 
-ln -sf /tools/lib${libSuffix}/libstdc++.a     "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libssp.so           "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libssp.so.0         "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libssp.so.0.0.0     "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libssp.a            "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libssp_nonshared.a  "${rootdir}/usr/lib${libSuffix}"
 
-sed -e 's/tools/usr/' /tools/lib${libSuffix}/libstdc++.la \
- > "${rootdir}/usr/lib${libSuffix}/libstdc++.la"
+# Strip temporary prefix
+for file in libstdc++.la libssp.la libssp_nonshared.la
+do
+    sed -e 's/tools/usr/' /tools/lib${libSuffix}/$file \
+     > "${rootdir}/usr/lib${libSuffix}/$file"
+done
 
