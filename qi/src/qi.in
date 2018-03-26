@@ -34,46 +34,45 @@ usage()
      "Usage: $PROGRAM [OPTION...] [FILE]..."                            \
      ""                                                                 \
      "Operation mode:"                                                  \
-     "  -b          build packages using recipes"                       \
-     "  -c          create .tlz package from directory"                 \
-     "  -d          delete packages"                                    \
-     "  -i          install packages"                                   \
-     "  -o          resolve build order through .order files"           \
-     "  -u          update packages (implies -i, -d with -f)"           \
-     "  -x          extract packages for debugging purposes"            \
+     "  -b          Build packages using recipes"                       \
+     "  -c          Create .tlz package from directory"                 \
+     "  -d          Delete packages"                                    \
+     "  -i          Install packages"                                   \
+     "  -o          Resolve build order through .order files"           \
+     "  -u          Update packages (implies -i, -d with -p)"           \
+     "  -x          Extract packages for debugging purposes"            \
      ""                                                                 \
      "Common options:"                                                  \
-     "  -N          don't read the configuration file"                  \
-     "  -P  <DIR>   package directory for (de)installations;"           \
-     "              only valid for -i, -d, -or -u options"              \
-     "  -t  <DIR>   target directory for symbolic links;"               \
+     "  -N          Don't read the configuration file"                  \
+     "  -P  <DIR>   Package directory for (de)installations;"           \
      "              only valid for -i, -d, or -u options"               \
-     "  -f          force rebuild package of a recipe, or"              \
-     "              force the removal of a package on CONFLICT;"        \
-     "              this is only valid for -b and -d options"           \
-     "  -k          keep (don't delete) srcdir or destdir"              \
-     "              keep (don't delete) package directory"              \
+     "  -t  <DIR>   Target directory for symbolic links;"               \
+     "              only valid for -i, -d, or -u options"               \
+     "  -k          Keep (don't delete) srcdir or destdir"              \
+     "              Keep (don't delete) package directory"              \
      "              this refers to the -b, -d or -u options"            \
+     "  -p          Prune conflicts on package (de)installation"        \
      "  -v          be verbose (a 2nd -v gives more)"                   \
      ""                                                                 \
      "Options for 'build' mode (-b):"                                   \
-     "  -o  <DIR>   where the produced packages are written"            \
-     "  -w  <DIR>   where archives, patches, and recipes are expected"  \
-     "  -z  <DIR>   where (compressed) sources will be found"           \
-     "  -a          architecture to use"                                \
-     "  -j          parallel jobs for the compiler"                     \
-     "  -1          increment release number (release + 1)"             \
-     "  -n          don't create a .tlz package"                        \
+     "  -o  <DIR>   Where the produced packages are written"            \
+     "  -w  <DIR>   Where archives, patches, and recipes are expected"  \
+     "  -z  <DIR>   Where (compressed) sources will be found"           \
+     "  -a          Architecture to use"                                \
+     "  -f          Force proceeding with a recipe"                     \
+     "  -j          Parallel jobs for the compiler"                     \
+     "  -1          Increment release number (release + 1)"             \
+     "  -n          Don't create a .tlz package"                        \
      ""                                                                 \
      "Other options:"                                                   \
-     "  -h          display this help and exit"                         \
-     "  -V          output version information"                         \
+     "  -h          Display this help and exit"                         \
+     "  -V          Output version information"                         \
      ""                                                                 \
      "Some influential environment variables:"                          \
-     "  TMPDIR      temporary directory for sources"                    \
+     "  TMPDIR      Temporary directory for sources"                    \
      "  QICFLAGS    C compiler flags"                                   \
      "  QICXXFLAGS  C++ compiler flags"                                 \
-     "  QILDFLAGS   linker flags"                                       \
+     "  QILDFLAGS   Linker flags"                                       \
      ""                                                                 \
      "With no FILE, or when FILE is -, read standard input."            \
      ""
@@ -633,8 +632,13 @@ delete_mode()
 
     is_readable "$expunge" || exit 4
 
+    # Ignore some signals up to completing the deinstallation
+    trap "" HUP INT QUIT ABRT TERM
+
+    # Remove package from Graft control
+
     # Scan for possible conflicts, stop if arise
-    if test "$opt_force" != opt_force
+    if test "$opt_prune" != opt_prune
     then
         echo "Checking for possible conflicts ..."
         if graft -d -n -t "$targetdir" "$expunge" 2>&1 | grep ^CONFLICT
@@ -642,22 +646,16 @@ delete_mode()
             warn \
              ""                                                \
              "    A conflict occurred during uninstallation;"  \
-             "the package will be PRESERVED, unless the -f option is given."
+             "the package will be PRESERVED (unless the -p option is given)."
             exit 6
         fi
+    else
+        # Remove objects (files, links or directories) from the target
+        # directory that are in conflict with the package directory
+        echo "Pruning any conflict ..."
+        graft -p -D -u -t "$targetdir" "$expunge"
+        chkstatus_or_exit 2
     fi
-
-    # Ignore some signals up to completing the (de)installation
-    trap "" HUP INT QUIT ABRT TERM
-
-    # Remove package from Graft control
-
-    # Remove objects (files, links or directories) from the target
-    # directory that are in conflict with the package directory
-
-    echo "Pruning any conflict ..."
-    graft -p -D -u -t "$targetdir" "$expunge"
-    chkstatus_or_exit 2
 
     echo "Disabling links ..."
     graft -d -D -u $graft_v -t "$targetdir" "$expunge"
@@ -714,8 +712,6 @@ install_mode()
         echo "mkdir: created directory '${packagedir}/$name'"
     fi
 
-    # Prepare to decompress the package
-
     # Ignore some signals up to completing the installation
     trap "" HUP INT QUIT ABRT TERM
 
@@ -725,12 +721,25 @@ install_mode()
 
     # Transite package to Graft control
 
-    # Remove objects (files, links or directories) from the target
-    # directory that are in conflict with the package directory
-
-    echo "Pruning any conflict ..."
-    graft -p -D -u -t "$targetdir" "${packagedir}/$name"
-    chkstatus_or_exit 2
+    # Scan for possible conflicts, stop if arise
+    if test "$opt_prune" != opt_prune
+    then
+        echo "Checking for possible conflicts ..."
+        if graft -i -n -t "$targetdir" "${packagedir}/$name" 2>&1 | grep ^CONFLICT
+        then
+            warn \
+             ""                                              \
+             "    A conflict occurred during installation;"  \
+             "the package won't be LINKED (unless the -p option is given)."
+            exit 6
+        fi
+    else
+        # Remove objects (files, links or directories) from the target
+        # directory that are in conflict with the package directory
+        echo "Pruning any conflict ..."
+        graft -p -D -u -t "$targetdir" "${packagedir}/$name"
+        chkstatus_or_exit 2
+    fi
 
     echo "Enabling symbolic links ..."
     graft -i -P $graft_v -t "$targetdir" "${packagedir}/$name"
@@ -840,7 +849,8 @@ upgrade_mode()
     save_packagedir="$packagedir"
     packagedir="$PRVLOC"
 
-    echo "Pre-installing package in temporary location ..."
+    echo "Pre-installing package using temporary location ..."
+    opt_prune=opt_prune		# Turn on prune operation.
     _isUpgrade=_isUpgrade.true install_mode "$1" > /dev/null
     _isUpgrade=_isUpgrade.false
 
@@ -862,13 +872,14 @@ upgrade_mode()
         echo "${long_name}:  Detected."
 
         # A package directory is preserved if -k is given
-        opt_force=opt_force delete_mode "$long_name" > /dev/null
+        delete_mode "$long_name" > /dev/null
     done
     unset long_name found
 
     # Re-install the package removing the temporary location
 
     install_mode "$1"
+    opt_prune=opt_prune.off	# Turn off prune operation.
 
     echo "Deleting temporary location ..."
     rm -rf -- "$PRVLOC" && echo "removed directory: '$PRVLOC'"
@@ -1020,6 +1031,7 @@ opt_force=opt_force.off
 opt_keep=opt_keep.off
 opt_incr_release=opt_incr_release.off
 opt_nopkg=opt_nopkg.off
+opt_prune=opt_prune.off
 arch="$(uname -m)" || chkstatus_or_exit
 jobs=1
 mode=""
@@ -1043,7 +1055,7 @@ docdir=@DOCDIR@
 
 #### Parse options
 
-while getopts :bcdiouxNP:t:fkvo:w:z:a:j:1nhV name
+while getopts :bcdiouxNP:t:fkvo:w:z:a:j:1nphV name
 do
     case $name in
     b)
@@ -1126,6 +1138,9 @@ do
         ;;
     n)
         opt_nopkg=opt_nopkg
+        ;;
+    p)
+        opt_prune=opt_prune
         ;;
     h)
         usage
