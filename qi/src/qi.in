@@ -223,6 +223,13 @@ build_mode()
 
     is_readable "${CWD}/$recipe" || exit 4
 
+    # Find target architecture if 'arch' is not set
+    if test -z "$arch"
+    then
+        arch=$(${CC:-cc} -dumpmachine 2> /dev/null) || arch=unknown
+        arch="${arch%%-*}"	# Get the rid of target triplet.
+    fi
+
     # Make tail directories if needed
     test -d "${worktree}/archive"  || mkdir -p -- "${worktree}/archive"
     test -d "${worktree}/patches"  || mkdir -p -- "${worktree}/patches"
@@ -1077,7 +1084,6 @@ opt_keep=opt_keep.off
 opt_incr_release=opt_incr_release.off
 opt_nopkg=opt_nopkg.off
 opt_prune=opt_prune.off
-arch="$(uname -m)" || chkstatus_or_exit
 jobs=1
 mode=""
 verbose=0
