@@ -109,6 +109,16 @@ is_readable()
     return 0
 }
 
+# Portable alternative to the file operator -nt (among shells)
+is_newer()
+{
+    if test -n "$(find $1 -prune -newer $2 -print)"
+    then
+        return 0
+    fi
+    return 1
+}
+
 # Determine whether $2 matches pattern $1
 fnmatch()
 {
@@ -301,7 +311,7 @@ build_mode()
      { test "$opt_force" != opt_force && \
        test -r "${outdir}/${full_pkgname}.tlz" ; }
     then
-        if test "${CWD}/$recipe" -nt "${outdir}/${full_pkgname}.tlz"
+        if is_newer "${CWD}/$recipe" "${outdir}/${full_pkgname}.tlz"
         then
             warn \
              ""                                                          \
@@ -1206,7 +1216,7 @@ then
 fi
 
 ## Program sanity check
-for need in awk basename bzip2 chmod cp dirname fold graft grep gzip \
+for need in awk basename bzip2 chmod cp dirname find fold graft grep gzip \
             lzip mkdir mktemp rm rmdir sed sha256sum stat tar unzip
 do
     if ! type $need 1> /dev/null 2> /dev/null
