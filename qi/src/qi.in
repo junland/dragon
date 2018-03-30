@@ -50,15 +50,19 @@ usage()
      "              only valid for -i, -d, or -u options"               \
      "  -k          Keep (don't delete) srcdir or destdir"              \
      "              Keep (don't delete) package directory"              \
-     "              this refers to the -b, -d or -u options"            \
+     "              this is for -b, -d or -u options"                   \
      "  -p          Prune conflicts on package (de)installation"        \
-     "  -v          be verbose (a 2nd -v gives more)"                   \
+     "  -r          Use the named directory as the root directory"      \
+     "              for installing, deleting, or upgrading packages"    \
+     "              the target directory, and the package directory"    \
+     "              will all be relative to this specific directory"    \
+     "  -v          Be verbose (a 2nd -v gives more)"                   \
      ""                                                                 \
      "Options for 'build' mode (-b):"                                   \
      "  -O  <DIR>   Where the produced packages are written"            \
      "  -W  <DIR>   Where archives, patches, and recipes are expected"  \
      "  -Z  <DIR>   Where (compressed) sources will be found"           \
-     "  -a          Architecture to use"                                \
+     "  -a          Architecture to use [detected]"                     \
      "  -f          Force proceeding with a recipe"                     \
      "  -j          Parallel jobs for the compiler"                     \
      "  -1          Increment release number (release + 1)"             \
@@ -106,7 +110,6 @@ is_readable()
         echo "${PROGRAM}: cannot access ${1}: No such file or directory" 1>&2
         return 1
     fi
-    return 0
 }
 
 # Portable alternative to the file operator -nt (among shells)
@@ -444,14 +447,14 @@ build_mode()
 
     if test -d "${TMPDIR}/$srcdir" && test -z "$keep_srcdir"
     then
-        rm -rf -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
+        rm -r -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
         echo "removed directory: '${TMPDIR}/$srcdir'"
     fi
     mkdir -p -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
 
     if test -d "$destdir"
     then
-        rm -rf -- "$destdir" || chkstatus_or_exit
+        rm -r -- "$destdir" || chkstatus_or_exit
         echo "removed directory: '$destdir'"
     fi
     mkdir -p -- "$destdir" || chkstatus_or_exit
@@ -554,7 +557,7 @@ build_mode()
 
         if test -z "$keep_srcdir"
         then
-            rm -rf -- "${TMPDIR}/${srcdir%%/*}" || chkstatus_or_exit
+            rm -r -- "${TMPDIR}/${srcdir%%/*}" || chkstatus_or_exit
             echo "removed directory: '${TMPDIR}/${srcdir%%/*}'"
         else
             warn "The variable 'keep_srcdir' is set:" \
@@ -563,7 +566,7 @@ build_mode()
 
         if test -d "$destdir"
         then
-            rm -rf -- "$destdir" || chkstatus_or_exit
+            rm -r -- "$destdir" || chkstatus_or_exit
             echo "removed directory: '$destdir'"
         fi   
     fi
@@ -627,7 +630,7 @@ delete_mode()
 {
     expunge=$1
 
-    echo "<<< Deleting package $expunge ..."
+    echo "<<< Deleting package $rootdir/${expunge} ..."
 
     # If package is not a fully qualified directory, prepend it with
     # the value of packagedir.  The solely '/' does not qualify here.
@@ -640,14 +643,14 @@ delete_mode()
 
     # Complain if the package directory does not exist
 
-    test -d "$expunge" || {
-        warn "${PROGRAM}: Package directory '$expunge' does not exist."
+    test -d "$rootdir/${expunge}" || {
+        warn "${PROGRAM}: Package directory '$rootdir/${expunge}' does not exist."
         exit 4
     }
 
     # Complain if the package directory cannot be well-read
 
-    is_readable "$expunge" || exit 4
+    is_readable "$rootdir/${expunge}" || exit 4
 
     # Ignore some signals up to completing the deinstallation
     trap "" HUP INT QUIT ABRT TERM
@@ -658,7 +661,8 @@ delete_mode()
     if test "$opt_prune" != opt_prune
     then
         echo "Checking for possible conflicts ..."
-        if graft -d -n -t "$targetdir" "$expunge" 2>&1 | grep ^CONFLICT
+        if graft -d -n $graft_r -t "$targetdir" "$expunge" 2>&1 | \
+         grep ^CONFLICT
         then
             warn \
              ""                                                \
@@ -670,12 +674,12 @@ delete_mode()
         # Remove objects (files, links or directories) from the target
         # directory that are in conflict with the package directory
         echo "Pruning any conflict ..."
-        graft -p -D -u -t "$targetdir" "$expunge"
+        graft -p -D -u $graft_r -t "$targetdir" "$expunge"
         chkstatus_or_exit 2
     fi
 
     echo "Disabling links ..."
-    graft -d -D -u $graft_v -t "$targetdir" "$expunge"
+    graft -d -D -u $graft_v $graft_r -t "$targetdir" "$expunge"
     chkstatus_or_exit 2
 
     # Delete package directory
@@ -683,10 +687,10 @@ delete_mode()
     then
         echo "Deleting package directory, if present ..."
 
-        if test -d "$expunge"
+        if test -d "${rootdir}/$expunge"
         then
-            rm -rf -- "$expunge" || chkstatus_or_exit
-            echo "removed directory: '$expunge'"
+            rm -r -- "${rootdir}/$expunge" || chkstatus_or_exit
+            echo "removed directory: '${rootdir}/$expunge'"
         fi
     fi
 
@@ -723,17 +727,17 @@ install_mode()
     chkstatus_or_exit 3
 
     # Create package directory using 'name'
-    if ! test -d "${packagedir}/$name"
+    if ! test -d "$rootdir/${packagedir}/$name"
     then
-        mkdir -p -- "${packagedir}/$name" || chkstatus_or_exit
-        echo "mkdir: created directory '${packagedir}/$name'"
+        mkdir -p -- "$rootdir/${packagedir}/$name" || chkstatus_or_exit
+        echo "mkdir: created directory '$rootdir/${packagedir}/$name'"
     fi
 
     # Ignore some signals up to completing the installation
     trap "" HUP INT QUIT ABRT TERM
 
     echo "Decompressing $1 ..."
-    ( cd -- "${packagedir}/$name" && lzip -cd - | tar xpf - ) < "$1"
+    ( cd -- "$rootdir/${packagedir}/$name" && lzip -cd - | tar xpf - ) < "$1"
     chkstatus_or_exit 3
 
     # Transite package to Graft control
@@ -742,7 +746,8 @@ install_mode()
     if test "$opt_prune" != opt_prune
     then
         echo "Checking for possible conflicts ..."
-        if graft -i -n -t "$targetdir" "${packagedir}/$name" 2>&1 | grep ^CONFLICT
+        if graft -i -n $graft_r -t "$targetdir" "${packagedir}/$name" 2>&1 | \
+         grep ^CONFLICT
         then
             warn \
              ""                                              \
@@ -754,12 +759,12 @@ install_mode()
         # Remove objects (files, links or directories) from the target
         # directory that are in conflict with the package directory
         echo "Pruning any conflict ..."
-        graft -p -D -u -t "$targetdir" "${packagedir}/$name"
+        graft -p -D -u $graft_r -t "$targetdir" "${packagedir}/$name"
         chkstatus_or_exit 2
     fi
 
     echo "Enabling symbolic links ..."
-    graft -i -P $graft_v -t "$targetdir" "${packagedir}/$name"
+    graft -i -P $graft_v $graft_r -t "$targetdir" "${packagedir}/$name"
     chkstatus_or_exit 2
 
     # Avoid unnecessary runs coming from the upgrade_mode(),
@@ -768,9 +773,9 @@ install_mode()
     if test "$_isUpgrade" != isUpgrade.true
     then
         # Show package description
-        if test -r "${packagedir}/${name}/var/lib/qi/${name}.txt"
+        if test -r "$rootdir/${packagedir}/${name}/var/lib/qi/${name}.txt"
         then
-            grep '^#' "${packagedir}/${name}/var/lib/qi/${name}.txt"
+            grep '^#' "$rootdir/${packagedir}/${name}/var/lib/qi/${name}.txt"
         elif test -r "${1}.txt"
         then
             # From the external meta file
@@ -780,21 +785,21 @@ install_mode()
         fi
 
         # Check and run the post-install script if exist
-        if test -r "${packagedir}/${name}/var/lib/qi/${name}.sh"
+        if test -r "$rootdir/${packagedir}/${name}/var/lib/qi/${name}.sh"
         then
             echo "Running post-install script for \`${name}' ..."
             (
                 cd -- "${targetdir}"/ && \
-                 . "${packagedir}/${name}/var/lib/qi/${name}.sh"
+                 . "$rootdir/${packagedir}/${name}/var/lib/qi/${name}.sh"
             )
         fi
 
         # Check if there are declared package names for replacement
-        if test -r "${packagedir}/${name}/var/lib/qi/${name}.replace"
+        if test -r "$rootdir/${packagedir}/${name}/var/lib/qi/${name}.replace"
         then
             while read -r line
             do
-                for replace in "${packagedir}/$(pkgbase $line)"-*
+                for replace in "$rootdir/${packagedir}/$(pkgbase $line)"-*
                 do
                     warn "" "*** Replacing package \`${replace}' ..."
 
@@ -808,9 +813,9 @@ install_mode()
                     test "$replace" = "$PRVLOC" && continue;
 
                     opt_force=opt_force opt_keep=opt_keep.off \
-                     delete_mode "$replace" > /dev/null
+                     delete_mode "${replace##*/}" > /dev/null
                 done
-            done < "${packagedir}/${name}/var/lib/qi/${name}.replace"
+            done < "$rootdir/${packagedir}/${name}/var/lib/qi/${name}.replace"
             unset line
         fi
     fi
@@ -859,7 +864,7 @@ upgrade_mode()
     # Prepare the package to install it in a temporary location
 
     # Set random directory using packagedir as prefix and 'incoming' as suffix
-    PRVLOC=$(mktemp -dp "$packagedir" ${incoming}.XXXXXXXXXXXX) || exit 2
+    PRVLOC=$(mktemp -dp "$rootdir/${packagedir}" ${incoming}.XXXXXXXXXXXX) || exit 2
 
     # Pre-install the package in the custom 'packagedir'
 
@@ -876,7 +881,7 @@ upgrade_mode()
     unset save_packagedir
 
     echo "Looking for other installations under the same name ..."
-    for long_name in "${packagedir}/$(pkgbase $incoming)"*
+    for long_name in "$rootdir/${packagedir}/$(pkgbase $incoming)"*
     do
         found="${long_name##*/}"
 
@@ -889,7 +894,7 @@ upgrade_mode()
         echo "${long_name}:  Detected."
 
         # A package directory is preserved if -k is given
-        delete_mode "$long_name" > /dev/null
+        delete_mode "$found" > /dev/null
     done
     unset long_name found
 
@@ -899,7 +904,8 @@ upgrade_mode()
     opt_prune=opt_prune.off	# Turn off prune operation.
 
     echo "Deleting temporary location ..."
-    rm -rf -- "$PRVLOC" && echo "removed directory: '$PRVLOC'"
+    rm -r -- "$PRVLOC" || chkstatus_or_exit
+    echo "removed directory: '$PRVLOC'"
 
     echo ""
     echo "Successful upgrade to '${incoming}'."
@@ -1084,6 +1090,7 @@ opt_keep=opt_keep.off
 opt_incr_release=opt_incr_release.off
 opt_nopkg=opt_nopkg.off
 opt_prune=opt_prune.off
+rootdir=""
 jobs=1
 mode=""
 verbose=0
@@ -1106,7 +1113,7 @@ docdir=@DOCDIR@
 
 #### Parse options
 
-while getopts :bcdiouxNP:t:fkvO:W:Z:a:j:1nphV name
+while getopts :bcdiouxNP:t:fkvO:W:Z:a:j:1npr:hV name
 do
     case $name in
     b)
@@ -1193,6 +1200,9 @@ do
     p)
         opt_prune=opt_prune
         ;;
+    r)
+        rootdir="$OPTARG"
+        ;;
     h)
         usage
         exit 0
@@ -1260,6 +1270,20 @@ if test -z "$mode"
 then
     usage
     exit 4
+fi
+
+# Validate 'rootdir' directory
+
+if test -n "$rootdir"
+then
+    if test -d "$rootdir"
+    then
+        # Compose 'rootdir' and logfile option for graft
+        graft_r="-r $rootdir -l /graft"
+    else
+        warn "${PROGRAM}: \`${rootdir}' is not a valid directory"
+        exit 4
+    fi
 fi
 
 # Ensure 'TMPDIR' creation to prefix temporary files
