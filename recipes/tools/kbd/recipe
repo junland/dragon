@@ -1,6 +1,6 @@
 # Build recipe for kbd.
 #
-# Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,6 +43,10 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # Fix inconsistent behaviour of Backspace and Delete keys
+    # for i386 keymaps (Thanks to "Linux From Scratch")
+    patch -Np1 -i "${worktree}/patches/kbd/kbd-2.0.4-backspace-1.patch"
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
