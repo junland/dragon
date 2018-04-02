@@ -1,7 +1,7 @@
 # Build recipe for intltool.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,6 +46,10 @@ build()
 
     cd "$srcdir"
 
+    # Fix a warning that is caused by perl-5.22+
+    # (thanks to "Linux From Scratch")
+    sed -i 's:\\\${:\\\$\\{:' intltool-update.in
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
     --libdir=/usr/lib${libSuffix} \
@@ -56,7 +60,6 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
-
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
