@@ -48,6 +48,13 @@ build()
     # for i386 keymaps (Thanks to "Linux From Scratch")
     patch -Np1 -i "${worktree}/patches/kbd/kbd-2.0.4-backspace-1.patch"
 
+    # Remove the redundant resizecons program (it requires the defunct
+    # svgalib to provide the video mode files - for normal use setfont
+    # sizes the console appropriately) together with its manpage.
+    # (Thanks again to "Linux From Scratch")
+    sed -i 's/\(RESIZECONS_PROGS=\)yes/\1no/g' configure
+    sed -i 's/resizecons.8 //' docs/man/man8/Makefile.in
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
