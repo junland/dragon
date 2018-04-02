@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=curl
-version=7.58.0
+version=7.59.0
 release=1
 
 tarname=${program}-${version}.tar.bz2
@@ -46,6 +46,9 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # http://cvsweb.openbsd.org/cgi-bin/cvsweb/ports/net/curl/patches/patch-lib_vtls_openssl_c
+    patch -Np0 -i "${worktree}/patches/curl/patch-lib_vtls_openssl_c"
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -82,3 +85,4 @@ build()
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}"
 }
+
