@@ -1,6 +1,6 @@
 # Build recipe for attr.
 #
-# Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,14 +15,13 @@
 # limitations under the License.
 
 program=attr
-version=c1a7b53073202c67becf4df36cadc32ef4759c8a-rebase
-pkgversion=c1a7b53
+version=2.4.48
 release=1
 
-tarname=${program}-${version}.tar.lz
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://rsync.dragora.org/v3/sources/$tarname
+fetch=http://git.savannah.nongnu.org/cgit/attr.git/snapshot/$tarname
 
 description="
 Extended attributes.
@@ -38,7 +37,7 @@ license="GPLv2+, LGPLv2.1"
 
 # Source documentation
 docs="README doc/CHANGES doc/COPYING*"
-docsdir="${docdir}/${program}-${pkgversion}"
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
@@ -47,6 +46,15 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # Apply patches from upstream
+    patch -p1 < "${worktree}/patches/attr/406eab7aa09da9df787a964d3c152c0bda6e23c4"
+    patch -p1 < "${worktree}/patches/attr/0322a5cb31a65cb18f15451c170a5ee263f69a15"
+    patch -p1 < "${worktree}/patches/attr/e007449435391c540f1e1917fe95b258ea3bcc86"
+    patch -p1 < "${worktree}/patches/attr/fd1d8ee21df8d11460baa858ae5c5d20e38fb70e"
+    patch -p1 < "${worktree}/patches/attr/fcb34db768e0312cfdfdc8a2f4ae9950fa3f8d63"
+
+    ./autogen.sh
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -77,10 +85,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}/"
 }
 
