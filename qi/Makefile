@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 1.0-rc23
+version		= 1.0-rc24
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -112,7 +112,7 @@ doc/$(project).html : doc/$(project).texi
 
 dist : doc
 	ln -sf . $(DISTNAME)
-	tar -cvf $(DISTNAME).tar \
+	tar -Hustar -cvf $(DISTNAME).tar \
 	  $(DISTNAME)/AUTHORS \
 	  $(DISTNAME)/COPYING \
 	  $(DISTNAME)/CREDITS \
