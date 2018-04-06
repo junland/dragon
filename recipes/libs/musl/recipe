@@ -73,15 +73,16 @@ build()
     ln -sf /usr/lib${libSuffix}/libc.so "${destdir}/usr/bin/ldd"
 
     # Create dynamic linker runtime file taking -$(ARCH) as reference
-    for name in "${destdir}"/lib/ld-musl-*.so.1
+    for file in "${destdir}"/lib/ld-musl-*.so.1
     do
-        if ls -1 "$name" > /dev/null
+        if ls -1 "$file" > /dev/null
         then
-            ld_path="${name##*/}"		# Basename
-            ld_path="${ld_path%%.*}.path"	# Get rid of .so.1
+            ld_path="${file##*/}"		# Basename
+            ld_path="${ld_path%%.*}.path"	# Get the rid of .so.1
             break;
         fi
     done
+    unset file
     if test -n "$ld_path"
     then
         mkdir -p "${destdir}/etc"
