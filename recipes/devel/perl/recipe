@@ -21,10 +21,7 @@ release=1
 tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch="
-    http://www.cpan.org/src/5.0/$tarname
-    http://rsync.dragora.org/current/sources/perl-cross-static.tar.lz
-"
+fetch=http://www.cpan.org/src/5.0/$tarname
 
 description="
 Practical Extraction and Report Language.
@@ -56,15 +53,9 @@ build()
 
     unpack "${tardir}/$tarname"
 
-    # Decompress and copy perl-cross-static over Perl distribution
-    rm -rf -- "${TMPDIR}/perl-cross-static"
-    unpack "${tardir}/perl-cross-static.tar.lz"
-    cp -f -r "${TMPDIR}/perl-cross-static"/* "${srcdir}/"
-
     cd "$srcdir"
 
-    # Build all XS modules as static.  This does not imply --no-dynaloader
-    ./configure --all-static \
+    ./Configure -de \
      -Dprefix=/usr \
      -Dinstallprefix=/usr \
      -Dsiteprefix=/usr/local \
@@ -77,12 +68,13 @@ build()
      -Dvendorarch=/usr/lib${libSuffix}/perl5/vendor_perl \
      -Dlibpth="/usr/local/lib${libSuffix} /usr/lib${libSuffix} /lib${libSuffix}" \
      -Dscriptdir=/usr/bin \
+     -Duseshrplib \
      -Ubincompat5005 \
      -Uversiononly \
      -Duselargefiles \
      -Dusemymalloc=n \
      -Dusethreads \
-     -Dldflags="$QILDFLAGS -static" \
+     -Dldflags="$QILDFLAGS" \
      -Doptimize="$QICFLAGS" \
      -Dman1dir="${mandir}/man1" \
      -Dman3dir="${mandir}/man3" \
@@ -93,14 +85,11 @@ build()
     make -j${jobs} DESTDIR="$destdir" install
 
     # Replace hard links on binaries
-    #(
-    #    cd "${destdir}/usr/bin" || exit 1
-    #    ln -sf perl${version} perl
-    #    ln -sf c2ph pstruct
-    #)
-
-    # Replace hard links on manual pages
-    ( cd "${destdir}/${mandir}/man1" && ln -sf c2ph.1 pstruct.1 )
+    (
+        cd "${destdir}/usr/bin" || exit 1
+        # Only when perl -Duseshrplib
+        ln -sf perl${version} perl
+    )
 
     # Strip remaining binaries and libraries
     find "$destdir" -type f | xargs file | \
@@ -134,12 +123,5 @@ build()
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}"
-
-    # Delete remaining build directory
-    cd -- "$TMPDIR"
-    if test -d ./perl-cross-static
-    then
-        rm -rf ./perl-cross-static
-    fi
 }
 
