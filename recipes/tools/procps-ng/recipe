@@ -1,6 +1,6 @@
 # Build recipe for procps-ng.
 #
-# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=procps-ng
-version=3.3.13
+version=3.3.12
 release=1
 
 tarname=${program}-${version}.tar.xz
@@ -48,19 +48,13 @@ build()
 
     cd "$srcdir"
 
-    # http://gitlab.com/procps-ng/procps/issues/88
-    patch -Np0 -i "${worktree}/patches/procps-ng/numa.h.diff"
-    patch -Np1 -i "${worktree}/patches/procps-ng/libio_detection.diff"
-
-    autoreconf -vif
-
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --disable-static \
+     --enable-static \
      --enable-shared \
      --disable-kill \
      --disable-modern-top \
