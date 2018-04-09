@@ -1281,10 +1281,15 @@ then
         # Remove slash from the end
         rootdir="${rootdir%/}"
 
-        # Compose 'rootdir' and logfile option for graft
-        graft_r="-r $rootdir -l /graft"
+        # A workaround for graft-2.13.  The specified directory is
+        # relative to the log file, we prepend it inside the rootdir
+        logfile="$(graft -h 2>&1 | awk '/Default/{print $NF}' | awk 'NR>1{exit};1')"
+        mkdir -p -- "$rootdir$(dirname -- "$logfile")" || chkstatus_or_exit
+
+        # Compose 'rootdir' and log file option to be used in graft
+        graft_r="-r $rootdir -l $logfile" ; unset logfile
     else
-        warn "${PROGRAM}: \`${rootdir}' is not a valid root directory"
+        warn "${PROGRAM}: \`${rootdir}' is not a qualified root directory"
         exit 4
     fi
 fi
