@@ -731,6 +731,21 @@ install_mode()
     then
         mkdir -p -- "$rootdir${packagedir}/$name" || chkstatus_or_exit
         echo "mkdir: created directory '$rootdir${packagedir}/$name'"
+    else
+        # Scan for possible conflicts, stop if arise
+        if test "$opt_prune" != opt_prune
+        then
+            echo "Checking for possible conflicts ..."
+            if graft -i -n $graft_r -t "$targetdir" "${packagedir}/$name" 2>&1 | \
+             grep ^CONFLICT
+            then
+                warn \
+                 ""                                              \
+                 "    A conflict occurred during installation;"  \
+                 "the package won't be LINKED (unless the -p option is given)."
+                exit 6;
+            fi
+        fi
     fi
 
     # Ignore some signals up to completing the installation
@@ -742,30 +757,11 @@ install_mode()
 
     # Transite package to Graft control
 
-    # Scan for possible conflicts, stop if arise
-    if test "$opt_prune" != opt_prune
-    then
-        echo "Checking for possible conflicts ..."
-        if graft -i -n $graft_r -t "$targetdir" "${packagedir}/$name" 2>&1 | \
-         grep ^CONFLICT
-        then
-            warn \
-             ""                                              \
-             "    A conflict occurred during installation;"  \
-             "the package won't be LINKED (unless the -p option is given)."
-
-            rm -rf -- "$rootdir${packagedir}/$name" && \
-             echo "removed directory: '$rootdir${packagedir}/$name'"
-
-            exit 6
-        fi
-    else
-        # Remove objects (files, links or directories) from the target
-        # directory that are in conflict with the package directory
-        echo "Pruning any conflict ..."
-        graft -p -D -u $graft_r -t "$targetdir" "${packagedir}/$name"
-        chkstatus_or_exit 2
-    fi
+    # Remove objects (files, links or directories) from the target
+    # directory that are in conflict with the package directory
+    echo "Pruning any conflict ..."
+    graft -p -D -u $graft_r -t "$targetdir" "${packagedir}/$name"
+    chkstatus_or_exit 2
 
     echo "Enabling symbolic links ..."
     graft -i -P $graft_v $graft_r -t "$targetdir" "${packagedir}/$name"
