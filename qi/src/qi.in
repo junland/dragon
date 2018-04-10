@@ -1233,7 +1233,7 @@ fi
 
 ## Program sanity check
 for need in awk basename bzip2 chmod cp dirname find fold graft grep \
-            lzip mkdir mktemp rm rmdir sed sha256sum stat tar
+            head lzip mkdir mktemp rm rmdir sed sha256sum stat tar
 do
     if ! type $need 1> /dev/null 2> /dev/null
     then
@@ -1283,11 +1283,12 @@ then
 
         # A workaround for graft-2.13.  The specified directory is
         # relative to the log file, we prepend it inside the rootdir
-        logfile="$(graft -h 2>&1 | awk '/Default/{print $NF}' | awk 'NR>1{exit};1')"
+        logfile="$(graft -h 2>&1 | awk '/Default/ { print $NF }' | head -n 1)"
         mkdir -p -- "$rootdir$(dirname -- "$logfile")" || chkstatus_or_exit
 
         # Compose 'rootdir' and log file option to be used in graft
-        graft_r="-r $rootdir -l $logfile" ; unset logfile
+        graft_r="-r $rootdir -l $logfile"
+        unset logfile
     else
         warn "${PROGRAM}: \`${rootdir}' is not a qualified root directory"
         exit 4
