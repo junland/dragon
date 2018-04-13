@@ -69,5 +69,19 @@ build()
     # Copy source documentation
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}"
+
+    # Exclude graft to being grafted by graft(1) for safe updates
+    echo graft > "${destdir}/usr/bin/.graft-exclude"
+
+    # Insert post-install script manually
+
+    mkdir -p "${destdir}/var/lib/qi"
+    cat << EOF > "${destdir}/var/lib/qi/${full_pkgname}.sh"
+
+# Copy graft from 'targetdir' taking 'packagedir' into account
+mkdir -p -- usr/bin
+cp -f -p "\$rootdir\${packagedir}/\${name}/usr/bin/graft" usr/bin/
+
+EOF
 }
 
