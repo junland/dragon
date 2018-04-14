@@ -938,10 +938,8 @@ extract_mode()
     ( umask 077 ; mkdir -- $PRVDIR )
     mkdir -p -m 700 -- $PRVDIR
 
-    # Extract the package
-
     echo "Extracting package $name on $PRVDIR ..."
-    ( umask 000 ; cd -- $PRVDIR && lzip -cd - | tar xf - ) < "$1"
+    ( umask 000 ; cd -- $PRVDIR && lzip -cd - | tar xpvf - ) < "$1"
     if test $? -ne 0
     then
         # Try to remove (empty) 'PRVDIR' on failure
@@ -1231,7 +1229,7 @@ then
     exit 1
 fi
 
-## Program sanity check
+# Program sanity check
 for need in awk basename bzip2 chmod cp dirname find fold graft grep \
             lzip mkdir mktemp rm rmdir sed sha256sum stat tar tr
 do
@@ -1309,6 +1307,7 @@ fi
 readonly TMPDIR
 
 # Process each package or recipe provided on the command-line
+
 for package in "$@"
 do
     $mode "$package"
