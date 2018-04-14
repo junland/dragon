@@ -1233,7 +1233,7 @@ fi
 
 ## Program sanity check
 for need in awk basename bzip2 chmod cp dirname find fold graft grep \
-            lzip mkdir mktemp rm rmdir sed sha256sum stat tar
+            lzip mkdir mktemp rm rmdir sed sha256sum stat tar tr
 do
     if ! type $need 1> /dev/null 2> /dev/null
     then
@@ -1272,6 +1272,8 @@ then
     exit 4
 fi
 
+umask 022;	# Remove write permission for group and other.
+
 # Validate 'rootdir' directory
 
 if test -n "$rootdir"
@@ -1285,8 +1287,7 @@ then
         # relative to the log file, we prepend it inside the rootdir
 
         eval "$(graft -L)" ; GRAFT_LOGFILE="${GRAFT_LOGFILE:=/var/log/graft}"
-        mkdir -p -- "$rootdir$(dirname -- "$GRAFT_LOGFILE")" || \
-         chkstatus_or_exit
+        mkdir -p -- "$rootdir$(dirname -- $GRAFT_LOGFILE)" || chkstatus_or_exit
 
         # Compose 'rootdir' and log file option to be used in graft
         graft_r="-r $rootdir -l $GRAFT_LOGFILE"
@@ -1307,11 +1308,7 @@ then
 fi
 readonly TMPDIR
 
-# Remove write permission for group and other
-umask 022
-
 # Process each package or recipe provided on the command-line
-
 for package in "$@"
 do
     $mode "$package"
