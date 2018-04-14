@@ -1094,6 +1094,7 @@ jobs=1
 mode=""
 verbose=0
 graft_v=-v
+graft_r=""
 _isUpgrade=_isUpgrade.false
 _opt_ignoreqsts=_opt_ignoreqsts.off
 TMPDIR="${TMPDIR:=/usr/src/qi/build}"
@@ -1232,7 +1233,7 @@ fi
 
 ## Program sanity check
 for need in awk basename bzip2 chmod cp dirname find fold graft grep \
-            head lzip mkdir mktemp rm rmdir sed sha256sum stat tar
+            lzip mkdir mktemp rm rmdir sed sha256sum stat tar
 do
     if ! type $need 1> /dev/null 2> /dev/null
     then
@@ -1280,14 +1281,18 @@ then
         # Remove slash from the end
         rootdir="${rootdir%/}"
 
-        # A workaround for graft-2.13.  The specified directory is
+        # A workaround for graft-2.13+.  The specified directory is
         # relative to the log file, we prepend it inside the rootdir
-        logfile="$(graft -h 2>&1 | awk '/Default/ { print $NF }' | head -n 1)"
-        mkdir -p -- "$rootdir$(dirname -- "$logfile")" || chkstatus_or_exit
+
+        eval "$(graft -L)" ; GRAFT_LOGFILE="${GRAFT_LOGFILE:=/var/log/graft}"
+        mkdir -p -- "$rootdir$(dirname -- "$GRAFT_LOGFILE")" || \
+         chkstatus_or_exit
 
         # Compose 'rootdir' and log file option to be used in graft
-        graft_r="-r $rootdir -l $logfile"
-        unset logfile
+        graft_r="-r $rootdir -l $GRAFT_LOGFILE"
+
+        # Unset variables coming from the eval
+        unset GRAFT_PERL GRAFT_LOGFILE GRAFT_TARGETDIR GRAFT_PACKAGEDIR
     else
         warn "${PROGRAM}: \`${rootdir}' is not a qualified root directory"
         exit 4
