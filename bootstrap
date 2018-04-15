@@ -71,7 +71,7 @@ usage() {
 version()
 {
     printf "%s\n" \
-     "$PROGRAM 3.17" \
+     "$PROGRAM 3.18" \
      "Copyright (C) 2014-2018 Matias Andres Fonzo." \
      "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>" \
      "This is free software: you are free to change and redistribute it." \
@@ -96,26 +96,79 @@ chkstatus_or_exit()
     unset status
 }
 
-# Function to test and extract tarball files
-untar() {
-    echo "Checking tarball integrity ..."
-    tar tf "$1" > /dev/null
-    chkstatus_or_exit 3
-
-    if test -n "$2"
-    then
-        cd -- "$2" || exit $?
-    fi
-
-    echo "Decompressing $1 ..."
-    tar xpf "$1"
-    chkstatus_or_exit 3
+# Function to test and extract compressed files
+unpack()
+{
+    for file in "$@"
+    do
+        case $file in
+        *.tar)
+            tar tf "$file" > /dev/null && \
+            tar xpf "$file"
+            chkstatus_or_exit 3
+            ;;
+        *.tar.gz | *.tgz | *.tar.Z )
+            gzip -cd "$file" | tar tf - > /dev/null && \
+            gzip -cd "$file" | tar xpf -
+            chkstatus_or_exit 3
+            ;;
+        *.tar.bz2 | *.tbz2 | *.tbz )
+            bzip2 -cd "$file" | tar tf - > /dev/null && \
+            bzip2 -cd "$file" | tar xpf -
+            chkstatus_or_exit 3
+            ;;
+        *.tar.lz | *.tlz )
+            lzip -cd "$file" | tar tf - > /dev/null && \
+            lzip -cd "$file" | tar xpf -
+            chkstatus_or_exit 3
+            ;;
+        *.tar.xz | *.txz )
+            xz -cd "$file" | tar tf - > /dev/null && \
+            xz -cd "$file" | tar xpf -
+            chkstatus_or_exit 3
+            ;;
+        *.zip | *.ZIP )
+            unzip -t "$file" > /dev/null && \
+            unzip "$file" > /dev/null
+            chkstatus_or_exit 3
+            ;;
+        *.gz)
+            gzip -t "$file" && \
+            gzip -cd "$file" > "$(basename -- $file .gz)"
+            chkstatus_or_exit 3
+            ;;
+        *.Z)
+            gzip -t "$file" && \
+            gzip -cd "$file" > "$(basename -- $file .Z)"
+            chkstatus_or_exit 3
+            ;;
+        *.bz2)
+            bzip2 -t "$file" && \
+            bzip2 -cd "$file" > "$(basename -- $file .bz2)"
+            chkstatus_or_exit 3
+            ;;
+        *.lz)
+            lzip -t "$file" && \
+            lzip -cd "$file" > "$(basename -- $file .lz)"
+            chkstatus_or_exit 3
+            ;;
+        *.xz)
+            xz -t "$file" && \
+            xz -cd "$file" > "$(basename -- $file .xz)"
+            chkstatus_or_exit 3
+            ;;
+        *)
+            warn "${PROGRAM}: cannot unpack ${file}: Unsupported extension"
+            exit 1
+        esac
+    done
+    unset file
 }
 
 # Warning for good practices.
 #
 # Recommended practices is to set variables
-# in front of `configure', or make(1), see:
+# in front of `configure', or make(1); see:
 #
 # http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Defining-Variables.html
 # http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Setting-Output-Variables.html
