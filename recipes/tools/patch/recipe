@@ -45,6 +45,13 @@ build()
 
     cd "$srcdir"
 
+    # http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-1000156
+    patch -p1 < "${worktree}/patches/patch/Fix_segfault_with_mangled_rename_patch.patch"
+    patch -p1 < "${worktree}/patches/patch/Allow_input_files_to_be_missing_for_ed-style_patches.patch"
+    patch -p1 < "${worktree}/patches/patch/Fix_arbitrary_command_execution_in_ed-style_patches.patch"
+
+    autoreconf -vif
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
