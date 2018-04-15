@@ -188,13 +188,14 @@ BTCXX="${BTCXX:=c++}"
 BTCFLAGS="${BTCFLAGS:=-g0 -Os}"
 BTCXXFLAGS="${BTCXXFLAGS:=$BTCFLAGS}"
 BTLDFLAGS="${BTLDFLAGS:=-s}"
-worktree="$CWD"
+opt_keep=opt_keep.off
+stage=0
+libSuffix=""
 arch="$(uname -m)" || chkstatus_or_exit
 jobs=1
-opt_keep=opt_keep.off
+worktree="$CWD"
 output=${worktree}/OUTPUT.${PROGRAM}
 TMPDIR="${TMPDIR:=${output}/sources}"
-stage=0
 
 # Compose vendor name adding "-" as suffix
 test -n "$VENDOR" && VENDOR="${VENDOR}-"
@@ -242,16 +243,13 @@ done
 shift $(( OPTIND - 1 ))
 
 # Check for environment variables, print warning, unset in any case
+
 test "${CC:+CC_defined}" = CC_defined && warn_flags CC
 test "${CXX:+CXX_defined}" = CXX_defined && warn_flags CXX
 test "${CFLAGS:+CFLAGS_defined}" = CFLAGS_defined && warn_flags CFLAGS
 test "${CXXFLAGS:+CXXFLAGS_defined}" = CXXFLAGS_defined && warn_flags CXXFLAGS
 test "${LDFLAGS:+LDFLAGS_defined}" = LDFLAGS_defined && warn_flags LDFLAGS
-
 unset CC CXX CFLAGS CXXFLAGS LDFLAGS warn_flags
-
-# Avoid exportation of 'libSuffix' when a target is loaded
-libSuffix=""
 
 # Load target architecture-file
 
@@ -267,7 +265,7 @@ else
 fi
 
 # Determine the host to use.
-
+#
 # Set up the host if a C compiler command was exported,
 # otherwise, a local `cc' will be used instead
 
@@ -295,7 +293,7 @@ then
 fi
 
 # Compose variables for the physical output,
-# print some useful information
+# printing some useful information
 
 crossdir=${output}/cross/${target}
 rootdir=${output}/stage${stage}
@@ -325,9 +323,9 @@ then
     mkdir -p -- "$TMPDIR" || chkstatus_or_exit
 fi
 
-# Set default path and propagate variables
-
+# Set default PATH, propagate variables
 PATH="${crossdir}/bin:${PATH}"
+
 export PATH VENDOR TMPDIR
 
 # Main loop
@@ -382,12 +380,10 @@ do
         ln -sf "${rootdir}/tools" / || chkstatus_or_exit
     fi
 
-    #### Load the file containing the instruction
-
     echo "${PROGRAM}: Processing $file from stage $stage ..."
 
     # Set trap before to run the script in order to
-    # catch the return status, return code 2 if fails
+    # catch the return status, exit code 2 if fails
 
     trap 'chkstatus_or_exit 2' EXIT HUP INT QUIT ABRT TERM
 
@@ -407,7 +403,8 @@ do
     then
         if type cleanup 1> /dev/null 2> /dev/null
         then
-            cleanup ; chkstatus_or_exit 2
+            cleanup
+            chkstatus_or_exit 2
             unset cleanup
         fi
     fi
