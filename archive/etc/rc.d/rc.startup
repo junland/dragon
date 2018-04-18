@@ -79,6 +79,20 @@ then
     mount -v -n -o remount,ro /
 fi
 
+# Mount Control Groups (v1)
+
+if grep -q cgroup /proc/filesystems
+then
+    if test -d /sys/fs/cgroup
+    then
+        # Cgroup controllers v1 must be mounted against a tmpfs(5)
+        mount -v -n -t tmpfs cgroup_root /sys/fs/cgroup
+
+        # Comount all v1 controllers against the same hierarchy
+        mount -v -n -t cgroup cgroup /sys/fs/cgroup
+    fi
+fi
+
 # Initialize the Logical Volume Manager version 2
 
 if type lvm > /dev/null 2>&1
