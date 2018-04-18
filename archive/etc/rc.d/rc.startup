@@ -169,6 +169,31 @@ mount -a -t no,proc,sysfs,devtmpfs,shm,devpts,usbfs,cifs,smbfs,nfs
 echo "(Startup) Activating swap devices, if any"
 swapon -v -a
 
+# Re-create hierarchy for temporary files (if needed)
+
+if test ! -d /tmp
+then
+    mkdir /tmp
+fi
+if test ! -d /tmp/.font-unix
+then
+    mkdir /tmp/.font-unix
+fi
+if test ! -d /tmp/.ICE-unix
+then
+    mkdir /tmp/.ICE-unix
+fi
+if test ! -d /tmp/.X11-unix
+then
+    mkdir /tmp/.X11-unix
+fi
+chmod 1777 /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
+
+# Seek and destroy (some) temporary files
+
+find /var/lock /var/run  \
+ \( ! -type d -a ! -name utmp \) -exec rm -f '{}' +
+
 # Set kernel parameters at runtime
 
 echo "(Startup) Setting kernel parameters: sysctl -q --system"
@@ -245,44 +270,8 @@ then
     fi
 fi
 
-# Re-create hierarchy for temporary files
-
-if test ! -d /tmp
-then
-    mkdir /tmp
-fi
-if test ! -d /tmp/.font-unix
-then
-    mkdir /tmp/.font-unix
-fi
-if test ! -d /tmp/.ICE-unix
-then
-    mkdir /tmp/.ICE-unix
-fi
-if test ! -d /tmp/.X11-unix
-then
-    mkdir /tmp/.X11-unix
-fi
-chmod 1777 /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
-
-# Seek and destroy temporary files, directories
-rm -rf /tmp/.ICE-unix/*   \
-      /tmp/.X11-unix/*   \
-      /tmp/.*-ICE-*      \
-      /tmp/.Xauth*       \
-      /tmp/.X?-lock      \
-      /tmp/serverauth.*  \
-      /tmp/cron.*        \
-      /tmp/pulse-*       \
-      /tmp/gpg-*         \
-      /tmp/orbit-*       \
-      /tmp/mc-*          \
-      /etc/nologin
-
-find /var/lock /var/run  \
- \( ! -type d -a ! -name utmp \) -exec rm -f '{}' +
-
 # Update the hardware database
+
 echo "(Startup) Updating hardware database: udevadm hwdb --update"
 udevadm hwdb --update
 
@@ -291,7 +280,7 @@ udevadm hwdb --update
 echo "(Startup) Monitoring services through perpd(8) instances"
 if type perpboot > /dev/null
 then
-    udevadm control --exit
+    udevadm control --exit;
     PERP_BASE=/etc/perp perpboot -d
 fi
 
