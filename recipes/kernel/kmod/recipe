@@ -46,9 +46,15 @@ build()
 
     cd "$srcdir"
 
+    # Add support for kernel modules compressed with LZIP
+    patch -p1 < "${worktree}/patches/kmod/kmod-25_lzip-0.diff"
+
+    autoreconf -vif
+
     # --enable-static is not supported by kmod
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     lzlib_LIBS="-llz" lzlib_CFLAGS="-llz" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
@@ -59,6 +65,7 @@ build()
      --enable-tools \
      --with-rootlibdir=/usr/lib${libSuffix} \
      --with-zlib \
+     --with-lzlib \
      --without-xz \
      --build="$(cc -dumpmachine)"
 
