@@ -1,0 +1,86 @@
+# Build recipe for wireless_tools.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=wireless_tools
+version=30.pre9
+release=1
+
+tarname=${program}.${version}.tar.gz
+
+# Remote source(s)
+fetch=https://hewlettpackard.github.io/wireless-tools/$tarname
+
+description="
+Tools for Wireless extension.
+
+The wireless tools package is a set of tools allowing manipulation of
+the Wireless Extensions.  They use a textual interface to support the
+full Wireless Extension.
+"
+
+homepage=http://www.gnu.org/software/gawk
+license=GPLv2+
+
+# Custom source directory
+srcdir="${program}.${version%.*}"
+
+# Source documentation
+docs="COPYING README* *.txt"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    make -j${jobs} \
+     BUILD_STRIPPING=y \
+     PREFIX="${destdir}/usr" \
+     INSTALL_MAN="${destdir}/$mandir" \
+     INSTALL_LIB="${destdir}/usr/lib${libSuffix}" \
+     install
+
+    # Properly integrate ifrename(8)
+
+    mkdir -p "${destdir}/etc/udev/rules.d"
+    cp 19-udev-ifrename.rules "${destdir}/etc/udev/rules.d/"
+    chmod 644 "${destdir}/etc/udev/rules.d/19-udev-ifrename.rules"
+
+    # Manage dot new file(s)
+    touch "${destdir}/etc/udev/rules.d/.graft-config"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+
