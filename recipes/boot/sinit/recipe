@@ -64,8 +64,8 @@ build()
     # Set sinit as the default system init
     ( cd "${destdir}/usr/sbin" && mv sinit init )
 
-    # Provide halt and killall5 implementation from "ubase",
-    # modifications of Dimitris Papastamos (aka sin)
+    # Provide halt and killall5 implementations from "ubase",
+    # modifications of Dimitris Papastamos (a.k.a sin)
 
     mkdir -p halt killall5
     cp -p "${worktree}"/archive/sinit/halt/* halt/
@@ -89,11 +89,20 @@ build()
 
     cd ..
 
+    for script in reboot shutdown
+    do
+        cp -p "${worktree}/archive/sinit/${script}" "${destdir}/usr/sbin/"
+        chmod 751 "${destdir}/usr/sbin/${script}"
+    done
+    unset script
+
+    ln -s shutdown "${destdir}/usr/sbin/poweroff"
+
     # Compress man page(s)
     lzip -9 "${destdir}/${mandir}"/man8/*.8
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
 }
 
