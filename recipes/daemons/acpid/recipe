@@ -71,21 +71,16 @@ build()
 
     # Add ACPI event files
 
-    mkdir -p "${destdir}/etc/acpi"
-    cp -r -p "${worktree}/archive/acpid/events" \
-             "${destdir}/etc/acpi/"
+    mkdir -p "${destdir}/etc/acpi" "${destdir}/usr/libexec/acpi"
 
-    # Set up permissions
+    cp -p "${worktree}/archive/acpid/events"/*.conf "${destdir}/etc/acpi/"
+    cp -p -r "${worktree}/archive/acpid/events/actions"/* \
+             "${destdir}/usr/libexec/acpi"
 
-    find "${destdir}/etc/acpi" -type d -exec chmod 755 '{}' +
+    # Set up package permissions
+
     find "${destdir}/etc/acpi" -type f -exec chmod 644 '{}' +
-    (
-        cd "${destdir}/etc/acpi/events"
-        chmod 755 *.sh battery/*.sh panasonic/*.pl
-
-        # Manage dot new files
-        touch .graft-config battery/.graft-config panasonic/.graft-config
-    )
+    find "${destdir}/usr/libexec/acpi" -type f -exec chmod 755 '{}' +
 
     # Install ACPI perp service
 
@@ -100,6 +95,9 @@ build()
     # Be an active service by default
     chmod +t "${destdir}/etc/perp/acpid"
 
-    touch "${destdir}/etc/perp/acpid/.graft-config"
+    # Manage dot new file(s)
+
+    touch "${destdir}/etc/acpi/.graft-config" \
+          "${destdir}/etc/perp/acpid/.graft-config"
 }
 

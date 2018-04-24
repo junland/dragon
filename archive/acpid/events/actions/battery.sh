@@ -1,6 +1,6 @@
 #! /bin/sh -
 #
-# /etc/acpid/battery.sh
+# /usr/libexec/acpi/battery.sh
 #
 #               written by Frank Dietrich <ablesoft@gmx.de>
 #
