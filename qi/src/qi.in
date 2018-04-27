@@ -445,13 +445,6 @@ build_mode()
 
     echo "Preparing directories ..."
 
-    if test -d "${TMPDIR}/$srcdir" && test -z "$keep_srcdir"
-    then
-        rm -r -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
-        echo "removed directory: '${TMPDIR}/$srcdir'"
-    fi
-    mkdir -p -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
-
     if test -d "$destdir"
     then
         rm -r -- "$destdir" || chkstatus_or_exit
@@ -467,8 +460,12 @@ build_mode()
     fi
 
     # Set sane permissions for '${TMPDIR}/$srcdir'
-    echo "${TMPDIR}/${srcdir}: Changing file mode bits to u+w,go-w,a+rX-s ..."
-    chmod -R u+w,go-w,a+rX-s "${TMPDIR}/$srcdir" || chkstatus_or_exit
+
+    if test -d "${TMPDIR}/$srcdir"
+    then
+        echo "${TMPDIR}/${srcdir}: Changing file mode bits to u+w,go-w,a+rX-s ..."
+        chmod -R u+w,go-w,a+rX-s "${TMPDIR}/$srcdir" || chkstatus_or_exit
+    fi
 
     echo "Entering to 'TMPDIR': $TMPDIR ..."
     cd -- "$TMPDIR" || chkstatus_or_exit
