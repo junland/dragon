@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 1.0-rc24
+version		= 1.0-rc25
 
 ## DO NOT MAKE CHANGES HERE.
 #
