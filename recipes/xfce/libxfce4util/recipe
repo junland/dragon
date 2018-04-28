@@ -1,0 +1,62 @@
+# Build recipe for libxfce4util.
+#
+# Copyright (C) 2018, MMPG <mmpg@vp.pl>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=libxfce4util
+version=4.13.1
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source
+fetch=http://archive.xfce.org/src/xfce/libxfce4util/4.13/$tarname
+
+description="
+A basic utility library for Xfce.
+"
+
+homepage=https://xfce.org
+license=GPLv2
+
+# Source documentation
+docs="AUTHORS COPYING NEWS README THANKS TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --mandir=/usr/man \
+    --infodir=/usr/info \
+    --disable-static \
+    --disable-debug \
+    --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+	cp -p $file "${destdir}${docsdir}"
+    done
+}
