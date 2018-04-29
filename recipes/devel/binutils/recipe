@@ -16,7 +16,7 @@
 
 program=binutils
 version=2.30
-release=1
+release=2
 
 tarname=${program}-${version}.tar.lz
 
@@ -39,9 +39,6 @@ license="GPLv2+, GPLv3+, LGPLv2, LGPLv3"
 # Source documentation
 docs="COPYING* README"
 docsdir="${docdir}/${program}-${version}"
-
-# System-dependent
-MACHTYPE="$(cc -dumpmachine)"
 
 build()
 {
@@ -78,11 +75,11 @@ build()
      --enable-install-libiberty \
      --disable-werror \
      --disable-compressed-debug-sections \
-     --build=$MACHTYPE
+     --build="$(cc -dumpmachine)"
 
-    make -j${jobs} tooldir=/usr/${MACHTYPE}
+    make -j${jobs} tooldir=/usr
     #make -k check
-    make -j${jobs} tooldir=/usr/${MACHTYPE} DESTDIR="$destdir" install-strip
+    make -j${jobs} tooldir=/usr DESTDIR="$destdir" install-strip
 
     # Back to srcdir
     cd .. && cd "$srcdir"
@@ -91,16 +88,6 @@ build()
     (
         cd "${destdir}/usr/bin" && \
         rm -f ld ; ln -sf ld.bfd ld
-    )
-    (
-        cd "${destdir}/usr/${MACHTYPE}/bin" && \
-        for file in *
-        do
-            if test -x "../../bin/$file"
-            then
-                rm -f "$file" && ln -s "../../bin/$file" .
-            fi
-        done
     )
 
     # Compress info documents deleting index file for the package
