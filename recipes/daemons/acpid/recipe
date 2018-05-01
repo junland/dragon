@@ -16,7 +16,7 @@
 
 program=acpid
 version=2.0.29
-release=1
+release=2
 
 tarname=${program}-${version}.tar.xz
 
@@ -71,9 +71,10 @@ build()
 
     # Add ACPI event files
 
-    mkdir -p "${destdir}/etc/acpi" "${destdir}/usr/libexec/acpi"
+    mkdir -p "${destdir}/etc/acpi/events" "${destdir}/usr/libexec/acpi"
 
-    cp -p "${worktree}/archive/acpid/events"/*.conf "${destdir}/etc/acpi/"
+    cp -p "${worktree}/archive/acpid/events"/*.conf "${destdir}/etc/acpi/events/"
+    touch "${destdir}/etc/acpi/events/.graft-config"
     cp -p -r "${worktree}/archive/acpid/events/actions"/* \
              "${destdir}/usr/libexec/acpi"
 
@@ -95,9 +96,6 @@ build()
     # Be an active service by default
     chmod +t "${destdir}/etc/perp/acpid"
 
-    # Manage dot new file(s)
-
-    touch "${destdir}/etc/acpi/.graft-config" \
-          "${destdir}/etc/perp/acpid/.graft-config"
+    touch "${destdir}/etc/perp/acpid/.graft-config"
 }
 
