@@ -445,6 +445,12 @@ build_mode()
 
     echo "Preparing directories ..."
 
+    if test -d "${TMPDIR}/$srcdir" && test -z "${keep_srcdir+$keep_srcdir}"
+    then
+        rm -r -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
+        echo "removed directory: '${TMPDIR}/$srcdir'"
+    fi
+
     if test -d "$destdir"
     then
         rm -r -- "$destdir" || chkstatus_or_exit
@@ -484,7 +490,7 @@ build_mode()
     # If 'destdir' is empty, the package won't be created
     if rmdir -- "$destdir" 2> /dev/null
     then
-        warn "${full_pkgname}.tlz won't be created: 'destdir' was empty."
+        warn "The package \"${full_pkgname}.tlz\" won't be created.  'destdir' is empty."
         opt_nopkg=opt_nopkg
     fi
 
@@ -552,13 +558,18 @@ build_mode()
     then
         echo "Deleting temporary directories ..."
 
-        if test -z "$keep_srcdir"
+        srcdir="${srcdir%%/*}"	# Directory name without parents.
+
+        if test -r "${TMPDIR}/$srcdir"
         then
-            rm -r -- "${TMPDIR}/${srcdir%%/*}" || chkstatus_or_exit
-            echo "removed directory: '${TMPDIR}/${srcdir%%/*}'"
-        else
-            warn "The variable 'keep_srcdir' is set:" \
-                 "'${TMPDIR}/${srcdir%%/*}' will not be deleted."
+            if test -z "${keep_srcdir+$keep_srcdir}"
+            then
+                rm -r -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
+                echo "removed directory: '${TMPDIR}/${srcdir}'"
+            else
+                warn "The variable 'keep_srcdir' is set:" \
+                     "'${TMPDIR}/${srcdir}' will not be deleted."
+            fi
         fi
 
         if test -r "$destdir"
