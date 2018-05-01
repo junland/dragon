@@ -1,0 +1,78 @@
+# Build recipe for sysvinit.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=sysvinit
+version=2.89
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://download.savannah.nongnu.org/releases/sysvinit/$tarname
+
+description="
+The System V init.
+
+The sysvinit package contains programs for controlling the startup,
+running, and shutdown of the system.
+
+System V init was originally written by Miquel van Smoorenburg.
+"
+
+homepage=http://savannah.nongnu.org/projects/sysvinit
+license=GPLv2+
+
+# Source documentation
+docs="COPYING COPYRIGHT README doc/Changelog doc/Propaganda doc/sysvinit-2.86.lsm"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Remove several programs installed by other packages, clarifies a
+    # message, and fixes a compiler warning (thanks to "Linux From Scratch"!)
+    patch -p1 < "${worktree}/patches/sysvinit/sysvinit-2.89-consolidated-1.patch"
+
+    make -j${jobs} -C src \
+     CFLAGS="-ansi $QICFLAGS -fomit-frame-pointer" \
+     STATIC="$QILDFLAGS -static"
+
+    make -j${jobs} -C src ROOT="$destdir" install
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+

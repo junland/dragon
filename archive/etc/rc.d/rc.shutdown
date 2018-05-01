@@ -2,7 +2,7 @@
 #
 # Prepare to halt or reboot the system
 #
-# Copyright (c) 2017-2018 Matias Fonzo.
+# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,21 +23,6 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
 
 # Set linefeed mode to avoid staircase effect
 stty onlcr 0>&1
-
-echo ""
-case $1 in
-    reboot)
-        echo "*** System going to be rebooted ***"
-        ;;
-    poweroff)
-        echo "*** System going to be halted ***"
-        ;;
-    *)
-        echo "Invalid action '$1' for ${0}"    1>&2
-        echo "Valid actions: reboot, poweroff" 1>&2
-        exit 1;
-esac
-echo ""
 
 # Be immune to the following signals
 trap "" HUP INT QUIT ABRT TERM
@@ -67,12 +52,14 @@ dd if=/dev/urandom of=/etc/random-seed count=1 bs=${size} 2> /dev/null
 unset size
 chmod 600 /etc/random-seed
 
+# Try to write a login record in the /var/log/wtmp file
+halt -w
+
 # Flush file system buffers, update super block
 sync
 
 # Kill all processes, except the one that is currently running
-echo "(Shutdown) Sending the TERM signal to all the processes"
-killall5 -o $$ -s TERM
+killall5 -15 -o $$
 sleep 9
 
 echo "(Shutdown) Deactivating swap devices"
@@ -89,13 +76,13 @@ mount -n -o remount,ro /
 wait
 
 # Reboot, or halt the system
-case $1 in
-    reboot)
+case $0 in
+    *.reboot)
         echo "Rebooting ..."
-        halt -r
+        reboot
         ;;
     *)
-        halt -p
+        poweroff
         ;;
 esac
 

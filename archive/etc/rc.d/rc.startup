@@ -2,12 +2,12 @@
 #
 # Boot-time system initialization script
 #
-# Copyright (c) 2017-2018 Matias Fonzo.
-# 
+# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #    http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -16,31 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Parse config file
-
-if test -f /etc/rc.conf
-then
-    while IFS='=' read -r variable value
-    do
-        case $variable in
-        \#* | "")	# Ignore commented or blank lines
-            continue
-            ;;
-        esac
-
-        # Set variable name avoiding code execution
-        eval "$variable=\${value}"
-    done < /etc/rc.conf
-fi
-
 umask 022
 IFS='
  	'
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
-export PATH
-
-# Make the kernel send the SIGINT (interrupt) signal to the init process
-ctrlaltdel soft
 
 # Mount virtual file systems
 
@@ -128,11 +107,11 @@ then
     else
         if test $status -ge 4
         then
-            echo "EXIT CODE = $status"                               1>&2
-            echo ""                                                  1>&2
-            echo "> A maintenance shell will be started for manual"  1>&2
-            echo "> correction.  Refer to the file system-specific"  1>&2
-            echo "> check utility and manual pages for correct it."  1>&2
+            echo "EXIT CODE = $status"                        1>&2
+            echo ""                                           1>&2
+            echo "A maintenance shell will be started ..."    1>&2
+            echo "Refer to the file system-specific utility"  1>&2
+            echo "and manual pages for correction."           1>&2
             if type sulogin > /dev/null
             then
                 sulogin
@@ -144,7 +123,7 @@ then
         echo "The system will be restarted now."
         umount -v -n -a -r
         mount -v -n -o remount,ro /
-        halt -r;
+        reboot -n -f;
         exit 99
     fi
 fi
@@ -232,30 +211,6 @@ dd if=/dev/urandom of=/etc/random-seed count=1 bs=${size} 2> /dev/null
 chmod 600 /etc/random-seed
 unset size
 
-# Set host name and domain name for the system from /etc/rc.conf.
-# This overrides any value given for sysctl(8)
-
-echo "${HOSTNAME:-dragora}"        > /proc/sys/kernel/hostname
-echo "${DOMAINNAME:-example.net}"  > /proc/sys/kernel/domainname
-
-unset HOSTNAME DOMAINNAME
-
-# Start the loopback device
-
-echo "(Startup) Starting loopback device"
-
-if type ip > /dev/null 2>&1
-then
-    ip addr del 127.0.0.1/8 dev lo 2> /dev/null
-    ip addr add 127.0.0.1/8 dev lo brd + scope host
-    ip link set lo up
-elif type ifconfig > /dev/null 2>&1
-then
-    ifconfig lo up > /dev/null
-else
-    echo "Could not find ip(8) or ifconfig(1)." 1>&2
-fi
-
 # Update kernel modules
 
 if test -f /lib/modules/"$(uname -r)"/modules.dep
@@ -283,47 +238,4 @@ then
         isapnp /etc/isapnp.conf
     fi
 fi
-
-# Update the hardware database
-
-echo "(Startup) Updating hardware database: udevadm hwdb --update"
-udevadm hwdb --update
-
-# Start to monitor services through perpd(8) instances
-
-echo "(Startup) Monitoring services through perpd(8) instances"
-if type perpboot > /dev/null
-then
-    udevadm control --exit;
-    PERP_BASE=/etc/perp perpboot -d
-fi
-
-# Start ALSA (sound support)
-
-if test -x /etc/rc.d/rc.alsa
-then
-    /etc/rc.d/rc.alsa start
-fi
-
-# Start user local instructions
-
-if test -x /etc/rc.d/rc.local
-then
-    echo "(Startup) Running /etc/rc.d/rc.local"
-    /etc/rc.d/rc.local
-fi
-
-# Load keyboard map from /etc/rc.conf
-
-if test -n "$KEYMAP"
-then
-    loadkeys "$KEYMAP"
-    unset KEYMAP
-fi
-
-# Set terminal attributes from /etc/rc.conf
-
-# Screen blanking interval, default sets to 15 minutes
-setterm -blank "${BLANKTIME:-15}"
-unset BLANKTIME
 

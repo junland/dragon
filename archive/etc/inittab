@@ -1,0 +1,56 @@
+# /etc/inittab:
+#
+# The inittab(5) file describes which processes are started at
+# boot-up and during normal operation distinguishes multiple
+# runlevels, each of which can have its own set of processes
+# that are started.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Init runlevels in Dragora
+#  0  =  Halt or power-off
+#  1  =  Single-user mode
+#  2  =  -> 3
+#  3  =  Multi-user mode
+#  4  =  X Window sessions
+#  5  =  ^ 4
+#  6  =  Reboot
+
+# Set default runlevel
+id:3:initdefault:
+
+# System initialization
+si::sysinit:/etc/rc.d/rc.startup
+
+# Runlevel scripts
+r0:0:wait:/etc/rc.d/rc.shutdown
+r1:1S:wait:/etc/rc.d/rc.singleuser
+r3:2345:wait:/etc/rc.d/rc.multiuser
+r4:45:respawn:/etc/rc.d/rc.x11
+r6:6:wait:/etc/rc.d/rc.reboot
+
+# What to do when the "magic keys" are pressed
+ca::ctrlaltdel:/sbin/shutdown -t 3 -r now
+
+# Console logins
+c1:123:respawn:/sbin/agetty --noclear	38400 tty1 linux
+c2:123:respawn:/sbin/agetty		38400 tty2 linux
+c3:12345:respawn:/sbin/agetty		38400 tty3 linux
+#c4:12345:respawn:/sbin/agetty		38400 tty4 linux
+#c5:12345:respawn:/sbin/agetty		38400 tty5 linux
+#c6:12345:respawn:/sbin/agetty		38400 tty6 linux
+
+# Service management through perpboot(8)
+PB:2345:respawn:/sbin/perpboot -x /etc/perp
