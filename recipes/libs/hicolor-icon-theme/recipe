@@ -1,0 +1,62 @@
+# Build recipe for Hicolor Icon Theme.
+#
+# Copyright (C) 2018, MMPG <mmpg@vp.pl>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=hicolor-icon-theme
+version=0.17
+release=1
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=https://icon-theme.freedesktop.org/releases/$tarname
+
+description="
+Icon theme specification.
+
+The hicolor-icon-theme package contains a default fallback theme for
+implementations of the icon theme specification.
+"
+
+homepage=https://www.freedesktop.org/wiki/Software/icon-theme/
+license=GPL
+
+docs="COPYING ChangeLog NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --mandir=/usr/man \
+    --infodir=/usr/info \
+    --build="$(cc -dumpmachine)"
+     
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+     
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+        
+    for file in $docs
+    do
+       cp -p $file "${destdir}${docsdir}"
+    done
+}

@@ -1,0 +1,61 @@
+# Build recipe for NASM.
+#
+# Copyright (C) 2018, MMPG <mmpg@vp.pl>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=nasm
+version=2.13.03
+release=1
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=http://www.nasm.us/pub/nasm/releasebuilds/$version/$tarname
+
+description="
+NASM is the Netwide Assembler, a free portable assembler for the Intel
+80x86 microprocessor series, using primarily the traditional Intel
+instruction mnemonics and syntax.
+"
+
+homepage=http://nasm.us
+license=BSD
+
+docs="AUTHORS CHANGES ChangeLog INSTALL LICENSE README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --mandir=/usr/man \
+    --infodir=/usr/info \
+    --build="$(cc -dumpmachine)"
+     
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+     
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+        
+    for file in $docs
+    do
+       cp -p $file "${destdir}${docsdir}"
+    done
+}

@@ -1,0 +1,66 @@
+# Build recipe for Cairo.
+#
+# Copyright (C) 2018, MMPG <mmpg@vp.pl>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=cairo
+version=1.14.12
+release=1
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=https://www.cairographics.org/releases/$tarname
+
+description="
+Cairo is a vector graphics library designed to provide high-quality
+display and print output. Cairo is designed to produce
+identical output on all output media while taking advantage of display
+hardware acceleration when available (eg. through the X Render
+Extension or OpenGL).
+"
+
+homepage=https://www.cairographics.org/
+license="LGPLv2.1 or MPLv1.1"
+
+# Copy documentation
+docs="AUTHORS BIBLIOGRAPHY BUGS CODING_STYLE COPYING COPYING-LGPL-2.1 COPYING-MPL-1.1 HACKING INSTALL NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+    unpack "${tardir}/$tarname"
+    
+    cd "$srcdir"
+    
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --mandir=/usr/man \
+    --infodir=/usr/info \
+    --disable-static \
+    --enable-tee \
+    --build="$(cc -dumpmachine)"
+    
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+    
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    
+    for file in $docs
+    do 
+        cp -p $file "${destdir}${docsdir}"
+    done
+}

@@ -1,0 +1,67 @@
+# Build recipe for libxml2.
+#
+# Copyright (C) 2018, MMPG <mmpg@vp.pl>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=libxml2
+version=2.9.8
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://xmlsoft.org/sources/$tarname
+
+description="
+Libxml2 is the XML C parser library and toolkit. XML itself is a
+metalanguage to design markup languages  - i.e. a text language where
+structures are added to the content using extra "markup" information
+enclosed between angle brackets. HTML is the most well-known markup
+language. Though the library is written in C, a variety of language
+bindings make it available in other environments.
+"
+
+homepage=http://xmlsoft.org/
+license="MIT License"
+
+docs="AUTHORS ChangeLog Copyright INSTALL NEWS README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --mandir=/usr/man \
+    --infodir=/usr/info \
+    --with-python=/usr/bin/python3 \
+    --with-history \
+    --disable-static \
+    --build="$(cc -dumpmachine)"
+     
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+     
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+        
+    for file in $docs
+    do
+       cp -p $file "${destdir}${docsdir}"
+    done
+}

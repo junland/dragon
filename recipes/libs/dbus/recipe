@@ -1,0 +1,71 @@
+# Build recipe for dbus.
+#
+# Copyright (C) 2018, MMPG <mmpg@vp.pl>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=dbus
+version=1.13.2
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=https://dbus.freedesktop.org/releases/dbus/$tarname
+
+description"
+D-Bus supplies both a system daemon (for events such as "new hardware
+device added" or "printer queue changed") and a per user login
+session daemon (for general IPC needs among user applications).
+Also, the message bus is built on top of a general one-to-one message
+passing framework, which can be used by any two apps to communicate
+directly (without going through the message bus daemon).
+"
+
+homepage=https://www.freedesktop.org/wiki/Software/dbus/
+license="AFLv2.1 or GPLv2"
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog ChangeLog.pre-1-0 ChangeLog.pre-1-2 HACKING INSTALL NEWS NEWS.pre-1-0 NEWS.pre-1-2 README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+    unpack "${tardir}/$tarname"
+    
+    cd "$srcdir"
+    
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --mandir=/usr/man \
+    --infodir=/us/info \
+    --disable-doxygen-docs \
+    --disable-xml-docs \
+    --disable-static \
+    --with-console-auth-dir=/var/run/console \
+    --with-system-pid-file=/var/run/dbus/pid \
+    --with-system-socket=/var/run/dbus/system_bus_socket \
+    --build="$(cc -dumpmachine)"
+    
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+    
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    
+    for file in $docs
+    do
+	cp -p $file "${destdir}${docsdir}"
+    done
+}
