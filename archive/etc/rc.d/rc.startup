@@ -92,12 +92,14 @@ hwclock --hctosys --localtime
 
 # Perform file system checks
 
+# Limit number of filesystem checkers using the maximum number of processors
+FSCK_MAX_INST=$(nproc 2>/dev/null) || FSCK_MAX_INST=1
+
 # Force file system checks if 'FORCEFSCK' was passed on boot prompt
 grep -q -i FORCEFSCK /proc/cmdline && forcefsck=-f
 
 echo "*** Checking root file system ..."
-FSCK_MAX_INST=1 fsck $forcefsck -a -C
-status=$?
+fsck $forcefsck -a -C ; status=$?
 
 if test $status -gt 1
 then
