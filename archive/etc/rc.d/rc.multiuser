@@ -59,22 +59,18 @@ elif type ifconfig > /dev/null 2>&1
 then
     ifconfig lo up > /dev/null
 else
-    echo "WARNING: could not find ip(8) or ifconfig(1)" 1>&2
+    echo "WARNING: Could not find ip(8) or ifconfig(1)" 1>&2
 fi
 
-# Update the hardware database
+# Start services through perpd(8) instances
 
-echo "(Startup) Updating hardware database: udevadm hwdb --update"
-udevadm hwdb --update
-
-# Start to monitor services through perpd(8) instances
-
-#echo "(Startup) Monitoring services through perpd(8) instances"
 if type perpboot > /dev/null
 then
-    echo "SALIENDO DE UDEVD (VERIFICAR PERPBOOT) ..."
-    udevadm control --exit;
-#    PERP_BASE=/etc/perp perpboot -d
+    # Udev will be stopped and started again to be supervised
+    udevadm control --exit || killall udevd
+
+    echo "(Startup) Monitoring services through perpd(8) instances"
+    PERP_BASE=/etc/perp perpboot -d
 fi
 
 # Start ALSA (sound support)
