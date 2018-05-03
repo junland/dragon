@@ -51,7 +51,7 @@ udevadm trigger --type=devices    --action=add
 # Wait for event queue
 udevadm settle
 
-# Remount the root filesystem in *read-only mode*, if needed
+# Re-mount the root filesystem in *read-only mode*, if needed
 if test -w /
 then
     echo "(Startup) Remounting root filesystem in read-only mode"
@@ -92,49 +92,55 @@ hwclock --hctosys --localtime
 
 # Perform file system checks
 
-# Limit number of filesystem checkers using the maximum number of processors
-FSCK_MAX_INST=$(nproc 2>/dev/null) || FSCK_MAX_INST=1
-
-# Force file system checks if 'FORCEFSCK' was passed on boot prompt
-grep -q -i FORCEFSCK /proc/cmdline && forcefsck=-f
-
-echo "*** Checking root file system ..."
-fsck $forcefsck -a -C ; status=$?
-
-if test $status -gt 1
+if test ! -f /fastboot
 then
-    if test $status -eq 32
+    # Limit number of filesystem checkers using the max. number of processors
+    FSCK_MAX_INST=$(nproc 2>/dev/null) || FSCK_MAX_INST=1
+
+    # Force checks if the regular file '/forcefsck' exists
+    test -f /forcefsck && forcefsck_flag=-f
+
+    echo "*** Checking root file system ..."
+    fsck $forcefsck_flag -a -C
+    status=$?
+
+    if test $status -gt 1
     then
-        echo "fsck(8) canceled by user request." 1>&2
-    else
-        if test $status -ge 4
+        if test $status -eq 32
         then
-            echo "EXIT CODE = $status"                        1>&2
-            echo ""                                           1>&2
-            echo "A maintenance shell will be started ..."    1>&2
-            echo "Refer to the file system-specific utility"  1>&2
-            echo "and manual pages for correction."           1>&2
-            if type sulogin > /dev/null
+            echo "fsck(8) canceled by user request." 1>&2
+        else
+            if test $status -ge 4
             then
-                sulogin
-            else
-                echo "Executing \`/bin/sh' as emergency shell ..."
-                /bin/sh -
+                echo "EXIT CODE = $status"                        1>&2
+                echo ""                                           1>&2
+                echo "A maintenance shell will be started ..."    1>&2
+                echo "Refer to the file system-specific utility"  1>&2
+                echo "and manual pages for correction."           1>&2
+                if type sulogin > /dev/null
+                then
+                    sulogin
+                else
+                    echo "Executing \`/bin/sh' as emergency shell ..."
+                    /bin/sh -
+                fi
             fi
+            echo "The system will be restarted now."
+            umount -v -n -a -r
+            mount -v -n -o remount,ro /
+            reboot -n -f;
+            exit 99
         fi
-        echo "The system will be restarted now."
-        umount -v -n -a -r
-        mount -v -n -o remount,ro /
-        reboot -n -f;
-        exit 99
     fi
+    unset status
+
+    echo "*** Checking local file system(s) ..."
+    fsck $forcefsck_flag -A -C -R -T -a
+
+    unset FSCK_MAX_INST forcefsck_flag
+else
+    echo "WARNING: /fastboot is present: Dodging checks" 1>&2
 fi
-unset status
-
-echo "*** Checking local file system(s) ..."
-fsck $forcefsck -A -C -R -T -a
-
-unset forcefsck
 
 # Set system clock (2/2)
 
@@ -148,7 +154,7 @@ fi
 
 unset HWCLOCK
 
-# Remount the root filesystem in *read-write mode*
+# Re-mount the root filesystem in *read-write mode*
 echo "(Startup) Remounting root filesystem in read-write mode"
 mount -v -n -o remount,rw /
 
@@ -185,6 +191,8 @@ fi
 chmod 1777 /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
 
 # Seek and destroy (some) temporary files
+
+rm -f /etc/nologin /fastboot /forcefsck
 
 find /var/lock /var/run  \
  \( ! -type d -a ! -name utmp \) -exec rm -f '{}' +
