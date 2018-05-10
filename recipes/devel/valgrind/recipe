@@ -17,7 +17,7 @@
 
 program=valgrind
 version=3.13.0
-release=1
+release=2
 
 tarname=${program}-${version}.tar.bz2
 
@@ -57,20 +57,19 @@ build()
     # We do not try to strip any debugging symbol as
     # suggested in README_PACKAGERS
 
-    ./configure CFLAGS="$QICFLAGS -no-pie -fno-PIE -fPIC" \
-     CXXFLAGS="$QICXXFLAGS -no-pie -fno-PIE -fPIC" \
+    ./configure CFLAGS="-no-pie -fno-PIE -fPIC" \
+     CXXFLAGS="-no-pie -fno-PIE -fPIC" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --build="$(cc -dumpmachine)" \
-     --enable-inner \
      --enable-tls \
-     || true
+     --enable-inner \
+     --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir"
+    make -j${jobs} DESTDIR="$destdir" install
 
     # Remove valgrind manual in order to reduce the package size
     # considerably, we already provide the manual in HTML format
