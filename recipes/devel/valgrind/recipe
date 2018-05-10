@@ -1,7 +1,7 @@
 # Build recipe for valgrind.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -54,10 +54,12 @@ build()
     # Set installation for documentation directory
     patch -p0 < "${worktree}/patches/valgrind/valgrind-docdir.patch"
 
-    # We don't pass any C flags in order to preserve all the debugging
-    # information as suggested in README_PACKAGERS
+    # We do not try to strip any debugging symbol as
+    # suggested in README_PACKAGERS
 
-    ./configure $configure_args \
+    ./configure CFLAGS="$QICFLAGS -no-pie -fno-PIE -fPIC" \
+     CXXFLAGS="$QICXXFLAGS -no-pie -fno-PIE -fPIC" \
+     $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
@@ -68,7 +70,7 @@ build()
      || true
 
     make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    make -j${jobs} DESTDIR="$destdir"
 
     # Remove valgrind manual in order to reduce the package size
     # considerably, we already provide the manual in HTML format
