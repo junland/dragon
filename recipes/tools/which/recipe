@@ -1,0 +1,86 @@
+# Build recipe for which.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=which
+version=2.21
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://ftp.gnu.org/gnu/which/$tarname
+
+description="
+Shows the full path of (shell) commands.
+
+Which is a utility that prints out the full path of the executables
+that the shell would execute when the passed program names would have
+been entered on the shell prompt.
+"
+
+homepage=http://www.gnu.org/software/which
+license=GPLv3+
+
+# Source documentation
+docs="AUTHORS COPYING EXAMPLES NEWS README README.alias"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+     $configure_args \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+
