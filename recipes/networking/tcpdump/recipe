@@ -1,0 +1,78 @@
+# Build recipe for tcpdump.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=tcpdump
+version=4.9.2
+release=1
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://www.tcpdump.org/release/$tarname
+
+description="
+Dump traffic on a network.
+
+tcpdump is a utility to dump the traffic on a network.
+
+For more information, type \`man tcpdump'.
+"
+
+homepage=http://www.tcpdump.org
+license=BSD
+
+# Source documentation
+docs="CHANGES CONTRIBUTING CREDITS LICENSE README.md VERSION"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-ipv6 \
+     --with-crypto=yes \
+     --with-system-libpcap \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Replace hard link with a soft link
+
+    rm -f "${destdir}/usr/sbin/tcpdump"
+    ln -s tcpdump.${version} "${destdir}/usr/sbin/tcpdump"
+
+    # Compress and copy documentation
+
+    lzip -9 "${destdir}/${mandir}/man1/tcpdump.1"
+
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+
