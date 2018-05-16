@@ -16,7 +16,7 @@
 
 program=perl
 version=5.26.2
-release=1
+release=2
 
 tarname=${program}-${version}.tar.bz2
 
@@ -42,7 +42,7 @@ license="Artistic | GPLv1"
 
 # Source documentation
 docs="AUTHORS Artistic Changes Copying README README.linux"
-docsdir="${docdir}/${program}-${version}"
+docsdir="${docdir}/${program}"
 
 # Limit parallel jobs to '1' due to perl-cross-static
 jobs=1
@@ -87,13 +87,6 @@ build()
     make -j${jobs} BUILD_ZLIB="False" BUILD_BZIP2="0"
     make -j${jobs} DESTDIR="$destdir" install
 
-    # Replace hard links on binaries
-    (
-        cd "${destdir}/usr/bin" || exit 1
-        # Only when perl -Duseshrplib
-        ln -sf perl${version} perl
-    )
-
     # Strip remaining binaries and libraries
     find "$destdir" -type f | xargs file | \
      awk '/ELF/ && /executable/ || /shared object/' | \
@@ -126,5 +119,8 @@ build()
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}/"
+
+    # Limit this package name to the program name
+    full_pkgname=$program
 }
 
