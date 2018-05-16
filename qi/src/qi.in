@@ -860,6 +860,20 @@ upgrade_mode()
     # Get the filename
     incoming=$(basename -- "$1" .tlz)
 
+    # Check if the package is perl or graft to avoid the
+    # bootstrap problem described on Graft's documentation
+
+    case $incoming in
+    perl | graft )
+        warn \
+         ""                                                                   \
+         "The incoming package will be installed instead of being updated."   \
+         "This may be crucial for the correct functioning of \`${PROGRAM}'."  \
+         ""
+         opt_prune=opt_prune install_mode "$1"
+         return 0;;
+    esac
+
     # Prepare the package to install it in a temporary location
 
     # Set random directory using packagedir as prefix and 'incoming' as suffix
@@ -879,7 +893,7 @@ upgrade_mode()
     packagedir=$save_packagedir
     unset save_packagedir
 
-    echo "Looking for other installations under the same name ..."
+    echo "Looking for installations under the same name ..."
     for long_name in "$rootdir${packagedir}/$(pkgbase $incoming)"*
     do
         found="${long_name##*/}"
@@ -889,7 +903,6 @@ upgrade_mode()
         test "$long_name" = "$PRVLOC" && continue;
 
         fnmatch "$(pkgbase $found)*" "$incoming" || continue;
-
         echo "${long_name}:  Detected."
 
         # A package directory is preserved if -k is given
@@ -938,7 +951,7 @@ extract_mode()
     ( umask 077 ; mkdir -- $PRVDIR )
     mkdir -p -m 700 -- $PRVDIR
 
-    echo "Extracting package $name on $PRVDIR ..."
+    echo "Extracting package $name ..."
     ( umask 000 ; cd -- $PRVDIR && lzip -cd - | tar xpvf - ) < "$1"
     if test $? -ne 0
     then
@@ -946,6 +959,7 @@ extract_mode()
         rmdir -- $PRVDIR
         exit 3;
     fi
+    echo "$name has been extracted on $PRVDIR"
 
     # Reset given signals
     trap - HUP INT ABRT TERM
