@@ -16,7 +16,7 @@
 
 program=kmod
 version=25
-release=1
+release=2
 
 tarname=${program}-${version}.tar.gz
 
@@ -85,6 +85,18 @@ build()
 
     # For user invocation
     ( cd "${destdir}/usr/bin" && ln -sf ../bin/kmod lsmod )
+
+    # Prepare directories/files for modprobe
+    mkdir -p "${destdir}/lib/modprobe.d" "${destdir}/etc/modprobe.d"
+
+    for file in "${worktree}"/archive/kmod/etc/modprobe.d/*
+    do
+        cp -p $file "${destdir}/etc/modprobe.d/"
+        chmod 644 "${destdir}/etc/modprobe.d/${file##*/}"
+    done
+
+    # To manage (dot) new files
+    touch "${destdir}/etc/modprobe.d/.graft-config"
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
