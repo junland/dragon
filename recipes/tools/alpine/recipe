@@ -15,14 +15,15 @@
 # limitations under the License.
 
 program=alpine
-version=672d683
-pkgversion=2.21_${version}
+version=2.21
 release=1
 
-tarname=${program}-${version}.tar.gz
+tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
-fetch=http://rsync.dragora.org/current/sources/$tarname
+fetch=http://alpine.x10host.com/alpine/release/src/$tarname
+
+homepage=http://alpine.x10host.com/
 
 description="
 Alpine messaging system.
@@ -35,15 +36,14 @@ originally designed for inexperienced email users, Alpine supports many
 advanced features, and an ever-growing number of configuration and
 personal-preference options.
 
-Alpine is maintained by Eduardo Chappa.
+Alpine is maintained by Eduardo Chappa at $homepage
 "
 
-homepage=http://en.wikipedia.org/wiki/Alpine_%28email_client%29
 license="Apache License version 2"
 
 # Source documentation
 docs="LICENSE NOTICE README VERSION"
-docsdir="${docdir}/${program}-${pkgversion}"
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
@@ -57,12 +57,12 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     touch imap/ip6
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="" \
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --without-krb5 \
-     --enable-debug=yes
+     --enable-debug=no
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
