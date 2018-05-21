@@ -50,6 +50,27 @@ build()
      
     make -j${jobs}
     make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
      
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
