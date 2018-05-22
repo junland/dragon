@@ -1,6 +1,7 @@
 # Build recipe for dbus.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 # limitations under the License.
 
 program=dbus
-version=1.13.2
+version=1.13.4
 release=1
 
 tarname=${program}-${version}.tar.gz
@@ -26,16 +27,16 @@ fetch=http://dbus.freedesktop.org/releases/dbus/$tarname
 description"
 A system daemon and a per user login session daemon.
 
-Also, the message bus is built on top of a general one-to-one message
-passing framework, which can be used by any two apps to communicate
-directly (without going through the message bus daemon).
+The message bus is built on top of a general one-to-one message passing
+framework, which can be used by any two apps to communicate directly
+(without going through the message bus daemon).
 "
 
-homepage=https://www.freedesktop.org/wiki/Software/dbus/
-license="AFL | GPL"
+homepage=http://www.freedesktop.org/wiki/Software/dbus/
+license="AFLv2.1 | GPLv2+"
 
 # Source documentation
-docs="AUTHORS COPYING ChangeLog ChangeLog.pre-1-0 ChangeLog.pre-1-2 HACKING INSTALL NEWS NEWS.pre-1-0 NEWS.pre-1-2 README"
+docs="AUTHORS COPYING ChangeLog HACKING NEWS README"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -45,27 +46,26 @@ build()
     
     cd "$srcdir"
     
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=/us/info \
-    --disable-doxygen-docs \
-    --disable-xml-docs \
-    --disable-static \
-    --with-console-auth-dir=/var/run/console \
-    --with-system-pid-file=/var/run/dbus/pid \
-    --with-system-socket=/var/run/dbus/system_bus_socket \
-    --build="$(cc -dumpmachine)"
+    ./configure \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --enable-shared \
+     --disable-static \
+     --enable-inotify \
+     --disable-x11-autolaunch \
+     --with-valgrind \
+     --with-dbus-user=messagebus \
+     --with-xml=expat \
+     --with-console-auth-dir=/var/run/console \
+     --with-system-pid-file=/var/run/dbus/dbus.pid \
+     --with-system-socket=/var/run/dbus/system_bus_socket \
+     --with-session-socket-dir=/tmp \
+     --build="$(cc -dumpmachine)"
     
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
-    
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
+    make -j${jobs} V=1
+    make -j${jobs} V=1 DESTDIR="$destdir" install
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -83,9 +83,23 @@ build()
     
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do
-	cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}/"
+
+    # Install perp service for dbus
+
+    mkdir -p "${destdir}/etc/perp/dbus"
+
+    cp -p "${worktree}/archive/dbus/rc.log" \
+          "${worktree}/archive/dbus/rc.main" \
+          "${destdir}/etc/perp/dbus/"
+
+    chmod 755 "${destdir}"/etc/perp/crond/rc.*
+
+    # Be an active service by default
+    chmod +t "${destdir}/etc/perp/dbus"
+
+    # To handle config file(s)
+    touch "${destdir}/etc/dbus-1/.graft-config" \
+          "${destdir}/etc/perp/dbus/.graft-config"
 }
+
