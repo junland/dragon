@@ -1,0 +1,83 @@
+# Build recipe for at-spi2-core.
+#
+# Copyright (C) 2018, MMPG <mmpg@vp.pl>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=at-spi2-core
+version=2.26.2
+release=1
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=http://ftp.gnome.org/pub/gnome/sources/at-spi2-core/2.26/$tarname
+
+description="
+A part of the GNOME Accessibility Project.
+
+It provides a Service Provider Interface for the Assistive Technologies
+available on the GNOME platform and a library against which applications can be linked. 
+"
+
+homepage=https://wiki.gnome.org/Accessibility/
+license=GPL
+
+docs="ABOUT-NLS AUTHORS COPYING INSTALL NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --mandir=$mandir \
+    --infodir=$infodir \
+    --build="$(cc -dumpmachine)"
+             
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+             
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+                
+    for file in $docs
+    do
+       cp -p $file "${destdir}${docsdir}"
+    done
+}
