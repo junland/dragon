@@ -1,6 +1,7 @@
 # Build recipe for NASM.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +19,7 @@ program=nasm
 version=2.13.03
 release=1
 
-tarname=${program}-${version}.tar.xz
+tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
 fetch=http://www.nasm.us/pub/nasm/releasebuilds/$version/$tarname
@@ -33,7 +34,7 @@ using primarily the traditional Intel instruction mnemonics and syntax.
 homepage=http://nasm.us
 license=BSD
 
-docs="AUTHORS CHANGES ChangeLog INSTALL LICENSE README TODO"
+docs="AUTHORS CHANGES ChangeLog LICENSE README TODO"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -45,12 +46,14 @@ build()
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
-    --mandir=/usr/man \
-    --infodir=/usr/info \
+    --mandir=$mandir \
     --build="$(cc -dumpmachine)"
      
     make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} INSTALLROOT="$destdir" install
+
+    # Compress manpages
+    lzip -9 "${destdir}/${mandir}/man1"/*.1
      
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
@@ -60,3 +63,4 @@ build()
        cp -p $file "${destdir}${docsdir}"
     done
 }
+
