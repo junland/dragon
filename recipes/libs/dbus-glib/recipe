@@ -1,6 +1,7 @@
 # Build recipe for D-Bus GLib.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,13 +25,13 @@ tarname=${program}-${version}.tar.gz
 fetch=http://dbus.freedesktop.org/releases/dbus-glib/$tarname
 
 description="
-GLib interfaces to the D-Bus API.
+Glib bindings for D-Bus.
 
 The dbus-glib package contains GLib interfaces to the D-Bus API.
 "
 
 homepage=http://www.freedesktop.org/wiki/Software/dbus/
-license="AFLv2.1 | GPLv2"
+license="AFLv2.1 | GPLv2+"
 
 # Source documentation
 docs="AUTHORS COPYING HACKING NEWS README"
@@ -44,21 +45,25 @@ build()
     cd "$srcdir"
     
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
-    --disable-static \
-    --build="$(cc -dumpmachine)"
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --enable-shared \
+     --disable-static \
+     --build="$(cc -dumpmachine)"
     
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} V=1 DESTDIR="$destdir" install
+
+    # Compress manpages
+    lzip -9 "${destdir}/${mandir}/man1"/*.1
     
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
     
     for file in $docs
     do
-	cp -p $file "${destdir}${docsdir}"
+        cp -p $file "${destdir}${docsdir}"
     done
 }
 
