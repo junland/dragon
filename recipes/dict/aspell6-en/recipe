@@ -1,0 +1,60 @@
+# Build recipe for aspell6-en.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=aspell6-en
+version=2018.04.16-0
+release=1
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=ftp://ftp.gnu.org/gnu/aspell/dict/en/$tarname
+
+description="
+A dictionary for GNU Aspell in English.
+
+This is the English dictionary for Aspell.  It requires Aspell
+version 0.60 or later.
+
+This word list is considered both complete and accurate.
+"
+
+homepage=http://wordlist.aspell.net
+license=Custom
+
+# Source documentation
+docs="Copyright README doc/ChangeLog doc/extra.txt"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
