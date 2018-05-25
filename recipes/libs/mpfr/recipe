@@ -16,7 +16,7 @@
 
 program=mpfr
 version=4.0.1
-release=1
+release=2
 
 tarname=${program}-${version}.tar.bz2
 
@@ -59,8 +59,12 @@ build()
         fi
     done
 
+    # Avoid texinfo usage, we do not provide it on the early process
+    touch doc/mpfr.info
+
     ./configure \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    MAKEINFO="true" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
@@ -70,14 +74,15 @@ build()
      --enable-thread-safe \
      --build="$(cc -dumpmachine)"
 
-    make -j${jobs} && make check
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    make -j${jobs} MAKEINFO="true"
+    make -j${jobs} check
+    make -j${jobs} MAKEINFO="true" DESTDIR="$destdir" install-strip
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
     then
         rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
+        lzip -9 "${destdir}/${infodir}"/* || true
     fi
 
     # Copy documentation
