@@ -860,19 +860,22 @@ upgrade_mode()
     # Get the filename
     incoming=$(basename -- "$1" .tlz)
 
-    # Check if the package is perl or graft to avoid the
-    # bootstrap problem described on Graft's documentation
+    # Check for packages declared in the black list only for installation
 
-    case $incoming in
-    perl | graft )
-        warn \
-         ""                                                                   \
-         "The incoming package will be installed instead of being updated."   \
-         "This may be crucial for the correct functioning of \`${PROGRAM}'."  \
-         ""
-         opt_prune=opt_prune install_mode "$1"
-         return 0;;
-    esac
+    for item in $blacklist
+    do
+        case $item in
+        ${incoming}*)
+            warn \
+             "*"                                                                    \
+             "* The incoming package will be installed instead of being updated."   \
+             "* This may be crucial for the correct functioning of \`${PROGRAM}'."  \
+             "*"
+             opt_prune=opt_prune install_mode "$1"
+             return 0;;
+        esac
+    done
+    unset item
 
     # Prepare the package to install it in a temporary location
 
@@ -1093,6 +1096,7 @@ EOF
 PROGRAM="${0##*/}"
 packagedir=@PACKAGEDIR@
 targetdir=@TARGETDIR@
+blacklist="perl graft musl glibc"
 RC=RC
 RCFILE=@SYSCONFDIR@/qirc
 opt_install=opt_install.off
