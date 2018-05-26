@@ -233,11 +233,11 @@ build_mode()
         arch="${arch%%-*}"	# Get the rid of target triplet.
     fi
 
-    # Make tail directories if needed
-    test -d "${worktree}/archive"  || mkdir -p -- "${worktree}/archive"
-    test -d "${worktree}/patches"  || mkdir -p -- "${worktree}/patches"
-    test -d "${worktree}/recipes"  || mkdir -p -- "${worktree}/recipes"
-    test -d "$tardir"              || mkdir -p -- "$tardir"
+    # Re-create external directories
+    mkdir -p -- "${worktree}/archive" \
+                "${worktree}/patches" \
+                "${worktree}/recipes" \
+                "$tardir"
 
     # Variables treatment for the current and next recipe.
     #
@@ -245,7 +245,7 @@ build_mode()
     # the recipe and not coming from ${sysconfdir}/qirc
 
     unset srcdir destdir pkgname pkgversion program version release \
-          fetch description homepage license replace
+          fetch description homepage license replace full_pkgname
 
     # The following variables must be restored later
     save_arch="${save_arch:=$arch}"
@@ -308,7 +308,7 @@ build_mode()
     jobs="${jobs:=$save_jobs}"
 
     # Complete package name adding 'pkgversion-arch+release'
-    full_pkgname=$pkgname-${pkgversion}-${arch}+${release}
+    full_pkgname="${full_pkgname:=$pkgname-${pkgversion}-${arch}+${release}}"
 
     # If a package is going to be created, the existence of a
     # previous build of the package is detected and reported.
