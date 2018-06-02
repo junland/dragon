@@ -71,7 +71,7 @@ usage() {
 version()
 {
     printf "%s\n" \
-     "$PROGRAM 3.18" \
+     "$PROGRAM 3.19" \
      "Copyright (C) 2014-2018 Matias Andres Fonzo." \
      "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>" \
      "This is free software: you are free to change and redistribute it." \
@@ -314,14 +314,8 @@ printf "%s\n" \
 umask 022
 
 # Create required directories
-if test ! -d "$output"
-then
-    mkdir -p -- "$output" || chkstatus_or_exit
-fi
-if test ! -d "$TMPDIR"
-then
-    mkdir -p -- "$TMPDIR" || chkstatus_or_exit
-fi
+mkdir -p -- "$output" "$TMPDIR"
+chkstatus_or_exit
 
 # Set default PATH, propagate variables
 PATH="${crossdir}/bin:${PATH}"
@@ -360,7 +354,7 @@ do
         # Ensure toolchain sanity for multilib purposes
         case $arch in
         i586 | *x32 | x86_64 )
-            if test ! -e "${crossdir}/lib" -a -n "$libSuffix"
+            if test ! -e "${crossdir}/lib" && test -n "$libSuffix"
             then
                 ln -sf lib${libSuffix} "${crossdir}/lib" || chkstatus_or_exit
             fi
