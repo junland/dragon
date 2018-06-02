@@ -2,7 +2,7 @@
 #
 # Deploy static cross-compilers for easy distribution
 #
-# Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -51,14 +51,14 @@ TMPDIR=${output}/sources
 export TMPDIR
 
 # Compose tag for tarball names using year+month+day
-tarname=darkcrusade_"$(date +%Y%b%d)"
+tarname=darkcrusade_"$(date +%Y%b)"
 
 # Prepare to start the cross compiler process in the phase 1
 
 phase_one=${output}/phase1-native-"$(uname -m)".$$
 
 echo "${PROGRAM}: Creating native cross compiler on $phase_one ..."
-${CWD}/bootstrap -s0 -o $phase_one
+"${CWD}"/bootstrap -s0 -o $phase_one
 
 # Now will start the preparatives to use the recent native cross compiler
 
@@ -92,14 +92,14 @@ IS_DARKCRUSADE=IS_DARKCRUSADE
 export BTCC BTCXX IS_DARKCRUSADE
 
 # Loop for create the targets, phase 2
-for target in ${CWD}/targets/${@:-*}
+for target in "${CWD}"/targets/${@:-*}
 do
     target="${target##*/}"
 
     phase_two=${output}/phase2-${target}.$$
 
     echo "darkcrusade: Making target $target ..."
-    ${CWD}/bootstrap -s0 -a $target -o $phase_two 2>&1 | \
+    "${CWD}"/bootstrap -s0 -a $target -o $phase_two 2>&1 | \
      tee ${output}/${tarname}-${target}.log
 
     # Provide log file, tarball plus checkum
@@ -115,6 +115,6 @@ do
       > ${tarname}-${target}.tar.lz.sha256
 
     # Back to the current working directory
-    cd -- $CWD
+    cd -- "$CWD"
 done
 
