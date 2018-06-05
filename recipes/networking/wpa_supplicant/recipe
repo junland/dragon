@@ -16,7 +16,7 @@
 
 program=wpa_supplicant
 version=2.6
-release=1
+release=2
 
 tarname=${program}-${version}.tar.gz
 
@@ -72,6 +72,13 @@ build()
 
     strip --strip-unneeded "${destdir}"/usr/sbin/*
 
+    # Copy template config as main config, and also include the example
+
+    mkdir -p "${destdir}/etc"
+    cp -p wpa_supplicant_template.conf "${destdir}/etc/wpa_supplicant.conf"
+    cp -p wpa_supplicant.conf "${destdir}/etc/wpa_supplicant-sample.conf"
+    chmod 644 "${destdir}/etc"/*.conf
+
     # Install D-Bus configuration
 
     mkdir -p "${destdir}/usr/share/dbus-1/system-services"
@@ -85,7 +92,24 @@ build()
     cp -p dbus/dbus-wpa_supplicant.conf "${destdir}/etc/dbus-1/system.d/"
     chmod 644 "${destdir}/etc/dbus-1/system.d/dbus-wpa_supplicant.conf"
 
-    touch "${destdir}/etc/dbus-1/system.d/.graft-config"
+    # Install a perp service
+
+    mkdir -p "${destdir}/etc/perp/wpa_supplicant"
+
+    cp -p "${worktree}/archive/wpa_supplicant/rc.log" \
+          "${worktree}/archive/wpa_supplicant/rc.main" \
+          "${destdir}/etc/perp/wpa_supplicant/"
+
+    chmod 755 "${destdir}"/etc/perp/wpa_supplicant/rc.*
+
+    # Be an active service by default
+    chmod +t "${destdir}/etc/perp/wpa_supplicant"
+
+    # To manage dot (new) files via graft(1)
+
+    touch "${destdir}/etc/.graft-config" \
+          "${destdir}/etc/dbus-1/system.d/.graft-config" \
+          "${destdir}/etc/perp/wpa_supplicant/.graft-config"
 
     # Install (missing) manpages
 
