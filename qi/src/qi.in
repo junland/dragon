@@ -43,6 +43,7 @@ usage()
      "  -x          Extract packages for debugging purposes"            \
      ""                                                                 \
      "Common options:"                                                  \
+     "  -L          Print and exit default directory locations"         \
      "  -N          Don't read the configuration file"                  \
      "  -P  <DIR>   Package directory for (de)installations;"           \
      "              only valid for -i, -d, or -u options"               \
@@ -1128,9 +1129,16 @@ infodir=@INFODIR@
 mandir=@MANDIR@
 docdir=@DOCDIR@
 
+# Store default locations
+QI_TARGETDIR=$targetdir
+QI_PACKAGEDIR=$packagedir
+QI_WORKTREE=$worktree
+QI_TARDIR=$tardir
+QI_OUTDIR=$outdir
+
 #### Parse options
 
-while getopts :bcdiouxNP:t:fkvO:W:Z:a:j:1npr:hV name
+while getopts :bcdiouxLNP:t:fkvO:W:Z:a:j:1npr:hV name
 do
     case $name in
     b)
@@ -1174,6 +1182,15 @@ do
         ;;
     x)
         mode=extract_mode
+        ;;
+    L)
+        printf "%s\n" \
+         "QI_TARGETDIR=$QI_TARGETDIR"    \
+         "QI_PACKAGEDIR=$QI_PACKAGEDIR"  \
+         "QI_WORKTREE=$QI_WORKTREE"      \
+         "QI_TARDIR=$QI_TARDIR"          \
+         "QI_OUTDIR=$QI_OUTDIR"
+        exit 0
         ;;
     N)
         RC=RC.off
