@@ -1,7 +1,7 @@
 # Build recipe for xf86-video-intel.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=xf86-video-intel
-version=20170826
+version=20180223
 release=1
 
 tarname=${program}-${version}.tar.xz
@@ -34,7 +34,7 @@ homepage=http://www.x.org
 license="MIT X Consortium"
 
 # Source documentation
-docs="AUTHORS COPYING ChangeLog NEWS README"
+docs="AUTHORS COPYING NEWS README"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -48,7 +48,7 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./autogen.sh CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
@@ -62,36 +62,28 @@ build()
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
+    # Fix manpage number (thanks to BLFS!)
+
+    mkdir -p "${destdir}/${mandir}/man1"
+    mv "${destdir}/${mandir}/man4/intel-virtual-output.4" \
+       "${destdir}/${mandir}/man1/intel-virtual-output.1" 
+
+    sed -i '/\.TH/s/4/1/' \
+     "${destdir}/${mandir}/man1/intel-virtual-output.1"
 
     # Compress and link man pages (if needed)
-    if test -d "${destdir}/$mandir"
-    then
-        (
-            cd "${destdir}/$mandir"
-            find . -type f -exec lzip -9 '{}' +
-            find . -type l | while read -r file
-            do
-                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
-                rm -- "$file"
-            done
-        )
-    fi
+    (
+        cd "${destdir}/$mandir"
+        find . -type f -exec lzip -9 '{}' +
+        find . -type l | while read -r file
+        do
+            ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+            rm -- "$file"
+        done
+    )
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}/"
 }
 
