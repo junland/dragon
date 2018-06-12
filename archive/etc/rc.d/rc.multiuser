@@ -1,6 +1,6 @@
 #! /bin/sh -
 #
-# Multi-user mode
+# Multi-user mode script
 #
 # Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
@@ -16,8 +16,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Parse config file
+# Parse config file.
+#
+# Values given in /proc/cmdline have priority over those present in the
+# configuration file "/etc/rc.conf"
 
+if grep -q RC_ /proc/cmdline
+then
+    tr -s '[:space:]' '\n' < /proc/cmdline | \
+     while IFS='=' read -r variable value
+     do
+         case $variable in
+         RC_?*)
+             # Set variable value avoiding possible code execution
+             eval "$variable=\${value}"
+             ;;
+         esac
+     done
+fi
 if test -f /etc/rc.conf
 then
     while IFS='=' read -r variable value
@@ -28,8 +44,10 @@ then
             ;;
         esac
 
-        # Set variable name avoiding code execution
-        eval "$variable=\${value}"
+        if test -z "$variable"
+        then
+            eval "$variable=\${value}"
+        fi
     done < /etc/rc.conf
 fi
 
@@ -38,13 +56,25 @@ IFS='
  	'
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
 
-# Set host name and domain name for the system from /etc/rc.conf.
-# This overrides any value given for sysctl(8)
+# Set system clock (2/2)
 
-echo "${HOSTNAME:-dragora}"        > /proc/sys/kernel/hostname
-echo "${DOMAINNAME:-example.net}"  > /proc/sys/kernel/domainname
+if test "${RC_HWCLOCK:-UTC}" = UTC
+then
+    echo "(Startup) Setting system time from the hardware clock to UTC"
+    hwclock --hctosys --utc
+else
+    echo "(Startup) The system time was already set to local time" 1>&2
+fi
 
-unset HOSTNAME DOMAINNAME
+unset RC_HWCLOCK
+
+# Set host name and domain name for the system; this overrides any
+# value given with sysctl(8)
+
+echo "${RC_HOSTNAME:-dragora}"        > /proc/sys/kernel/hostname
+echo "${RC_DOMAINNAME:-example.net}"  > /proc/sys/kernel/domainname
+
+unset RC_HOSTNAME RC_DOMAINNAME
 
 # Start the loopback device
 
@@ -90,15 +120,15 @@ fi
 
 # Load keyboard map from /etc/rc.conf
 
-if test -n "$KEYMAP"
+if test -n "$RC_KEYMAP"
 then
-    loadkeys "$KEYMAP"
-    unset KEYMAP
+    loadkeys "$RC_KEYMAP"
+    unset RC_KEYMAP
 fi
 
-# Set terminal attributes from /etc/rc.conf
+# Set terminal attributes
 
 # Screen blanking interval, default sets to 15 minutes
-setterm -blank "${BLANKTIME:-15}"
-unset BLANKTIME
+setterm -blank "${RC_BLANKTIME:-15}"
+unset RC_BLANKTIME
 

@@ -44,7 +44,7 @@ echo "(Shutdown) Saving random number generator"
 echo "    /dev/urandom <-> /etc/random-seed ..."
 
 # Read pool size from /proc or assign a default value
-read -r < /proc/sys/kernel/random/poolsize size || size=4096
+read -r < /proc/sys/kernel/random/poolsize size || size=2048
 
 # Save seed file containing the whole entropy pool
 dd if=/dev/urandom of=/etc/random-seed count=1 bs=${size} 2> /dev/null
@@ -79,10 +79,10 @@ wait
 case $0 in
     *.reboot)
         echo "Rebooting ..."
-        reboot
+        reboot -d -f
         ;;
     *)
-        poweroff
+        halt -d -f -p
         ;;
 esac
 

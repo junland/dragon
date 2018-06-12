@@ -144,7 +144,7 @@ fi
 
 # Set system clock (2/2)
 
-if test "${HWCLOCK:-UTC}" = UTC
+if test "${RC_HWCLOCK:-UTC}" = UTC
 then
     echo "(Startup) Setting system time from the hardware clock to UTC"
     hwclock --hctosys --utc
@@ -152,7 +152,7 @@ else
     echo "(Startup) The system time was already set to local time" 1>&2
 fi
 
-unset HWCLOCK
+unset RC_HWCLOCK
 
 # Re-mount the root filesystem in *read-write mode*
 echo "(Startup) Remounting root filesystem in read-write mode"
@@ -165,7 +165,7 @@ ln -sf /proc/mounts /etc/mtab
 echo "(Startup) Mounting local file systems [only]"
 mount -a -t no,proc,sysfs,devtmpfs,shm,devpts,usbfs,cifs,smbfs,nfs
 
-# Activate possible swap partitions or swap files
+# Activate swap partitions or swap files
 
 echo "(Startup) Activating swap devices, if any"
 swapon -v -a
@@ -207,23 +207,23 @@ sysctl -q --system
 echo "(Startup) Initializing random number generator"
 echo "    /etc/random-seed <-> /dev/urandom ..."
 
-if test -f /etc/random-seed
+if test -f /etc/random-seed && test -s /etc/random-seed
 then
     cat /etc/random-seed > /dev/urandom
 fi
 
 # Read pool size from /proc or assign a default value
-read -r < /proc/sys/kernel/random/poolsize size || size=4096
+read -r < /proc/sys/kernel/random/poolsize size || size=2048
 
 # Save seed file containing the whole entropy pool
 dd if=/dev/urandom of=/etc/random-seed count=1 bs=${size} 2> /dev/null
 
-chmod 600 /etc/random-seed
 unset size
+chmod 600 /etc/random-seed
 
 # Update kernel modules
 
-if test -f /lib/modules/"$(uname -r)"/modules.dep
+if test -f "/lib/modules/$(uname -r)/modules.dep"
 then
     echo "(Startup) Refreshing kernel module list: depmod --quick"
     depmod --quick
