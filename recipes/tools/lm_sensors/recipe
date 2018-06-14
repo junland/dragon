@@ -16,7 +16,7 @@
 
 program=lm_sensors
 version=3.4.0
-release=1
+release=2
 
 tarname=${program}-${version}.tar.bz2
 
@@ -59,6 +59,7 @@ build()
     done
 
     make -j${jobs} V=1 LIBICONV=-lc \
+     BUILD_STATIC_LIB=0 \
      PREFIX=/usr LIBDIR=/usr/lib${libSuffix} MANDIR=$mandir \
      DESTDIR="$destdir" install
 
@@ -67,7 +68,7 @@ build()
      awk '/ELF/ && /executable/ || /shared object/' | \
       cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
 
-    strip --strip-debug "${destdir}/usr/lib${libSuffix}"/*.a
+    #strip --strip-debug "${destdir}/usr/lib${libSuffix}"/*.a
 
     # To manage (dot) new config via graft(1)
     touch "${destdir}/etc/.graft-config"
