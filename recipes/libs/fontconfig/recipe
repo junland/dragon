@@ -17,13 +17,13 @@
 
 program=fontconfig
 version=2.13.0
-release=1
+release=2
 
 description="
 Library for font configuration.
 
-The fontconfig package is a library for
-configuring and customizing font access.
+The fontconfig package is a library for configuring and customizing
+font access.
 "
 
 homepage=http://www.freedesktop.org/wiki/Software/fontconfig/
@@ -48,11 +48,17 @@ build() {
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # Make sure the system regenerates src/fcobjshash.h (Thanks to BLFS!)
+    rm -f src/fcobjshash.h
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
     --libdir=/usr/lib${libSuffix} \
     --mandir=$mandir \
     --docdir=$docsdir \
+    --disable-static \
+    --enable-shared \
+    --disable-docs \
     --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
