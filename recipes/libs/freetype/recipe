@@ -17,7 +17,7 @@
 
 program=freetype
 version=2.9
-release=1
+release=2
 
 description="
 A font engine.
@@ -56,8 +56,11 @@ build() {
     --libdir=/usr/lib${libSuffix} \
     --mandir=$mandir \
     --docdir=$docsdir \
-    --build="$(cc -dumpmachine)" \
-    || true
+    --disable-static \
+    --enable-shared \
+    --with-bzip2=yes \
+    --with-zlib=yes \
+    --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
@@ -66,9 +69,6 @@ build() {
     find "$destdir" -type f | xargs file | \
      awk '/ELF/ && /executable/ || /shared object/' | \
       cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
-
-    find "$destdir" -type f | xargs file | awk '/current ar archive/' | \
-     cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null
 
     # Compress manual pages
     if [ -d "${destdir}/$mandir" ] ; then
