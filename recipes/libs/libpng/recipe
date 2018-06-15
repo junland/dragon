@@ -1,7 +1,7 @@
 # Build recipe for libpng.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues, <mprodrigues@dragora.org>.
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 program=libpng
 version=1.6.34
-release=1
+release=2
 
 description="
 The main PNG library.
@@ -49,12 +49,17 @@ build() {
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    # Include animated PNG functionality in libpng
+    patch -p1 < "${worktree}/patches/libpng/libpng-1.6.34-apng.patch"
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" LIBS='-lpthread' \
     $configure_args \
     --libdir=/usr/lib${libSuffix} \
     --infodir=$infodir \
     --mandir=$mandir \
     --docdir=$docsdir \
+    --disable-static \
+    --enable-shared \
     --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
