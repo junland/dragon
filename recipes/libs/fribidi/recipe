@@ -1,6 +1,7 @@
 # Build recipe for FriBidi.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,13 +16,13 @@
 # limitations under the License.
 
 program=fribidi
-version=1.0.2
+version=1.0.4
 release=1
 
 tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch=http://github.com/fribidi/fribidi/releases/download/v1.0.2/$tarname
+fetch=http://github.com/fribidi/fribidi/releases/download/v${version}/$tarname
 
 description="
 A Free Implementation of the Unicode Bidirectional Algorithm.
@@ -31,8 +32,8 @@ is needed in order to support right-to-left languages such as Arabic
 and Hebrew.  It is used in display software like KDE's SVG modules.
 "
 
-homepage=https://github.com/fribidi/fribidi/
-license=GPL
+homepage=http://github.com/fribidi/fribidi/
+license=LGPLv2.1
 
 docs="AUTHORS ChangeLog COPYING NEWS README THANKS TODO"
 docsdir="${docdir}/${program}-${version}"
@@ -44,15 +45,18 @@ build()
 
     cd "$srcdir"
 
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
-    --disable-docs \
-    --build="$(cc -dumpmachine)"
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --infodir=$infodir \
+     --build="$(cc -dumpmachine)"
      
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} V=1 DESTDIR="$destdir" install-strip
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
@@ -77,9 +81,6 @@ build()
      
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-        
-    for file in $docs
-    do
-       cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
+
