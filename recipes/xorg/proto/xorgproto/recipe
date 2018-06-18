@@ -16,7 +16,7 @@
 
 program=xorgproto
 version=2018.4
-release=1
+release=2
 
 tarname=${program}-${version}.tar.bz2
 
@@ -52,12 +52,17 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --mandir=$mandir \
-     --docdir=$docsdir
+    mkdir -p build
+    cd build
 
-    make -j${jobs} DESTDIR="$destdir" install
+    meson setup $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --buildtype=release \
+     -Dlegacy=true \
+     ..
+
+    ninja
+    DESTDIR="$destdir" ninja install
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
