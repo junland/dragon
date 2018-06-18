@@ -1,6 +1,7 @@
 # Build recipe for HarfBuzz.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018, Matias Fonzo <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,18 +16,18 @@
 # limitations under the License.
 
 program=harfbuzz
-version=1.7.6
+version=1.8.1
 release=1
 
 tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch=https://www.freedesktop.org/software/harfbuzz/release/$tarname
+fetch=http://www.freedesktop.org/software/harfbuzz/release/$tarname
 
 description="
 An OpenType text shaping engine.
 
-Used in latest versions of Firefox, GNOME, ChromeOS, Chrome, LibreOffice, XeTeX, and KDE, among other places.
+The harfbuzz package contains an OpenType text shaping engine.
 "
 
 homepage=https://www.freedesktop.org/wiki/Software/HarfBuzz/
@@ -42,15 +43,23 @@ build()
 
     cd "$srcdir"
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
-    --with-gobject \
-    --build="$(cc -dumpmachine)"
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --infodir=$infodir \
+     --docdir=$docsdir \
+     --with-glib=yes \
+     --with-gobject=yes \
+     --with-fontconfig=yes \
+     --with-freetype=yes \
+     --build="$(cc -dumpmachine)"
      
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} V=1 DESTDIR="$destdir" install-strip
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
@@ -75,9 +84,6 @@ build()
      
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-        
-    for file in $docs
-    do
-       cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}/"
 }
+
