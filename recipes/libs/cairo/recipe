@@ -1,6 +1,7 @@
 # Build recipe for Cairo.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,16 +27,15 @@ fetch=http://www.cairographics.org/releases/$tarname
 description="
 A vector graphics library. 
   
-Designed to provide high-quality display and print output.
-Cairo is designed to produce identical output on all output media
-while taking advantage of display hardware acceleration when available.
+Cairo is designed to produce identical output on all output media while
+taking advantage of display hardware acceleration when available.
 "
 
-homepage=https://www.cairographics.org/
-license="LGPL | MPL"
+homepage=http://www.cairographics.org/
+license="LGPLv2.1 | MPLv1.1"
 
 # Copy documentation
-docs="AUTHORS BIBLIOGRAPHY BUGS CODING_STYLE COPYING COPYING-LGPL-2.1 COPYING-MPL-1.1 HACKING INSTALL NEWS README"
+docs="AUTHORS BIBLIOGRAPHY BUGS CODING_STYLE COPYING* HACKING NEWS README"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -44,17 +44,23 @@ build()
     unpack "${tardir}/$tarname"
     
     cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
     
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
-    --disable-static \
-    --enable-tee \
-    --build="$(cc -dumpmachine)"
+    ./configure \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --infodir=$infodir \
+     --enable-static=no \
+     --enable-shared=yes \
+     --enable-tee \
+     --build="$(cc -dumpmachine)"
     
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
@@ -85,3 +91,4 @@ build()
         cp -p $file "${destdir}${docsdir}"
     done
 }
+
