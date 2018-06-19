@@ -1,6 +1,7 @@
 # Build recipe for ATK.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,14 +27,14 @@ fetch=http://ftp.gnome.org/pub/gnome/sources/atk/2.28/$tarname
 description="
 A library of accessibility functions.
 
-It is used by the GTK+-2 toolkit. 
-ATK is part of the GNOME Accessibility Framework.
+It is used by the GTK+ toolkit.
 "
 
-homepage=https://developer.gnome.org/atk/
+homepage=http://developer.gnome.org/atk/
 license=LGPL
 
-docs=""
+# Source documentation
+docs="AUTHORS COPYING NEWS README"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -43,19 +44,26 @@ build()
 
     cd "$srcdir"
 
-    mkdir -pv build
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    mkdir -p build
     cd build
 
-    meson $configure_args
-    ninja
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     ..
 
+    ninja
     DESTDIR="$destdir" ninja install
+
+    cd ..
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do
-	cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
+
