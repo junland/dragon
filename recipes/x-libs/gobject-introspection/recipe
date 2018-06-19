@@ -1,6 +1,7 @@
 # Build recipe for GObject Introspection.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 # limitations under the License.
 
 program=gobject-introspection
-version=1.56.0
+version=1.56.1
 release=1
 
 tarname=${program}-${version}.tar.xz
@@ -24,19 +25,19 @@ tarname=${program}-${version}.tar.xz
 fetch=http://ftp.gnome.org/pub/gnome/sources/gobject-introspection/1.56/$tarname
 
 description="
-A middleware layer between C libraries (using GObject) and language bindings.
+A layer between C libraries (using GObject) and language bindings.
 
 GObject Introspection is a project for providing machine readable
-introspection data of the API of C libraries. This introspection data
+introspection data of the API of C libraries.  This introspection data
 can be used for automatic code generation for bindings, API
-erification, and documentation generation.
+verification, and documentation generation.
 "
 
 homepage=http://wiki.gnome.org/Projects/GObjectIntrospection/
-license="GPL | LGPL"
+license="GPLv2+ | LGPLv2+, some MIT code in giscanner/"
 
 # Copy documentation
-docs="AUTHORS CONTRIBUTORS COPYING COPYING.GPL COPYING.LGPL ChangeLog NEWS README TODO"
+docs="AUTHORS CONTRIBUTORS COPYING* ChangeLog NEWS README TODO"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -45,21 +46,39 @@ build()
     unpack "${tardir}/$tarname"
     
     cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
     
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
-    --disable-static
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --enable-static=no \
+     --enable-shared=yes \
+     --disable-Bsymbolic \
+     --without-cairo \
+     --build="$(cc -dumpmachine)"
     
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
     
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do 
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
+
