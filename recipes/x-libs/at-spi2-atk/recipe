@@ -1,6 +1,7 @@
 # Build recipe for at-spi2-atk.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 # limitations under the License.
 
 program=at-spi2-atk
-version=2.26.1
+version=2.26.2
 release=1
 
 tarname=${program}-${version}.tar.xz
@@ -24,13 +25,22 @@ tarname=${program}-${version}.tar.xz
 fetch=http://ftp.gnome.org/pub/gnome/sources/at-spi2-atk/2.26/$tarname
 
 description="
-A GTK+ module that bridges ATK to D-Bus at-spi.
+A GTK+ module that bridges ATK to the new D-Bus based AT-SPI.
+
+This package includes libatk-bridge, a library that bridges ATK to the
+new D-Bus based AT-SPI, as well as a corresponding module for gtk+ 2.x.
+Gtk+ 3.x now links against libatk-bridge directly rather than requiring
+it to be loaded as a module.
+
+These libraries depend on the at-spi2-core code that contains the
+daemon for registering applications, D-Bus helper libraries and the
+AT-SPI D-Bus specifications.
 "
 
 homepage=https://wiki.gnome.org/Accessibility/
-license=GPL
+license=GPLv2+
 
-docs="AUTHORS COPYING INSTALL NEWS README"
+docs="AUTHORS COPYING NEWS README"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -40,41 +50,19 @@ build()
 
     cd "$srcdir"
 
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
-    --build="$(cc -dumpmachine)"
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --build="$(cc -dumpmachine)"
                  
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
-
-    # Compress and link man pages (if needed)
-    if test -d "${destdir}/$mandir"
-    then
-        (
-            cd "${destdir}/$mandir"
-            find . -type f -exec lzip -9 '{}' +
-            find . -type l | while read -r file
-            do
-                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
-                rm -- "$file"
-            done
-        )
-    fi
-                 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-                    
-    for file in $docs
-    do
-       cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
+
