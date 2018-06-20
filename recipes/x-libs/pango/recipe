@@ -1,6 +1,7 @@
 # Build recipe for Pango.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 # limitations under the License.
 
 program=pango
-version=1.42.0
+version=1.42.1
 release=1
 
 tarname=${program}-${version}.tar.xz
@@ -26,14 +27,13 @@ fetch=http://ftp.gnome.org/pub/gnome/sources/pango/1.42/$tarname
 description="
 A library for layout and rendering of text.
 
-Pango can be used anywhere that text layout is needed;
-however, most of the work on Pango was done using the GTK+
-widget toolkit as a test platform. Pango forms the core of text and
-font handling for GTK+-2.
+Pango can be used anywhere that text layout is needed; however, most of
+the work on Pango was done using the GTK+ widget toolkit as a test
+platform.  Pango forms the core of text and font handling for GTK+-2.
 "
 
 homepage=http://www.pango.org/Introduction/
-license=LGPLv2
+license=LGPLv2+
 
 # Copy documentation
 docs="AUTHORS COPYING HACKING MAINTAINERS NEWS README THANKS"
@@ -42,24 +42,33 @@ docsdir="${docdir}/${program}-${version}"
 build()
 {
     set -e
+
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
 
-    mkdir -pv build
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    mkdir -p build
     cd build
 
-    meson $configure_args
-    ninja
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --mandir $mandir \
+     --buildtype=release \
+     --strip \
+     ..
 
+    ninja
     DESTDIR="$destdir" ninja install
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
+    cd ..
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -74,13 +83,5 @@ build()
             done
         )
     fi
-
-    # Copy documentation
-    cd ..
-    mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do
-	cp -p $file "${destdir}${docsdir}"
-    done
 }
+
