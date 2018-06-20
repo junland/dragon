@@ -1,0 +1,66 @@
+# Build recipe for Cairo (pass 1).
+#
+# Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=cairo
+version=1.14.12
+release=1
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=http://www.cairographics.org/releases/$tarname
+
+description="
+Temporary installation of cairo.
+
+This is a temporary installation that is replaced with additional
+support included in the final cairo package.
+"
+
+build()
+{
+    if test -d "${packagedir}/$full_pkgname"
+    then
+        echo "A previous installation of cairo has been detected:" 1>&2
+        echo "${packagedir}/$full_pkgname" 1>&2
+        exit 1;
+    fi
+
+    set -e
+
+    unpack "${tardir}/$tarname"
+    
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+    
+    ./configure \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=${TMPDIR}/cairo_installed/man \
+     --docdir=${TMPDIR}/cairo_installed/doc \
+     --enable-static=no \
+     --enable-shared=yes \
+     --enable-tee=yes \
+     --disable-gtk-doc \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=0 && make -j${jobs} install-strip
+    rm -rf -- "${TMPDIR}/cairo_installed"
+}
+
