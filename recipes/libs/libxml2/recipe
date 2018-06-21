@@ -1,6 +1,7 @@
 # Build recipe for libxml2.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,21 +22,20 @@ release=1
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://xmlsoft.org/sources/$tarname
+fetch=ftp://xmlsoft.org/libxml2/$tarname
 
 description="
 A XML C parser library and toolkit.
 
-XML itself is a meta language to design markup languages.
-HTML is the most well-known markup language.
-Though the library is written in C, a variety of language
-bindings make it available in other environments.
+XML itself is a meta language to design markup languages.  HTML is the
+most well-known markup language.  Though the library is written in C,
+a variety of language bindings make it available in other environments.
 "
 
-homepage=http://xmlsoft.org/
+homepage=http://xmlsoft.org
 license=MIT
 
-docs="AUTHORS ChangeLog Copyright INSTALL NEWS README TODO"
+docs="AUTHORS ChangeLog Copyright NEWS README TODO"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -45,17 +45,31 @@ build()
 
     cd "$srcdir"
 
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    # Recommended patch to prevent a segfault when using Python v3
+    # (Thanks to Beyond of Linux From Scratch!)
+    patch -p1 < "${worktree}/patches/libxml2/libxml2-2.9.8-python3_hack-1.patch"
+
+    # To ensure that the Python module can be built by python-3.6
+    sed -i '/_PyVerify_fd/,+1d' python/types.c
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
-    --with-python=/usr/bin/python3 \
-    --with-history \
-    --disable-static \
-    --build="$(cc -dumpmachine)"
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-static=no \
+     --enable-shared=yes \
+     --with-python=/usr/bin/python3 \
+     --with-history \
+     --without-lzma \
+     --build="$(cc -dumpmachine)"
      
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
@@ -80,9 +94,10 @@ build()
      
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-        
+
     for file in $docs
     do
        cp -p $file "${destdir}${docsdir}"
     done
 }
+
