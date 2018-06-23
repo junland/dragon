@@ -1,4 +1,4 @@
-# Recipe file for fontconfig (pass 1).
+# Build recipe for fontconfig (pass1).
 #
 # Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
@@ -18,10 +18,7 @@ program=fontconfig
 version=2.13.0
 release=2
 
-tarname=${program}-${version}.tar.bz2
-
-# Remote source(s)
-fetch=http://www.freedesktop.org/software/fontconfig/release/$tarname
+pkgname=fontconfig_pass1
 
 description="
 Temporary installation of fontconfig.
@@ -30,14 +27,18 @@ This is a temporary installation to satisfy the requirements of Xorg.
 Later, this will be replaced with the fully \"fontconfig\" package.
 "
 
-build() {
-    if test -d "${packagedir}/$full_pkgname"
-    then
-        echo "A previous installation of fontconfig has been detected:" 1>&2
-        echo "${packagedir}/$full_pkgname" 1>&2
-        exit 1;
-    fi
+homepage=http://www.freedesktop.org/wiki/Software/fontconfig/
+license=Custom
 
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://www.freedesktop.org/software/fontconfig/release/$tarname
+
+# Source documentation
+docsdir="${docdir}/${pkgname}-${version}"
+
+build() {
     set -e
 
     unpack "${tardir}/$tarname"
@@ -51,17 +52,29 @@ build() {
     rm -f src/fcobjshash.h
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --libdir=/usr/lib${libSuffix} \
-    --sysconfdir=${TMPDIR}/fontconfig_installed/etc \
-    --mandir=${TMPDIR}/fontconfig_installed/man \
-    --docdir=${TMPDIR}/fontconfig_installed/doc \
-    --disable-static \
-    --enable-shared \
-    --disable-docs \
-    --build="$(cc -dumpmachine)"
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --disable-static \
+     --enable-shared \
+     --disable-docs \
+     --build="$(cc -dumpmachine)"
 
-    make -j${jobs} V=0 && make -j${jobs} install-strip
-    rm -rf -- "${TMPDIR}/fontconfig_installed"
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Compress manual pages
+    if [ -d "${destdir}/$mandir" ] ; then
+	(
+            cd "${destdir}/$mandir"
+	    find . -type f -exec lzip -9 '{}' +
+	    find . -type l | while read -r file
+	    do
+		ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+		rm -- "$file"
+	    done
+	)
+    fi
 }
 
