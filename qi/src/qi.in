@@ -361,7 +361,7 @@ build_mode()
                  "2) No, skipt it [default]\n"              \
                  "3) Resume, skipping completed recipes\n"  \
                  "Choose an option number: " > /dev/tty
-                IFS= read -r REPLY < /dev/tty || chkstatus_or_exit
+                IFS= read -r REPLY < /dev/tty || exit 2;
                 case $REPLY in
                 1*)
                     echo "$REPLY" > /dev/tty
@@ -793,31 +793,35 @@ install_mode()
                  . "$rootdir${packagedir}/${name}/var/lib/qi/${name}.sh"
             )
         fi
+    fi
 
-        # Check if there are declared package names for replacement
-        if test -r "$rootdir${packagedir}/${name}/var/lib/qi/${name}.replace"
-        then
-            while read -r line
+    # Check if there are declared packages for replacement
+    if test -r "$rootdir${packagedir}/${name}/var/lib/qi/${name}.replace"
+    then
+        while read -r line
+        do
+            for replace in "$rootdir${packagedir}/$(pkgbase $line)"-*
             do
-                for replace in "$rootdir${packagedir}/$(pkgbase $line)"-*
-                do
-                    warn "" "*** Replacing package \`${replace}' ..."
+                test -e "$replace" || continue;
 
-                    test -e "$replace" || {
-                        warn "WARNING: declared package does not exist."
-                        continue;
-                    }
+                warn "" "Replacing package \`${replace} ..."
 
-                    # The search for the package to be replaced can not be
-                    # the same to the temporary location coming from upgrade
-                    test "$replace" = "$PRVLOC" && continue;
+                # The search for the package to be replaced can not be
+                # the same to the incoming package, even to the
+                # temporary location coming from the upgrade_mode()
+                if test "$replace" = "$name" || test "$replace" = "$PRVLOC"
+                then
+                    warn "WARNING:" \
+                     "Declared package to be replaced is equal to the incoming package name." \
+                     "The replacement for '$name' will not be performed."
+                    continue;
+                fi
 
-                    opt_force=opt_force opt_keep=opt_keep.off \
-                     delete_mode "${replace##*/}" > /dev/null
-                done
-            done < "$rootdir${packagedir}/${name}/var/lib/qi/${name}.replace"
-            unset line
-        fi
+                opt_force=opt_force opt_keep=opt_keep.off opt_prune=opt_prune \
+                 delete_mode "${replace##*/}" > /dev/null && echo Done.
+            done
+        done < "$rootdir${packagedir}/${name}/var/lib/qi/${name}.replace"
+        unset line
     fi
 
     # Reset given signals
