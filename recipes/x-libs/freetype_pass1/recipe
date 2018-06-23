@@ -1,4 +1,4 @@
-# Build recipe for freetype (pass 1).
+# Build recipe for freetype (pass1).
 #
 # Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
@@ -18,6 +18,8 @@ program=freetype
 version=2.9
 release=3
 
+pkgname=freetype_pass1
+
 tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
@@ -30,14 +32,13 @@ This is a temporary installation to satisfy the requirements of Xorg.
 Later, this will be replaced with the fully \"freetype\" package.
 "
 
-build() {
-    if test -d "${packagedir}/$full_pkgname"
-    then
-        echo "A previous installation of freetype has been detected:" 1>&2
-        echo "${packagedir}/$full_pkgname" 1>&2
-        exit 1; 
-    fi
+homepage=http://www.freetype.org/
+license="GPLv2 | FreeType License (FTL)"
 
+# Source documentation
+docsdir="${docdir}/${pkgname}-${version}"
+
+build() {
     set -e
 
     unpack "${tardir}/$tarname"
@@ -48,19 +49,37 @@ build() {
     chmod -R u+w,go-w,a+rX-s .
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --libdir=/usr/lib${libSuffix} \
-    --mandir=${TMPDIR}/freetype_installed/man \
-    --docdir=${TMPDIR}/freetype_installed/doc \
-    --disable-static \
-    --enable-shared \
-    --with-bzip2=yes \
-    --with-zlib=yes \
-    --with-png=yes \
-    --with-harfbuzz=no \
-    --build="$(cc -dumpmachine)"
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --disable-static \
+     --enable-shared \
+     --with-bzip2=yes \
+     --with-zlib=yes \
+     --with-png=yes \
+     --with-harfbuzz=no \
+     --build="$(cc -dumpmachine)"
 
-    make -j${jobs} V=0 && make -j${jobs} install
-    rm -rf -- "${TMPDIR}/freetype_installed"
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f | xargs file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
+
+    # Compress manual pages
+    if [ -d "${destdir}/$mandir" ] ; then
+	(
+            cd "${destdir}/$mandir"
+	    find . -type f -exec lzip -9 '{}' +
+	    find . -type l | while read -r file
+	    do
+		ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+		rm -- "$file"
+	    done
+	)
+    fi
 }
 
