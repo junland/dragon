@@ -1,4 +1,4 @@
-# Build recipe for Cairo (pass 1).
+# Build recipe for Cairo (pass1).
 #
 # Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
 #
@@ -18,6 +18,8 @@ program=cairo
 version=1.14.12
 release=1
 
+pkgname=cairo_pass1
+
 tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
@@ -30,17 +32,15 @@ This is a temporary installation that is replaced with additional
 support included in the final cairo package.
 "
 
+homepage=http://www.cairographics.org/
+license="LGPLv2.1 | MPLv1.1"
+
+# Copy documentation
+docsdir="${docdir}/${pkgname}-${version}"
+
 build()
 {
-    if test -d "${packagedir}/$full_pkgname"
-    then
-        echo "A previous installation of cairo has been detected:" 1>&2
-        echo "${packagedir}/$full_pkgname" 1>&2
-        exit 1;
-    fi
-
     set -e
-
     unpack "${tardir}/$tarname"
     
     cd "$srcdir"
@@ -52,15 +52,36 @@ build()
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
-     --mandir=${TMPDIR}/cairo_installed/man \
-     --docdir=${TMPDIR}/cairo_installed/doc \
+     --infodir=$infodir \
+     --mandir=$mandir \
      --enable-static=no \
      --enable-shared=yes \
-     --enable-tee=yes \
+     --enable-tee \
      --disable-gtk-doc \
      --build="$(cc -dumpmachine)"
 
-    make -j${jobs} V=0 && make -j${jobs} install-strip
-    rm -rf -- "${TMPDIR}/cairo_installed"
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
 }
 
