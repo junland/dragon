@@ -16,7 +16,6 @@
 
 program=cmake
 version=3.11.4
-#version=3.12.0-rc1
 release=1
 
 tarname=${program}-${version}.tar.gz
@@ -25,12 +24,11 @@ tarname=${program}-${version}.tar.gz
 fetch=http://cmake.org/files/v3.11/$tarname
 
 description="
-A make system.
+Cross-platform make system.
 
-CMake is a family of tools designed to build, test and package software.
-
-CMake is used to control the software compilation process using
-simple platform and compiler independent configuration files.
+CMake is a family of tools designed to build, test and package
+software.  CMake is used to control the software compilation process
+using simple platform and compiler independent configuration files.
 "
 
 homepage=http://www.cmake.org
@@ -53,7 +51,6 @@ build()
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
     ./bootstrap \
      --prefix=/usr \
-     --mandir=$mandir \
      --docdir=/share/doc/${program}-${version} \
      --system-libs \
      --no-system-jsoncpp \
@@ -63,19 +60,5 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
-
-    # Compress and link man pages (if needed)
-    if test -d "${destdir}/$mandir"
-    then
-        (
-            cd "${destdir}/$mandir"
-            find . -type f -exec lzip -9 '{}' +
-            find . -type l | while read -r file
-            do
-                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
-                rm -- "$file"
-            done
-        )
-    fi
 }
 
