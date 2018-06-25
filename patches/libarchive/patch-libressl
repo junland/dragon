@@ -1,0 +1,51 @@
+--- files/patch-libarchive-archive_openssl_evp_private.h	(revision 465490)
++++ files/patch-libarchive-archive_openssl_evp_private.h	(working copy)
+@@ -1,11 +1,12 @@
+---- libarchive/archive_openssl_evp_private.h.orig	Sun Jan 29 06:06:27 2017
+-+++ libarchive/archive_openssl_evp_private.h	Fri Mar 10 12:53:43 2017
+-@@ -28,7 +28,7 @@
++--- libarchive/archive_openssl_evp_private.h.orig	2017-01-29 05:06:27 UTC
+++++ libarchive/archive_openssl_evp_private.h
++@@ -28,7 +28,8 @@
+  #include <openssl/evp.h>
+  #include <openssl/opensslv.h>
+  
+ -#if OPENSSL_VERSION_NUMBER < 0x10100000L
+-+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+++#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+++    (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x2070000fL)
+  #include <stdlib.h> /* malloc, free */
+  #include <string.h> /* memset */
+  static inline EVP_MD_CTX *EVP_MD_CTX_new(void)
+Index: files/patch-libarchive_archive__openssl__hmac__private.h
+===================================================================
+--- files/patch-libarchive_archive__openssl__hmac__private.h	(nonexistent)
++++ files/patch-libarchive_archive__openssl__hmac__private.h	(working copy)
+@@ -0,0 +1,12 @@
++--- libarchive/archive_openssl_hmac_private.h.orig	2018-03-22 20:47:12 UTC
+++++ libarchive/archive_openssl_hmac_private.h
++@@ -28,7 +28,8 @@
++ #include <openssl/hmac.h>
++ #include <openssl/opensslv.h>
++ 
++-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+++#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+++    (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x2070000fL)
++ #include <stdlib.h> /* malloc, free */
++ #include <string.h> /* memset */
++ static inline HMAC_CTX *HMAC_CTX_new(void)
+
+Property changes on: files/patch-libarchive_archive__openssl__hmac__private.h
+___________________________________________________________________
+Added: fbsd:nokeywords
+## -0,0 +1 ##
++yes
+\ No newline at end of property
+Added: svn:eol-style
+## -0,0 +1 ##
++native
+\ No newline at end of property
+Added: svn:mime-type
+## -0,0 +1 ##
++text/plain
+\ No newline at end of property
