@@ -44,22 +44,21 @@ build()
 {
     set -e
     unpack "${tardir}/$tarname"
-    
+
     cd "$srcdir"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
-    
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --enable-static=no \
      --enable-shared=yes \
-     --disable-Bsymbolic \
      --without-cairo \
      --build="$(cc -dumpmachine)"
-    
+
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
@@ -76,7 +75,7 @@ build()
             done
         )
     fi
-    
+
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}"
