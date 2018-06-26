@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=dhcpcd
-version=7.0.5b
+version=7.0.6
 release=1
 
 tarname=${program}-${version}.tar.xz
@@ -42,21 +42,21 @@ docsdir="${docdir}/${program}-${version}"
 build()
 {
     set -e
-    
+
     unpack "${tardir}/$tarname"
-    
+
     cd "$srcdir"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
-    
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
     --libdir=/usr/lib${libSuffix} \
     --libexecdir=/usr/libexecdir/dhcpcd \
     --dbdir=/var/lib/dhcpcd \
     --build="$(cc -dumpmachine)"
-    
+
     make -j${jobs}
     make -j${jobs} DESTDIR="$destdir" install
 
@@ -91,7 +91,7 @@ build()
             done
         )
     fi
-    
+
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}/"
