@@ -1,6 +1,6 @@
-# Build script for the single-purpose initramfs (liveCD).
+# Build script for the single-purpose initramfs (Live CD).
 #
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,14 +30,15 @@ cat << "EOF" > "${rootdir}/initrd/init"
 /bin/busybox sleep 3
 
 /bin/busybox mount -n -o rw,size=100% -t tmpfs tmpfs /.UP
-/bin/busybox mkdir /.UP/cdrom /.UP/rw /.UP/squash /.UP/union
+/bin/busybox mkdir /.UP/cdrom /.UP/squash /.UP/rw /.UP/work /.UP/union
 
 # Mount ISO and system image
 /bin/busybox mount -n -t iso9660 LABEL=Dragora /.UP/cdrom
 /bin/busybox mount -n -o loop -t squashfs /.UP/cdrom/dragora.sfs /.UP/squash
 
-# Merge Squashfs with AUFS
-/bin/busybox mount -o br=/.UP/rw:/.UP/squash -t aufs none /.UP/union
+/bin/busybox mount -n \
+ -o lowerdir=/.UP/squash,upperdir=/.UP/rw,workdir=/.UP/work \
+ -t overlay overlay /.UP/union
 
 # Move virtual file systems prior to switch_root
 /bin/busybox mount --move /dev   /.UP/union/dev
@@ -51,9 +52,8 @@ EOF
 chmod 750 "${rootdir}/initrd/init"
 
 # Make initramfs
-cd -- "${rootdir}/initrd"
-rm -f initrd.img
+cd -- "${rootdir}/initrd" && rm -f initrd.img
 
 find . | sed 's!^./!!' | cpio -oC512 -H newc | \
- lzip -9c --dictionary-size=16 > initrd.img
+ lzip -6c --dictionary-size=16 > initrd.img
 
