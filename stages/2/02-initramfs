@@ -15,19 +15,20 @@
 # limitations under the License.
 
 mkdir -p -- "${rootdir}/initrd"
+cd -- "${rootdir}/initrd"
 
-cat << "EOF" > "${rootdir}/initrd/init"
+# Create essential directories for the image
+
+mkdir -p dev proc sys .UP
+
+cat << "EOF" > init
 #! /bin/busybox ash
-
-/bin/busybox sleep 7
-
-/bin/busybox mkdir -p /dev /proc /sys /.UP
 
 /bin/busybox mount -n -o nosuid,noexec,nodev -t proc proc /proc
 /bin/busybox mount -n -o nosuid,noexec,nodev -t sysfs sysfs /sys
 /bin/busybox mount -n -t devtmpfs devtmpfs /dev
 
-/bin/busybox sleep 3
+/bin/busybox sleep 1
 
 /bin/busybox mount -n -o rw,size=100% -t tmpfs tmpfs /.UP
 /bin/busybox mkdir /.UP/cdrom /.UP/squash /.UP/rw /.UP/work /.UP/union
@@ -36,6 +37,7 @@ cat << "EOF" > "${rootdir}/initrd/init"
 /bin/busybox mount -n -t iso9660 LABEL=Dragora /.UP/cdrom
 /bin/busybox mount -n -o loop -t squashfs /.UP/cdrom/dragora.sfs /.UP/squash
 
+# Merge Squashfs with OverlayFS
 /bin/busybox mount -n \
  -o lowerdir=/.UP/squash,upperdir=/.UP/rw,workdir=/.UP/work \
  -t overlay overlay /.UP/union
@@ -49,11 +51,11 @@ exec /bin/busybox switch_root /.UP/union /sbin/init
 
 EOF
 
-chmod 750 "${rootdir}/initrd/init"
+chmod 750 ./init
 
 # Make initramfs
-cd -- "${rootdir}/initrd" && rm -f initrd.img
 
+rm -f ./initrd.img
 find . | sed 's!^./!!' | cpio -oC512 -H newc | \
  lzip -6c --dictionary-size=16 > initrd.img
 
