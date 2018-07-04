@@ -249,14 +249,10 @@ build_mode()
           fetch description homepage license replace full_pkgname \
           CFLAGS CXXFLAGS LDFLAGS
 
-    # The following variables must be restored later (1/3)
-    save_arch="${save_arch:=$arch}"
-    save_jobs="${save_jobs:=$jobs}"
-    save_outdir="${save_outdir:=$outdir}"
+    # The following variables must be restored later (1/2)
+    save_arch=$arch ; save_jobs=$jobs ; save_outdir=$outdir
 
-    unset arch jobs
-
-    # The following variables can not be redefined on the recipe
+    # The following variables cannot be redefined on the recipe
     readonly worktree netget rsync
 
     # Import the recipe
@@ -301,10 +297,6 @@ build_mode()
     pkgversion="${pkgversion:=$version}"
     srcdir="${srcdir:=${program}-$version}"
     destdir="${destdir:=${TMPDIR}/package-$pkgname}"
-
-    # Restore variables (2/3)
-    arch="${arch:=$save_arch}"
-    jobs="${jobs:=$save_jobs}"
 
     # Complete package name adding 'pkgversion-arch+release'
     full_pkgname="${full_pkgname:=$pkgname-${pkgversion}-${arch}+${release}}"
@@ -579,7 +571,9 @@ build_mode()
         upgrade_mode "${outdir}/${full_pkgname}.tlz"
     fi
 
-    # Restore variables (3/3)
+    # Restore variables (2/2)
+    arch=$save_arch
+    jobs=$save_jobs
     outdir=$save_outdir
 
     echo ""
@@ -810,7 +804,7 @@ install_mode()
 
                     warn "WARNING: Replacing package \`${replace}' ..."
 
-                    # The search for the package to be replaced can not be
+                    # The search for the package to be replaced cannot be
                     # the same to the incoming package, even to the
                     # temporary location coming from the upgrade_mode()
                     if test "$replace" = "$name" || test "$replace" = "$PRVLOC"
@@ -911,7 +905,7 @@ upgrade_mode()
     do
         found="${long_name##*/}"
 
-        # The search for the package to be deleted can not be
+        # The search for the package to be deleted cannot be
         # the same to the temporary location
         test "$long_name" = "$PRVLOC" && continue;
 
