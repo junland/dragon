@@ -246,7 +246,8 @@ build_mode()
     # the recipe and not coming from ${sysconfdir}/qirc
 
     unset srcdir destdir pkgname pkgversion program version release \
-          fetch description homepage license replace full_pkgname
+          fetch description homepage license replace full_pkgname \
+          CFLAGS CXXFLAGS LDFLAGS
 
     # The following variables must be restored later
     save_arch="${save_arch:=$arch}"
@@ -257,11 +258,7 @@ build_mode()
     # The following variables can not be redefined on the recipe
     readonly outdir worktree netget rsync
 
-    # Recommended practices is to set variables in front of
-    # `configure'/make(1), see documentation of Qi for details.
-    unset CFLAGS CXXFLAGS LDFLAGS
-
-    # Load recipe
+    # Import the recipe
 
     echo "{@} Building from ${CWD}/$recipe ..."
     . "${CWD}/$recipe"
@@ -1331,7 +1328,7 @@ then
         eval "$(graft -L)" ; GRAFT_LOGFILE="${GRAFT_LOGFILE:=/var/log/graft}"
         mkdir -p -- "$rootdir$(dirname -- $GRAFT_LOGFILE)" || chkstatus_or_exit
 
-        # Compose 'rootdir' and log file option to be used in graft
+        # Compose 'rootdir' and log file option to be used with graft(1)
         graft_r="-r $rootdir -l $GRAFT_LOGFILE"
 
         # Unset variables coming from the eval
