@@ -249,8 +249,15 @@ build_mode()
           fetch description homepage license replace full_pkgname \
           CFLAGS CXXFLAGS LDFLAGS
 
-    # The following variables must be restored later (1/2)
-    save_arch=$arch ; save_jobs=$jobs ; save_outdir=$outdir
+    # The following variables must be saved and restored
+    save_arch="${save_arch:=$arch}"
+    save_jobs="${save_jobs:=$jobs}"
+    save_outdir="${save_outdir:=$outdir}"
+
+    # Reset variable values in case of return
+    arch=$save_arch
+    jobs=$save_jobs
+    outdir=$save_outdir
 
     # The following variables cannot be redefined on the recipe
     readonly worktree netget rsync
@@ -570,11 +577,6 @@ build_mode()
     then
         upgrade_mode "${outdir}/${full_pkgname}.tlz"
     fi
-
-    # Restore variables (2/2)
-    arch=$save_arch
-    jobs=$save_jobs
-    outdir=$save_outdir
 
     echo ""
     echo "All done for ${CWD}/${recipe}."
