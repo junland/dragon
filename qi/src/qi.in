@@ -54,9 +54,9 @@ usage()
      "              this is for -b, -d or -u options"                   \
      "  -p          Prune conflicts on package (de)installation"        \
      "  -r          Use the named directory as the root directory"      \
-     "              for installing, deleting, or upgrading packages"    \
-     "              the target directory, and the package directory"    \
-     "              will all be relative to this specific directory"    \
+     "              for installing, deleting, or upgrading packages."   \
+     "              The target directory, package directory will be"    \
+     "              relative to this specific directory"                \
      "  -v          Be verbose (a 2nd -v gives more)"                   \
      ""                                                                 \
      "Options for 'build' mode (-b):"                                   \
@@ -775,7 +775,7 @@ install_mode()
             grep '^#' "$rootdir${packagedir}/${name}/var/lib/qi/${name}.txt"
         elif test -r "${1}.txt"
         then
-            # From the external meta file
+            # From external meta file (current directory)
             grep '^#' "${1}.txt"
         else
             warn "Description file not found for '$name'."
@@ -786,7 +786,7 @@ install_mode()
         then
             echo "Running post-install script for \`${name}' ..."
             (
-                cd -- "${targetdir}"/ && \
+                cd -- "$rootdir"/ && \
                  . "$rootdir${packagedir}/${name}/var/lib/qi/${name}.sh"
             )
         fi
@@ -800,7 +800,7 @@ install_mode()
                 do
                     if ! test -e "$replace"
                     then
-                        warn "${replace}: The declared package name does not exist."
+                        warn "${replace}: Declared package does not exist."
                         continue;
                     fi
 
@@ -817,7 +817,8 @@ install_mode()
                         continue;
                     fi
 
-                    opt_force=opt_force opt_keep=opt_keep.off opt_prune=opt_prune \
+                    opt_force=opt_force opt_keep=opt_keep.off \
+                    opt_prune=opt_prune \
                      delete_mode "${replace##*/}" > /dev/null && echo Done.
                 done
             done < "$rootdir${packagedir}/${name}/var/lib/qi/${name}.replace"
