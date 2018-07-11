@@ -25,7 +25,8 @@ outdir="${outdir}/${arch}/boot"
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=ftp://ftp.gnu.org/gnu/grub/$tarname
+#fetch=ftp://ftp.gnu.org/gnu/grub/$tarname
+fetch=http://git.savannah.nongnu.org/cgit/grub.git/snapshot/$tarname
 
 description="
 A multiboot boot loader.
@@ -52,6 +53,10 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    # This patch contains fixes for Musl
+    # http://patchwork.ozlabs.org/patch/488325/ 
+    patch -p1 < "${worktree}/patches/grub/OpenWrt-Devel-package-grub2-fix-musl-build.patch"
 
     sh ./autogen.sh
 
