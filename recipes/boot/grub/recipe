@@ -15,7 +15,8 @@
 # limitations under the License.
 
 program=grub
-version=2.02
+version=9b37229f013db1b150082ac130be7c20b3db8cea
+pkgversion=9b37229
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -38,8 +39,8 @@ homepage=http://www.gnu.org/software/grub
 license=GPLv3+
 
 # Source documentation
-docs="AUTHORS BUGS COPYING ChangeLog NEWS README THANKS TODO"
-docsdir="${docdir}/${program}-${version}"
+docs="AUTHORS BUGS COPYING NEWS README THANKS TODO"
+docsdir="${docdir}/${program}-${pkgversion}"
 
 build()
 {
@@ -52,15 +53,16 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    sh ./autogen.sh
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --enable-boot-time \
+     --enable-device-mapper \
      --disable-werror \
-     --disable-nls \
      --disable-liblzma \
      --disable-efiemu \
      --build="$(cc -dumpmachine)"
