@@ -16,7 +16,7 @@
 
 program=linux
 version=4.14.53
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/kernel"
@@ -84,41 +84,58 @@ build()
     make -j${jobs} modules
     make INSTALL_MOD_PATH="$destdir" modules_install
 
+    # To extract the kernel string version
+    strver="$(ls -d "${destdir}"/lib/modules/*)"
+    strver="${strver##*/}"
+
     # Install kernel images
     mkdir -p "${destdir}/boot"
-    cp -p .config "${destdir}/boot/config"
-    cp -p System.map "${destdir}/boot/System.map"
-    cp -p "arch/${kernel_arch}/boot/bzImage" "${destdir}/boot/vmlinuz"
+
+    cp -p .config "${destdir}/boot/config-generic-${strver}"
+    cp -p System.map "${destdir}/boot/System.map-generic-${strver}"
+    cp -p "arch/${kernel_arch}/boot/bzImage" "${destdir}/boot/vmlinuz-generic-${strver}"
+
+    # Exclude files from the Graft installation,
+    # this will be copied via post-intall, since
+    # /boot could be a separated partition
+    touch "${destdir}/boot/.nograft"
 
     # Insert post-install script manually
 
-    # This will be recreated on the post-install,
-    # we need to extract the kernel string for it
+    # This must be recreated on post-installation
     rm -f "${destdir}"/lib/modules/${strver}/build \
           "${destdir}"/lib/modules/${strver}/source
-
-    strver="$(ls -d "${destdir}"/lib/modules/*)"
-    strver="${strver##*/}"
 
     mkdir -p "${destdir}/var/lib/qi"
     cat << EOF > "${destdir}/var/lib/qi/${full_pkgname}.sh"
 
-# Kernel version
+# Kernel string version
 strver=$strver
 
-# Generate or update the module dependency list
-chroot . /sbin/depmod -a $strver
+# Copy kernel image from 'packagedir' to 'rootdir/boot'
 
-# Make generic symlinks for this kernel version (if needed)
+mkdir -p -- "${rootdir}/boot"
+
+cp -pf -- "$rootdir${packagedir}/${full_pkgname}/boot/System.map-generic-${strver}" \\
+          "${rootdir}/boot/"
+cp -pf -- "$rootdir${packagedir}/${full_pkgname}/boot/config-generic-${strver}" \\
+          "${rootdir}/boot/"
+cp -pf -- "$rootdir${packagedir}/${full_pkgname}/boot/vmlinuz-generic-${strver}" \\
+          "${rootdir}/boot/"
+
+# Make generic symlinks for this kernel version
 
 srcdir="${srcdir##*/}"
 
 (
     cd lib/modules/${strver} || exit 1
     rm -f build source
-    ln -s /usr/src/${srcdir} build
-    ln -s /usr/src/${srcdir} source
+    ln -sf /usr/src/${srcdir} build
+    ln -sf /usr/src/${srcdir} source
 )
+
+# Generate or update the module dependency list
+chroot . /sbin/depmod -a $strver
 
 EOF
 }
