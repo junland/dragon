@@ -45,18 +45,9 @@ mkdir -p -- "${CDROM}/isolinux"
 
 cd -- "${STAGE1}/boot"
 
-for file in System.map config vmlinuz
+for file in System.map-* config-* vmlinuz-*
 do
-    if test -L $file -a ! -e $file
-    then
-        cp -p "${STAGE1}/$(readlink -- "$file")" "${CDROM}/isolinux/$file"
-    elif test -f $file
-    then
-        cp -p "${STAGE1}/boot/$file" "${CDROM}/isolinux/$file"
-    else
-        echo "No valid symlinks or regular files for copying the kernel" 1>&2
-        exit 1;
-    fi
+    cp -p "${STAGE1}/boot/$file" "${CDROM}/isolinux/${file%%-*}"
 done
 unset file
 
@@ -96,10 +87,10 @@ sha256sum dragora-live.iso > dragora-live.iso.sha256
 
 echo "Finish ..."
 echo ""
-echo "*"
+echo "***"
 echo "The ISO image has been produced at"
 echo "    ${CDROM}/dragora-live.iso"
-echo "*"
+echo "***"
 echo ""
 exit 0
 
