@@ -17,7 +17,7 @@
 program=grub
 version=9b37229f013db1b150082ac130be7c20b3db8cea
 pkgversion=9b37229
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/boot"
@@ -60,7 +60,7 @@ build()
 
     sh ./autogen.sh
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    ./configure \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
@@ -75,18 +75,22 @@ build()
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" \
      bashcompletiondir=/usr/share/bash-completion/completions \
-     install
+     install-strip
 
     # Remove generated charset.alias
     rm -f "${destdir}/usr/lib${libSuffix}/charset.alias"
 
-    # Make boot directory
-    mkdir -p "${destdir}/boot/grub/"
+    # Make required directories
+    mkdir -p "${destdir}/boot/grub/" "${destdir}/etc/default"
+
+    # Insert file for default settings
+    cp -p "${worktree}/archive/grub/etc/default/grub" "${destdir}/etc/default/"
+    chmod 644 "${destdir}/etc/default/grub"
 
     # Manage config (.new) file(s)
-    touch \
-     "${destdir}/etc/grub.d/.graft-config" \
-     "${destdir}/usr/share/bash-completion/completions/.graft-config"
+    touch "${destdir}/etc/default/.graft-config" \
+          "${destdir}/etc/grub.d/.graft-config" \
+          "${destdir}/usr/share/bash-completion/completions/.graft-config"
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
@@ -111,10 +115,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
