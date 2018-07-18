@@ -1972,3 +1972,748 @@ diff -Naurd mpfr-4.0.1-a/src/version.c mpfr-4.0.1-b/src/version.c
 -  return "4.0.1-p5";
 +  return "4.0.1-p6";
  }
+diff -Naurd mpfr-4.0.1-a/PATCHES mpfr-4.0.1-b/PATCHES
+--- mpfr-4.0.1-a/PATCHES	2018-07-10 15:29:07.937776370 +0000
++++ mpfr-4.0.1-b/PATCHES	2018-07-10 15:29:08.017776303 +0000
+@@ -0,0 +1 @@
++tstckintc-casts
+diff -Naurd mpfr-4.0.1-a/VERSION mpfr-4.0.1-b/VERSION
+--- mpfr-4.0.1-a/VERSION	2018-04-27 12:54:17.894594642 +0000
++++ mpfr-4.0.1-b/VERSION	2018-07-10 15:29:08.017776303 +0000
+@@ -1 +1 @@
+-4.0.1-p6
++4.0.1-p7
+diff -Naurd mpfr-4.0.1-a/src/mpfr.h mpfr-4.0.1-b/src/mpfr.h
+--- mpfr-4.0.1-a/src/mpfr.h	2018-04-27 12:54:17.894594642 +0000
++++ mpfr-4.0.1-b/src/mpfr.h	2018-07-10 15:29:08.013776307 +0000
+@@ -27,7 +27,7 @@
+ #define MPFR_VERSION_MAJOR 4
+ #define MPFR_VERSION_MINOR 0
+ #define MPFR_VERSION_PATCHLEVEL 1
+-#define MPFR_VERSION_STRING "4.0.1-p6"
++#define MPFR_VERSION_STRING "4.0.1-p7"
+ 
+ /* User macros:
+    MPFR_USE_FILE:        Define it to make MPFR define functions dealing
+diff -Naurd mpfr-4.0.1-a/src/version.c mpfr-4.0.1-b/src/version.c
+--- mpfr-4.0.1-a/src/version.c	2018-04-27 12:54:17.894594642 +0000
++++ mpfr-4.0.1-b/src/version.c	2018-07-10 15:29:08.017776303 +0000
+@@ -25,5 +25,5 @@
+ const char *
+ mpfr_get_version (void)
+ {
+-  return "4.0.1-p6";
++  return "4.0.1-p7";
+ }
+diff -Naurd mpfr-4.0.1-a/tests/tstckintc.c mpfr-4.0.1-b/tests/tstckintc.c
+--- mpfr-4.0.1-a/tests/tstckintc.c	2018-01-09 12:30:58.000000000 +0000
++++ mpfr-4.0.1-b/tests/tstckintc.c	2018-07-10 15:29:07.989776327 +0000
+@@ -32,6 +32,22 @@
+ 
+ #define ALIGNED(s) (((s) + sizeof (long) - 1) / sizeof (long) * sizeof (long))
+ 
++/* This code ensures alignment to "long". However, this might not be
++   sufficient on some platforms. GCC's -Wcast-align=strict option can
++   be useful, but this needs successive casts to help GCC, e.g.
++
++   newx = (mpfr_ptr) (long *) (void *) old_stack;
++
++   successively casts old_stack (of type char *) to
++   - void *: avoid a false positive for the following cast to long *
++     (as the code takes care of alignment to "long");
++   - long *: this corresponds to the alignment checked by MPFR; coming
++     from void *, it will not trigger a warning (even if incorrect);
++   - mpfr_ptr: -Wcast-align=strict will emit a warning if mpfr_ptr has
++     an alignment requirement stronger than long *. In such a case,
++     the code will have to be fixed.
++*/
++
+ static void *
+ new_st (size_t s)
+ {
+@@ -94,12 +110,14 @@
+   void *mantissa       = mpfr_custom_get_significand (x);
+   size_t size_mantissa = mpfr_custom_get_size (mpfr_get_prec (x));
+   mpfr_ptr newx;
++  long *newx2;
+ 
+   memmove (old_stack, x, sizeof (mpfr_t));
+   memmove (old_stack + ALIGNED (sizeof (mpfr_t)), mantissa, size_mantissa);
+-  newx = (mpfr_ptr) old_stack;
+-  mpfr_custom_move (newx, old_stack + ALIGNED (sizeof (mpfr_t)));
+-  stack = old_stack + ALIGNED (sizeof (mpfr_t)) + ALIGNED (size_mantissa);
++  newx = (mpfr_ptr) (long *) (void *) old_stack;
++  newx2 = (long *) (void *) (old_stack + ALIGNED (sizeof (mpfr_t)));
++  mpfr_custom_move (newx, newx2);
++  stack = (char *) newx2 + ALIGNED (size_mantissa);
+   return newx;
+ }
+ 
+@@ -113,7 +131,7 @@
+ 
+   memmove (old_stack, x, sizeof (mpfr_t));
+   memmove (old_stack + ALIGNED (sizeof (mpfr_t)), mantissa, size_mantissa);
+-  newx = (mpfr_ptr) old_stack;
++  newx = (mpfr_ptr) (long *) (void *) old_stack;
+   (mpfr_custom_move) (newx, old_stack + ALIGNED (sizeof (mpfr_t)));
+   stack = old_stack + ALIGNED (sizeof (mpfr_t)) + ALIGNED (size_mantissa);
+   return newx;
+@@ -127,7 +145,7 @@
+   mpfr_ptr x, y;
+ 
+   reset_stack ();
+-  org = (long *) stack;
++  org = (long *) (void *) stack;
+ 
+   x = new_mpfr (p);
+   y = new_mpfr (p);
+@@ -277,7 +295,7 @@
+   long *a, *b, *c;
+ 
+   reset_stack ();
+-  org = (long *) stack;
++  org = (long *) (void *) stack;
+ 
+   a = dummy_set_si (42);
+   b = dummy_set_si (17);
+diff -Naurd mpfr-4.0.1-a/PATCHES mpfr-4.0.1-b/PATCHES
+--- mpfr-4.0.1-a/PATCHES	2018-07-10 15:33:45.189532503 +0000
++++ mpfr-4.0.1-b/PATCHES	2018-07-10 15:33:45.265532432 +0000
+@@ -0,0 +1 @@
++set_d64-ternary
+diff -Naurd mpfr-4.0.1-a/VERSION mpfr-4.0.1-b/VERSION
+--- mpfr-4.0.1-a/VERSION	2018-07-10 15:29:08.017776303 +0000
++++ mpfr-4.0.1-b/VERSION	2018-07-10 15:33:45.261532435 +0000
+@@ -1 +1 @@
+-4.0.1-p7
++4.0.1-p8
+diff -Naurd mpfr-4.0.1-a/src/mpfr.h mpfr-4.0.1-b/src/mpfr.h
+--- mpfr-4.0.1-a/src/mpfr.h	2018-07-10 15:29:08.013776307 +0000
++++ mpfr-4.0.1-b/src/mpfr.h	2018-07-10 15:33:45.261532435 +0000
+@@ -27,7 +27,7 @@
+ #define MPFR_VERSION_MAJOR 4
+ #define MPFR_VERSION_MINOR 0
+ #define MPFR_VERSION_PATCHLEVEL 1
+-#define MPFR_VERSION_STRING "4.0.1-p7"
++#define MPFR_VERSION_STRING "4.0.1-p8"
+ 
+ /* User macros:
+    MPFR_USE_FILE:        Define it to make MPFR define functions dealing
+diff -Naurd mpfr-4.0.1-a/src/set_d64.c mpfr-4.0.1-b/src/set_d64.c
+--- mpfr-4.0.1-a/src/set_d64.c	2018-01-09 12:30:58.000000000 +0000
++++ mpfr-4.0.1-b/src/set_d64.c	2018-07-10 15:33:45.237532458 +0000
+@@ -425,7 +425,7 @@
+                       1 character for terminating \0. */
+ 
+   decimal64_to_string (s, d);
+-  return mpfr_set_str (r, s, 10, rnd_mode);
++  return mpfr_strtofr (r, s, NULL, 10, rnd_mode);
+ }
+ 
+ #endif /* MPFR_WANT_DECIMAL_FLOATS */
+diff -Naurd mpfr-4.0.1-a/src/version.c mpfr-4.0.1-b/src/version.c
+--- mpfr-4.0.1-a/src/version.c	2018-07-10 15:29:08.017776303 +0000
++++ mpfr-4.0.1-b/src/version.c	2018-07-10 15:33:45.261532435 +0000
+@@ -25,5 +25,5 @@
+ const char *
+ mpfr_get_version (void)
+ {
+-  return "4.0.1-p7";
++  return "4.0.1-p8";
+ }
+diff -Naurd mpfr-4.0.1-a/tests/tget_set_d64.c mpfr-4.0.1-b/tests/tget_set_d64.c
+--- mpfr-4.0.1-a/tests/tget_set_d64.c	2018-01-09 12:30:58.000000000 +0000
++++ mpfr-4.0.1-b/tests/tget_set_d64.c	2018-07-10 15:33:45.237532458 +0000
+@@ -381,6 +381,66 @@
+   mpfr_clear (x);
+ }
+ 
++static void
++powers_of_10 (void)
++{
++  mpfr_t x1, x2;
++  _Decimal64 d[2];
++  int i, rnd;
++  unsigned int neg;
++
++  mpfr_inits2 (200, x1, x2, (mpfr_ptr) 0);
++  for (i = 0, d[0] = 1, d[1] = 1; i < 150; i++, d[0] *= 10, d[1] /= 10)
++    for (neg = 0; neg <= 3; neg++)
++      RND_LOOP_NO_RNDF (rnd)
++        {
++          int inex1, inex2;
++          mpfr_flags_t flags1, flags2;
++          mpfr_rnd_t rx1;
++          _Decimal64 dd;
++
++          inex1 = mpfr_set_si (x1, (neg >> 1) ? -i : i, MPFR_RNDN);
++          MPFR_ASSERTN (inex1 == 0);
++
++          rx1 = (neg & 1) ?
++            MPFR_INVERT_RND ((mpfr_rnd_t) rnd) : (mpfr_rnd_t) rnd;
++          mpfr_clear_flags ();
++          inex1 = mpfr_exp10 (x1, x1, rx1);
++          flags1 = __gmpfr_flags;
++
++          dd = d[neg >> 1];
++
++          if (neg & 1)
++            {
++              MPFR_SET_NEG (x1);
++              inex1 = -inex1;
++              dd = -dd;
++            }
++
++          mpfr_clear_flags ();
++          inex2 = mpfr_set_decimal64 (x2, dd, (mpfr_rnd_t) rnd);
++          flags2 = __gmpfr_flags;
++
++          if (!(mpfr_equal_p (x1, x2) &&
++                SAME_SIGN (inex1, inex2) &&
++                flags1 == flags2))
++            {
++              printf ("Error in powers_of_10 for i=%d, neg=%d, %s\n",
++                      i, neg, mpfr_print_rnd_mode ((mpfr_rnd_t) rnd));
++              printf ("Expected ");
++              mpfr_dump (x1);
++              printf ("with inex = %d and flags =", inex1);
++              flags_out (flags1);
++              printf ("Got      ");
++              mpfr_dump (x2);
++              printf ("with inex = %d and flags =", inex2);
++              flags_out (flags2);
++              exit (1);
++            }
++        }
++  mpfr_clears (x1, x2, (mpfr_ptr) 0);
++}
++
+ int
+ main (void)
+ {
+@@ -401,6 +461,7 @@
+   check_overflow ();
+ #endif
+   check_tiny ();
++  powers_of_10 ();
+ 
+   tests_end_mpfr ();
+   return 0;
+diff -Naurd mpfr-4.0.1-a/PATCHES mpfr-4.0.1-b/PATCHES
+--- mpfr-4.0.1-a/PATCHES	2018-07-10 15:46:13.596797032 +0000
++++ mpfr-4.0.1-b/PATCHES	2018-07-10 15:46:13.676796949 +0000
+@@ -0,0 +1 @@
++buffer_sandwich
+diff -Naurd mpfr-4.0.1-a/VERSION mpfr-4.0.1-b/VERSION
+--- mpfr-4.0.1-a/VERSION	2018-07-10 15:33:45.261532435 +0000
++++ mpfr-4.0.1-b/VERSION	2018-07-10 15:46:13.676796949 +0000
+@@ -1 +1 @@
+-4.0.1-p8
++4.0.1-p9
+diff -Naurd mpfr-4.0.1-a/src/mpfr.h mpfr-4.0.1-b/src/mpfr.h
+--- mpfr-4.0.1-a/src/mpfr.h	2018-07-10 15:33:45.261532435 +0000
++++ mpfr-4.0.1-b/src/mpfr.h	2018-07-10 15:46:13.672796954 +0000
+@@ -27,7 +27,7 @@
+ #define MPFR_VERSION_MAJOR 4
+ #define MPFR_VERSION_MINOR 0
+ #define MPFR_VERSION_PATCHLEVEL 1
+-#define MPFR_VERSION_STRING "4.0.1-p8"
++#define MPFR_VERSION_STRING "4.0.1-p9"
+ 
+ /* User macros:
+    MPFR_USE_FILE:        Define it to make MPFR define functions dealing
+diff -Naurd mpfr-4.0.1-a/src/vasprintf.c mpfr-4.0.1-b/src/vasprintf.c
+--- mpfr-4.0.1-a/src/vasprintf.c	2018-01-09 12:30:58.000000000 +0000
++++ mpfr-4.0.1-b/src/vasprintf.c	2018-07-10 15:46:13.648796978 +0000
+@@ -683,20 +683,31 @@
+   else
+     {
+       const size_t step = 3;
+-      const size_t size = len + tz;
+-      const size_t r = size % step == 0 ? step : size % step;
+-      const size_t q = size % step == 0 ? size / step - 1 : size / step;
+-      const size_t fullsize = size + q;
+-      size_t i;
++      size_t size, q, r, fullsize;
+ 
++      /* check that len + tz does not overflow */
++      if (len > (size_t) -1 - tz)
++        return 1;
++
++      size = len + tz;              /* number of digits */
+       MPFR_ASSERTD (size > 0);
+ 
++      q = (size - 1) / step;        /* number of separators C */
++      r = ((size - 1) % step) + 1;  /* number of digits in the leftmost block */
++
++      /* check that size + q does not overflow */
++      if (size > (size_t) -1 - q)
++        return 1;
++
++      fullsize = size + q;          /* number of digits and separators */
++
+       if (buffer_incr_len (b, fullsize))
+         return 1;
+ 
+       if (b->size != 0)
+         {
+           char *oldcurr;
++          size_t i;
+ 
+           MPFR_ASSERTD (*b->curr == '\0');
+           MPFR_ASSERTN (b->size < ((size_t) -1) - fullsize);
+@@ -705,11 +716,21 @@
+ 
+           MPFR_DBGRES (oldcurr = b->curr);
+ 
+-          /* first R significant digits */
+-          memcpy (b->curr, str, r);
++          /* first r significant digits (leftmost block) */
++          if (r <= len)
++            {
++              memcpy (b->curr, str, r);
++              str += r;
++              len -= r;
++            }
++          else
++            {
++              MPFR_ASSERTD (r > len);
++              memcpy (b->curr, str, len);
++              memset (b->curr + len, '0', r - len);
++              len = 0;
++            }
+           b->curr += r;
+-          str += r;
+-          len -= r;
+ 
+           /* blocks of thousands. Warning: STR might end in the middle of a block */
+           for (i = 0; i < q; ++i)
+@@ -722,6 +743,7 @@
+                     {
+                       memcpy (b->curr, str, step);
+                       len -= step;
++                      str += step;
+                     }
+                   else
+                     /* last digits in STR, fill up thousand block with zeros */
+@@ -736,7 +758,6 @@
+                 memset (b->curr, '0', step);
+ 
+               b->curr += step;
+-              str += step;
+             }
+ 
+           MPFR_ASSERTD (b->curr - oldcurr == fullsize);
+@@ -1920,8 +1941,14 @@
+   /* integral part (may also be "nan" or "inf") */
+   MPFR_ASSERTN (np.ip_ptr != NULL); /* never empty */
+   if (MPFR_UNLIKELY (np.thousands_sep))
+-    buffer_sandwich (buf, np.ip_ptr, np.ip_size, np.ip_trailing_zeros,
+-                     np.thousands_sep);
++    {
++      if (buffer_sandwich (buf, np.ip_ptr, np.ip_size, np.ip_trailing_zeros,
++                           np.thousands_sep))
++        {
++          buf->len = -1;
++          goto clear_and_exit;
++        }
++    }
+   else
+     {
+       buffer_cat (buf, np.ip_ptr, np.ip_size);
+diff -Naurd mpfr-4.0.1-a/src/version.c mpfr-4.0.1-b/src/version.c
+--- mpfr-4.0.1-a/src/version.c	2018-07-10 15:33:45.261532435 +0000
++++ mpfr-4.0.1-b/src/version.c	2018-07-10 15:46:13.672796954 +0000
+@@ -25,5 +25,5 @@
+ const char *
+ mpfr_get_version (void)
+ {
+-  return "4.0.1-p8";
++  return "4.0.1-p9";
+ }
+diff -Naurd mpfr-4.0.1-a/tests/tprintf.c mpfr-4.0.1-b/tests/tprintf.c
+--- mpfr-4.0.1-a/tests/tprintf.c	2018-01-09 12:30:58.000000000 +0000
++++ mpfr-4.0.1-b/tests/tprintf.c	2018-07-10 15:46:13.648796978 +0000
+@@ -31,6 +31,10 @@
+ #include <stddef.h>
+ #include <errno.h>
+ 
++#ifdef HAVE_LOCALE_H
++#include <locale.h>
++#endif
++
+ #include "mpfr-intmax.h"
+ #include "mpfr-test.h"
+ #define STDOUT_FILENO 1
+@@ -474,30 +478,41 @@
+   mpfr_clear (x);
+ }
+ 
+-#ifdef HAVE_LOCALE_H
+-
+-#include <locale.h>
+-
+-const char * const tab_locale[] = {
+-  "en_US",
+-  "en_US.iso88591",
+-  "en_US.iso885915",
+-  "en_US.utf8"
+-};
++#if defined(HAVE_LOCALE_H) && defined(HAVE_SETLOCALE)
+ 
+ static void
+ test_locale (void)
+ {
++  const char * const tab_locale[] = {
++    "en_US",
++    "en_US.iso88591",
++    "en_US.iso885915",
++    "en_US.utf8"
++  };
+   int i;
+-  char *s = NULL;
+   mpfr_t x;
+   int count;
++  char v[] = "99999999999999999999999.5";
+ 
+-  for(i = 0; i < numberof(tab_locale) && s == NULL; i++)
+-    s = setlocale (LC_ALL, tab_locale[i]);
++  for (i = 0; i < numberof(tab_locale); i++)
++    {
++      char *s;
+ 
+-  if (s == NULL || MPFR_THOUSANDS_SEPARATOR != ',')
+-    return;
++      s = setlocale (LC_ALL, tab_locale[i]);
++
++      if (s != NULL && MPFR_THOUSANDS_SEPARATOR == ',')
++        break;
++    }
++
++  if (i == numberof(tab_locale))
++    {
++      if (getenv ("MPFR_CHECK_LOCALES") == NULL)
++        return;
++
++      fprintf (stderr, "Cannot find a locale with ',' thousands separator.\n"
++               "Please install one of the en_US based locales.\n");
++      exit (1);
++    }
+ 
+   mpfr_init2 (x, 113);
+   mpfr_set_ui (x, 10000, MPFR_RNDN);
+@@ -507,6 +522,50 @@
+   count = mpfr_printf ("(2) 10000=%'Rf \n", x);
+   check_length (10001, count, 25, d);
+ 
++  mpfr_set_ui (x, 1000, MPFR_RNDN);
++  count = mpfr_printf ("(3) 1000=%'Rf \n", x);
++  check_length (10002, count, 23, d);
++
++  for (i = 1; i <= sizeof (v) - 3; i++)
++    {
++      mpfr_set_str (x, v + sizeof (v) - 3 - i, 10, MPFR_RNDN);
++      count = mpfr_printf ("(4) 10^i=%'.0Rf \n", x);
++      check_length (10002 + i, count, 12 + i + i/3, d);
++    }
++
++#define N0 20
++
++  for (i = 1; i <= N0; i++)
++    {
++      char s[N0+4];
++      int j, rnd;
++
++      s[0] = '1';
++      for (j = 1; j <= i; j++)
++        s[j] = '0';
++      s[i+1] = '\0';
++
++      mpfr_set_str (x, s, 10, MPFR_RNDN);
++
++      RND_LOOP (rnd)
++        {
++          count = mpfr_printf ("(5) 10^i=%'.0R*f \n", (mpfr_rnd_t) rnd, x);
++          check_length (11000 + 10 * i + rnd, count, 12 + i + i/3, d);
++        }
++
++      strcat (s + (i + 1), ".5");
++      count = mpfr_printf ("(5) 10^i=%'.0Rf \n", x);
++      check_length (11000 + 10 * i + 9, count, 12 + i + i/3, d);
++    }
++
++  mpfr_set_str (x, "1000", 10, MPFR_RNDN);
++  count = mpfr_printf ("%'012.3Rg\n", x);
++  check_length (12000, count, 13, d);
++  count = mpfr_printf ("%'012.4Rg\n", x);
++  check_length (12001, count, 13, d);
++  count = mpfr_printf ("%'013.4Rg\n", x);
++  check_length (12002, count, 14, d);
++
+   mpfr_clear (x);
+ }
+ 
+@@ -515,7 +574,11 @@
+ static void
+ test_locale (void)
+ {
+-  /* Nothing */
++  if (getenv ("MPFR_CHECK_LOCALES") != NULL)
++    {
++      fprintf (stderr, "Cannot test locales.\n");
++      exit (1);
++    }
+ }
+ 
+ #endif
+diff -Naurd mpfr-4.0.1-a/tests/tsprintf.c mpfr-4.0.1-b/tests/tsprintf.c
+--- mpfr-4.0.1-a/tests/tsprintf.c	2018-01-10 10:15:30.000000000 +0000
++++ mpfr-4.0.1-b/tests/tsprintf.c	2018-07-10 15:46:13.648796978 +0000
+@@ -380,7 +380,7 @@
+   check_sprintf ("1.00                ", "%-#20.3RG", x);
+   check_sprintf ("0.9999              ", "%-#20.4RG", x);
+ 
+-  /* multiple of 10 */
++  /* powers of 10 */
+   mpfr_set_str (x, "1e17", 10, MPFR_RNDN);
+   check_sprintf ("1e+17", "%Re", x);
+   check_sprintf ("1.000e+17", "%.3Re", x);
+@@ -402,7 +402,7 @@
+   check_sprintf ("1", "%.0RUf", x);
+   check_sprintf ("1", "%.0RYf", x);
+ 
+-  /* multiple of 10 with 'g' style */
++  /* powers of 10 with 'g' style */
+   mpfr_set_str (x, "10", 10, MPFR_RNDN);
+   check_sprintf ("10", "%Rg", x);
+   check_sprintf ("1e+01", "%.0Rg", x);
+@@ -419,6 +419,12 @@
+   check_sprintf ("1e+03", "%.0Rg", x);
+   check_sprintf ("1e+03", "%.3Rg", x);
+   check_sprintf ("1000", "%.4Rg", x);
++  check_sprintf ("1e+03", "%.3Rg", x);
++  check_sprintf ("1000", "%.4Rg", x);
++  check_sprintf ("    1e+03", "%9.3Rg", x);
++  check_sprintf ("     1000", "%9.4Rg", x);
++  check_sprintf ("00001e+03", "%09.3Rg", x);
++  check_sprintf ("000001000", "%09.4Rg", x);
+ 
+   mpfr_ui_div (x, 1, x, MPFR_RNDN);
+   check_sprintf ("0.001", "%Rg", x);
+@@ -430,6 +436,10 @@
+   check_sprintf ("1e+05", "%.0Rg", x);
+   check_sprintf ("1e+05", "%.5Rg", x);
+   check_sprintf ("100000", "%.6Rg", x);
++  check_sprintf ("            1e+05", "%17.5Rg", x);
++  check_sprintf ("           100000", "%17.6Rg", x);
++  check_sprintf ("0000000000001e+05", "%017.5Rg", x);
++  check_sprintf ("00000000000100000", "%017.6Rg", x);
+ 
+   mpfr_ui_div (x, 1, x, MPFR_RNDN);
+   check_sprintf ("1e-05", "%Rg", x);
+@@ -857,6 +867,12 @@
+                   "%.*Zi, %R*e, %Lf", 20, mpz, rnd, x, d);
+ #endif
+ 
++  /* check invalid spec.spec */
++  check_vsprintf ("%,", "%,");
++
++  /* check empty format */
++  check_vsprintf ("%", "%");
++
+   mpf_clear (mpf);
+   mpq_clear (mpq);
+   mpz_clear (mpz);
+@@ -864,12 +880,12 @@
+   return 0;
+ }
+ 
+-#if MPFR_LCONV_DPTS
++#if defined(HAVE_LOCALE_H) && defined(HAVE_SETLOCALE) && MPFR_LCONV_DPTS
+ 
+ /* Check with locale "da_DK". On most platforms, decimal point is ','
+    and thousands separator is '.'; the test is not performed if this
+    is not the case or if the locale doesn't exist. */
+-static int
++static void
+ locale_da_DK (void)
+ {
+   mpfr_prec_t p = 128;
+@@ -878,7 +894,16 @@
+   if (setlocale (LC_ALL, "da_DK") == 0 ||
+       localeconv()->decimal_point[0] != ',' ||
+       localeconv()->thousands_sep[0] != '.')
+-    return 0;
++    {
++      setlocale (LC_ALL, "C");
++
++      if (getenv ("MPFR_CHECK_LOCALES") == NULL)
++        return;
++
++      fprintf (stderr,
++               "Cannot test the da_DK locale (not found or inconsistent).\n");
++      exit (1);
++    }
+ 
+   mpfr_init2 (x, p);
+ 
+@@ -917,10 +942,11 @@
+   check_sprintf ("100" S2 "0000", "%'.4Rf", x);
+ 
+   mpfr_clear (x);
+-  return 0;
++
++  setlocale (LC_ALL, "C");
+ }
+ 
+-#endif  /* MPFR_LCONV_DPTS */
++#endif  /* ... && MPFR_LCONV_DPTS */
+ 
+ /* check concordance between mpfr_asprintf result with a regular mpfr float
+    and with a regular double float */
+@@ -1425,6 +1451,117 @@
+     exit (1);
+ }
+ 
++#if defined(HAVE_LOCALE_H) && defined(HAVE_SETLOCALE)
++
++/* The following tests should be equivalent to those from test_locale()
++   in tprintf.c (remove the \n at the end of the test strings). */
++
++static void
++test_locale (void)
++{
++  const char * const tab_locale[] = {
++    "en_US",
++    "en_US.iso88591",
++    "en_US.iso885915",
++    "en_US.utf8"
++  };
++  int i;
++  mpfr_t x;
++  char v[] = "99999999999999999999999.5";
++
++  for (i = 0; i < numberof(tab_locale); i++)
++    {
++      char *s;
++
++      s = setlocale (LC_ALL, tab_locale[i]);
++
++      if (s != NULL && MPFR_THOUSANDS_SEPARATOR == ',')
++        break;
++    }
++
++  if (i == numberof(tab_locale))
++    {
++      if (getenv ("MPFR_CHECK_LOCALES") == NULL)
++        return;
++
++      fprintf (stderr, "Cannot find a locale with ',' thousands separator.\n"
++               "Please install one of the en_US based locales.\n");
++      exit (1);
++    }
++
++  mpfr_init2 (x, 113);
++  mpfr_set_ui (x, 10000, MPFR_RNDN);
++
++  check_sprintf ("(1) 10000=10,000 ", "(1) 10000=%'Rg ", x);
++  check_sprintf ("(2) 10000=10,000.000000 ", "(2) 10000=%'Rf ", x);
++
++  mpfr_set_ui (x, 1000, MPFR_RNDN);
++  check_sprintf ("(3) 1000=1,000.000000 ", "(3) 1000=%'Rf ", x);
++
++  for (i = 1; i <= sizeof (v) - 3; i++)
++    {
++      char buf[64];
++      int j;
++
++      strcpy (buf, "(4) 10^i=1");
++      for (j = i; j > 0; j--)
++        strcat (buf, ",0" + (j % 3 != 0));
++      strcat (buf, " ");
++      mpfr_set_str (x, v + sizeof (v) - 3 - i, 10, MPFR_RNDN);
++      check_sprintf (buf, "(4) 10^i=%'.0Rf ", x);
++    }
++
++#define N0 20
++
++  for (i = 1; i <= N0; i++)
++    {
++      char s[N0+4], buf[64];
++      int j;
++
++      s[0] = '1';
++      for (j = 1; j <= i; j++)
++        s[j] = '0';
++      s[i+1] = '\0';
++
++      strcpy (buf, "(5) 10^i=1");
++      for (j = i; j > 0; j--)
++        strcat (buf, ",0" + (j % 3 != 0));
++      strcat (buf, " ");
++
++      mpfr_set_str (x, s, 10, MPFR_RNDN);
++
++      check_sprintf (buf, "(5) 10^i=%'.0RNf ", x);
++      check_sprintf (buf, "(5) 10^i=%'.0RZf ", x);
++      check_sprintf (buf, "(5) 10^i=%'.0RUf ", x);
++      check_sprintf (buf, "(5) 10^i=%'.0RDf ", x);
++      check_sprintf (buf, "(5) 10^i=%'.0RYf ", x);
++
++      strcat (s + (i + 1), ".5");
++      check_sprintf (buf, "(5) 10^i=%'.0Rf ", x);
++    }
++
++  mpfr_set_str (x, "1000", 10, MPFR_RNDN);
++  check_sprintf ("00000001e+03", "%'012.3Rg", x);
++  check_sprintf ("00000001,000", "%'012.4Rg", x);
++  check_sprintf ("000000001,000", "%'013.4Rg", x);
++
++  mpfr_clear (x);
++}
++
++#else
++
++static void
++test_locale (void)
++{
++  if (getenv ("MPFR_CHECK_LOCALES") != NULL)
++    {
++      fprintf (stderr, "Cannot test locales.\n");
++      exit (1);
++    }
++}
++
++#endif
++
+ int
+ main (int argc, char **argv)
+ {
+@@ -1446,12 +1583,14 @@
+       binary ();
+       decimal ();
+ 
+-#if defined(HAVE_LOCALE_H) && defined(HAVE_SETLOCALE)
+-#if MPFR_LCONV_DPTS
++#if defined(HAVE_LOCALE_H) && defined(HAVE_SETLOCALE) && MPFR_LCONV_DPTS
+       locale_da_DK ();
+-  /* Avoid a warning by doing the setlocale outside of this #if */
+-#endif
+-      setlocale (LC_ALL, "C");
++#else
++      if (getenv ("MPFR_CHECK_LOCALES") != NULL)
++        {
++          fprintf (stderr, "Cannot test locales.\n");
++          exit (1);
++        }
+ #endif
+     }
+ 
+@@ -1462,6 +1601,7 @@
+   snprintf_size ();
+   percent_n ();
+   mixed ();
++  test_locale ();
+ 
+   if (getenv ("MPFR_CHECK_LIBC_PRINTF"))
+     {
