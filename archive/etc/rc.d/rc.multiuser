@@ -18,8 +18,8 @@
 
 # Parse config file.
 #
-# Values given in /proc/cmdline have priority over those present in the
-# configuration file "/etc/rc.conf"
+# Values given in /proc/cmdline have priority over those
+# present in the configuration file "/etc/rc.conf"
 
 if grep -q RC_ /proc/cmdline
 then
@@ -97,6 +97,20 @@ then
 
     echo "(Startup) Monitoring services through perpd(8) instances"
     PERP_BASE=/etc/perp perpboot -d
+fi
+
+# Verify the /etc/fstab file to activate the quota system
+
+if egrep -q -m 1 '(usr|grp)quota' /etc/fstab
+then
+    if type quotacheck > /dev/null && type quotaon > /dev/null
+    then
+        echo "(Startup) Checking /etc/fstab for quota usage"
+        quotacheck -vugcm && {
+            echo "(Startup) Turn ON quota file system"
+            quotaon -vaug
+        }
+    fi
 fi
 
 # Start ALSA (sound support)

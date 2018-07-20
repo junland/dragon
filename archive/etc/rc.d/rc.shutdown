@@ -38,6 +38,17 @@ else
     hwclock --systohc --utc
 fi
 
+# Stop any quota system (if needed)
+
+if egrep -q -m 1 '(usr|grp)quota' /etc/fstab
+then
+    if type quotaoff > /dev/null
+    then
+        echo "(Shutdown) Set any quota file system to OFF"
+        quotaoff -va
+    fi
+fi
+
 # Save the random number generator, see random(4)
 
 echo "(Shutdown) Saving random number generator"
