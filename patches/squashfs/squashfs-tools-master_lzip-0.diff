@@ -1,0 +1,717 @@
+diff -urdN squashfs-tools-master/INSTALL squashfs-tools-master.new/INSTALL
+--- squashfs-tools-master/INSTALL	2018-06-12 06:07:02.000000000 +0200
++++ squashfs-tools-master.new/INSTALL	2018-07-10 13:27:23.000000000 +0200
+@@ -26,5 +26,5 @@
+ 
+ By default the tools are built with GZIP compression and extended attribute
+ support.  Read the Makefile in squashfs-tools/ for instructions on building
+-LZO, LZ4 and XZ compression support, and for instructions on disabling GZIP
+-and extended attribute support if desired.
++LZIP, LZO, LZ4 and XZ compression support, and for instructions on disabling
++GZIP and extended attribute support if desired.
+diff -urdN squashfs-tools-master/RELEASE-README squashfs-tools-master.new/RELEASE-README
+--- squashfs-tools-master/RELEASE-README	2018-06-12 06:07:02.000000000 +0200
++++ squashfs-tools-master.new/RELEASE-README	2018-07-10 13:27:23.000000000 +0200
+@@ -8,7 +8,7 @@
+ for details of changes.
+ 
+ Squashfs is a highly compressed read-only filesystem for Linux.
+-It uses either gzip/xz/lzo/lz4 compression to compress both files, inodes
++It uses either gzip/lzip/xz/lzo/lz4 compression to compress both files, inodes
+ and directories.  Inodes in the system are very small and all blocks are
+ packed to minimise data overhead. Block sizes greater than 4K are supported
+ up to a maximum of 1Mbytes (default block size 128K).
+@@ -39,7 +39,7 @@
+ 
+ 6. File duplicates are detected and removed.
+ 
+-7. Filesystems can be compressed with gzip, xz (lzma2), lzo or lz4
++7. Filesystems can be compressed with gzip, lzip, xz (lzma2), lzo or lz4
+    compression algorithms.
+ 
+ 1.1 Extended attributes (xattrs)
+@@ -103,6 +103,7 @@
+ -comp <comp>		select <comp> compression
+ 			Compressors available:
+ 				gzip (default)
++				lzip
+ 				lzo
+ 				lz4
+ 				xz
+@@ -181,6 +182,15 @@
+ 		and choose the best compression.
+ 		Available strategies: default, filtered, huffman_only,
+ 		run_length_encoded and fixed
++	lzip
++	  -Xcompression-level <compression-level>
++		<compression-level> should be 0 .. 9 (default 9)
++	  -Xdict-size <dict-size>
++		Use <dict-size> as the LZIP dictionary size.  The dictionary
++		size can be specified as a percentage of the block size, or
++		as an absolute value.  The dictionary size must be less than
++		or equal to the block size and 4096 bytes or larger.
++		Example dict-sizes are 25%, 37.5% or 8K, 32K, etc.
+ 	lzo
+ 	  -Xalgorithm <algorithm>
+ 		Where <algorithm> is one of:
+@@ -279,7 +289,7 @@
+ algorithm.  This algorithm offers a good trade-off between compression
+ ratio, and memory and time taken to decompress.
+ 
+-Squashfs also supports LZ4, LZO and XZ (LZMA2) compression.  LZO offers worse
++Squashfs also supports LZIP, LZ4, LZO and XZ compression.  LZO offers worse
+ compression ratio than gzip, but is faster to decompress.  XZ offers better
+ compression ratio than gzip, but at the expense of greater memory and time
+ to decompress (and significantly more time to compress).  LZ4 is similar
+@@ -304,6 +314,15 @@
+ 		and choose the best compression.
+ 		Available strategies: default, filtered, huffman_only,
+ 		run_length_encoded and fixed
++	lzip
++	  -Xcompression-level <compression-level>
++		<compression-level> should be 0 .. 9 (default 9)
++	  -Xdict-size <dict-size>
++		Use <dict-size> as the LZIP dictionary size.  The dictionary
++		size can be specified as a percentage of the block size, or
++		as an absolute value.  The dictionary size must be less than
++		or equal to the block size and 4096 bytes or larger.
++		Example dict-sizes are 25%, 37.5% or 8K, 32K, etc.
+ 	lzo
+ 	  -Xalgorithm <algorithm>
+ 		Where <algorithm> is one of:
+@@ -340,7 +359,7 @@
+ web sites should be consulted to understand their behaviour.  In general
+ the Mksquashfs compression defaults for each compressor are optimised to
+ give the best performance for each compressor, where what constitutes
+-best depends on the compressor.  For gzip/xz best means highest compression,
++best depends on the compressor.  For gzip/lzip/xz best means highest compression,
+ for LZO/LZ4 best means a tradeoff between compression and (de)-compression
+ overhead (LZO/LZ4 by definition are intended for weaker processors).
+ 
+@@ -767,6 +786,7 @@
+ 
+ Decompressors available:
+ 	gzip
++	lzip
+ 	lzo
+ 	lz4
+ 	xz
+diff -urdN squashfs-tools-master/squashfs-tools/Makefile squashfs-tools-master.new/squashfs-tools/Makefile
+--- squashfs-tools-master/squashfs-tools/Makefile	2018-06-12 06:07:02.000000000 +0200
++++ squashfs-tools-master.new/squashfs-tools/Makefile	2018-07-10 13:27:23.000000000 +0200
+@@ -17,6 +17,15 @@
+ #
+ GZIP_SUPPORT = 1
+ 
++########### Building LZIP support #############
++#
++# The lzlib library (http://www.nongnu.org/lzip/lzlib.html) is supported.
++#
++# To build using lzlib - install the library and uncomment the
++# LZIP_SUPPORT line below.
++#
++LZIP_SUPPORT = 1
++
+ ########### Building XZ support #############
+ #
+ # LZMA2 compression.
+@@ -143,6 +152,14 @@
+ COMPRESSORS += gzip
+ endif
+ 
++ifeq ($(LZIP_SUPPORT),1)
++CFLAGS += -DLZIP_SUPPORT
++MKSQUASHFS_OBJS += lzip_wrapper.o
++UNSQUASHFS_OBJS += lzip_wrapper.o
++LIBS += -llz
++COMPRESSORS += lzip
++endif
++
+ ifeq ($(LZMA_SUPPORT),1)
+ LZMA_OBJS = $(LZMA_DIR)/C/Alloc.o $(LZMA_DIR)/C/LzFind.o \
+ 	$(LZMA_DIR)/C/LzmaDec.o $(LZMA_DIR)/C/LzmaEnc.o $(LZMA_DIR)/C/LzmaLib.o
+@@ -229,8 +246,8 @@
+ # At least one compressor must have been selected
+ #
+ ifndef COMPRESSORS
+-$(error "No compressor selected! Select one or more of GZIP, LZMA, XZ, LZO or \
+-	LZ4!")
++$(error "No compressor selected! Select one or more of GZIP, LZIP, LZMA, XZ, \
++	LZO, LZ4 or ZSTD!")
+ endif
+ 
+ #
+@@ -285,6 +302,8 @@
+ 
+ gzip_wrapper.o: gzip_wrapper.c squashfs_fs.h gzip_wrapper.h compressor.h
+ 
++lzip_wrapper.o: lzip_wrapper.c squashfs_fs.h lzip_wrapper.h compressor.h
++
+ lzma_wrapper.o: lzma_wrapper.c compressor.h squashfs_fs.h
+ 
+ lzma_xz_wrapper.o: lzma_xz_wrapper.c compressor.h squashfs_fs.h
+diff -urdN squashfs-tools-master/squashfs-tools/compressor.c squashfs-tools-master.new/squashfs-tools/compressor.c
+--- squashfs-tools-master/squashfs-tools/compressor.c	2018-06-12 06:07:02.000000000 +0200
++++ squashfs-tools-master.new/squashfs-tools/compressor.c	2018-07-10 13:27:23.000000000 +0200
+@@ -33,6 +33,14 @@
+ extern struct compressor gzip_comp_ops;
+ #endif
+ 
++#ifndef LZIP_SUPPORT
++static struct compressor lzip_comp_ops =  {
++	LZIP_COMPRESSION, "lzip"
++};
++#else
++extern struct compressor lzip_comp_ops;
++#endif
++
+ #ifndef LZMA_SUPPORT
+ static struct compressor lzma_comp_ops = {
+ 	LZMA_COMPRESSION, "lzma"
+@@ -80,6 +88,7 @@
+ 
+ struct compressor *compressor[] = {
+ 	&gzip_comp_ops,
++	&lzip_comp_ops,
+ 	&lzma_comp_ops,
+ 	&lzo_comp_ops,
+ 	&lz4_comp_ops,
+diff -urdN squashfs-tools-master/squashfs-tools/lzip_wrapper.c squashfs-tools-master.new/squashfs-tools/lzip_wrapper.c
+--- squashfs-tools-master/squashfs-tools/lzip_wrapper.c	1970-01-01 01:00:00.000000000 +0100
++++ squashfs-tools-master.new/squashfs-tools/lzip_wrapper.c	2018-07-10 14:57:57.000000000 +0200
+@@ -0,0 +1,462 @@
++/*
++ * Copyright (c) 2014
++ * Phillip Lougher <phillip@squashfs.org.uk>
++ * Copyright (C) 2018 Antonio Diaz Diaz
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2,
++ * or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
++ *
++ * lzip_wrapper.c
++ *
++ * Support for LZIP compression using lzlib
++ * http://www.nongnu.org/lzip/lzlib.html
++ */
++
++#include <limits.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <lzlib.h>
++
++#include "squashfs_fs.h"
++#include "lzip_wrapper.h"
++#include "compressor.h"
++
++static int dictionary_size = 0;
++static float dictionary_percent = 0;
++
++/* default compression level */
++static int compression_level = LZIP_DEFAULT_COMPRESSION_LEVEL;
++
++/* match_len_limit of each compression level */
++const int match_len[] = { 16, 5, 6, 8, 12, 20, 36, 68, 132, 273 };
++
++static inline int isvalid_ds( const int dictionary_size )
++{
++	return (dictionary_size >= LZ_min_dictionary_size() &&
++		dictionary_size <= LZ_max_dictionary_size());
++}
++
++/*
++ * This function is called by the options parsing code in mksquashfs.c
++ * to parse any -X compressor option.
++ *
++ * Two specific options are supported:
++ *	-Xcompression-level
++ *	-Xdict-size
++ *
++ * This function returns:
++ *	>=0 (number of additional args parsed) on success
++ *	-1 if the option was unrecognised, or
++ *	-2 if the option was recognised, but otherwise bad in
++ *	   some way (e.g. invalid parameter)
++ *
++ * Note: this function sets internal compressor state, but does not
++ * pass back the results of the parsing other than success/failure.
++ * The lzip_dump_options() function is called later to get the options in
++ * a format suitable for writing to the filesystem.
++ */
++static int lzip_options(char *argv[], int argc)
++{
++	if(strcmp(argv[0], "-Xcompression-level") == 0) {
++		if(argc < 2) {
++			fprintf(stderr, "lzip: -Xcompression-level missing "
++				"compression level\n");
++			fprintf(stderr, "lzip: -Xcompression-level it "
++				"should be 0 <= n <= 9\n");
++			goto failed;
++		}
++
++		compression_level = atoi(argv[1]);
++		if(compression_level < 0 || compression_level > 9) {
++			fprintf(stderr, "lzip: -Xcompression-level invalid, it "
++				"should be 0 <= n <= 9\n");
++			goto failed;
++		}
++		if(compression_level == 0) {
++			dictionary_size = 65535;
++			dictionary_percent = 0;
++		}
++
++		return 1;
++	} else if(strcmp(argv[0], "-Xdict-size") == 0) {
++		char *b;
++		float size;
++
++		if(argc < 2) {
++			fprintf(stderr, "lzip: -Xdict-size missing dict-size\n");
++			goto failed;
++		}
++
++		size = strtof(argv[1], &b);
++		if(*b == '%') {
++			if(size <= 0 || size > 100) {
++				fprintf(stderr, "lzip: -Xdict-size percentage "
++					"should be 0%% < dict-size <= 100%%\n");
++				goto failed;
++			}
++
++			dictionary_size = 0;
++			dictionary_percent = size;
++		} else {
++			if((float) ((int) size) != size) {
++				fprintf(stderr, "lzip: -Xdict-size can't be "
++					"fractional unless a percentage of the"
++					" block size\n");
++				goto failed;
++			}
++
++			dictionary_size = (int) size;
++			dictionary_percent = 0;
++
++			if(*b == 'k' || *b == 'K')
++				dictionary_size *= 1024;
++			else if(*b == 'm' || *b == 'M')
++				dictionary_size *= 1024 * 1024;
++			else if(*b != '\0') {
++				fprintf(stderr, "lzip: -Xdict-size invalid "
++					"dict-size\n");
++				goto failed;
++			}
++			if(!isvalid_ds(dictionary_size)) {
++				fprintf(stderr, "lzip: -Xdict-size invalid, it "
++					"should be %d <= n <= %d\n",
++					LZ_min_dictionary_size(),
++					LZ_max_dictionary_size());
++				goto failed;
++			}
++		}
++
++		return 1;
++	}
++
++	return -1;
++
++failed:
++	return -2;
++}
++
++
++/*
++ * This function is called after all options have been parsed.
++ * It is used to do post-processing on the compressor options using
++ * values that were not expected to be known at option parse time.
++ *
++ * In this case block_size may not be known until after -Xdict-size has
++ * been processed (in the case where -b is specified after -Xdict-size)
++ *
++ * This function returns 0 on successful post processing, or
++ *			-1 on error
++ */
++static int lzip_options_post(int block_size)
++{
++	/*
++	 * if -Xdict-size has been specified use this to compute the datablock
++	 * dictionary size
++	 */
++	if(dictionary_size || dictionary_percent) {
++		if(dictionary_size) {
++			if(dictionary_size > block_size) {
++				fprintf(stderr, "lzip: -Xdict-size is larger than"
++				" block_size\n");
++				goto failed;
++			}
++		} else
++			dictionary_size = block_size * dictionary_percent / 100;
++
++		if(dictionary_size < 4096) {
++			fprintf(stderr, "lzip: -Xdict-size should be 4096 bytes "
++				"or larger\n");
++			goto failed;
++		}
++
++	} else
++		/* No -Xdict-size specified, use defaults */
++		dictionary_size = block_size;
++
++	return 0;
++
++failed:
++	return -1;
++}
++
++
++/*
++ * This function is called by mksquashfs to dump the parsed
++ * compressor options in a format suitable for writing to the
++ * compressor options field in the filesystem (stored immediately
++ * after the superblock).
++ *
++ * This function returns a pointer to the compression options structure
++ * to be stored (and the size), or NULL if there are no compression
++ * options
++ */
++static void *lzip_dump_options(int block_size, int *size)
++{
++	static struct lzip_comp_opts comp_opts;
++
++	/*
++	 * don't store compressor specific options in file system if the
++	 * default options are being used - no compressor options in the
++	 * file system means the default options are always assumed
++	 *
++	 * Defaults are:
++	 *  compression_level: LZIP_DEFAULT_COMPRESSION_LEVEL
++	 *  metadata dictionary size: SQUASHFS_METADATA_SIZE
++	 *  datablock dictionary size: block_size
++	 */
++	if(dictionary_size == block_size &&
++		compression_level == LZIP_DEFAULT_COMPRESSION_LEVEL)
++		return NULL;
++
++	comp_opts.dictionary_size = dictionary_size;
++	comp_opts.compression_level = compression_level;
++
++	SQUASHFS_INSWAP_COMP_OPTS(&comp_opts);
++
++	*size = sizeof(comp_opts);
++	return &comp_opts;
++}
++
++
++/* Check and swap options read from the filesystem. */
++static int lzip_check_options(struct lzip_comp_opts *comp_opts, int size)
++{
++	/* check passed comp opts struct is of the correct length */
++	if(size != sizeof(struct lzip_comp_opts))
++		goto failed;
++
++	SQUASHFS_INSWAP_COMP_OPTS(comp_opts);
++
++	/* Check comp_opts structure for correctness */
++	if(!isvalid_ds(comp_opts->dictionary_size)) {
++		fprintf(stderr, "lzip: bad dictionary size in "
++			"compression options structure\n");
++		goto failed;
++	}
++
++	if(comp_opts->compression_level > 9) {
++		fprintf(stderr, "lzip: bad compression level in "
++			"compression options structure\n");
++		goto failed;
++	}
++
++	return 1;
++
++failed:
++	fprintf(stderr, "lzip: error reading stored compressor options from "
++		"filesystem!\n");
++	return 0;
++}
++
++
++/*
++ * This function is a helper specifically for the append mode of
++ * mksquashfs.  Its purpose is to set the internal compressor state
++ * to the stored compressor options in the passed compressor options
++ * structure.
++ *
++ * In effect this function sets up the compressor options
++ * to the same state they were when the filesystem was originally
++ * generated, this is to ensure on appending, the compressor uses
++ * the same compression options that were used to generate the
++ * original filesystem.
++ *
++ * Note, even if there are no compressor options, this function is still
++ * called with an empty compressor structure (size == 0), to explicitly
++ * set the default options, this is to ensure any user supplied
++ * -X options on the appending mksquashfs command line are over-ridden
++ *
++ * This function returns 0 on sucessful extraction of options, and
++ *			-1 on error
++ */
++static int lzip_extract_options(int block_size, void *buffer, int size)
++{
++	if(size == 0) {
++		/* set defaults */
++		dictionary_size = block_size;
++		compression_level = LZIP_DEFAULT_COMPRESSION_LEVEL;
++	} else {
++		struct lzip_comp_opts *comp_opts = buffer;
++		if(!lzip_check_options(comp_opts, size))
++			return -1;
++
++		dictionary_size = comp_opts->dictionary_size;
++		compression_level = comp_opts->compression_level;
++	}
++
++	return 0;
++}
++
++
++static void lzip_display_options(void *buffer, int size)
++{
++	struct lzip_comp_opts *comp_opts = buffer;
++	if(!lzip_check_options(comp_opts, size))
++		return;
++
++	printf("\tcompression-level %d\n", comp_opts->compression_level);
++	printf("\tDictionary size %d\n", comp_opts->dictionary_size);
++}
++
++
++/*
++ * This function is called by mksquashfs to allocate and initialise
++ * a lzip_stream struct, before compress() is called.
++ *
++ * This function returns 0 on success, and
++ *			-1 on error
++ */
++static int lzip_init(void **strm, int block_size, int datablock)
++{
++	struct lzip_stream * const stream = malloc(sizeof(struct lzip_stream));
++
++	if(!stream)
++		return -1;
++
++	/* dict == 65535 and match_len == 16 choose fast encoder */
++	stream->dictionary_size =
++	(datablock || (compression_level == 0 && dictionary_size == 65535)) ?
++		dictionary_size : SQUASHFS_METADATA_SIZE;
++	stream->match_len_limit = match_len[compression_level];
++	*strm = stream;
++	return 0;
++}
++
++
++/* Can be called multiple times after each call to lzip_init */
++static int lzip_compress(void *strm, void *dest, void *src, int size,
++			int block_size, int *error)
++{
++	int ipos = 0, opos = 0;
++	struct lzip_stream * const stream = strm;
++	struct LZ_Encoder * const encoder =
++		LZ_compress_open(stream->dictionary_size,
++				stream->match_len_limit, LLONG_MAX);
++
++	if(!encoder || LZ_compress_errno(encoder) != LZ_ok) {
++		*error = LZ_mem_error;
++		goto failed2;
++	}
++
++	for(;;) {
++		int rd = LZ_compress_write(encoder, src + ipos, size - ipos);
++		if(rd < 0)
++			goto failed;
++		ipos += rd;
++		if(ipos >= size)
++			LZ_compress_finish(encoder);
++		rd = LZ_compress_read(encoder, dest + opos, block_size - opos);
++		if(rd < 0)
++			goto failed;
++		opos += rd;
++		if(LZ_compress_finished(encoder) == 1)
++			break;
++		if(opos >= block_size) {
++		/* Output buffer overflow.  Return out of buffer space */
++			opos = 0;
++			break;
++		}
++	}
++
++	LZ_compress_close(encoder);
++	return opos;
++
++failed:
++	/*
++	 * All other errors return failure, with the compressor
++	 * specific error code in *error
++	 */
++	*error = LZ_compress_errno(encoder);
++failed2:
++	LZ_compress_close(encoder);
++	return -1;
++}
++
++
++static int lzip_uncompress(void *dest, void *src, int size, int outsize,
++	int *error)
++{
++	int ipos = 0, opos = 0;
++	struct LZ_Decoder * const decoder = LZ_decompress_open();
++
++	if(!decoder || LZ_decompress_errno(decoder) != LZ_ok) {
++		*error = LZ_mem_error;
++		goto failed2;
++	}
++
++	for(;;) {
++		int rd = LZ_decompress_write(decoder, src + ipos, size - ipos);
++		if(rd < 0)
++			goto failed;
++		ipos += rd;
++		if(ipos >= size)
++			LZ_decompress_finish(decoder);
++		rd = LZ_decompress_read(decoder, dest + opos, outsize - opos);
++		if(rd < 0)
++			goto failed;
++		opos += rd;
++		if(LZ_decompress_finished(decoder) == 1)
++			break;
++		if(opos >= outsize) {
++		/* Output buffer overflow.  Return out of buffer space */
++			*error = LZ_mem_error;
++			goto failed2;
++		}
++	}
++
++	LZ_decompress_close(decoder);
++	return opos;
++
++failed:
++	/*
++	 * All other errors return failure, with the compressor
++	 * specific error code in *error
++	 */
++	*error = LZ_decompress_errno(decoder);
++failed2:
++	LZ_decompress_close(decoder);
++	return -1;
++}
++
++
++static void lzip_usage()
++{
++	fprintf(stderr, "\t  -Xcompression-level <compression-level>\n"
++		"\t\t<compression-level> should be 0 .. 9 (default %d)\n",
++		LZIP_DEFAULT_COMPRESSION_LEVEL);
++	fprintf(stderr, "\t  -Xdict-size <dict-size>\n"
++		"\t\tUse <dict-size> as the LZIP dictionary size.  The dictionary\n"
++		"\t\tsize can be specified as a percentage of the block size, or\n"
++		"\t\tas an absolute value.  The dictionary size must be less than\n"
++		"\t\tor equal to the block size and 4096 bytes or larger.\n"
++		"\t\tExample dict-sizes are 25%%, 37.5%% or 8K, 32K, etc.\n");
++}
++
++
++struct compressor lzip_comp_ops = {
++	.init = lzip_init,
++	.compress = lzip_compress,
++	.uncompress = lzip_uncompress,
++	.options = lzip_options,
++	.options_post = lzip_options_post,
++	.dump_options = lzip_dump_options,
++	.extract_options = lzip_extract_options,
++	.display_options = lzip_display_options,
++	.usage = lzip_usage,
++	.id = LZIP_COMPRESSION,
++	.name = "lzip",
++	.supported = 1
++};
+diff -urdN squashfs-tools-master/squashfs-tools/lzip_wrapper.h squashfs-tools-master.new/squashfs-tools/lzip_wrapper.h
+--- squashfs-tools-master/squashfs-tools/lzip_wrapper.h	1970-01-01 01:00:00.000000000 +0100
++++ squashfs-tools-master.new/squashfs-tools/lzip_wrapper.h	2018-06-10 11:22:39.000000000 +0200
+@@ -0,0 +1,58 @@
++#ifndef LZIP_WRAPPER_H
++#define LZIP_WRAPPER_H
++/*
++ * Squashfs
++ *
++ * Copyright (c) 2014
++ * Phillip Lougher <phillip@squashfs.org.uk>
++ * Copyright (C) 2018 Antonio Diaz Diaz
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2,
++ * or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
++ *
++ * lzip_wrapper.h
++ *
++ */
++
++#ifndef linux
++#define __BYTE_ORDER BYTE_ORDER
++#define __BIG_ENDIAN BIG_ENDIAN
++#define __LITTLE_ENDIAN LITTLE_ENDIAN
++#else
++#include <endian.h>
++#endif
++
++#if __BYTE_ORDER == __BIG_ENDIAN
++extern unsigned int inswap_le32(unsigned int);
++
++#define SQUASHFS_INSWAP_COMP_OPTS(s) { \
++	(s)->dictionary_size = inswap_le32((s)->dictionary_size); \
++}
++#else
++#define SQUASHFS_INSWAP_COMP_OPTS(s)
++#endif
++
++/* Default compression */
++#define LZIP_DEFAULT_COMPRESSION_LEVEL 9
++
++struct lzip_comp_opts {
++	int32_t dictionary_size;
++	uint8_t compression_level;
++};
++
++struct lzip_stream {
++	int dictionary_size;
++	short match_len_limit;
++};
++#endif
+diff -urdN squashfs-tools-master/squashfs-tools/squashfs_fs.h squashfs-tools-master.new/squashfs-tools/squashfs_fs.h
+--- squashfs-tools-master/squashfs-tools/squashfs_fs.h	2018-06-12 06:07:02.000000000 +0200
++++ squashfs-tools-master.new/squashfs-tools/squashfs_fs.h	2018-07-10 13:27:23.000000000 +0200
+@@ -282,6 +282,7 @@
+ #define XZ_COMPRESSION		4
+ #define LZ4_COMPRESSION		5
+ #define ZSTD_COMPRESSION	6
++#define LZIP_COMPRESSION	7
+ 
+ struct squashfs_super_block {
+ 	unsigned int		s_magic;

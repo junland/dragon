@@ -1,0 +1,49 @@
+# Build script for squashfs4.3+.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# From http://github.com/plougher/squashfs-tools
+# commit 6e242dc
+version=master
+
+cd -- "$TMPDIR"
+rm -rf squashfs-tools-${version} \
+       "${rootdir}/squashfs-tools_lzip"
+unpack "${worktree}/sources/squashfs-tools-${version}.zip"
+
+# Build instructions
+cd squashfs-tools-${version}
+
+# Note:
+# The build environment for cross-compilation is not imported,
+# the squashfs installation must work from the host system,
+# this will produce the compressed squash-image
+
+# Patch to include LZIP support
+patch -p1 < "${worktree}/patches/squashfs/squashfs-tools-master_lzip-0.diff"
+
+cd squashfs-tools
+
+make -j${jobs} \
+ CC=cc LDFLAGS="" all INSTALL_DIR="${rootdir}/squashfs-tools_lzip"
+
+make -j${jobs} \
+ CC=cc LDFLAGS="" install INSTALL_DIR="${rootdir}/squashfs-tools_lzip"
+
+cleanup()
+{
+    cd -- "$TMPDIR" && rm -rf squashfs-tools-${version}
+}
+
