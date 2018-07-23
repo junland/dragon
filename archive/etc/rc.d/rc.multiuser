@@ -83,12 +83,89 @@ else
     echo "WARNING: Could not find ip(8) or ifconfig(1)" 1>&2
 fi
 
+# Start ALSA (sound support)
+
+if test -x /etc/rc.d/rc.alsa
+then
+    /etc/rc.d/rc.alsa start
+fi
+
+# Database for Xorg
+
+echo "(Startup) Updating database for Xorg"
+
+echo "^ GTK+-2.0 modules (cache)"
+if type gtk-query-immodules-2.0 > /dev/null
+then
+    gtk-query-immodules-2.0 --update-cache
+fi
+echo "^ GTK+-3.0 modules (cache)"
+if type gtk-query-immodules-3.0 > /dev/null
+then
+    gtk-query-immodules-3.0 --update-cache
+fi
+
+echo "^ GDK pixbuffer loaders (cache)"
+if type gdk-pixbuf-query-loaders > /dev/null
+then
+    gdk-pixbuf-query-loaders --update-cache
+fi
+
+echo "^ GIO modules (cache)"
+if type gio-querymodules > /dev/null
+then
+    gio-querymodules /usr/lib/gio/modules
+fi
+
+echo "^ Glib schemas"
+if type glib-compile-schemas > /dev/null
+then
+    for directory in /usr/local/share/glib-?.?* /usr/share/glib-?.?*
+    do
+        test -d "$directory" || continue;
+        glib-compile-schemas "${directory}"/schemas
+    done
+    unset directory
+fi
+
+echo "^ MIME database"
+if type update-mime-database > /dev/null
+then
+    test -d /usr/share/mime || mkdir -p /usr/share/mime
+    update-mime-database /usr/share/mime
+fi
+echo "^ Desktop database"
+if type update-desktop-database > /dev/null
+then
+    update-desktop-database
+fi
+echo "^ Icon cache"
+if type gtk-update-icon-cache > /dev/null
+then
+    for directory in /usr/share/icons/*
+    do
+        test -d "$directory" || continue;
+
+        gtk-update-icon-cache -q -f -i "$directory" && \
+         gtk-update-icon-cache --validate "$directory"
+    done
+    unset directory
+fi
+
+echo "^ X font index (cache)"
+if type fc-cache > /dev/null
+then
+    fc-cache -s -v
+fi
+
+# End Of Database for Xorg.
+
 # Start services through perpd(8) instances
 
 if type perpboot > /dev/null
 then
-    # Make sure it is udevd inherited from rc.startup,
-    # preventing killing the udevd started by perp
+    # Check for the running udevd(8) inherited from the rc.startup,
+    # preventing to kill the udevd instance started by perp
     if type perpok > /dev/null && test ! perpok udevd 2> /dev/null
     then
         # The inherited udevd will be started again to be supervised
@@ -101,6 +178,7 @@ fi
 
 # Verify the /etc/fstab file to activate the quota system
 
+echo "(Startup) Checking quota availability"
 if egrep -q -m 1 '(usr|grp)quota' /etc/fstab
 then
     if type quotacheck > /dev/null && type quotaon > /dev/null
@@ -111,13 +189,8 @@ then
             quotaon -vaug
         }
     fi
-fi
-
-# Start ALSA (sound support)
-
-if test -x /etc/rc.d/rc.alsa
-then
-    /etc/rc.d/rc.alsa start
+else
+    echo "No quota filesystem declared on /etc/fstab." 1>&2
 fi
 
 # Start user-local instructions
