@@ -662,15 +662,16 @@ delete_mode()
         if graft -d -n $graft_r -t "$targetdir" "$expunge" 2>&1 | \
          grep ^CONFLICT
         then
-            warn \
-             ""                                                \
+            warn "" \
              "    A conflict occurred during uninstallation;"  \
-             "the package will be PRESERVED (unless the -p option is given)."
-            exit 6;
+             "Unless the -p option is given, this package will be PRESERVED."
+            return 6;
         fi
     fi
+
     # Remove objects (files, links or directories) from the target
     # directory that are in conflict with the package directory
+
     echo "Pruning any conflict ..."
     graft -p -D -u $graft_r -t "$targetdir" "$expunge"
     chkstatus_or_exit 2
@@ -737,11 +738,10 @@ install_mode()
         if graft -i -n $graft_r -t "$targetdir" "${packagedir}/$name" 2>&1 | \
          grep ^CONFLICT
         then
-            warn \
-             ""                                              \
+            warn "" \
              "    A conflict occurred during installation;"  \
-             "the package won't be LINKED (unless the -p option is given)."
-             exit 6;
+             "Unless the -p option is given, this package won't be LINKED."
+             return 6;
         fi
     fi
 
@@ -801,14 +801,14 @@ install_mode()
                 do
                     if ! test -e "$replace"
                     then
-                        warn "${replace}: Declared package does not exist."
+                        warn "${replace}: Declared package does not exist. (ignored)"
                         continue;
                     fi
 
                     warn "WARNING: Replacing package \`${replace}' ..."
 
-                    # The search for the package to be replaced cannot be
-                    # the same to the incoming package, even to the
+                    # The search for the package to be replaced cannot
+                    # be the same to the incoming package, even to the
                     # temporary location coming from the upgrade_mode()
                     if test "$replace" = "$name" || test "$replace" = "$PRVLOC"
                     then
@@ -818,9 +818,14 @@ install_mode()
                         continue;
                     fi
 
-                    opt_force=opt_force opt_keep=opt_keep.off \
-                    opt_prune=opt_prune \
-                     delete_mode "${replace##*/}" > /dev/null && echo Done.
+                    # Since the links belongs to the new package, only
+                    # those which are not in conflict can be deleted.
+                    # To complete, we will remove the package directory
+
+                    graft -d -D -u $graft_r \
+                     -t "$targetdir" "${replace##*/}" > /dev/null 2>&1
+                    rm -rf -- "$rootdir${packagedir}/${replace##*/}"
+                    echo Done.
                 done
             done < "$rootdir${packagedir}/${name}/var/lib/qi/${name}.replace"
             unset line
@@ -909,8 +914,8 @@ upgrade_mode()
     do
         found="${long_name##*/}"
 
-        # The search for the package to be deleted cannot be
-        # the same to the temporary location
+        # The search for the package to be deleted
+        # cannot be the same to the temporary location
         test "$long_name" = "$PRVLOC" && continue;
 
         fnmatch "$(pkgbase $found)*" "$incoming" || continue;
