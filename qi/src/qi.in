@@ -201,8 +201,8 @@ build_mode()
     fi
 
     test -f "$recipe" || {
-        warn "${PROGRAM}: \`${recipe}' is not a regular file."
-        exit 4
+        warn "\`${recipe}' is not a regular file."
+        return 4
     }
 
     # Complain if the file name is not "recipe"
@@ -211,8 +211,8 @@ build_mode()
     then
         true
     else
-        warn "${PROGRAM}: \`${recipe}' is not a valid recipe name."
-        exit 4
+        warn "\`${recipe}' is not a valid recipe name."
+        return 4
     fi
 
     # Start preparations to import the recipe
@@ -429,7 +429,7 @@ build_mode()
                     )
                 ;;
             *)
-                warn "${PROGRAM}: Unrecognized protocol for ${origin}."
+                warn "Unrecognized protocol for ${origin}."
                 exit 4
             esac
         done
@@ -594,18 +594,18 @@ create_mode()
 
     # Check again to find out if it is a valid directory
     test -d "$directory" || {
-        warn "${PROGRAM}: Package directory '$name' does not exist."
+        warn "Package directory '$name' does not exist."
         exit 4
     }
 
     test "$directory" = . && {
-        warn "${PROGRAM}: Cannot create package on current working directory."
+        warn "Cannot create package on current working directory."
         exit 4
     }
 
     test "$name" = "${name%.tlz}" && {
         warn \
-         "${PROGRAM}: Package format '$name' not supported." \
+         "Package format '$name' not supported." \
          "It should be \`name-version-architecture+release.tlz'"
         exit 4
     }
@@ -642,8 +642,8 @@ delete_mode()
     # Complain if the package directory does not exist
 
     test -d "$rootdir${expunge}" || {
-        warn "${PROGRAM}: Package directory '$rootdir${expunge}' does not exist."
-        exit 4
+        warn "Package directory '$rootdir${expunge}' does not exist."
+        return 4
     }
 
     # Complain if the package directory cannot be well-read
@@ -709,8 +709,8 @@ install_mode()
 
     if ! fnmatch '*.tlz' "$1"
     then
-        warn "${PROGRAM}: \`${1}' does not end in .tlz"
-        exit 4
+        warn "\`${1}' does not end in .tlz"
+        return 4
     fi
 
     # Make preparations to install the package
@@ -848,8 +848,8 @@ resolve_mode() {
 
     if ! fnmatch '*.order' "$1"
     then
-        warn "${PROGRAM}: \`${1}' does not end in .order"
-        exit 4
+        warn "\`${1}' does not end in .order"
+        return 4
     fi
 
     # Get a clean list of the file while prints its content in reverse order,
@@ -866,8 +866,8 @@ upgrade_mode()
     # Complain if the package is not a regular file
 
     test -f "$1" || {
-        warn "${PROGRAM}: \`${1}' is not a regular file."
-        exit 4
+        warn "\`${1}' is not a regular file."
+        return 4
     }
 
     # Get the filename
@@ -949,8 +949,8 @@ extract_mode()
     is_readable "$1" || exit 4
 
     test -f "$1" || {
-        warn "${PROGRAM}: \`${1}' is not a regular file."
-        exit 4
+        warn "\`${1}' is not a regular file."
+        return 4
     }
 
     # Preparations to extract the package
