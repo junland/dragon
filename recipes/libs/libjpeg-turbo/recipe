@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=libjpeg-turbo
-version=1.5.3
+version=2.0.0
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -54,17 +54,24 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --mandir=$mandir \
-     --docdir=$docsdir \
-     --enable-static=yes \
-     --enable-shared=yes \
-     --build="$(cc -dumpmachine)"
+    mkdir BUILD
+    cd BUILD
+
+    cmake \
+     -DCMAKE_C_FLAGS:STRING="$QICFLAGS"               \
+     -DCMAKE_EXE_LINKER_FLAGS:STRING="$QILDFLAGS"     \
+     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$QILDFLAGS"  \
+     -DCMAKE_INSTALL_PREFIX=/usr                      \
+     -DLIB_SUFFIX=/usr/lib${libSuffix}                \
+     -DCMAKE_INSTALL_MANDIR=$mandir                   \
+     -DCMAKE_INSTALL_DOCDIR=$docsdir                  \
+     -DCMAKE_BUILD_TYPE=Release                       \
+     ..
 
     make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    make -j${jobs} DESTDIR="$destdir" install
+
+    cd ..
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
