@@ -1,0 +1,61 @@
+#! /bin/sh -
+#
+# sshd/rc.main
+#
+# The OpenSSH SSH daemon.
+#
+
+# Redirects the standard error to the standard output
+exec 2>&1
+
+TARGET="$1"
+SVNAME="${2:-sshd}"
+
+make_keys()
+{
+    if test ! -f /etc/ssh/ssh_host_key || test ! -s /etc/ssh/ssh_host_key
+    then
+        echo "*** ${SVNAME}: Generating /etc/ssh/ssh_host_key ..."
+        /usr/bin/ssh-keygen -t rsa1 -f /etc/ssh/ssh_host_key -N ''
+    fi
+    if test ! -f /etc/ssh/ssh_host_dsa_key || test ! -s /etc/ssh/ssh_host_dsa_key
+    then
+        echo "*** ${SVNAME}: Generating /etc/ssh/ssh_host_dsa_key ..."
+        /usr/bin/ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key -N ''
+    fi
+    if test ! -f /etc/ssh/ssh_host_rsa_key || test ! -s /etc/ssh/ssh_host_rsa_key
+    then
+        echo "*** ${SVNAME}: Generating /etc/ssh/ssh_host_rsa_key ..."
+        /usr/bin/ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ''
+    fi
+}
+
+start()
+{
+    echo "*** ${SVNAME}: Starting sshd ..."
+    make_keys
+    # sshd options required for perp service:
+    #   -D  no detach, run in foreground
+    #   -e  log to stderr (for tinylog) instead of syslog
+    #
+    exec /usr/sbin/sshd -D -e -f /etc/ssh/sshd_config
+}
+
+reset()
+{
+    case $3 in
+    exit)
+        echo "*** ${SVNAME}: Exited status $4"
+        ;;
+    signal)
+        echo "*** ${SVNAME}: Killed on signal $5"
+        ;;
+    *)
+        echo "*** ${SVNAME}: Stopped (${3})"
+        ;;
+    esac
+}
+
+# Branch to target
+eval ${TARGET} "$@"
+
