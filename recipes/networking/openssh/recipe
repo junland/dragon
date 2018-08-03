@@ -16,7 +16,7 @@
 
 program=openssh
 version=7.7p1
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/networking"
@@ -61,9 +61,9 @@ build()
      --mandir=$mandir \
      --docdir=$docsdir \
      --with-default-path='/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin' \
-     --with-privsep-path=/var/empty \
+     --with-privsep-path=/var/lib/sshd \
      --with-privsep-user=sshd \
-     --with-pid-dir=/var/run \
+     --with-pid-dir=/var/run/sshd \
      --with-tcp-wrappers \
      --with-md5-passwords \
      --with-pie \
@@ -75,7 +75,15 @@ build()
     make -j${jobs} DESTDIR="$destdir" install
 
     # Make empty directories for the package
-    mkdir -p "${destdir}/var/run" "${destdir}/var/empty"
+    mkdir -p "${destdir}/var/run/sshd" "${destdir}/var/lib/sshd"
+
+    # Copy additional utilities
+
+    cp -p contrib/ssh-copy-id "${destdir}/usr/bin"
+    chmod 755 "${destdir}/usr/bin/ssh-copy-id"
+
+    mkdir -p "${destdir}/${mandir}/man1"
+    cp -p contrib/ssh-copy-id.1 "${destdir}/${mandir}/man1"
 
     # Install sshd perp service(s)
 
