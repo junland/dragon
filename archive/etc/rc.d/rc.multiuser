@@ -89,33 +89,39 @@ then
 fi
 
 # Database for Xorg
+#
+echo "(Startup) Updating database for X "
 
-echo "(Startup) Updating database for Xorg"
+echo "X font index cache: fc-cache -f &"
+if type fc-cache > /dev/null
+then
+    fc-cache -f &
+fi
 
-echo "^ GTK+-2.0 modules cache"
+echo "GTK+-2.0 module(s) cache: gtk-query-immodules-2.0 --update-cache"
 if type gtk-query-immodules-2.0 > /dev/null
 then
     gtk-query-immodules-2.0 --update-cache
 fi
-echo "^ GTK+-3.0 modules cache"
+echo "GTK+-3.0 module(s) cache: gtk-query-immodules-3.0 --update-cache"
 if type gtk-query-immodules-3.0 > /dev/null
 then
     gtk-query-immodules-3.0 --update-cache
 fi
 
-echo "^ GDK pixbuffer loaders"
+echo "GDK pixbuffer loaders: gdk-pixbuf-query-loaders --update-cache"
 if type gdk-pixbuf-query-loaders > /dev/null
 then
     gdk-pixbuf-query-loaders --update-cache
 fi
 
-echo "^ GIO modules cache"
+echo "GIO module(s) cache: gio-querymodules /usr/lib/gio/modules"
 if type gio-querymodules > /dev/null
 then
     gio-querymodules /usr/lib/gio/modules
 fi
 
-echo "^ Glib schemas"
+echo "GLIB schemas: glib-compile-schemas /usr/local/share/glib* /usr/share/glib*"
 if type glib-compile-schemas > /dev/null
 then
     for directory in /usr/local/share/glib* /usr/share/glib*
@@ -126,17 +132,12 @@ then
     unset directory
 fi
 
-echo "^ MIME database"
-if type update-mime-database > /dev/null
-then
-    update-mime-database /usr/share/mime
-fi
-echo "^ Desktop database"
+echo "Desktop database: update-desktop-database -q"
 if type update-desktop-database > /dev/null
 then
-    update-desktop-database
+    update-desktop-database -q
 fi
-echo "^ Icon theme cache"
+echo "Icon theme cache: gtk-update-icon-cache -q -f -i /usr/share/icons/*"
 if type gtk-update-icon-cache > /dev/null
 then
     for directory in /usr/share/icons/*
@@ -148,13 +149,7 @@ then
     done
     unset directory
 fi
-
-echo "^ X font index cache"
-if type fc-cache > /dev/null
-then
-    fc-cache -s -v
-fi
-
+#
 # End of Database for Xorg.
 
 # Start services through perpd(8) instances
