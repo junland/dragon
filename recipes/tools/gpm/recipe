@@ -16,7 +16,7 @@
 
 program=gpm
 version=54651a0_dragora; # Snapshot from http://github.com/selkfoster/gpm
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
@@ -65,6 +65,7 @@ build()
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --without-curses \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
@@ -83,6 +84,20 @@ build()
     cp -p conf/*.conf "${destdir}/etc/gpm"
     chmod 644 "${destdir}/etc/gpm"/*.conf
     touch "${destdir}/etc/gpm/.graft-config"
+
+    # Include menu-driven tool to configure the mouse
+
+    mkdir -p "${destdir}/usr/sbin"
+    cp -p "${worktree}/archive/gpm/dragora-mouse" "${destdir}/usr/sbin"
+    chmod 755 "${destdir}/usr/sbin/dragora-mouse"
+
+    # Make compatible symlinks for the invocation.
+    #
+    # gpmconfig was the name used for Dragora-2
+    ln -sf dragora-mouse "${destdir}/usr/sbin/gpmconfig"
+
+    # For Slackware users
+    ln -sf dragora-mouse "${destdir}/usr/sbin/mouseconfig"
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
