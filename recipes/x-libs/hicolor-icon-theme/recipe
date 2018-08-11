@@ -1,0 +1,65 @@
+# Build recipe for hicolor-icon-theme.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=hicolor-icon-theme
+version=0.17
+arch=noarch
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/tools"
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=http://icon-theme.freedesktop.org/releases/$tarname
+
+description="
+Icon theme specification.
+
+The hicolor-icon-theme package contains a default fallback theme
+for implementations of the icon theme specification.
+"
+
+homepage=http://icon-theme.freedesktop.org
+license=GPLv2+
+
+# Source documentation
+docs="COPYING ChangeLog NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure $configure_args
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+    chmod 644 "${destdir}${docsdir}"/*
+}
+
