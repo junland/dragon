@@ -1,6 +1,7 @@
-# Build recipe for GTK+3.
+2# Build recipe for GTK+3.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 # limitations under the License.
 
 program=gtk+
-version=3.22.29
+version=3.22.30
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -27,47 +28,64 @@ tarname=${program}-${version}.tar.xz
 fetch=http://ftp.gnome.org/pub/gnome/sources/gtk+/3.22/$tarname
 
 description="
-A multi-platform toolkit for creating graphical user interfaces.
-Offering a complete set of widgets, GTK+ is suitable for
-projects ranging from small one-off projects to complete application
-suites.
+The version 3 of the GTK+ toolkit.
+
+The GTK+3 package contains libraries used for creating graphical user
+interfaces for applications.
 "
 
-homepage=https://www.gtk.org/
-license=GPLv2
+homepage=http://www.gtk.org
+license=GPLv2+
 
 # Copy documentation
-docs="ABOUT-NLS AUTHORS COPYING NEWS NEWS.pre-1-0 README.commits README"
+docs="AUTHORS COPYING NEWS README* HACKING"
 docsdir="${docdir}/${program}-${version}"
 
 build()
 {
     set -e
     unpack "${tardir}/$tarname"
-    
+
     cd "$srcdir"
-    
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
-    --enable-broadway-backend \
-    --enable-x11-backend \
-    --build="$(cc -dumpmachine)"
-    
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --enable-static=no \
+     --enable-shared=yes \
+     --enable-introspection=yes \
+     --enable-xkb=yes \
+     --enable-xinerama=yes \
+     --enable-xrandr=yes \
+     --enable-xfixes=yes \
+     --enable-xcomposite=yes \
+     --enable-xdamage=yes \
+     --enable-explicit-deps=yes \
+     --enable-broadway-backend \
+     --enable-x11-backend \
+     --disable-schemas-compile \
+     --disable-glibtest \
+     --build="$(cc -dumpmachine)"
 
-    # Basic configuration
-    mkdir -vp ~/.config/gtk-3.0
-    cat $CWD/settings.ini > ~/.config/gtk-3.0/settings.ini
+    make -j${jobs} V=1 \
+     RUN_QUERY_IMMODULES_TEST=false RUN_QUERY_LOADER_TEST=false
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
+    make -j${jobs} \
+     RUN_QUERY_IMMODULES_TEST=false RUN_QUERY_LOADER_TEST=false \
+     DESTDIR="$destdir" install-strip
+
+    # Add a basic configuration
+cat << EOF > "${destdir}/etc/gtk-3.0/gtkrc"
+gtk-theme-name = "Adwaita"
+
+EOF
+
+    # Manage dot new file(s) via graft(8)
+    touch "${destdir}/etc/gtk-3.0/.graft-config"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -85,9 +103,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do
-	   cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
+

@@ -1,0 +1,15 @@
+
+# Update GTK+-3.0 modules cache
+gtk-query-immodules-3.0 --update-cache
+
+# Update GLIB schemas
+for schema_directory in /usr/local/share/glib* /usr/share/glib*
+do
+    test -d "$schema_directory" || continue;
+    glib-compile-schemas "${schema_directory}"/schemas
+done
+unset schema_directory
+
+# Update GDK pixbuf loaders cache, just in case
+chroot . /usr/bin/gdk-pixbuf-query-loaders --update-cache > /dev/null 2>&1
+
