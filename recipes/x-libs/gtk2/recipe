@@ -1,6 +1,7 @@
-# Build recipe for GTK+2.
+2# Build recipe for GTK+2.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,55 +30,56 @@ fetch=http://ftp.gnome.org/pub/gnome/sources/gtk+/2.24/$tarname
 description="
 A multi-platform toolkit for creating graphical user interfaces.
 
-Offering a complete set of widgets, GTK+ is suitable for
-projects ranging from small one-off projects to complete application
-suites.
+Offering a complete set of widgets, GTK+ is suitable for projects
+ranging from small one-off projects to complete application suites.
 "
 
-homepage=https://www.gtk.org/
-license=GPLv2
+homepage=http://www.gtk.org
+license=GPLv2+
 
 # Copy documentation
-docs="AUTHORS COPYING NEWS NEWS.pre-1-0 README.commits README HACKING INSTALL"
+docs="AUTHORS COPYING NEWS README* HACKING"
 docsdir="${docdir}/${program}-${version}"
 
 build()
 {
     set -e
     unpack "${tardir}/$tarname"
-    
+
     cd "$srcdir"
-    
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
-    --disable-static \
-    --disable-papi \
-    --enable-introspection \
-    --disable-silent-rules \
-    --disable-gtk-doc \
-    --enable-man=no \
-    --with-xinput=yes \
-    --build="$(cc -dumpmachine)"
-    
-    gdk-pixbuf-query-loader > /usr/lib/gdk-pixbuf2.0/2.10.0/loaders.cache
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --enable-static=no \
+     --enable-shared=yes \
+     --enable-introspection=yes \
+     --enable-xkb=yes \
+     --with-xinput=yes \
+     --disable-man \
+     --disable-gtk-doc \
+     --build="$(cc -dumpmachine)"
 
-    # Basic configuration
-    cat $CWD/gtkrc > ~/gtkrc-2.0
-	    
-    # Make configuration global
-    mkdir -vp /etc/gtk-2.0
-    cat $CWD/gtkrc > /etc/gtk-2.0/gtkrc
+    make -j${jobs} V=1 \
+     RUN_QUERY_IMMODULES_TEST=false RUN_QUERY_LOADER_TEST=false
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
+    make -j${jobs} \
+     RUN_QUERY_IMMODULES_TEST=false RUN_QUERY_LOADER_TEST=false \
+     DESTDIR="$destdir" install-strip
+
+    # Add default icon theme to global config
+cat << EOF > "${destdir}/etc/gtk-2.0/gtkrc"
+include "/usr/share/themes/Glider/gtk-2.0/gtkrc"
+gtk-icon-theme-name = "hicolor" > ~/gtkrc-2.0
+
+EOF
+
+    # Manage dot new file(s) via graft(8)
+    touch "${destdir}/etc/gtk-2.0/.graft-config"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -92,13 +94,9 @@ build()
             done
         )
     fi
-    
-    
+
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do
-	cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
+
