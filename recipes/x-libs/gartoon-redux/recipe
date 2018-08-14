@@ -1,0 +1,70 @@
+# Build recipe for gartoon-redux.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=gartoon-redux
+version=1.11
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/x-libs"
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://launchpad.net/gartoon-redux/1.x/${version}/+download/$tarname
+
+description="
+Cartoon-style SVG icon theme for Gnome, based on Gartoon.
+
+Gartoon Redux is an icon theme for Gnome derived from Gartoon.
+It contains hundreds of additional icons, while preserving the overall
+style of its predecessor.  It includes pre-rendered PNGs in four sizes
+(16x16, 22x22, 24x24 and 32x32) to fix bugs with some programs, as well
+as increase performance.
+"
+
+homepage=http://launchpad.net/gartoon-redux
+license=GPLv2+
+
+# Source documentation
+docs="AUTHORS COPYING GPLv2.txt TODO changelog"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure --prefix=/usr --defer-fixlogo
+
+    make -j${jobs} V=1
+    make -j${jobs} PREFIX="${destdir}/usr" install
+
+    # This script has an external dependency,
+    # requires a Perl module for work
+    rm -f "${destdir}/usr/share/icons/GartoonRedux/fix-logo.pl"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
