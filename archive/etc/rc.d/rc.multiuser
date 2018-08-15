@@ -57,45 +57,14 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
 # The variable for the hardware clock is not used here
 unset RC_HWCLOCK
 
-# Set host name and domain name for the system; this overrides any
-# value given with sysctl(8)
-
-echo "${RC_HOSTNAME:-dragora}"        > /proc/sys/kernel/hostname
-echo "${RC_DOMAINNAME:-example.net}"  > /proc/sys/kernel/domainname
-
-unset RC_HOSTNAME RC_DOMAINNAME
-
-# Start the loopback device
-
-echo "(Startup) Starting loopback device"
-
-if type ip > /dev/null 2>&1
-then
-    ip addr del 127.0.0.1/8 dev lo 2> /dev/null
-    ip addr add 127.0.0.1/8 dev lo brd + scope host
-    ip link set lo up
-elif type ifconfig > /dev/null 2>&1
-then
-    ifconfig lo up > /dev/null
-else
-    echo "WARNING: Could not find ip(8) or ifconfig(1)" 1>&2
-fi
-
-# Start ALSA (sound support)
-
-if test -x /etc/rc.d/rc.alsa
-then
-    /etc/rc.d/rc.alsa start
-fi
-
-# Database for Xorg
+# X database.
 #
-echo "(Startup) Updating database for X "
+echo "(Startup) Updating X database (X.Org)"
 
-echo "X font index cache: fc-cache -f &"
+echo "X font index cache: fc-cache --system-only &"
 if type fc-cache > /dev/null
 then
-    fc-cache -f &
+    fc-cache --system-only &
 fi
 
 echo "GTK+-2.0 module(s) cache: gtk-query-immodules-2.0 --update-cache"
@@ -137,20 +106,44 @@ if type update-desktop-database > /dev/null
 then
     update-desktop-database -q
 fi
-echo "ICON theme cache: gtk-update-icon-cache -q -f -t -i /usr/share/icons/*"
+echo "ICON theme cache: setsid gtk-update-icon-cache -q -i /usr/share/icons/*/"
 if type gtk-update-icon-cache > /dev/null
 then
-    for directory in /usr/share/icons/*
-    do
-        test -d "$directory" || continue;
-
-        gtk-update-icon-cache -q -f -t -i "$directory" && \
-         gtk-update-icon-cache --validate "$directory"
-    done
-    unset directory
+    setsid gtk-update-icon-cache -q -i /usr/share/icons/*/
 fi
 #
-# End of Database for Xorg.
+# End of X database.
+
+# Set host name and domain name for the system; this overrides any
+# value given with sysctl(8)
+
+echo "${RC_HOSTNAME:-dragora}"        > /proc/sys/kernel/hostname
+echo "${RC_DOMAINNAME:-example.net}"  > /proc/sys/kernel/domainname
+
+unset RC_HOSTNAME RC_DOMAINNAME
+
+# Start the loopback device
+
+echo "(Startup) Starting loopback device"
+
+if type ip > /dev/null 2>&1
+then
+    ip addr del 127.0.0.1/8 dev lo 2> /dev/null
+    ip addr add 127.0.0.1/8 dev lo brd + scope host
+    ip link set lo up
+elif type ifconfig > /dev/null 2>&1
+then
+    ifconfig lo up > /dev/null
+else
+    echo "WARNING: Could not find ip(8) or ifconfig(1)" 1>&2
+fi
+
+# Start ALSA (sound support)
+
+if test -x /etc/rc.d/rc.alsa
+then
+    /etc/rc.d/rc.alsa start
+fi
 
 # Start services through perpd(8) instances
 
