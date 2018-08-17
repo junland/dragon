@@ -1,0 +1,105 @@
+# Build recipe for net-tools.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=net-tools-code
+version=aebd88ef8d6e15f673b62a649a50d07ed727c888
+release=1
+
+pkgname=net-tools
+pkgversion=aebd88e
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/networking"
+
+tarname=${program}-${version}.zip
+
+# Remote source(s)
+fetch=http://sourceforge.net/code-snapshots/git/n/ne/net-tools/code.git/$tarname
+
+description="
+Collection of basic networking programs.
+
+A collection of programs that form the base set of the NET-3 networking
+distribution for the GNU/Linux operating system.
+
+This package includes the important tools for controlling the network
+subsystem of the Linux kernel.  This includes arp, hostname, ifconfig,
+netstat, rarp and route.  Additionally, this package contains
+utilities relating to particular network hardware types (plipconfig,
+slattach, mii-tool) and advanced aspects of IP configuration (iptunnel,
+ipmaddr).
+"
+
+homepage=http://net-tools.sourceforge.net/
+license=GPLv2+
+
+# Source documentation
+docs="COPYING README THANKS TODO"
+docsdir="${docdir}/${program}-${pkgversion}"
+
+# The build system does not support parallel jobs
+jobs=1
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    yes "" | make config
+    make -j${jobs} V=1 \
+     BINDIR=/usr/bin SBINDIR=/usr/sbin \
+     DESTDIR="$destdir" install
+
+    # Delete included programs on the inetutils packages
+    for program in hostname dnsdomainname ifconfig \
+                   domainname nisdomainname ypdomainname
+    do
+        rm "${destdir}/usr/bin/${program}"
+        rm "${destdir}/${mandir}/man1/${program}.1" \
+           "${destdir}/${mandir}/man8/${program}.8" || true;
+    done
+    unset program
+
+    strip --strip-unneeded "${destdir}"/usr/bin/* \
+     "${destdir}"/usr/sbin/* 2> /dev/null || true;
+
+    rmdir "${destdir}/${mandir}/man1" || true;
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
