@@ -16,49 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Parse config file.  Values given in /proc/cmdline have priority over
-# those present in the configuration file "/etc/rc.conf"
-
-if grep -q RC_ /proc/cmdline
-then
-    tr -s '[:space:]' '\n' < /proc/cmdline | \
-     while IFS='=' read -r variable value
-     do
-         case $variable in
-         RC_?*)
-             # Set variable value avoiding possible code execution
-             eval "$variable=\${value}"
-             ;;
-         esac
-     done
-fi
-if test -f /etc/rc.conf
-then
-    while IFS='=' read -r variable value
-    do
-        case $variable in
-        \#* | "")       # Ignore commented or blank lines
-            continue
-            ;;
-        esac
-
-        if test -z "$variable"
-        then
-            eval "$variable=\${value}"
-        fi
-    done < /etc/rc.conf
-fi
-
 umask 022
 IFS='
  	'
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
 
-# The variable for the hardware clock is not used here
-unset RC_HWCLOCK
+# X11 database
 
-# X database.
-#
 echo "(Startup) Updating X database (X.Org)"
 
 echo "X font index cache: fc-cache --system-only &"
@@ -106,37 +70,13 @@ if type update-desktop-database > /dev/null
 then
     update-desktop-database -q
 fi
-echo "ICON theme cache: setsid gtk-update-icon-cache -q -i /usr/share/icons/*/"
+echo "icon-theme.cache: setsid gtk-update-icon-cache -q -i /usr/share/icons/*/"
 if type gtk-update-icon-cache > /dev/null
 then
     setsid gtk-update-icon-cache -q -i /usr/share/icons/*/
 fi
-#
-# End of X database.
 
-# Set host name and domain name for the system; this overrides any
-# value given with sysctl(8)
-
-echo "${RC_HOSTNAME:-dragora}"        > /proc/sys/kernel/hostname
-echo "${RC_DOMAINNAME:-example.net}"  > /proc/sys/kernel/domainname
-
-unset RC_HOSTNAME RC_DOMAINNAME
-
-# Start the loopback device
-
-echo "(Startup) Starting loopback device"
-
-if type ip > /dev/null 2>&1
-then
-    ip addr del 127.0.0.1/8 dev lo 2> /dev/null
-    ip addr add 127.0.0.1/8 dev lo brd + scope host
-    ip link set lo up
-elif type ifconfig > /dev/null 2>&1
-then
-    ifconfig lo up > /dev/null
-else
-    echo "WARNING: Could not find ip(8) or ifconfig(1)" 1>&2
-fi
+# End of X11 database.
 
 # Start ALSA (sound support)
 
@@ -192,18 +132,4 @@ then
     echo "(Startup) Running /etc/rc.d/rc.local"
     /etc/rc.d/rc.local
 fi
-
-# Load keyboard map from /etc/rc.conf
-
-if test -n "$RC_KEYMAP"
-then
-    loadkeys "$RC_KEYMAP"
-    unset RC_KEYMAP
-fi
-
-# Set terminal attributes
-
-# Screen blanking interval, default sets to 15 minutes
-setterm -blank "${RC_BLANKTIME:-15}"
-unset RC_BLANKTIME
 

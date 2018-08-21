@@ -145,13 +145,14 @@ fi
 
 # Set system clock (2/2)
 
-if egrep -q '^(RC_HWCLOCK=UTC|RC_HWCLOCK=utc)' /etc/rc.conf
+if test "$RC_HWCLOCK" = UTC || test "$RC_HWCLOCK" = utc
 then
     echo "(Startup) Setting system time from the hardware clock to UTC"
     hwclock --hctosys --utc
 else
     echo "(Startup) The system time was already set to local time" 1>&2
 fi
+unset RC_HWCLOCK
 
 # Re-mount the root filesystem in *read-write mode*
 echo "(Startup) Remounting root filesystem in read-write mode"
@@ -201,6 +202,30 @@ find /var/lock /var/run  \
 echo "(Startup) Setting kernel parameters: sysctl -q --system"
 sysctl -q --system
 
+# Set host name and domain name for the system,
+# overrides any value given in sysctl(8)
+
+echo "${RC_HOSTNAME:-dragora}"        > /proc/sys/kernel/hostname
+echo "${RC_DOMAINNAME:-example.net}"  > /proc/sys/kernel/domainname
+
+unset RC_HOSTNAME RC_DOMAINNAME
+
+# Start the loopback device
+
+echo "(Startup) Starting loopback device"
+
+if type ip > /dev/null 2>&1
+then
+    ip addr del 127.0.0.1/8 dev lo 2> /dev/null
+    ip addr add 127.0.0.1/8 dev lo brd + scope host
+    ip link set lo up
+elif type ifconfig > /dev/null 2>&1
+then
+    ifconfig lo up > /dev/null
+else
+    echo "WARNING: Could not find ip(8) or ifconfig(1)" 1>&2
+fi
+
 # Initialize the random number generator, see random(4)
 
 echo "(Startup) Initializing random number generator"
@@ -247,4 +272,18 @@ then
         isapnp /etc/isapnp.conf
     fi
 fi
+
+# Load keyboard map
+
+if test -n "$RC_KEYMAP"
+then
+    loadkeys "$RC_KEYMAP"
+    unset RC_KEYMAP
+fi
+
+# Set terminal attributes
+
+# Screen blanking interval, default sets to 15 minutes
+setterm -blank "${RC_BLANKTIME:-15}"
+unset RC_BLANKTIME
 
