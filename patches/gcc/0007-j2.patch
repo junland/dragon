@@ -1,22 +1,22 @@
-From bc0a791752b332c514cd0a58ed554adc4e6e841f Mon Sep 17 00:00:00 2001
+From c9bd49664e3347db0d4aa30f63e41a0fb8729c42 Mon Sep 17 00:00:00 2001
 From: Szabolcs Nagy <nsz@port70.net>
 Date: Fri, 26 Jan 2018 20:29:56 +0000
-Subject: [PATCH 11/15] j2
+Subject: [PATCH 07/12] j2
 
 ---
- gcc/config.gcc        | 26 ++++++++++++++-----------
- gcc/config/sh/sh.c    |  7 +++++++
- gcc/config/sh/sh.h    | 15 +++++++++++---
+ gcc/config.gcc        | 26 ++++++++++++---------
+ gcc/config/sh/sh.c    |  7 ++++++
+ gcc/config/sh/sh.h    | 15 +++++++++---
  gcc/config/sh/sh.opt  |  4 ++++
- gcc/config/sh/sync.md | 54 +++++++++++++++++++++++++++++++++++++++++++++++++++
- gcc/config/sh/t-sh    | 10 ++++++----
+ gcc/config/sh/sync.md | 54 +++++++++++++++++++++++++++++++++++++++++++
+ gcc/config/sh/t-sh    | 10 ++++----
  6 files changed, 98 insertions(+), 18 deletions(-)
 
 diff --git a/gcc/config.gcc b/gcc/config.gcc
-index 6e75bd45fb9..8ab5f15ea8e 100644
+index 532c33f4c2b..20cdc192b82 100644
 --- a/gcc/config.gcc
 +++ b/gcc/config.gcc
-@@ -474,7 +474,7 @@ s390*-*-*)
+@@ -505,7 +505,7 @@ s390*-*-*)
  	extra_headers="s390intrin.h htmintrin.h htmxlintrin.h vecintrin.h"
  	;;
  # Note the 'l'; we need to be able to match e.g. "shle" or "shl".
@@ -25,7 +25,7 @@ index 6e75bd45fb9..8ab5f15ea8e 100644
  	cpu_type=sh
  	extra_options="${extra_options} fused-madd.opt"
  	extra_objs="${extra_objs} sh_treg_combine.o sh-mem.o sh_optimize_sett_clrt.o"
-@@ -2664,18 +2664,18 @@ s390x-ibm-tpf*)
+@@ -2725,18 +2725,18 @@ s390x-ibm-tpf*)
  	extra_options="${extra_options} s390/tpf.opt"
  	tmake_file="${tmake_file} s390/t-s390"
  	;;
@@ -48,7 +48,7 @@ index 6e75bd45fb9..8ab5f15ea8e 100644
  		*)				   with_endian=big,little ;;
  		esac
  	fi
-@@ -2742,6 +2742,7 @@ sh-*-elf* | sh[12346l]*-*-elf* | \
+@@ -2803,6 +2803,7 @@ sh-*-elf* | sh[12346l]*-*-elf* | \
  	sh2a_nofpu*)		sh_cpu_target=sh2a-nofpu ;;
  	sh2a*)			sh_cpu_target=sh2a ;;
  	sh2e*)			sh_cpu_target=sh2e ;;
@@ -56,7 +56,7 @@ index 6e75bd45fb9..8ab5f15ea8e 100644
  	sh2*)			sh_cpu_target=sh2 ;;
  	*)			sh_cpu_target=sh1 ;;
  	esac
-@@ -2763,7 +2764,7 @@ sh-*-elf* | sh[12346l]*-*-elf* | \
+@@ -2824,7 +2825,7 @@ sh-*-elf* | sh[12346l]*-*-elf* | \
  	  sh2a-single-only | sh2a-single | sh2a-nofpu | sh2a | \
  	  sh4a-single-only | sh4a-single | sh4a-nofpu | sh4a | sh4al | \
  	  sh4-single-only | sh4-single | sh4-nofpu | sh4 | sh4-300 | \
@@ -65,7 +65,7 @@ index 6e75bd45fb9..8ab5f15ea8e 100644
  	"")	sh_cpu_default=${sh_cpu_target} ;;
  	*)	echo "with_cpu=$with_cpu not supported"; exit 1 ;;
  	esac
-@@ -2772,9 +2773,9 @@ sh-*-elf* | sh[12346l]*-*-elf* | \
+@@ -2833,9 +2834,9 @@ sh-*-elf* | sh[12346l]*-*-elf* | \
  		case ${target} in
  		sh[1234]*)	sh_multilibs=${sh_cpu_target} ;;
  		sh-superh-*)	sh_multilibs=m4,m4-single,m4-single-only,m4-nofpu ;;
@@ -77,7 +77,7 @@ index 6e75bd45fb9..8ab5f15ea8e 100644
  		esac
  		if test x$with_fp = xno; then
  			sh_multilibs="`echo $sh_multilibs|sed -e s/m4/sh4-nofpu/ -e s/,m4-[^,]*//g -e s/,m[23]e// -e s/m2a,m2a-single/m2a-nofpu/ -e s/m5-..m....,//g`"
-@@ -2789,7 +2790,8 @@ sh-*-elf* | sh[12346l]*-*-elf* | \
+@@ -2850,7 +2851,8 @@ sh-*-elf* | sh[12346l]*-*-elf* | \
  		m1 | m2 | m2e | m3 | m3e | \
  		m4 | m4-single | m4-single-only | m4-nofpu | m4-300 |\
  		m4a | m4a-single | m4a-single-only | m4a-nofpu | m4al | \
@@ -87,7 +87,7 @@ index 6e75bd45fb9..8ab5f15ea8e 100644
  			# TM_MULTILIB_CONFIG is used by t-sh for the non-endian multilib definition
  			# It is passed to MULTIILIB_OPTIONS verbatim.
  			TM_MULTILIB_CONFIG="${TM_MULTILIB_CONFIG}/${sh_multilib}"
-@@ -2806,7 +2808,7 @@ sh-*-elf* | sh[12346l]*-*-elf* | \
+@@ -2867,7 +2869,7 @@ sh-*-elf* | sh[12346l]*-*-elf* | \
  	done
  	TM_MULTILIB_CONFIG=`echo $TM_MULTILIB_CONFIG | sed 's:^/::'`
  	if test x${enable_incomplete_targets} = xyes ; then
@@ -96,7 +96,7 @@ index 6e75bd45fb9..8ab5f15ea8e 100644
  	fi
  	tm_file="$tm_file ./sysroot-suffix.h"
  	tmake_file="$tmake_file t-sysroot-suffix"
-@@ -4380,6 +4382,8 @@ case "${target}" in
+@@ -4518,6 +4520,8 @@ case "${target}" in
  			;;
  		m4a | m4a-single | m4a-single-only | m4a-nofpu | m4al)
  		        ;;
@@ -105,8 +105,8 @@ index 6e75bd45fb9..8ab5f15ea8e 100644
  		*)
  			echo "Unknown CPU used in --with-cpu=$with_cpu, known values:"  1>&2
  			echo "m1 m2 m2e m3 m3e m4 m4-single m4-single-only m4-nofpu" 1>&2
-@@ -4589,7 +4593,7 @@ case ${target} in
- 		tmake_file="rs6000/t-rs6000 ${tmake_file}"
+@@ -4729,7 +4733,7 @@ case ${target} in
+ 		tmake_file="${cpu_type}/t-${cpu_type} ${tmake_file}"
  		;;
  
 -	sh[123456ble]*-*-* | sh-*-*)
@@ -115,10 +115,10 @@ index 6e75bd45fb9..8ab5f15ea8e 100644
  		cxx_target_objs="${cxx_target_objs} sh-c.o"
  		;;
 diff --git a/gcc/config/sh/sh.c b/gcc/config/sh/sh.c
-index ff79b93adc2..5fe3f3bfe69 100644
+index ced66408265..c51b00d8e8b 100644
 --- a/gcc/config/sh/sh.c
 +++ b/gcc/config/sh/sh.c
-@@ -662,6 +662,7 @@ parse_validate_atomic_model_option (const char* str)
+@@ -685,6 +685,7 @@ parse_validate_atomic_model_option (const char* str)
    model_names[sh_atomic_model::hard_llcs] = "hard-llcs";
    model_names[sh_atomic_model::soft_tcb] = "soft-tcb";
    model_names[sh_atomic_model::soft_imask] = "soft-imask";
@@ -126,7 +126,7 @@ index ff79b93adc2..5fe3f3bfe69 100644
  
    const char* model_cdef_names[sh_atomic_model::num_models];
    model_cdef_names[sh_atomic_model::none] = "NONE";
-@@ -669,6 +670,7 @@ parse_validate_atomic_model_option (const char* str)
+@@ -692,6 +693,7 @@ parse_validate_atomic_model_option (const char* str)
    model_cdef_names[sh_atomic_model::hard_llcs] = "HARD_LLCS";
    model_cdef_names[sh_atomic_model::soft_tcb] = "SOFT_TCB";
    model_cdef_names[sh_atomic_model::soft_imask] = "SOFT_IMASK";
@@ -134,7 +134,7 @@ index ff79b93adc2..5fe3f3bfe69 100644
  
    sh_atomic_model ret;
    ret.type = sh_atomic_model::none;
-@@ -747,6 +749,9 @@ got_mode_name:;
+@@ -770,6 +772,9 @@ got_mode_name:;
    if (ret.type == sh_atomic_model::soft_imask && TARGET_USERMODE)
      err_ret ("cannot use atomic model %s in user mode", ret.name);
  
@@ -144,7 +144,7 @@ index ff79b93adc2..5fe3f3bfe69 100644
    return ret;
  
  #undef err_ret
-@@ -803,6 +808,8 @@ sh_option_override (void)
+@@ -826,6 +831,8 @@ sh_option_override (void)
      sh_cpu = PROCESSOR_SH2E;
    if (TARGET_SH2A)
      sh_cpu = PROCESSOR_SH2A;
@@ -154,7 +154,7 @@ index ff79b93adc2..5fe3f3bfe69 100644
      sh_cpu = PROCESSOR_SH3;
    if (TARGET_SH3E)
 diff --git a/gcc/config/sh/sh.h b/gcc/config/sh/sh.h
-index b13d1b3c943..9e24649d189 100644
+index 2f5930bbebd..5a6d113a011 100644
 --- a/gcc/config/sh/sh.h
 +++ b/gcc/config/sh/sh.h
 @@ -83,6 +83,7 @@ extern int code_for_indirect_jump_scratch;
@@ -218,7 +218,7 @@ index b13d1b3c943..9e24649d189 100644
  #endif // __cplusplus
  
  #define SUBTARGET_OVERRIDE_OPTIONS (void) 0
-@@ -1568,7 +1576,7 @@ extern bool current_function_interrupt;
+@@ -1521,7 +1529,7 @@ extern bool current_function_interrupt;
  
  /* Nonzero if the target supports dynamic shift instructions
     like shad and shld.  */
@@ -227,7 +227,7 @@ index b13d1b3c943..9e24649d189 100644
  
  /* The cost of using the dynamic shift insns (shad, shld) are the same
     if they are available.  If they are not available a library function will
-@@ -1833,6 +1841,7 @@ enum processor_type {
+@@ -1784,6 +1792,7 @@ enum processor_type {
    PROCESSOR_SH2,
    PROCESSOR_SH2E,
    PROCESSOR_SH2A,
@@ -236,7 +236,7 @@ index b13d1b3c943..9e24649d189 100644
    PROCESSOR_SH3E,
    PROCESSOR_SH4,
 diff --git a/gcc/config/sh/sh.opt b/gcc/config/sh/sh.opt
-index c4f0d964d00..792af395b5d 100644
+index 837d9bfdc23..86b2cd6fc79 100644
 --- a/gcc/config/sh/sh.opt
 +++ b/gcc/config/sh/sh.opt
 @@ -65,6 +65,10 @@ m2e
@@ -251,7 +251,7 @@ index c4f0d964d00..792af395b5d 100644
  Target RejectNegative Mask(SH3) Condition(SUPPORT_SH3)
  Generate SH3 code.
 diff --git a/gcc/config/sh/sync.md b/gcc/config/sh/sync.md
-index b46ac3131a8..72705583f84 100644
+index 9dba513e642..5bc8acabf2f 100644
 --- a/gcc/config/sh/sync.md
 +++ b/gcc/config/sh/sync.md
 @@ -240,6 +240,9 @@
@@ -323,7 +323,7 @@ index b46ac3131a8..72705583f84 100644
  ;; operand.  In order to express that, we have to open code the memory
  ;; operand.  Initially the insn is expanded like every other atomic insn
 diff --git a/gcc/config/sh/t-sh b/gcc/config/sh/t-sh
-index 409554a8c8d..d354c11c8f2 100644
+index a78c6a55127..386934dca8a 100644
 --- a/gcc/config/sh/t-sh
 +++ b/gcc/config/sh/t-sh
 @@ -50,7 +50,8 @@ MULTILIB_MATCHES = $(shell \
@@ -359,5 +359,5 @@ index 409554a8c8d..d354c11c8f2 100644
  $(out_object_file): gt-sh.h
  gt-sh.h : s-gtype ; @true
 -- 
-2.16.3
+2.17.1
 
