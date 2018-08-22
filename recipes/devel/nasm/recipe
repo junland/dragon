@@ -17,7 +17,7 @@
 
 program=nasm
 version=2.13.03
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -29,7 +29,7 @@ fetch=http://www.nasm.us/pub/nasm/releasebuilds/$version/$tarname
 
 description="
 A free portable assembler.
- 
+
 Designed for the Intel 80x86 microprocessor series,
 using primarily the traditional Intel instruction mnemonics and syntax.
 "
@@ -50,20 +50,26 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # Fix FTBFS to compile under GCC8 (thanks to BLFS!)
+    sed \
+     -e '/seg_init/d'                      \
+     -e 's/pure_func seg_alloc/seg_alloc/' \
+     -i include/nasmlib.h
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
     --mandir=$mandir \
     --build="$(cc -dumpmachine)"
-     
+
     make -j${jobs}
     make -j${jobs} INSTALLROOT="$destdir" install
 
     # Compress manpages
     lzip -9 "${destdir}/${mandir}/man1"/*.1
-     
+
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-        
+
     for file in $docs
     do
         cp -p $file "${destdir}${docsdir}"
