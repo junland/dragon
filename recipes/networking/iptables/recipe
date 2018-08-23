@@ -16,7 +16,7 @@
 
 program=iptables
 version=1.6.2
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/networking"
@@ -57,6 +57,9 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    # A patch from Alpine Linux adding definitions for Musl
+    patch -p1 < "${worktree}/patches/iptables/iptables-1.6.0-musl-fixes.patch"
 
     ./configure CFLAGS="$QICFLAGS -D_GNU_SOURCE" LDFLAGS="$QILDFLAGS" \
      $configure_args \
