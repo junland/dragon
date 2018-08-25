@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=openssh
-version=7.7p1
-release=2
+version=7.8p1
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/networking"
@@ -53,6 +53,9 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    # A patch from Dragora to include a missing header at md5crypt.c file
+    patch -p1 < "${worktree}/patches/openssh/openssh-include-stdio.h.patch"
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
