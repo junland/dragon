@@ -1,6 +1,6 @@
 # Build recipe for libcap.
 #
-# Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 program=libcap
 version=2.25
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
@@ -53,6 +53,11 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    # Apply patches from Debian in order to fix the compilation against
+    # gperf v3+, applying patch containing code enhancement
+    patch -p1 < "${worktree}/patches/libcap/Hide-private-symbols.patch"
+    patch -p1 < "${worktree}/patches/libcap/Avoid-sys-capability.h-on-build-architecture.patch"
 
     patch -p0 < "${worktree}/patches/libcap/libcap-buildflags.diff"
 
