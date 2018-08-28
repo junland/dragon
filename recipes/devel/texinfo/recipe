@@ -1,6 +1,6 @@
 # Build recipe for texinfo.
 #
-# Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 program=texinfo
 version=6.5
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
@@ -52,6 +52,9 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    # Fix unescaped left braces in regexps
+    patch -p1 < "${worktree}/patches/texinfo/perl-528-fixes"
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
