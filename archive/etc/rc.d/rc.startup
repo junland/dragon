@@ -48,7 +48,7 @@ udevd --daemon
 udevadm trigger --type=subsystems --action=add
 udevadm trigger --type=devices    --action=add
 
-# Wait for event queue
+echo "Waiting for event queue"
 udevadm settle
 
 # Re-mount the root filesystem in *read-only mode*, if needed
@@ -170,32 +170,26 @@ mount -a -t no,proc,sysfs,devtmpfs,shm,devpts,usbfs,cifs,smbfs,nfs
 echo "(Startup) Activating swap devices, if any"
 swapon -v -a
 
+# Update kernel modules
+
+if test -s "/lib/modules/$(uname -r)/modules.dep"
+then
+    echo "(Startup) Refreshing kernel module list: depmod --quick &"
+    depmod --quick &
+else
+    echo "(Startup) Generating kernel module dependency list: depmod --all"
+    depmod --all
+fi
+
 # Re-create hierarchy for temporary files (if needed)
 
-if test ! -d /tmp
-then
-    mkdir /tmp
-fi
-if test ! -d /tmp/.font-unix
-then
-    mkdir /tmp/.font-unix
-fi
-if test ! -d /tmp/.ICE-unix
-then
-    mkdir /tmp/.ICE-unix
-fi
-if test ! -d /tmp/.X11-unix
-then
-    mkdir /tmp/.X11-unix
-fi
+mkdir -p -m1777 /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
 chmod 1777 /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
 
-# Seek and destroy (some) temporary files
+# Seek and destroy temporary files
 
 rm -f /etc/nologin /fastboot /forcefsck
-
-find /var/lock /var/run  \
- \( ! -type d -a ! -name utmp \) -exec rm -f '{}' +
+find /var/lock /var/run \( ! -type d -a ! -name utmp \) -delete
 
 # Set kernel parameters at runtime
 
@@ -244,17 +238,6 @@ dd if=/dev/urandom of=/etc/random-seed count=1 bs=${size} 2> /dev/null
 
 unset size
 chmod 600 /etc/random-seed
-
-# Update kernel modules
-
-if test -f "/lib/modules/$(uname -r)/modules.dep"
-then
-    echo "(Startup) Refreshing kernel module list: depmod --quick"
-    depmod --quick
-else
-    echo "(Startup) Generating kernel module dependency list: depmod --all"
-    depmod --all
-fi
 
 # Configure ISA Plug-and-Play devices
 
