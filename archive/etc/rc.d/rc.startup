@@ -256,12 +256,19 @@ then
     fi
 fi
 
-# Start ALSA (sound support)
+# Start sound or speech engine
 
 if test -x /etc/rc.d/rc.alsa
 then
     /etc/rc.d/rc.alsa start
 fi
+if test "$ENABLE_ESPEAKUP" = yes
+then
+    echo "(Startup) Activating eSpeakup (software synthesizer): espeakup"
+    modprobe -q speakup_soft
+    espeakup -V "${ESPEAKUP_VOICE:-default}"
+fi
+unset ENABLE_ESPEAKUP ESPEAKUP_VOICE
 
 # Load keyboard map
 
