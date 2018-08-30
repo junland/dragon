@@ -52,6 +52,10 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # Make sure to build the gpg-zip program (thanks to BLFS!)
+    sed -e '/noinst_SCRIPTS = gpg-zip/c sbin_SCRIPTS += gpg-zip' \
+        -i tools/Makefile.in
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
@@ -60,7 +64,7 @@ build()
      --docdir=$docsdir \
      --enable-symcryptrun \
      --enable-g13 \
-     --enable-gpg-is-gpg2 \
+     --disable-gpg-is-gpg2 \
      --disable-optimization \
      --disable-sqlite \
      --build="$(cc -dumpmachine)"
