@@ -21,8 +21,19 @@ IFS='
  	'
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/X11R6/bin
 
-echo "Starting graphical session manager ..."
+echo ""
+echo "Looking for a graphical session manager ..."
 
-echo "XDM: exec $(command -v xdm) -nodaemon"
-exec xdm -nodaemon
+type gdm && exec gdm -nodaemon
+type kdm && exec kdm -nodaemon
+type xdm && exec xdm -nodaemon
+
+# Setback to INIT 3 in case of failure
+
+echo ""
+echo "If this message appears, it means that you do not have any"
+echo "of the following combinations of session managers installed:"
+echo "GDM, KDM, or XDM."
+echo ""
+exec telinit 3
 
