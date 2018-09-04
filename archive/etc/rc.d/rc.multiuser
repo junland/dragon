@@ -25,10 +25,28 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
 
 echo "(Startup) Updating X11 database (X.Org)"
 
-echo "X font index cache: fc-cache --system-only &"
+echo "X font index cache ..."
+if type mkfontdir > /dev/null && type mkfontscale > /dev/null
+then
+    for directory in /usr/share/fonts/X11/*
+    do
+        if test ! -e "${directory}/fonts.dir" || \
+           test -s "${directory}/fonts.dir"
+        then
+            echo "Running mkfontdir(1) at $directory"
+            mkfontdir   "$directory"  > /dev/null 2>&1
+
+            echo "Running mkfontscale(1) at $directory"
+            mkfontscale "$directory"  > /dev/null 2>&1
+        fi
+    done
+    unset directory
+fi
+
+echo "fc-cache --system-only /usr/share/fonts/ &"
 if type fc-cache > /dev/null
 then
-    fc-cache --system-only &
+    fc-cache --system-only /usr/share/fonts/ &
 fi
 
 echo "GTK+-2.0 module(s) cache: gtk-query-immodules-2.0 --update-cache &"
@@ -70,11 +88,17 @@ if type update-desktop-database > /dev/null
 then
     update-desktop-database -q &
 fi
-echo "icon-theme.cache: gtk-update-icon-cache -q -i /usr/share/icons/*/ &"
-if type gtk-update-icon-cache > /dev/null
-then
-   gtk-update-icon-cache -q -i /usr/share/icons/*/ &
-fi
+
+echo "Updating icon cache directories ..."
+for directory in /usr/share/icons/*
+do
+    if test -e "${directory}/index.theme"
+    then
+        echo "gtk-update-icon-cache -q -f -t -i $directory &"
+        gtk-update-icon-cache -q -f -t -i "$directory" &
+    fi
+done
+unset directory
 
 # End of X11 database.
 
