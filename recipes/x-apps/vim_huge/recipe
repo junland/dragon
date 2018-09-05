@@ -1,0 +1,110 @@
+# Build recipe for vim (huge).
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=vim
+version=8.1.0327
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/x-apps"
+
+pkgname=vim_huge
+
+# The installation of this package replaces to
+replace=vim_tiny
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://github.com/vim/vim/archive/v${version}/$tarname
+
+homepage=http://www.vim.org
+
+description="
+The ubiquitous text editor (huge version, with X11 support).
+
+Vim is a highly configurable text editor built to make creating and
+changing any kind of text very efficient.  It is included as \"vi\"
+with most UNIX systems and with Apple OS X.
+
+For more information, visit:  $homepage
+"
+
+license=Custom
+
+# Source documentation
+docs="CONTRIBUTING.md README.md"
+docsdir="${docdir}/${pkgname}-${pkgversion}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd $srcdir
+
+    # Workaround for the special 'srcdir' variable, it is internally
+    # imported and exported from vim's ./configure
+    saved_srcdir=$srcdir
+    unset srcdir
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-gui=gtk2 \
+     --enable-multibyte \
+     --enable-perlinterp \
+     --enable-pythoninterp \
+     --disable-netbeans \
+     --with-features=huge \
+     --with-compiledby="Dragora GNU/Linux-Libre" \
+     --with-x \
+     --build="$(cc -dumpmachine)"
+
+    # Restore 'srcdir'
+    srcdir=$saved_srcdir
+    unset saved_srcdir
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Add wrappers script from Dragora for compatibility mode (vi)
+    cp -f "${worktree}/archive/vim/usr/bin/vi" \
+          "${destdir}/usr/bin"
+    chmod 755 "${destdir}/usr/bin/vi"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
