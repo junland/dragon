@@ -26,18 +26,15 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
 echo "(Startup) Updating X11 database (X.Org)"
 
 echo "X font index cache, if needed ..."
-if type mkfontdir > /dev/null && type mkfontscale > /dev/null
+if type mkfontscale > /dev/null
 then
     for directory in /usr/share/fonts/X11/*
     do
         if test ! -e "${directory}/fonts.dir" || \
            test -s "${directory}/fonts.dir"
         then
-            echo "Using \`mkfontdir' for missing fonts.dir at $directory"
-            mkfontdir   "$directory"  > /dev/null 2>&1
-
             echo "Using \`mkfontscale' for missing fonts.dir at $directory"
-            mkfontscale "$directory"  > /dev/null 2>&1
+            mkfontscale -b -s -l "$directory" && mkfontscale "$directory"
         fi
     done
     unset directory
