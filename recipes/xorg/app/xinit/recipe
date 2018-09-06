@@ -17,7 +17,7 @@
 
 program=xinit
 version=1.4.0
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg"
@@ -62,8 +62,11 @@ build()
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
-    # To manage config file(s)
-    touch "${destdir}/etc/X11/xinit/.graft-config"    
+    # Delete default xinitrc for TWM, this is
+    # provided by the twm package now
+
+    rm -f "${destdir}/etc/X11/xinit/xinitrc"
+    ( cd -- "$destdir" && rmdir -p etc/X11/xinit )
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
