@@ -17,7 +17,7 @@
 
 program=twm
 version=1.0.10
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg"
@@ -57,7 +57,6 @@ build()
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
      || true
@@ -65,12 +64,13 @@ build()
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
+    # Include xinitrc file to start TWM
+
+    mkdir -p "${destdir}/etc/X11/xinit"
+    cp -p "${worktree}/archive/twm/xinitrc.twm" "${destdir}/etc/X11/xinit/"
+    chmod 644 "${destdir}/etc/X11/xinit/xinitrc.twm"
+
+    touch "${destdir}/etc/X11/xinit/.graft-config"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
