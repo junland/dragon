@@ -17,7 +17,7 @@
 program=lynx
 version=2.8.9rel.1
 pkgversion=2.8.9
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/networking"
@@ -69,11 +69,17 @@ build()
      --enable-ipv6 \
      --enable-japanese-utf8 \
      --enable-nested-tables \
-     --enable-nls \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-full
+
+    # Tweak configuration file (thanks to BLFS!)
+    sed \
+     -e '/#LOCALE/     a LOCALE_CHARSET:TRUE' \
+     -e '/#DEFAULT_ED/ a DEFAULT_EDITOR:vi' \
+     -e '/#PERSIST/    a PERSISTENT_COOKIES:TRUE' \
+     -i "${destdir}/etc/lynx/lynx.cfg"
 
     # To handle dow new files via graft(8)
     touch "${destdir}/etc/lynx/.graft-config"
