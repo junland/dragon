@@ -17,7 +17,7 @@
 
 program=valgrind
 version=3.13.0
-release=3
+release=4
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -57,6 +57,16 @@ build()
     # Set installation for documentation directory
     patch -p0 < "${worktree}/patches/valgrind/valgrind-docdir.patch"
 
+    # Set specific options for the architecture
+    case $arch in
+    i?86)
+        arch_options="--enable-only32bit --build=$(cc -dumpmachine)"
+        ;;
+    x86_64)
+        arch_options="--enable-only64bit --build=$(cc -dumpmachine)"
+        ;;
+    esac
+
     # We do not try to strip any debugging symbol as
     # suggested in README_PACKAGERS
 
@@ -67,9 +77,12 @@ build()
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --disable-ubsan \
      --enable-tls \
-     --enable-inner
+     --enable-inner \
+     $arch_options
 
+    unset arch_options
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
