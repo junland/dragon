@@ -16,7 +16,7 @@
 
 program=linux
 version=4.18.7
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/kernel"
@@ -68,7 +68,7 @@ build()
     i?86)
         echo "Copying config-x86_generic ..."
         cp -p "${worktree}/archive/kernel/config-x86_generic" .config
-        kernel_arch=x86
+        kernel_arch=i386
         ;;
     *)
         echo "No custom configuration file detected for your architecture." 1>&2
@@ -83,9 +83,10 @@ build()
         exit 99;
     fi
 
-    make -j${jobs} bzImage
-    make -j${jobs} modules
-    make INSTALL_MOD_PATH="$destdir" modules_install
+    make -j${jobs} ARCH=$kernel_arch bzImage
+    make -j${jobs} ARCH=$kernel_arch modules
+    make -j${jobs} ARCH=$kernel_arch \
+     INSTALL_MOD_PATH="$destdir" modules_install
 
     # To extract the kernel string version
     strver="$(ls -d "${destdir}"/lib/modules/*)"
