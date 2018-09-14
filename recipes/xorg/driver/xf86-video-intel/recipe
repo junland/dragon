@@ -16,16 +16,18 @@
 # limitations under the License.
 
 program=xf86-video-intel
-version=20180223
+version=25c9a2fcc83ae7252a178b42262da383e59df744
+pkgversion=25c9a2f
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg"
 
-tarname=${program}-${version}.tar.xz
+tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
-fetch=http://anduin.linuxfromscratch.org/BLFS/xf86-video-intel/$tarname
+#fetch=http://anduin.linuxfromscratch.org/BLFS/xf86-video-intel/$tarname
+fetch=http://rsync.dragora.org/current/sources/$tarname
 
 description="
 Video driver for the Xorg X server supporting Intel chipsets.
@@ -51,16 +53,19 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # Note: currently, the default option for sna is causing
+    # compilation troubles, so we set it to 'uxa' by default.
+
     ./autogen.sh CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --enable-dri3 \
-     --enable-create2 \
-     --enable-async-swap \
-     || true
+     --disable-sna \
+     --enable-uxa \
+     --with-default-accel=uxa \
+     --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
