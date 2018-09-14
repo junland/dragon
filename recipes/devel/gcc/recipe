@@ -16,7 +16,7 @@
 
 program=gcc
 version=8-20180907
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -62,7 +62,8 @@ build()
     # Apply specific patches for the support in musl.
     # http://port70.net/~nsz/musl/gcc-8.2.0
 
-    patch -Np1 -i "${worktree}/patches/gcc/0001-ssp_nonshared.patch"
+    # patch -Np1 -i "${worktree}/patches/gcc/0001-ssp_nonshared.patch"
+    patch -Np1 -i "${worktree}/patches/gcc/musl-libssp.diff"
     patch -Np1 -i "${worktree}/patches/gcc/0002-posix_memalign.patch"
     patch -Np1 -i "${worktree}/patches/gcc/0003-libatomic-test-fix.patch"
     patch -Np1 -i "${worktree}/patches/gcc/0004-libgomp-test-fix.patch"
@@ -99,6 +100,7 @@ build()
      --enable-fully-dynamic-string \
      --enable-default-ssp \
      --enable-default-pie \
+     --disable-libssp \
      --disable-symvers \
      --disable-libitm \
      --disable-gnu-indirect-function \
