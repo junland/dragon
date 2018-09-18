@@ -67,6 +67,7 @@ usage()
      "  -f          Force proceeding with a recipe"                     \
      "  -j          Parallel jobs for the compiler"                     \
      "  -1          Increment release number (release + 1)"             \
+     "  -3          Resume skipping completed recipes option"           \
      "  -n          Don't create a .tlz package"                        \
      ""                                                                 \
      "Other options:"                                                   \
@@ -323,14 +324,14 @@ build_mode()
         then
             warn \
              ""                                                          \
-             "The recipe is NEWER than the detected package:"            \
+             "The recipe is more RECENT than the detected package:"      \
              ""                                                          \
              "$( stat -c "%y %n" "${CWD}/$recipe" )"                     \
              "$( stat -c "%y %n" "${outdir}/${full_pkgname}.tlz" )"      \
              ""                                                          \
-             "    This recipe will be processed."                        \
+             "    This recipe will be processed ..."                     \
              ""
-        elif test "$_opt_ignoreqsts" = _opt_ignoreqsts
+        elif test "$opt_ignoreqsts" = _opt_ignoreqsts
         then
             warn "Recipe for '${full_pkgname}.tlz':  Ignored." ""
             return 0
@@ -340,7 +341,7 @@ build_mode()
              "The recipe ALREADY produced the package:"                  \
              "$( stat -c "%y %n" "${outdir}/${full_pkgname}.tlz" )"      \
              ""                                                          \
-             "But the recipe is still older than the produced package:"  \
+             "This recipe is still OLDER than the produced package:"     \
              "$( stat -c "%y %n" "${CWD}/$recipe" )"                     \
              ""                                                          \
              "    Probably nothing has changed."                         \
@@ -368,8 +369,8 @@ build_mode()
                     unset REPLY
                     echo "Building unprocessed and/or modified recipes ..." > /dev/tty
                     echo ""
-                    _opt_ignoreqsts=_opt_ignoreqsts
-                    readonly _opt_ignoreqsts
+                    opt_ignoreqsts=_opt_ignoreqsts
+                    readonly opt_ignoreqsts
                     return 0
                     ;;
                 *)
@@ -1150,7 +1151,7 @@ QI_OUTDIR=$outdir
 
 #### Parse options
 
-while getopts :bcdiouxLNP:t:fkvO:W:Z:a:j:1npr:hV name
+while getopts :bcdiouxLNP:t:fkvO:W:Z:a:j:13npr:hV name
 do
     case $name in
     b)
@@ -1239,6 +1240,9 @@ do
         ;;
     1)
         opt_incr_release=opt_incr_release
+        ;;
+    3)
+        opt_ignoreqsts=_opt_ignoreqsts
         ;;
     n)
         opt_nopkg=opt_nopkg
