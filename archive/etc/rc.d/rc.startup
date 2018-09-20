@@ -143,6 +143,41 @@ else
     echo "WARNING: /fastboot is present: Dodging checks" 1>&2
 fi
 
+# Parse config file.
+#
+# Values given on /proc/cmdline have priority over those
+# present at configuration file "/etc/rc.conf"
+
+if grep -q RC_ /proc/cmdline
+then
+    tr -s '[:space:]' '\n' < /proc/cmdline | \
+     while IFS='=' read -r variable value
+     do
+         case $variable in
+         RC_?*)
+             # Set variable value avoiding possible code execution
+             eval "$variable=\${value}"
+             ;;
+         esac
+     done
+fi
+if test -f /etc/rc.conf
+then
+    while IFS='=' read -r variable value
+    do
+        case $variable in
+        \#* | "")       # Ignore commented or blank lines
+            continue
+            ;;
+        esac
+
+        if test -z "$variable"
+        then
+            eval "$variable=\${value}"
+        fi
+    done < /etc/rc.conf
+fi
+
 # Set system clock (2/2)
 
 if test "$RC_HWCLOCK" = UTC || test "$RC_HWCLOCK" = utc
