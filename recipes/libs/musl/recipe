@@ -106,7 +106,7 @@ build()
     # Create dynamic linker runtime file taking -$(ARCH) as reference
     for file in "${destdir}"/lib/ld-musl-*.so.1
     do
-        if ls -1 "$file" > /dev/null
+        if test -e "$file"
         then
             ld_path="${file##*/}"		# Basename
             ld_path="${ld_path%%.*}.path"	# Get the rid of .so.1
@@ -117,15 +117,17 @@ build()
     if test -n "$ld_path"
     then
         mkdir -p "${destdir}/etc"
-        cat << EOF > "${destdir}/etc/$ld_path"
+        cat << EOF > "${destdir}"/etc/$ld_path
 /lib
 /usr/local/lib
 /usr/lib
 /usr/$(cc -dumpmachine)/lib
 
 EOF
-        chmod 644 "${destdir}/etc/$ld_path"
+        chmod 644 "${destdir}"/etc/$ld_path
         touch "${destdir}/etc/.graft-config"
+    else
+        echo "WARNING: \$ld_path is empty." 1>&2
     fi
 
     # Copy documentation
