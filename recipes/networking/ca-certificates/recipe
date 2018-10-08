@@ -16,7 +16,7 @@
 
 program=ca-certificates
 version=20171114
-release=2
+release=3
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/networking"
@@ -65,6 +65,9 @@ build()
     strip --strip-unneeded \
      "${destdir}/usr/bin/c_rehash" \
      "${destdir}/usr/sbin/update-ca-certificates"
+
+    # Clean up broken symlinks, if any
+    find "$destdir" -xtype l -exec rm -f '{}' +
 
     mkdir -p "${destdir}"/etc/ca-certificates/update.d
 
