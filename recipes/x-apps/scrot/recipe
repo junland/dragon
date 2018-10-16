@@ -1,4 +1,4 @@
-# Build recipe for imlib2.
+# Build recipe for scrot.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
 # Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
@@ -15,34 +15,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-program=imlib2
-version=1.5.1
+program=scrot
+version=0.8
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
-outdir="${outdir}/${arch}/libs"
+outdir="${outdir}/${arch}/x-apps"
 
-tarname=${program}-${version}.tar.bz2
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://downloads.sourceforge.net/project/enlightenment/imlib2-src/${version}/$tarname
+fetch=http://github.com/dreamer/scrot/archive/$tarname
 
 description="
-Imlib2 is the (intended) successor to Imlib.
- 
-Imlib2 can load image files from disk in one of many formats, save
-images to disk in one of many formats, render image data onto other
-images, render images to an X-Windows drawable, produce pixmaps and
-pixmap masks of images, apply filters to images, rotate images,
-accept RGBA data for images, scale images, and more.
+Command line screen capture util.
+
+scrot is a command-line screen capture util like \"import\", but using
+imlib2.  It has lots of options for autogenerating filenames, and can
+do fun stuff like taking screenshots of multiple displays and glueing
+them together.
 "
 
-homepage=http://www.enlightenment.org/
+homepage=http://github.com/dreamer/scrot
 license=BSD
 
 # Source documentation
-docs="AUTHORS COPYING COPYING-PLAIN ChangeLog README TODO"
+docs="AUTHORS COPYING ChangeLog README TODO"
 docsdir="${docdir}/${program}-${version}"
+
+# Custom source directory
+srcdir="${program}-${program}-${version}"
 
 build()
 {
@@ -52,15 +54,15 @@ build()
 
     cd "$srcdir"
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --enable-mmx=no \
-     --enable-amd64=no \
-     --with-x
+     --mandir=$mandir \
+     --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
+
+    lzip -9 "${destdir}/${mandir}/man1/scrot.1"
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
