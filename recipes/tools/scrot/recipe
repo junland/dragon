@@ -1,6 +1,7 @@
 # Build recipe for scrot.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,22 +25,26 @@ outdir="${outdir}/${arch}/tools"
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://sourceforge.net/projects/slackbuildsdirectlinks/files/scrot/scrot-0.8.tar.gz
+fetch=http://github.com/dreamer/scrot/archive/$tarname
 
 description="
-command line screen capture util
+Command line screen capture util.
 
-scrot is a commandline screen capture util like "import", but using imlib2.
-It has lots of options for autogenerating filenames, and can do fun stuff 
-like taking screenshots of multiple displays and glueing them together.
+scrot is a command-line screen capture util like \"import\", but using
+imlib2.  It has lots of options for autogenerating filenames, and can
+do fun stuff like taking screenshots of multiple displays and glueing
+them together.
 "
 
 homepage=http://github.com/dreamer/scrot
-license="GPLv2"
+license=BSD
 
 # Source documentation
-docs="README"
+docs="AUTHORS COPYING ChangeLog README TODO"
 docsdir="${docdir}/${program}-${version}"
+
+# Custom source directory
+srcdir="${program}-${program}-${version}"
 
 build()
 {
@@ -47,43 +52,20 @@ build()
 
     unpack "${tardir}/$tarname"
 
-    srcdir=${program}-${version}
     cd "$srcdir"
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
      --mandir=$mandir \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
-
-    # Compress and link man pages (if needed)
-    if test -d "${destdir}/$mandir"
-    then
-        (
-            cd "${destdir}/$mandir"
-            find . -type f -exec lzip -9 '{}' +
-            find . -type l | while read -r file
-            do
-                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
-                rm -- "$file"
-            done
-        )
-    fi
+    lzip -9 "${destdir}/${mandir}/man1/scrot.1"
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}/"
 }
-
 
