@@ -1,6 +1,7 @@
 # Build recipe for giblib.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,20 +25,22 @@ outdir="${outdir}/${arch}/libs"
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://sourceforge.net/projects/slackbuildsdirectlinks/files/giblib/giblib-1.2.4.tar.gz
+fetch=http://sourceforge.net/projects/slackbuildsdirectlinks/files/giblib/$tarname
 
 description="
-giblib is a utility library.
+A wrapper library for imlib2, and other stuff.
 
-It incorporates doubly linked lists,
-string functions, and a wrapper for imlib2.
+giblib is a simple library which wraps imlib2.  It provides a wrapper
+to imlib2's context API, avoiding all the context_get/set calls, adds
+fontstyles to the truetype renderer and supplies a generic
+doubly-linked list and some string functions.
 "
 
 homepage=http://freecode.com/projects/giblib
-license="GPLv2"
+license=BSD
 
 # Source documentation
-docs="README"
+docs="AUTHORS COPYING ChangeLog README"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -46,7 +49,6 @@ build()
 
     unpack "${tardir}/$tarname"
 
-    srcdir=${program}-${version}
     cd "$srcdir"
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
@@ -54,6 +56,8 @@ build()
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
+     --disable-shared \
+     --enable-static
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
@@ -83,5 +87,4 @@ build()
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}/"
 }
-
 
