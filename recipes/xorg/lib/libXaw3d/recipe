@@ -17,7 +17,7 @@
 
 program=libXaw3d
 version=1.6.3
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg"
@@ -54,23 +54,17 @@ build()
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --enable-shared=yes \
+     --enable-static=no \
      --enable-multiplane-bitmaps \
      --enable-gray-stipples \
      --enable-arrow-scrollbars \
-     || true
+     --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
-
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -88,13 +82,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}"/
 }
 
