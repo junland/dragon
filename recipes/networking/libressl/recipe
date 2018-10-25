@@ -86,7 +86,13 @@ build()
     fi
 
     # Remove broken symlinks
-    find "${destdir}/$mandir" -xtype l -exec rm -f {} +
+    find "${destdir}/$mandir" -type f -print0 | while read -r file
+    do
+        if test -L "$file" && test ! -e "$file"
+        then
+            rm -f -- "$file"
+        fi
+    done
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
