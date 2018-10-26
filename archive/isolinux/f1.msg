@@ -18,4 +18,6 @@ command-line parameter is only valid for the current session.  If you
 wish to make a permanent change after booting, please refer to the
 system/distribution documentation.
 
-To exit this help, press [Enter] or [Esc].
+Note, default password for "root" is: dragora
+
+To exit, press [Enter] or [Esc].
