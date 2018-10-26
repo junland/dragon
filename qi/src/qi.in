@@ -254,11 +254,13 @@ build_mode()
     save_arch="${save_arch:=$arch}"
     save_jobs="${save_jobs:=$jobs}"
     save_outdir="${save_outdir:=$outdir}"
+    save_opt_nopkg="${save_opt_nopkg:=$opt_nopkg}"
 
     # Reset variable values in case of return
     arch=$save_arch
     jobs=$save_jobs
     outdir=$save_outdir
+    opt_nopkg=$save_opt_nopkg
 
     # The following variables cannot be redefined on the recipe
     readonly worktree netget rsync
@@ -331,7 +333,7 @@ build_mode()
              ""                                                          \
              "    This recipe will be processed ..."                     \
              ""
-        elif test "$opt_ignoreqsts" = _opt_ignoreqsts
+        elif test "$opt_ignoreqsts" = opt_ignoreqsts
         then
             warn "Recipe for '${full_pkgname}.tlz':  Ignored." ""
             return 0
@@ -359,22 +361,22 @@ build_mode()
                  "2) No, skipt it [default]\n"              \
                  "3) Resume, skipping completed recipes\n"  \
                  "Choose an option number: " > /dev/tty
-                IFS= read -r REPLY < /dev/tty || exit 2;
-                case $REPLY in
+                IFS= read -r ANSWER < /dev/tty || exit 2;
+                case $ANSWER in
                 1*)
-                    echo "$REPLY" > /dev/tty
-                    unset REPLY
+                    echo "$ANSWER" > /dev/tty
+                    unset ANSWER
                     ;;
                 3*)
-                    unset REPLY
+                    unset ANSWER
                     echo "Building unprocessed and/or modified recipes ..." > /dev/tty
                     echo ""
-                    opt_ignoreqsts=_opt_ignoreqsts
+                    opt_ignoreqsts=opt_ignoreqsts
                     readonly opt_ignoreqsts
                     return 0
                     ;;
                 *)
-                    unset REPLY
+                    unset ANSWER
                     echo "Recipe for '${full_pkgname}.tlz':  Cancelled." > /dev/tty
                     echo ""
                     return 0
@@ -571,12 +573,15 @@ build_mode()
     fi
 
     # Install or update the package if -i or -u was passed
-    if test "$opt_install" = opt_install && test "$opt_nopkg" != opt_nopkg
+    if test "$opt_nopkg" != opt_nopkg
     then
-        install_mode "${outdir}/${full_pkgname}.tlz"
-    elif test "$opt_update" = opt_update && test "$opt_nopkg" != opt_nopkg
-    then
-        upgrade_mode "${outdir}/${full_pkgname}.tlz"
+        if test "$opt_install" = opt_install
+        then
+            install_mode "${outdir}/${full_pkgname}.tlz"
+        elif test "$opt_update" = opt_update
+        then
+            upgrade_mode "${outdir}/${full_pkgname}.tlz"
+        fi
     fi
 
     echo ""
@@ -1118,6 +1123,7 @@ opt_update=opt_update.off
 opt_force=opt_force.off
 opt_keep=opt_keep.off
 opt_incr_release=opt_incr_release.off
+opt_ignoreqsts=opt_ignoreqsts.off
 opt_nopkg=opt_nopkg.off
 opt_prune=opt_prune.off
 rootdir=""
@@ -1127,7 +1133,6 @@ verbose=0
 graft_v=-v
 graft_r=""
 _isUpgrade=_isUpgrade.false
-_opt_ignoreqsts=_opt_ignoreqsts.off
 TMPDIR="${TMPDIR:=/usr/src/qi/build}"
 QICFLAGS="${QICFLAGS:=-g0 -Os}"
 QICXXFLAGS="${QICXXFLAGS:=$QICFLAGS}"
@@ -1242,7 +1247,7 @@ do
         opt_incr_release=opt_incr_release
         ;;
     3)
-        opt_ignoreqsts=_opt_ignoreqsts
+        opt_ignoreqsts=opt_ignoreqsts
         ;;
     n)
         opt_nopkg=opt_nopkg
@@ -1342,7 +1347,7 @@ then
         # Compose 'rootdir' and log file option to be used with graft(1)
         graft_r="-r $rootdir -l $GRAFT_LOGFILE"
 
-        # Unset variables coming from the eval
+        # Unset variables coming from eval
         unset GRAFT_PERL GRAFT_LOGFILE GRAFT_TARGETDIR GRAFT_PACKAGEDIR
     else
         warn "${PROGRAM}: \`${rootdir}' is not a qualified root directory"
@@ -1363,6 +1368,6 @@ readonly TMPDIR
 
 for package in "$@"
 do
-    $mode "$package"
+    $mode $package
 done
 
