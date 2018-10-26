@@ -56,6 +56,20 @@ build()
     cp -f "${worktree}/archive/common/config.guess" config.guess
     cp -f "${worktree}/archive/common/config.sub" config.sub
 
+    # Apply fixes since this release is from 2004 (Thanks to Fedora and Debian)
+    patch -p0 < "${worktree}/patches/libid3tag/libid3tag-0.15.1b-fix_overflow.patch"
+    patch -p1 < "${worktree}/patches/libid3tag/libid3tag-0.15.1b-id3v1-zero-padding.patch"
+    patch -p1 < "${worktree}/patches/libid3tag/libid3tag-0.15.1b-handle-unknown-encoding.patch"
+    patch -p0 < "${worktree}/patches/libid3tag/libid3tag-0.15.1b-id3v2-endless-loop.patch"
+    patch -p1 < "${worktree}/patches/libid3tag/libid3tag-0.15.1b-gperf-size_t.patch"
+
+    touch NEWS AUTHORS ChangeLog
+
+    # Force these files to be regenerated from the .gperf sources
+    rm -f compat.c frametype.c
+
+    autoreconf -vif
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
     --libdir=/usr/lib${libSuffix} \
@@ -66,6 +80,8 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
+
+    strip --strip-unneeded "${destdir}/usr/lib${libSuffix}/"libid3tag.so.0.?.0
 
     # Write missing .pc for pkgconf
     mkdir -p "${destdir}/usr/lib${libSuffix}/pkgconfig"
