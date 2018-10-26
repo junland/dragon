@@ -16,7 +16,7 @@
 
 program=ca-certificates
 version=20171114
-release=3
+release=4
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/networking"
@@ -67,7 +67,14 @@ build()
      "${destdir}/usr/sbin/update-ca-certificates"
 
     # Clean up broken symlinks, if any
-    find "$destdir" -xtype l -exec rm -f '{}' +
+    find "$destdir" -print | while read -r file
+    do
+        if test -L "$file" && test ! -e "$file"
+        then
+            echo "Deleting dangling symlink: $file"
+            rm -f -- "$file"
+        fi
+    done
 
     mkdir -p "${destdir}"/etc/ca-certificates/update.d
 
