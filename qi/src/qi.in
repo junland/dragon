@@ -218,8 +218,8 @@ build_mode()
 
     # Start preparations to import the recipe
 
-    # Separate the directory name from the filename,
-    # getting its absolute path name and base name
+    # Separate the directory name from the file name,
+    # getting its absolute path and base name
 
     CWD=$(CDPATH= cd -P -- $(dirname -- "$recipe") && printf "$PWD")
     recipe=$(basename -- "$recipe")
@@ -312,11 +312,10 @@ build_mode()
     full_pkgname="${full_pkgname:=$pkgname-${pkgversion}-${arch}+${release}}"
 
     # If a package is going to be created, the existence of a
-    # previous build of the package is detected and reported.
-    # Under normal conditions, the recipe is built as long as
-    # it is newer than the package produced; if not, we warn
-    # the user about it.  Rebuilding the package is also
-    # possible (through the force ;-)
+    # previous build will be detected and reported.  Under normal
+    # conditions the recipe is built as long as it is newer than
+    # the produced package, if not, we warn to the user about it.
+    # Rebuilding the package is possible (through the force ;-)
 
     if test "$opt_nopkg" != opt_nopkg && \
      { test "$opt_force" != opt_force && \
@@ -333,6 +332,19 @@ build_mode()
              ""                                                          \
              "    This recipe will be processed ..."                     \
              ""
+        elif test -e "${CWD}/post-install" && \
+             is_newer "${CWD}/post-install" "${CWD}/$recipe"
+        then
+            warn \
+             ""                                                          \
+             "The post-install script is more RECENT than the recipe:"   \
+             ""                                                          \
+             "$( stat -c "%y %n" "${CWD}/post-install" )"                \
+             "$( stat -c "%y %n" "${CWD}/$recipe" )"                     \
+             ""                                                          \
+             "    The recipe will be re-processed ..."                   \
+             ""
+             touch "${CWD}/$recipe"
         elif test "$opt_ignoreqsts" = opt_ignoreqsts
         then
             warn "Recipe for '${full_pkgname}.tlz':  Ignored." ""
@@ -340,10 +352,10 @@ build_mode()
         else
             warn \
              ""                                                          \
-             "The recipe ALREADY produced the package:"                  \
+             "This recipe ALREADY produced a package:"                   \
              "$( stat -c "%y %n" "${outdir}/${full_pkgname}.tlz" )"      \
              ""                                                          \
-             "This recipe is still OLDER than the produced package:"     \
+             "The recipe is still OLDER than the produced package:"      \
              "$( stat -c "%y %n" "${CWD}/$recipe" )"                     \
              ""                                                          \
              "    Probably nothing has changed."                         \
@@ -351,8 +363,7 @@ build_mode()
 
             # In non-interactive mode, the user is asked about
             # rebuilding the package.  In interactive mode,
-            # the user need to pass the option explicitly.
-
+            # the user need to pass the option explicitly
             if test ! -t 0
             then
                 printf "%b" \
@@ -369,7 +380,7 @@ build_mode()
                     ;;
                 3*)
                     unset ANSWER
-                    echo "Building unprocessed and/or modified recipes ..." > /dev/tty
+                    echo "Building UNPROCESSED/MODIFIED recipes ..." > /dev/tty
                     echo ""
                     opt_ignoreqsts=opt_ignoreqsts
                     readonly opt_ignoreqsts
