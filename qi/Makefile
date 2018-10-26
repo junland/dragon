@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 1.0-rc44
+version		= 1.0-rc45
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -134,7 +134,7 @@ dist : doc
 	lzip -v -9 $(DISTNAME).tar
 
 distclean : clean
-	-rm -f *.tar *.tar.lz
+	-rm -f *.tar *.tar.lz *.tar.lz.*
 
 clean :
 	-rm -f src/$(project) etc/$(project)rc config.mak
