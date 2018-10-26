@@ -16,7 +16,7 @@
 
 program=eudev
 version=3.2.5
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/boot"
@@ -57,27 +57,27 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Get rid of unneeded groups that were added by systemd
-    # (Thanks to Slackware Linux)
-    sed -i \
-     -e 's/GROUP="render", //'  \
-     -e 's/GROUP="kvm", //'     \
-     rules/50-udev-default.rules
-
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --enable-static \
-     --enable-shared \
-     --enable-introspection=no \
+     --enable-static=no \
+     --enable-shared=yes \
      --enable-hwdb \
      --enable-manpages \
+     --enable-rule-generator \
+     --disable-selinux \
+     --disable-introspection \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Move installed hwdb files under /lib
+    # Reported on http://github.com/gentoo/eudev/pull/127
+    mkdir -p "${destdir}/lib/udev/hwdb.d"
+    mv "${destdir}/etc/udev/hwdb.d"/* "${destdir}/lib/udev/hwdb.d"
 
     # Make symlink for multipath
     (
