@@ -1,12 +1,24 @@
 # DP: updates from the binutils-2.31 branch
 
-# git diff 0860693812fff944ab0602e72b762a4a2078da5b 623310489442a9dcf74c90ed210b55a13d20bac8
+# git diff 0860693812fff944ab0602e72b762a4a2078da5b 32db9c46eb4292f94fb74f15724b40ce1a47eda4
 
 diff --git a/bfd/ChangeLog b/bfd/ChangeLog
-index 5ec906aa8e..7364bed2b5 100644
+index 5ec906aa8e..401b7f1339 100644
 --- a/bfd/ChangeLog
 +++ b/bfd/ChangeLog
-@@ -1,8 +1,54 @@
+@@ -1,8 +1,66 @@
++2018-09-12  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR ld/23499
++	* elf.c (_bfd_elf_get_symbol_version_string): Return
++	_("<corrupt>") for corrupt symbol version info.
++
++2018-09-12  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR ld/23499
++	* elflink.c (bfd_elf_record_link_assignment): Always clear
++	h->verinfo.verdef when overriding a dynamic definition.
++
 +2018-08-12  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	PR ld/23428
@@ -72,6 +84,19 @@ index 918150f30b..27a7150e6d 100644
  # Controls whether to enable development-mode features by default.
 -development=false
 +development=true
+diff --git a/bfd/elf.c b/bfd/elf.c
+index 0f75375128..80410575b0 100644
+--- a/bfd/elf.c
++++ b/bfd/elf.c
+@@ -1877,7 +1877,7 @@ _bfd_elf_get_symbol_version_string (bfd *abfd, asymbol *symbol,
+ 	{
+ 	  Elf_Internal_Verneed *t;
+ 
+-	  version_string = "";
++	  version_string = _("<corrupt>");
+ 	  for (t = elf_tdata (abfd)->verref;
+ 	       t != NULL;
+ 	       t = t->vn_nextref)
 diff --git a/bfd/elf64-ppc.c b/bfd/elf64-ppc.c
 index 45d81777eb..139ed1abcd 100644
 --- a/bfd/elf64-ppc.c
@@ -419,6 +444,29 @@ index 45d81777eb..139ed1abcd 100644
  		  && rel + 1 < relend
  		  && rel[1].r_offset == rel->r_offset + 4
  		  && ELF64_R_TYPE (rel[1].r_info) == R_PPC64_TOCSAVE)
+diff --git a/bfd/elflink.c b/bfd/elflink.c
+index b24fb95848..02618bed8f 100644
+--- a/bfd/elflink.c
++++ b/bfd/elflink.c
+@@ -686,13 +686,11 @@ bfd_elf_record_link_assignment (bfd *output_bfd,
+       && !h->def_regular)
+     h->root.type = bfd_link_hash_undefined;
+ 
+-  /* If this symbol is not being provided by the linker script, and it is
+-     currently defined by a dynamic object, but not by a regular object,
+-     then clear out any version information because the symbol will not be
+-     associated with the dynamic object any more.  */
+-  if (!provide
+-      && h->def_dynamic
+-      && !h->def_regular)
++  /* If this symbol is currently defined by a dynamic object, but not
++     by a regular object, then clear out any version information because
++     the symbol will not be associated with the dynamic object any
++     more.  */
++  if (h->def_dynamic && !h->def_regular)
+     h->verinfo.verdef = NULL;
+ 
+   /* Make sure this symbol is not garbage collected.  */
 diff --git a/bfd/elfxx-x86.c b/bfd/elfxx-x86.c
 index a2497aab86..2d8f7b640b 100644
 --- a/bfd/elfxx-x86.c
@@ -576,7 +624,7 @@ index a2497aab86..2d8f7b640b 100644
    htab->r_sym = init_table->r_sym;
  
 diff --git a/bfd/version.h b/bfd/version.h
-index 222d2e62c3..234802c793 100644
+index 222d2e62c3..4011fe4ee1 100644
 --- a/bfd/version.h
 +++ b/bfd/version.h
 @@ -16,7 +16,7 @@
@@ -584,15 +632,95 @@ index 222d2e62c3..234802c793 100644
     In releases, the date is not included in either version strings or
     sonames.  */
 -#define BFD_VERSION_DATE 20180718
-+#define BFD_VERSION_DATE 20180814
++#define BFD_VERSION_DATE 20181018
  #define BFD_VERSION @bfd_version@
  #define BFD_VERSION_STRING  @bfd_version_package@ @bfd_version_string@
  #define REPORT_BUGS_TO @report_bugs_to@
+diff --git a/binutils/ChangeLog b/binutils/ChangeLog
+index 32f47d5e07..6ef8592ff2 100644
+--- a/binutils/ChangeLog
++++ b/binutils/ChangeLog
+@@ -1,3 +1,9 @@
++2018-09-12  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR ld/23499
++	* readelf.c (get_symbol_version_string): Return _("<corrupt>")
++	for corrupt symbol version info.
++
+ 2018-07-18  Nick Clifton  <nickc@redhat.com>
+ 
+ 	2.31.1 Release point.
+diff --git a/binutils/readelf.c b/binutils/readelf.c
+index 1b50ba7631..f4df697a7d 100644
+--- a/binutils/readelf.c
++++ b/binutils/readelf.c
+@@ -11252,6 +11252,7 @@ get_symbol_version_string (Filedata *                   filedata,
+   unsigned char data[2];
+   unsigned short vers_data;
+   unsigned long offset;
++  unsigned short max_vd_ndx;
+ 
+   if (!is_dynsym
+       || version_info[DT_VERSIONTAGIDX (DT_VERSYM)] == 0)
+@@ -11269,6 +11270,8 @@ get_symbol_version_string (Filedata *                   filedata,
+   if ((vers_data & VERSYM_HIDDEN) == 0 && vers_data == 0)
+     return NULL;
+ 
++  max_vd_ndx = 0;
++
+   /* Usually we'd only see verdef for defined symbols, and verneed for
+      undefined symbols.  However, symbols defined by the linker in
+      .dynbss for variables copied from a shared library in order to
+@@ -11311,6 +11314,9 @@ get_symbol_version_string (Filedata *                   filedata,
+ 	      ivd.vd_flags = BYTE_GET (evd.vd_flags);
+ 	    }
+ 
++	  if ((ivd.vd_ndx & VERSYM_VERSION) > max_vd_ndx)
++	    max_vd_ndx = ivd.vd_ndx & VERSYM_VERSION;
++
+ 	  off += ivd.vd_next;
+ 	}
+       while (ivd.vd_ndx != (vers_data & VERSYM_VERSION) && ivd.vd_next != 0);
+@@ -11402,6 +11408,9 @@ get_symbol_version_string (Filedata *                   filedata,
+ 	  return (ivna.vna_name < strtab_size
+ 		  ? strtab + ivna.vna_name : _("<corrupt>"));
+ 	}
++      else if ((max_vd_ndx || (vers_data & VERSYM_VERSION) != 1)
++	       && (vers_data & VERSYM_VERSION) > max_vd_ndx)
++	return _("<corrupt>");
+     }
+   return NULL;
+ }
 diff --git a/gas/ChangeLog b/gas/ChangeLog
-index bb4541900d..fe0d12a28f 100644
+index bb4541900d..4944f892a7 100644
 --- a/gas/ChangeLog
 +++ b/gas/ChangeLog
-@@ -1,3 +1,39 @@
+@@ -1,3 +1,64 @@
++2018-10-16  Matthew Malcomson  <matthew.malcomson@arm.com>
++
++	* testsuite/gas/aarch64/illegal-dotproduct.d: New test.
++	* testsuite/gas/aarch64/illegal-dotproduct.l: New test.
++	* testsuite/gas/aarch64/illegal-dotproduct.s: New test.
++
++2018-10-05  H.J. Lu  <hongjiu.lu@intel.com>
++
++	* testsuite/gas/i386/se1.s: Add enclv.
++	* testsuite/gas/i386/x86-64-se1.s: Likewise.
++	* testsuite/gas/i386/se1.d: Updated.
++	* testsuite/gas/i386/x86-64-se1.d: Likewise.
++
++2018-09-18  Tamar Christina  <tamar.christina@arm.com>
++
++	* config/tc-aarch64.c (output_operand_error_report): Apply filtering to
++	current instead of head message.
++
++2018-09-17  Nick Clifton  <nickc@redhat.com>
++
++	backport from mainline:
++	* 2018-08-14  Robert Yang  <liezhi.yang@windriver.com>
++
++	* as.c (main): Improve check for input file matching output file.
++
 +2018-08-10  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	* testsuite/gas/i386/evex-no-scale.s: Removed.
@@ -632,6 +760,58 @@ index bb4541900d..fe0d12a28f 100644
  2018-07-18  Nick Clifton  <nickc@redhat.com>
  
  	2.31.1 Release point.
+diff --git a/gas/as.c b/gas/as.c
+index 02c7d2970b..919c24a24a 100644
+--- a/gas/as.c
++++ b/gas/as.c
+@@ -1254,14 +1254,27 @@ main (int argc, char ** argv)
+ 	{
+ 	  struct stat sib;
+ 
+-	  if (stat (argv[i], &sib) == 0)
++	  /* Check that the input file and output file are different.  */
++	  if (stat (argv[i], &sib) == 0
++	      && sib.st_ino == sob.st_ino
++	      /* POSIX emulating systems may support stat() but if the
++		 underlying file system does not support a file serial number
++		 of some kind then they will return 0 for the inode.  So
++		 two files with an inode of 0 may not actually be the same.
++		 On real POSIX systems no ordinary file will ever have an
++		 inode of 0.  */
++	      && sib.st_ino != 0
++	      /* Different files may have the same inode number if they
++		 reside on different devices, so check the st_dev field as
++		 well.  */
++	      && sib.st_dev == sob.st_dev)
+ 	    {
+-	      if (sib.st_ino == sob.st_ino && sib.st_ino != 0)
+-		{
+-		  /* Don't let as_fatal remove the output file!  */
+-		  out_file_name = NULL;
+-		  as_fatal (_("The input and output files must be distinct"));
+-		}
++	      const char *saved_out_file_name = out_file_name;
++
++	      /* Don't let as_fatal remove the output file!  */
++	      out_file_name = NULL;
++	      as_fatal (_("The input '%s' and output '%s' files are the same"),
++			argv[i], saved_out_file_name);
+ 	    }
+ 	}
+     }
+diff --git a/gas/config/tc-aarch64.c b/gas/config/tc-aarch64.c
+index 31985963e3..c77de21d19 100644
+--- a/gas/config/tc-aarch64.c
++++ b/gas/config/tc-aarch64.c
+@@ -4809,7 +4809,7 @@ output_operand_error_report (char *str, bfd_boolean non_fatal_only)
+       /* If we don't want to print non-fatal errors then don't consider them
+ 	 at all.  */
+       if (curr->detail.kind != kind
+-	  || (non_fatal_only && !head->detail.non_fatal))
++	  || (non_fatal_only && !curr->detail.non_fatal))
+ 	continue;
+       /* If there are multiple errors, pick up the one with the highest
+ 	 mismatching operand index.  In the case of multiple errors with
 diff --git a/gas/config/tc-hppa.c b/gas/config/tc-hppa.c
 index e69fdb2b39..ccae68cb40 100644
 --- a/gas/config/tc-hppa.c
@@ -668,6 +848,45 @@ index 2d20f1cae9..bd179c13af 100644
  	      p = frag_more (size);
  	      md_number_to_chars (p, val, size);
  	    }
+diff --git a/gas/testsuite/gas/aarch64/illegal-dotproduct.d b/gas/testsuite/gas/aarch64/illegal-dotproduct.d
+new file mode 100644
+index 0000000000..8d8b1b8506
+--- /dev/null
++++ b/gas/testsuite/gas/aarch64/illegal-dotproduct.d
+@@ -0,0 +1,4 @@
++#as: -march=armv8.2-a+dotprod
++#name: Invalid dotproduct instructions.
++#source: illegal-dotproduct.s
++#error-output: illegal-dotproduct.l
+diff --git a/gas/testsuite/gas/aarch64/illegal-dotproduct.l b/gas/testsuite/gas/aarch64/illegal-dotproduct.l
+new file mode 100644
+index 0000000000..06d0d78b8d
+--- /dev/null
++++ b/gas/testsuite/gas/aarch64/illegal-dotproduct.l
+@@ -0,0 +1,13 @@
++[^:]+: Assembler messages:
++[^:]+:[0-9]+: Error: register element index out of range 0 to 3 at operand 3 -- `udot V0.2S,V0.8B,V0.4B\[4\]'
++[^:]+:[0-9]+: Error: operand mismatch -- `udot V0.4S,V0.8B,V0.4B\[4\]'
++[^:]+:[0-9]+: Info:    did you mean this\?
++[^:]+:[0-9]+: Info:    	udot v0.2s, v0.8b, v0.4b\[4\]
++[^:]+:[0-9]+: Info:    other valid variant\(s\):
++[^:]+:[0-9]+: Info:    	udot v0.4s, v0.16b, v0.4b\[4\]
++[^:]+:[0-9]+: Error: register element index out of range 0 to 3 at operand 3 -- `sdot V0.2S,V0.8B,V0.4B\[4\]'
++[^:]+:[0-9]+: Error: operand mismatch -- `sdot V0.2S,V0.8B,V0.4H\[4\]'
++[^:]+:[0-9]+: Info:    did you mean this\?
++[^:]+:[0-9]+: Info:    	sdot v0.2s, v0.8b, v0.4b\[4\]
++[^:]+:[0-9]+: Info:    other valid variant\(s\):
++[^:]+:[0-9]+: Info:    	sdot v0.4s, v0.16b, v0.4b\[4\]
+diff --git a/gas/testsuite/gas/aarch64/illegal-dotproduct.s b/gas/testsuite/gas/aarch64/illegal-dotproduct.s
+new file mode 100644
+index 0000000000..9c714ae54d
+--- /dev/null
++++ b/gas/testsuite/gas/aarch64/illegal-dotproduct.s
+@@ -0,0 +1,4 @@
++UDOT	V0.2S, V0.8B, V0.4B[4]
++UDOT	V0.4S, V0.8B, V0.4B[4]
++SDOT	V0.2S, V0.8B, V0.4B[4]
++SDOT	V0.2S, V0.8B, V0.4H[4]
 diff --git a/gas/testsuite/gas/i386/evex-no-scale-32.d b/gas/testsuite/gas/i386/evex-no-scale-32.d
 new file mode 100644
 index 0000000000..0a2860d32e
@@ -756,6 +975,44 @@ index 9cc927a962..3987862477 100644
      }
  
      set ASFLAGS "$old_ASFLAGS"
+diff --git a/gas/testsuite/gas/i386/se1.d b/gas/testsuite/gas/i386/se1.d
+index ff2685c781..d7800ab885 100644
+--- a/gas/testsuite/gas/i386/se1.d
++++ b/gas/testsuite/gas/i386/se1.d
+@@ -10,4 +10,5 @@ Disassembly of section .text:
+ 0+ <_start>:
+ [ 	]*[a-f0-9]+:	0f 01 cf             	encls  
+ [ 	]*[a-f0-9]+:	0f 01 d7             	enclu  
++[ 	]*[a-f0-9]+:	0f 01 c0             	enclv  
+ #pass
+diff --git a/gas/testsuite/gas/i386/se1.s b/gas/testsuite/gas/i386/se1.s
+index 1b57ac87fe..92d57952c0 100644
+--- a/gas/testsuite/gas/i386/se1.s
++++ b/gas/testsuite/gas/i386/se1.s
+@@ -5,3 +5,4 @@ _start:
+ 
+ 	encls
+ 	enclu
++	enclv
+diff --git a/gas/testsuite/gas/i386/x86-64-se1.d b/gas/testsuite/gas/i386/x86-64-se1.d
+index 29494f0090..a515219406 100644
+--- a/gas/testsuite/gas/i386/x86-64-se1.d
++++ b/gas/testsuite/gas/i386/x86-64-se1.d
+@@ -10,4 +10,5 @@ Disassembly of section .text:
+ 0+ <_start>:
+ [ 	]*[a-f0-9]+:	0f 01 cf             	encls  
+ [ 	]*[a-f0-9]+:	0f 01 d7             	enclu  
++[ 	]*[a-f0-9]+:	0f 01 c0             	enclv  
+ #pass
+diff --git a/gas/testsuite/gas/i386/x86-64-se1.s b/gas/testsuite/gas/i386/x86-64-se1.s
+index 1b57ac87fe..92d57952c0 100644
+--- a/gas/testsuite/gas/i386/x86-64-se1.s
++++ b/gas/testsuite/gas/i386/x86-64-se1.s
+@@ -5,3 +5,4 @@ _start:
+ 
+ 	encls
+ 	enclu
++	enclv
 diff --git a/gas/testsuite/gas/i386/xmmword.l b/gas/testsuite/gas/i386/xmmword.l
 index ce3af8d150..7d25cb3de2 100644
 --- a/gas/testsuite/gas/i386/xmmword.l
@@ -2458,10 +2715,21 @@ index cfbefe9028..1095091882 100644
  	    set link_cmd $CXX
  	} else {
 diff --git a/opcodes/ChangeLog b/opcodes/ChangeLog
-index d04963a9fa..25ddce1378 100644
+index d04963a9fa..bf533f4bd2 100644
 --- a/opcodes/ChangeLog
 +++ b/opcodes/ChangeLog
-@@ -1,3 +1,19 @@
+@@ -1,3 +1,30 @@
++2018-10-16  Matthew Malcomson  <matthew.malcomson@arm.com>
++
++	* aarch64-opc.c (struct operand_qualifier_data): Change qualifier data
++	corresponding to AARCH64_OPND_QLF_S_4B qualifier.
++
++2018-10-05  H.J. Lu  <hongjiu.lu@intel.com>
++
++	* i386-dis.c (rm_table): Add enclv.
++	* i386-opc.tbl: Add enclv.
++	* i386-tbl.h: Regenerated.
++
 +2018-07-18  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	PR gas/23418
@@ -2481,6 +2749,40 @@ index d04963a9fa..25ddce1378 100644
  2018-07-18  Nick Clifton  <nickc@redhat.com>
  
  	2.31.1 Release point.
+diff --git a/opcodes/aarch64-opc.c b/opcodes/aarch64-opc.c
+index ba2af7bfc2..e59240c98d 100644
+--- a/opcodes/aarch64-opc.c
++++ b/opcodes/aarch64-opc.c
+@@ -698,7 +698,7 @@ struct operand_qualifier_data aarch64_opnd_qualifiers[] =
+   {4, 1, 0x2, "s", OQK_OPD_VARIANT},
+   {8, 1, 0x3, "d", OQK_OPD_VARIANT},
+   {16, 1, 0x4, "q", OQK_OPD_VARIANT},
+-  {1, 4, 0x0, "4b", OQK_OPD_VARIANT},
++  {4, 1, 0x0, "4b", OQK_OPD_VARIANT},
+ 
+   {1, 4, 0x0, "4b", OQK_OPD_VARIANT},
+   {1, 8, 0x0, "8b", OQK_OPD_VARIANT},
+@@ -2501,6 +2501,7 @@ operand_general_constraint_met_p (const aarch64_opnd_info *opnds, int idx,
+       else
+ 	num = 16;
+       num = num / aarch64_get_qualifier_esize (qualifier) - 1;
++      assert (aarch64_get_qualifier_nelem (qualifier) == 1);
+ 
+       /* Index out-of-range.  */
+       if (!value_in_range_p (opnd->reglane.index, 0, num))
+diff --git a/opcodes/i386-dis.c b/opcodes/i386-dis.c
+index 42d219cb11..78436879fb 100644
+--- a/opcodes/i386-dis.c
++++ b/opcodes/i386-dis.c
+@@ -12321,7 +12321,7 @@ static const struct dis386 rm_table[][8] = {
+   },
+   {
+     /* RM_0F01_REG_0 */
+-    { Bad_Opcode },
++    { "enclv",		{ Skip_MODRM }, 0 },
+     { "vmcall",		{ Skip_MODRM }, 0 },
+     { "vmlaunch",	{ Skip_MODRM }, 0 },
+     { "vmresume",	{ Skip_MODRM }, 0 },
 diff --git a/opcodes/i386-opc.h b/opcodes/i386-opc.h
 index 9a22b3c95f..f43b5e11eb 100644
 --- a/opcodes/i386-opc.h
@@ -2519,10 +2821,18 @@ index 9a22b3c95f..f43b5e11eb 100644
    /* Unspecified memory size.  */
    Unspecified,
 diff --git a/opcodes/i386-opc.tbl b/opcodes/i386-opc.tbl
-index fad588ae3f..84ade35666 100644
+index fad588ae3f..99f4d6635a 100644
 --- a/opcodes/i386-opc.tbl
 +++ b/opcodes/i386-opc.tbl
-@@ -5408,11 +5408,13 @@ vcvtpd2uqq, 2, 0x6679, None, 1, CpuAVX512DQ|CpuAVX512VL, Modrm|EVex=3|Masking=3|
+@@ -4100,6 +4100,7 @@ xsavec64, 1, 0xfc7, 0x4, 2, CpuXSAVEC|Cpu64, Modrm|IgnoreSize|No_bSuf|No_wSuf|No
+ 
+ encls, 0, 0xf01cf, None, 3, CpuSE1, No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf, { 0 }
+ enclu, 0, 0xf01d7, None, 3, CpuSE1, No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf, { 0 }
++enclv, 0, 0xf01c0, None, 3, CpuSE1, No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf, { 0 }
+ 
+ // SGX instructions end.
+ 
+@@ -5408,11 +5409,13 @@ vcvtpd2uqq, 2, 0x6679, None, 1, CpuAVX512DQ|CpuAVX512VL, Modrm|EVex=3|Masking=3|
  vcvtpd2uqq, 3, 0x6679, None, 1, CpuAVX512DQ, Modrm|EVex=1|Masking=3|VexOpcode=0|VexW=2|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|StaticRounding|SAE, { Imm8, RegZMM, RegZMM }
  
  vcvtps2qq, 2, 0x667B, None, 1, CpuAVX512DQ, Modrm|EVex=1|Masking=3|VexOpcode=0|VexW=1|Broadcast|Disp8MemShift=5|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf, { RegYMM|Dword|YMMword|Unspecified|BaseIndex, RegZMM }
@@ -2538,7 +2848,7 @@ index fad588ae3f..84ade35666 100644
  vcvtps2uqq, 2, 0x6679, None, 1, CpuAVX512DQ|CpuAVX512VL, Modrm|EVex=3|Masking=3|VexOpcode=0|VexW=1|Broadcast|Disp8MemShift=4|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf, { RegXMM|Dword|XMMword|Unspecified|BaseIndex, RegYMM }
  vcvtps2uqq, 3, 0x6679, None, 1, CpuAVX512DQ, Modrm|EVex=1|Masking=3|VexOpcode=0|VexW=1|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|StaticRounding|SAE, { Imm8, RegYMM, RegZMM }
  
-@@ -5442,11 +5444,13 @@ vcvttpd2uqq, 2, 0x6678, None, 1, CpuAVX512DQ|CpuAVX512VL, Modrm|EVex=3|Masking=3
+@@ -5442,11 +5445,13 @@ vcvttpd2uqq, 2, 0x6678, None, 1, CpuAVX512DQ|CpuAVX512VL, Modrm|EVex=3|Masking=3
  vcvttpd2uqq, 3, 0x6678, None, 1, CpuAVX512DQ, Modrm|EVex=1|Masking=3|VexOpcode=0|VexW=2|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|SAE, { Imm8, RegZMM, RegZMM }
  
  vcvttps2qq, 2, 0x667A, None, 1, CpuAVX512DQ, Modrm|EVex=1|Masking=3|VexOpcode=0|VexW=1|Broadcast|Disp8MemShift=5|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf, { RegYMM|Dword|YMMword|Unspecified|BaseIndex, RegZMM }
@@ -2555,10 +2865,31 @@ index fad588ae3f..84ade35666 100644
  vcvttps2uqq, 3, 0x6678, None, 1, CpuAVX512DQ, Modrm|EVex=1|Masking=3|VexOpcode=0|VexW=1|IgnoreSize|No_bSuf|No_wSuf|No_lSuf|No_sSuf|No_qSuf|No_ldSuf|SAE, { Imm8, RegYMM, RegZMM }
  
 diff --git a/opcodes/i386-tbl.h b/opcodes/i386-tbl.h
-index d513275deb..5c37eea6d7 100644
+index d513275deb..42ac313eca 100644
 --- a/opcodes/i386-tbl.h
 +++ b/opcodes/i386-tbl.h
-@@ -87881,6 +87881,23 @@ const insn_template i386_optab[] =
+@@ -83658,6 +83658,20 @@ const insn_template i386_optab[] =
+     { { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+ 	  0, 0, 0 } } } },
++  { "enclv", 0, 0xf01c0, None, 3,
++    { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
++        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++        0, 0, 0, 0, 0 } },
++    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
++      1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++      0, 0 },
++    { { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++	  0, 0, 0 } } } },
+   { "vcvtpd2udqx", 2, 0x79, None, 1,
+     { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0,
+@@ -87881,6 +87895,23 @@ const insn_template i386_optab[] =
        { { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
  	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
  	  0, 0, 0 } } } },
@@ -2582,7 +2913,7 @@ index d513275deb..5c37eea6d7 100644
    { "vcvtps2qq", 2, 0x667B, None, 1,
      { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0,
-@@ -87892,8 +87909,8 @@ const insn_template i386_optab[] =
+@@ -87892,8 +87923,8 @@ const insn_template i386_optab[] =
        1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
        0, 0, 1, 0, 0, 0, 0, 0, 2, 3, 1, 0, 0, 3, 0, 0, 0, 0, 0, 0,
        0, 0 },
@@ -2593,7 +2924,7 @@ index d513275deb..5c37eea6d7 100644
  	  0, 0, 0 } },
        { { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
  	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-@@ -87952,6 +87969,23 @@ const insn_template i386_optab[] =
+@@ -87952,6 +87983,23 @@ const insn_template i386_optab[] =
        { { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
  	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
  	  0, 0, 0 } } } },
@@ -2617,7 +2948,7 @@ index d513275deb..5c37eea6d7 100644
    { "vcvtps2uqq", 2, 0x6679, None, 1,
      { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0,
-@@ -87963,8 +87997,8 @@ const insn_template i386_optab[] =
+@@ -87963,8 +88011,8 @@ const insn_template i386_optab[] =
        1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
        0, 0, 1, 0, 0, 0, 0, 0, 2, 3, 1, 0, 0, 3, 0, 0, 0, 0, 0, 0,
        0, 0 },
@@ -2628,7 +2959,7 @@ index d513275deb..5c37eea6d7 100644
  	  0, 0, 0 } },
        { { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
  	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-@@ -88412,6 +88446,23 @@ const insn_template i386_optab[] =
+@@ -88412,6 +88460,23 @@ const insn_template i386_optab[] =
        { { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
  	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
  	  0, 0, 0 } } } },
@@ -2652,7 +2983,7 @@ index d513275deb..5c37eea6d7 100644
    { "vcvttps2qq", 2, 0x667A, None, 1,
      { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0,
-@@ -88423,8 +88474,8 @@ const insn_template i386_optab[] =
+@@ -88423,8 +88488,8 @@ const insn_template i386_optab[] =
        1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
        0, 0, 1, 0, 0, 0, 0, 0, 2, 3, 1, 0, 0, 3, 0, 0, 0, 0, 0, 0,
        0, 0 },
@@ -2663,7 +2994,7 @@ index d513275deb..5c37eea6d7 100644
  	  0, 0, 0 } },
        { { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
  	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-@@ -88483,6 +88534,23 @@ const insn_template i386_optab[] =
+@@ -88483,6 +88548,23 @@ const insn_template i386_optab[] =
        { { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
  	  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
  	  0, 0, 0 } } } },
@@ -2687,7 +3018,7 @@ index d513275deb..5c37eea6d7 100644
    { "vcvttps2uqq", 2, 0x6678, None, 1,
      { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0,
-@@ -88494,8 +88562,8 @@ const insn_template i386_optab[] =
+@@ -88494,8 +88576,8 @@ const insn_template i386_optab[] =
        1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
        0, 0, 1, 0, 0, 0, 0, 0, 2, 3, 1, 0, 0, 3, 0, 0, 0, 0, 0, 0,
        0, 0 },
