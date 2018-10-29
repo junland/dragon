@@ -15,8 +15,9 @@
 # limitations under the License.
 
 program=ca-certificates
-version=20171114
-release=3
+version=33042b0af9d4139959a1b9a7179dd3843ea00f0d
+pkgversion=git33042b0_20180924
+release=4
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/networking"
@@ -58,8 +59,6 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    patch -Np1 -i "${worktree}/patches/ca-certificates/update-ca.c.diff"
-
     make -j${jobs} V=1
     make -j${jobs} V=1 DESTDIR="$destdir" install
     strip --strip-unneeded \
@@ -67,7 +66,14 @@ build()
      "${destdir}/usr/sbin/update-ca-certificates"
 
     # Clean up broken symlinks, if any
-    find "$destdir" -xtype l -exec rm -f '{}' +
+    find "$destdir" -print | while read -r file
+    do
+        if test -L "$file" && test ! -e "$file"
+        then
+            echo "Deleting dangling symlink: $file"
+            rm -f -- "$file"
+        fi
+    done
 
     mkdir -p "${destdir}"/etc/ca-certificates/update.d
 

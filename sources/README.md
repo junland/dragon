@@ -28,6 +28,15 @@ If your wget(1) implementation lacks '-i', try with:
 
     rsync -rvaiz --progress rsync://rsync.dragora.org/dragora/current/sources/ .
 
+Note, if you are upgrading an (already) out-of-date sources directory
+and want to make it clear, add the following options:
+
+    rsync -rvaiz --progress --exclude=README.md --delete-delay \
+     rsync://rsync.dragora.org/dragora/current/sources/ .
+
+The command and options above will preserve the README.md file while deletes
+any previous source.
+
 The tarballs will be stored on the current working directory.
 
 ## Check sums

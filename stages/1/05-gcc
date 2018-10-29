@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version=8-20180921
+version=8-20181026
 
 # Prerequisites
 gmp_version=6.1.2
@@ -141,6 +141,14 @@ make -j${jobs} all \
  LD_FOR_TARGET="$LD"
 
 make -j${jobs} install
+
+# Provide minimal libssp_nonshared.a so we don't need libssp from GCC
+
+$BTCC $BTCFLAGS -c "${worktree}/archive/gcc/__stack_chk_fail_local.c" \
+                -o __stack_chk_fail_local.o
+$AR r libssp_nonshared.a __stack_chk_fail_local.o
+
+cp -p libssp_nonshared.a /tools/lib${libSuffix}/
 
 # Unset some imported variables from file
 unset AR AS LD RANLIB READELF STRIP

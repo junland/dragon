@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=musl
-version=c50985d5c8e316c5c464f352e79eeebfed1121a9
-release=2
+version=8084d6ab57cdb0b8f328d3cdbad3b9d09eaaee04
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
@@ -89,15 +89,6 @@ build()
 
     make -j${jobs}
     make -j${jobs} install DESTDIR="$destdir"
-
-    # Provide minimal libssp_nonshared.a so we don't need libssp from GCC
-
-    cc $QICFLAGS -c "${worktree}/archive/musl/__stack_chk_fail_local.c" \
-                 -o __stack_chk_fail_local.o
-    ar r libssp_nonshared.a __stack_chk_fail_local.o
-
-    cp -p libssp_nonshared.a "${destdir}/usr/lib${libSuffix}"
-    strip -g "${destdir}/usr/lib${libSuffix}/libssp_nonshared.a"
 
     # To print shared library dependencies
     mkdir -p "${destdir}/usr/bin"

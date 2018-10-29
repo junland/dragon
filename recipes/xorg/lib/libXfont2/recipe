@@ -1,7 +1,7 @@
 # Build recipe for libXfont2.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 program=libXfont2
 version=2.0.3
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg"
@@ -59,23 +59,17 @@ build()
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --enable-shared=yes \
+     --enable-static=no \
+     --enable-ipv6=yes \
      --enable-snfformat \
      --with-bzip2 \
-     --build="$(cc -dumpmachine)" \
-     || true
+     --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
-
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -93,6 +87,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"/
 }
 

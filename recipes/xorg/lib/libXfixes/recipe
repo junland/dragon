@@ -1,7 +1,7 @@
 # Build recipe for libXfixes.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 program=libXfixes
 version=5.0.3
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg"
@@ -28,7 +28,7 @@ tarname=${program}-${version}.tar.bz2
 fetch=http://www.x.org/releases/individual/lib/$tarname
 
 description="
-X-Fixes extension.
+XFixes extension (Xorg).
 
 This package is part of X11.
 "
@@ -54,11 +54,11 @@ build()
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --build="$(cc -dumpmachine)" \
-     || true
+     --enable-shared=yes \
+     --enable-static=no \
+     --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
@@ -86,13 +86,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}"/
 }
 

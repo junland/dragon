@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=libressl
-version=2.8.0
+version=2.8.2
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -84,6 +84,16 @@ build()
             done
         )
     fi
+
+    # Remove broken symlinks
+    find "${destdir}/$mandir" -print | while read -r file
+    do
+        if test -L "$file" && test ! -e "$file"
+        then
+            echo "Deleting dangling symlink: $file"
+            rm -f -- "$file"
+        fi
+    done
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"

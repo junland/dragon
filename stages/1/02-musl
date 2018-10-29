@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version=c50985d5c8e316c5c464f352e79eeebfed1121a9
+version=8084d6ab57cdb0b8f328d3cdbad3b9d09eaaee04
 
 cd -- "$TMPDIR"
 rm -rf musl-${version}
@@ -43,20 +43,6 @@ unset file
 
 make -j${jobs}
 make -j${jobs} DESTDIR="$rootdir" install
-
-# Provide minimal libssp_nonshared.a so we don't need libssp from GCC
-
-# Import and export toolchain variables
-. "${worktree}/stages/env.d/cross-staticenv"
-
-$BTCC $BTCFLAGS -c "${worktree}/archive/musl/__stack_chk_fail_local.c" \
-                -o __stack_chk_fail_local.o
-$AR r libssp_nonshared.a __stack_chk_fail_local.o
-
-cp -p libssp_nonshared.a /tools/lib${libSuffix}/
-
-# Unset some imported variables from file
-unset AR AS LD RANLIB READELF STRIP
 
 cleanup()
 {
