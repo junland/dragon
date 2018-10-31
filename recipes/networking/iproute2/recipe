@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=iproute2
-version=4.16.0
+version=4.19.0
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -24,7 +24,7 @@ outdir="${outdir}/${arch}/networking"
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://www.kernel.org/pub/linux/utils/net/iproute2/$tarname
+fetch=http://mirrors.edge.kernel.org/pub/linux/utils/net/iproute2/$tarname
 
 description="
 Collection of utilities for controlling TCP/IP.
@@ -50,6 +50,10 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    # To disable building two modules that requires iptables
+    # (Thanks to Linux From Scratch!)
+    sed -i 's/.m_ipt.o//' tc/Makefile
 
     ./configure
 
