@@ -1,4 +1,4 @@
-# Build recipe for dwm.
+# Build recipe for st.
 #
 # Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
@@ -14,33 +14,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-program=dwm
-version=b69c870
-release=2
+program=st
+version=0.8.1
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/x-apps"
 
-tarname=${program}-${version}.tar.lz
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-#fetch=http://dl.suckless.org/dwm/$tarname
-fetch=http://rsync.dragora.org/current/sources/$tarname
+fetch=http://dl.suckless.org/st/$tarname
 
 description="
-Dynamic Window Manager.
+st is a simple terminal implementation for X.
 
-dwm is a dynamic window manager for X.  It manages windows in tiled,
-monocle and floating layouts.  All of the layouts can be applied
-dynamically, optimising the environment for the application in use
-and the task performed.
+st supports:
+*   most VT10X escape sequences
+*    serial line support
+*    XIM support
+*    utmp via utmp(1)
+*    clipboard handling
+*    mouse and keyboard shortcuts (via config.h)
+*    UTF-8
+*    wide-character support
+*    resize
+*    256 colors and true colors
+*    antialiased fonts (using fontconfig)
+*    fallback fonts
+*    line drawing
 "
 
-homepage=http://dwm.suckless.org
+homepage=http://st.suckless.org
 license="MIT X Consortium"
 
 # Source documentation
-docs="LICENSE README"
+docs="FAQ LEGACY LICENSE README TODO"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -54,28 +63,23 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    cat "${worktree}/archive/dwm/config.mk" > ./config.mk
+    # Avoid conflicts with terminfo database (ncurses)
+    sed -i '/tic /d' Makefile
+
+    cat "${worktree}/archive/st/config.mk" > ./config.mk
 
     make -j${jobs} \
+     CFLAGS="$QICFLAGS -std=c99" \
+     LDFLAGS="$QILDFLAGS" \
      X11INC=/usr/include/X11 \
-     X11LIB=/usr/lib${libSuffix}/X11 \
-     FREETYPEINC=/usr/include/freetype2
+     X11LIB=/usr/lib${libSuffix}/X11
 
     make -j${jobs} PREFIX=/usr DESTDIR="$destdir" install
 
-    strip --strip-unneeded "${destdir}/usr/bin/dwm"
-    lzip -9 "${destdir}/${mandir}/man1/dwm.1"
-
-    # Include xinitrc file to start DWM
-
-    mkdir -p "${destdir}/etc/X11/xinit"
-    cp -p "${worktree}/archive/dwm/xinitrc.dwm" "${destdir}/etc/X11/xinit/"
-    chmod 644 "${destdir}/etc/X11/xinit/xinitrc.dwm"
-
-    touch "${destdir}/etc/X11/xinit/.graft-config"
+    lzip -9 "${destdir}/${mandir}/man1/st.1"
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"/
 }
 

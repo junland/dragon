@@ -17,7 +17,7 @@
 
 program=xinit
 version=1.4.0
-release=2
+release=3
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg"
@@ -53,11 +53,17 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # Hence the X session starts on the first unused virtual terminal,
+    # which normally is vt7 (Thanks to BLFS!) ...
+    sed -e '/$serverargs $vtarg/ s/serverargs/: #&/' \
+        -i startx.cpp
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
-     --docdir=$docsdir
+     --docdir=$docsdir \
+     --with-xinitdir=/etc/X11/xinit
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install

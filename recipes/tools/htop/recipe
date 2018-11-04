@@ -24,7 +24,7 @@ outdir="${outdir}/${arch}/tools"
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://hisham.hm/htop/releases/2.2.0/"$tarname"
+fetch=http://hisham.hm/htop/releases/${version}/"$tarname"
 
 description="
 This is htop, an interactive process viewer for Unix systems.
@@ -46,10 +46,10 @@ Comparison between htop and classic top
 "
 
 homepage=http://hisham.hm/htop/
-license="GPLv2"
+license=GPLv2+
 
 # Source documentation
-docs="AUTHORS COPYING README NEWS"
+docs="AUTHORS COPYING ChangeLog README NEWS"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -60,23 +60,18 @@ build()
     
     cd "$srcdir"
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docdir \
+     --enable-proc \
+     --enable-cgroup \
+     --enable-unicode \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
-
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -96,5 +91,4 @@ build()
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}/"
 }
-
 
