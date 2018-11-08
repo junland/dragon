@@ -1,4 +1,4 @@
-# Build recipe for util-linux (final).
+# Build recipe for util-linux (pass 1).
 #
 # Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
@@ -21,8 +21,7 @@ release=1
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
 
-# The installation of this package replaces to
-replace=util-linux_pass1
+pkgname=util-linux_pass1
 
 tarname=${program}-${version}.tar.gz
 
@@ -70,18 +69,14 @@ build()
      --enable-libblkid \
      --enable-libmount \
      --enable-libuuid \
-     --with-btrfs \
-     --with-python=3 \
-     --with-readline \
+     --without-btrfs \
+     --without-python \
      --without-systemd \
+     --without-readline \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
-
-    # Make `hwclock' available for the user
-    chmod 755 "${destdir}/usr/sbin/hwclock"
-    ( cd "${destdir}/usr/bin" && ln -s ../sbin/hwclock clock )
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
