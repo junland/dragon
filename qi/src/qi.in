@@ -816,22 +816,28 @@ install_mode()
             do
                 for replace in "$rootdir${packagedir}/$(pkgbase $line)"-*
                 do
+                    warn "WARNING: Replacing package \`${replace}' ..."
+
                     if ! test -e "$replace"
                     then
                         warn "${replace}: Declared package does not exist. (ignored)"
                         continue;
                     fi
 
-                    warn "WARNING: Replacing package \`${replace}' ..."
+                    replace="${replace##*/}"
 
                     # The search for the package to be replaced cannot
                     # be the same to the incoming package, even to the
                     # temporary location coming from the upgrade_mode()
-                    if test "$replace" = "$name" || test "$replace" = "$PRVLOC"
+                    if test "$replace" = "$name" || test "$replace" = "${PRVLOC##*/}"
                     then
                         warn \
-                         "Declared package to be replaced is equal to the incoming package name." \
-                         "The replacement for '$name' will not be performed."
+                         ""                                                    \
+                         "The package FOUND '$replace' TO BE REPLACED is"       \
+                         "EQUAL to the incoming package name ..."              \
+                         ""                                                    \
+                         "The replacement for '$name' will not be performed."  \
+                         ""
                         continue;
                     fi
 
@@ -840,8 +846,9 @@ install_mode()
                     # To complete, we will remove the package directory
 
                     graft -d -D -u $graft_r \
-                     -t "$targetdir" "${replace##*/}" > /dev/null 2>&1
-                    rm -rf -- "$rootdir${packagedir}/${replace##*/}"
+                     -t "$targetdir" "$replace" > /dev/null 2>&1
+
+                    rm -rf -- "$rootdir${packagedir}/$replace"
                     echo Done.
                 done
             done < "$rootdir${packagedir}/${name}/var/lib/qi/${name}.replace"
