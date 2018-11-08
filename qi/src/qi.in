@@ -784,7 +784,7 @@ install_mode()
     # Avoid unnecessary runs coming from the upgrade_mode(),
     # this is when the incoming package is **pre-installed**
 
-    if test "$_isUpgrade" != _isUpgrade.true
+    if test "$_isUpgrade" != _isUpgrade.on
     then
         # Show package description
         if test -r "$rootdir${packagedir}/${name}/var/lib/qi/${name}.txt"
@@ -816,8 +816,6 @@ install_mode()
             do
                 for replace in "$rootdir${packagedir}/$(pkgbase $line)"-*
                 do
-                    warn "WARNING: Replacing package \`${replace}' ..."
-
                     if ! test -e "$replace"
                     then
                         warn "${replace}: Declared package does not exist. (ignored)"
@@ -831,15 +829,10 @@ install_mode()
                     # temporary location coming from the upgrade_mode()
                     if test "$replace" = "$name" || test "$replace" = "${PRVLOC##*/}"
                     then
-                        warn \
-                         ""                                                    \
-                         "The package FOUND '$replace' TO BE REPLACED is"       \
-                         "EQUAL to the incoming package name ..."              \
-                         ""                                                    \
-                         "The replacement for '$name' will not be performed."  \
-                         ""
                         continue;
                     fi
+
+                    warn "WARNING: Replacing package \`${replace}' ..."
 
                     # Since the links belongs to the new package, only
                     # those which are not in conflict can be deleted.
@@ -849,7 +842,6 @@ install_mode()
                      -t "$targetdir" "$replace" > /dev/null 2>&1
 
                     rm -rf -- "$rootdir${packagedir}/$replace"
-                    echo Done.
                 done
             done < "$rootdir${packagedir}/${name}/var/lib/qi/${name}.replace"
             unset line
@@ -926,8 +918,8 @@ upgrade_mode()
 
     echo "Pre-installing package using temporary location ..."
     opt_prune=opt_prune		# Turn on prune operation.
-    _isUpgrade=_isUpgrade.true install_mode "$1" > /dev/null
-    _isUpgrade=_isUpgrade.false
+    _isUpgrade=_isUpgrade.on install_mode "$1" > /dev/null
+    _isUpgrade=_isUpgrade.off
 
     # Restore variable before looking for old packages
     packagedir=$save_packagedir
@@ -1150,7 +1142,7 @@ mode=""
 verbose=0
 graft_v=-v
 graft_r=""
-_isUpgrade=_isUpgrade.false
+_isUpgrade=_isUpgrade.off
 TMPDIR="${TMPDIR:=/usr/src/qi/build}"
 QICFLAGS="${QICFLAGS:=-g0 -Os}"
 QICXXFLAGS="${QICXXFLAGS:=$QICFLAGS}"
