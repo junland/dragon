@@ -1,6 +1,7 @@
 # Build recipe for feh.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +16,11 @@
 # limitations under the License.
 
 program=feh
-version=2.27.1
+version=3.0
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
-outdir="${outdir}/${arch}/tools"
+outdir="${outdir}/${arch}/x-apps"
 
 tarname=${program}-${version}.tar.bz2
 
@@ -27,24 +28,26 @@ tarname=${program}-${version}.tar.bz2
 fetch=http://feh.finalrewind.org/"$tarname"
 
 description="
-image viewer and more
+A fast and light image viewer.
 
-feh is a fast, lightweight image viewer which uses imlib2. 
-It is commandline-driven and supports multiple images through slideshows, 
+Feh is a fast, lightweight image viewer which uses imlib2.  It is
+command line-driven and supports multiple images through slideshows,
 thumbnail browsing or multiple windows, and montages or index prints 
-(using TrueType fonts to display file info). 
-Advanced features include fast dynamic zooming, progressive loading, 
-loading via HTTP (with reload support for watching webcams), 
-recursive file opening (slideshow of a directory hierarchy), 
-and mouse wheel/keyboard control. 
+(using TrueType fonts to display file info).  Advanced features include
+fast dynamic zooming, progressive loading, loading via HTTP (with
+reload support for watching webcams), recursive file opening (slideshow
+of a directory hierarchy), and mouse wheel/keyboard control. 
 "
 
 homepage=http://feh.finalrewind.org
-license="MIT"
+license="MIT Expat variant"
 
 # Source documentation
-docs="README.md"
+docs="AUTHORS COPYING ChangeLog README.md TODO"
 docsdir="${docdir}/${program}-${version}"
+
+# Limit parallel jobs for this build
+jobs=1
 
 build()
 {
@@ -54,19 +57,20 @@ build()
 
     cd "$srcdir"
 
-    CFLAGS="$QICFLAGS" 
-    LDFLAGS="$QILDFLAGS" 
+    # Apply patch from Dragora adding a missing header in getopt.c
+    patch -p1 < "${worktree}/patches/feh/getopt.c_header"
 
-    make -j${jobs} V=1
-    PREFIX=/usr
-    make -j${jobs} DESTDIR="$destdir" install
+    # Replace default C flags with the ones provided by Qi
+    sed -i "s/-g -O2/$QICFLAGS/" config.mk
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
+    make -j${jobs} V=1 PREFIX=/usr
+    make -j${jobs} V=1 \
+     PREFIX=/usr \
+     doc_dir="$destdir/$docsdir" \
+     example_dir="$destdir/${docsdir}/examples" \
+     DESTDIR="$destdir" install
+
+    strip --strip-unneeded "${destdir}/usr/bin/feh"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -86,5 +90,4 @@ build()
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}/"
 }
-
 

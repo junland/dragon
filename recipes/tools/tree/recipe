@@ -1,6 +1,7 @@
 # Build recipe for tree.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,10 +38,10 @@ HP/UX, Cygwin, HP Nonstop and OS/2.
 "
 
 homepage=http://mama.indstate.edu/users/ice/tree/
-license="GPLv2"
+license=GPLv2+
 
 # Source documentation
-docs="CHANGES LICENSE README "
+docs="CHANGES LICENSE README TODO"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -51,35 +52,16 @@ build()
 
     cd "$srcdir"
    
-    patch -Np0 -i ${worktree}/patches/tree/makefile.patch
- 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} \
+     CFLAGS="$QICFLAGS -Wall -DLINUX -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64" \
+     LDFLAGS="$QILDFLAGS -static" \
+     prefix="${destdir}/usr" \
+     MANDIR="${destdir}/${mandir}/man1" install
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
-
-    # Compress and link man pages (if needed)
-    if test -d "${destdir}/$mandir"
-    then
-        (
-            cd "${destdir}/$mandir"
-            find . -type f -exec lzip -9 '{}' +
-            find . -type l | while read -r file
-            do
-                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
-                rm -- "$file"
-            done
-        )
-    fi
+    lzip -9 "${destdir}/${mandir}/man1/tree.1"
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}/"
 }
-
 
