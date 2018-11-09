@@ -102,7 +102,19 @@ build()
 
     cp -p .config "${destdir}/boot/config-generic-${strver}"
     cp -p System.map "${destdir}/boot/System.map-generic-${strver}"
-    cp -p "arch/${kernel_arch}/boot/bzImage" "${destdir}/boot/vmlinuz-generic-${strver}"
+
+    if test -e "arch/${kernel_arch}/boot/bzImage"
+    then
+        cp -p "arch/${kernel_arch}/boot/bzImage" \
+              "${destdir}/boot/vmlinuz-generic-${strver}"
+    elif test -e "arch/${kernel_arch}/boot/zImage"
+    then
+        cp -p "arch/${kernel_arch}/boot/zImage" \
+              "${destdir}/boot/vmlinuz-generic-${strver}"
+    else
+        echo "${0}: No kernel image found: bzImage or zImage" 1>&2
+        exit 1;
+    fi
 
     # Exclude files from the Graft installation,
     # this will be copied via post-intall, since
