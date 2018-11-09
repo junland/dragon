@@ -1,4 +1,4 @@
-# Build recipe for util-linux.
+# Build recipe for util-linux (final).
 #
 # Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
@@ -15,11 +15,14 @@
 # limitations under the License.
 
 program=util-linux
-version=2.32.1
+version=2.33
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
+
+# The installation of this package replaces to
+replace=util-linux_pass1
 
 tarname=${program}-${version}.tar.gz
 
@@ -58,8 +61,8 @@ build()
      --mandir=$mandir \
      --docdir=$docsdir \
      --enable-usrdir-path \
-     --enable-static \
-     --enable-shared \
+     --enable-static=no \
+     --enable-shared=yes \
      --enable-sulogin-emergency-mount \
      --enable-use-tty-group \
      --enable-wall \
@@ -68,9 +71,9 @@ build()
      --enable-libmount \
      --enable-libuuid \
      --with-btrfs \
-     --without-python \
+     --with-python=3 \
+     --with-readline \
      --without-systemd \
-     --without-readline \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
@@ -103,6 +106,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"/
 }
 

@@ -1,4 +1,4 @@
-# Build recipe for libuv.
+# Build recipe for libcap-ng.
 #
 # Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
@@ -14,33 +14,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-program=libuv
-version=v1.23.2
+program=libcap-ng
+version=0.7.9
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
 
-pkgversion="${version#v*}"
-
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://dist.libuv.org/dist/${version}/$tarname
-
-homepage=http://www.libuv.org
-license=MIT
+fetch=http://people.redhat.com/sgrubb/libcap-ng/$tarname
 
 description="
-An asynchronous I/O library.
+An alternate POSIX capabilities library.
+  	
+The libcap-ng library is intended to make programming with POSIX
+capabilities much easier than the traditional libcap library.
 
-libuv is a multi-platform support library with a focus on asynchronous
-I/O.  See $homepage for more information.
+It includes utilities that can analyse all currently running
+applications and print out any capabilities and whether or not it has
+an open ended bounding set. An open bounding set without the securebits
+\"NOROOT\" flag will allow full capabilities escalation for apps
+retaining UID 0 simply by calling execve.
 "
 
+homepage=http://people.redhat.com/sgrubb/libcap-ng/
+license="GPLv2+, LGPLv2.1"
+
 # Source documentation
-docs="AUTHORS CONTRIBUTING.md LICENSE* MAINTAINERS.md README.md"
-docsdir="${docdir}/${program}-${pkgversion}"
+docs="AUTHORS COPYING* ChangeLog NEWS README*"
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
@@ -53,11 +57,10 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    sh ./autogen.sh
-
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
      --enable-static=no \
@@ -65,8 +68,14 @@ build()
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
-    #make -C docs man;	# It needs "sphinx"
     make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -84,6 +93,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"/
 }
 

@@ -1,6 +1,6 @@
-# Build recipe for libuv.
+# Build recipe for util-linux (pass 1).
 #
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,33 +14,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-program=libuv
-version=v1.23.2
+program=util-linux
+version=2.33
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
-outdir="${outdir}/${arch}/libs"
+outdir="${outdir}/${arch}/tools"
 
-pkgversion="${version#v*}"
+pkgname=util-linux_pass1
 
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://dist.libuv.org/dist/${version}/$tarname
-
-homepage=http://www.libuv.org
-license=MIT
+fetch=http://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v${version}/$tarname
 
 description="
-An asynchronous I/O library.
+Suite of essential utilities.
 
-libuv is a multi-platform support library with a focus on asynchronous
-I/O.  See $homepage for more information.
+The util-linux package contains miscellaneous utility programs for
+handling file systems, consoles, partitions, and messages.
 "
 
+homepage=http://github.com/karelzak/util-linux
+license="GPLv2+, LGPLv2.1 | Public domain, BSD with advertising"
+
 # Source documentation
-docs="AUTHORS CONTRIBUTING.md LICENSE* MAINTAINERS.md README.md"
-docsdir="${docdir}/${program}-${pkgversion}"
+docs="AUTHORS COPYING ChangeLog NEWS README*"
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
@@ -53,20 +53,37 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    sh ./autogen.sh
-
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --enable-usrdir-path \
      --enable-static=no \
      --enable-shared=yes \
+     --enable-sulogin-emergency-mount \
+     --enable-use-tty-group \
+     --enable-wall \
+     --enable-write \
+     --enable-libblkid \
+     --enable-libmount \
+     --enable-libuuid \
+     --without-btrfs \
+     --without-python \
+     --without-systemd \
+     --without-readline \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
-    #make -C docs man;	# It needs "sphinx"
     make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -84,6 +101,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"/
 }
 
