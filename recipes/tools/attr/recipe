@@ -15,17 +15,16 @@
 # limitations under the License.
 
 program=attr
-version=14adc898a36948267bfe5c63b399996879e94c98
-pkgversion=14adc89
+version=2.4.48
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
 
-tarname=${program}-${version}-rebase.tar.lz
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://rsync.dragora.org/current/sources/$tarname
+fetch=http://download.savannah.gnu.org/releases/attr/$tarname
 
 description="
 Extended attributes.
@@ -41,10 +40,7 @@ license="GPLv2+, LGPLv2.1"
 
 # Source documentation
 docs="README doc/CHANGES doc/COPYING*"
-docsdir="${docdir}/${program}-${pkgversion}"
-
-# Custom source directory
-srcdir=${program}-${version}-rebase
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
@@ -56,6 +52,14 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    # Apply patches from upstream.
+    #
+    # test: escape left brace in a regex in test/run
+    patch -p1 < "${worktree}/patches/attr/406eab7aa09da9df787a964d3c152c0bda6e23c4"
+
+    # Switch back to syscall()
+    patch -p1 < "${worktree}/patches/attr/14adc898a36948267bfe5c63b399996879e94c98"
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
