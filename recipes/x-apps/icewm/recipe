@@ -17,7 +17,7 @@
 
 program=icewm
 version=1.4.2
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/x-apps"
@@ -57,6 +57,10 @@ build()
     patch -Np0 -i ${worktree}/patches/icewm/fix-strlcat_strlcpy.patch
     patch -Np0 -i ${worktree}/patches/icewm/musl.patch
 
+    # Note: IceWM has sound support for GUI events, this requires the
+    # libsndfile dependency, and also has been marked as experimental;
+    # we turn it to OFF by default.
+
     ./configure CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" \
     LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -67,7 +71,7 @@ build()
      --docdir=$docsdir \
      --enable-shaped-decorations \
      --enable-gradients \
-     --enable-guievents --with-icesound=ALSA \
+     --disable-guievents \
      --disable-menus-gnome2 \
      --with-x \
      --build="$(cc -dumpmachine)"
