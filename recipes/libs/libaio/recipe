@@ -1,0 +1,68 @@
+# Build recipe for libaio.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=libaio
+version=0.3.111
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/libs"
+
+tarname=${program}_${version}.orig.tar.gz
+
+# Remote source(s)
+fetch=http://ftp.debian.org/debian/pool/main/liba/libaio/$tarname
+
+description="
+Kernel Asynchronous I/O (AIO) support for GNU/Linux.
+
+AIO enables even a single application thread to overlap I/O operations
+with other processing, by providing an interface for submitting one or
+more I/O requests in one system call (io_submit()) without waiting for
+completion, and a separate interface (io_getevents()) to reap
+completed I/O operations associated with a given completion group.
+"
+
+homepage=http://lse.sourceforge.net/io/aio.html
+license=LGPLv2+
+
+# Source documentation
+docs="COPYING ChangeLog TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    patch -p1 < "${worktree}/patches/libaio/libaio-cflags.patch"
+
+    make OPT_FLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+         prefix="${destdir}/usr" \
+         libdir="${destdir}/usr/lib${libSuffix}" \
+         install
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"/
+}
+
