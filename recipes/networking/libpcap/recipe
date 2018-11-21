@@ -1,6 +1,6 @@
 # Build recipe for libpcap.
 #
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=libpcap
-version=1.8.1
+version=1.9.0
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -38,7 +38,7 @@ homepage=http://www.tcpdump.org
 license=BSD
 
 # Source documentation
-docs="CHANGES CREDITS LICENSE README TODO VERSION"
+docs="CHANGES CREDITS LICENSE README.md TODO VERSION"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -52,23 +52,19 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # http://github.com/the-tcpdump-group/libpcap/commit/aafa3512b7b742f5e66a5543e41974cc5e7eebfa
+    patch -p1 < "${worktree}/patches/libpcap/pcap-usb-linux.c-musl.patch"
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
      --mandir=$mandir \
      --enable-shared \
+     --with-pcap=linux \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
-
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
