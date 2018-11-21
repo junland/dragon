@@ -1,6 +1,6 @@
 # Build recipe for libnl.
 #
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,18 +15,18 @@
 # limitations under the License.
 
 program=libnl
-version=3.2.25
+version=3.4.0
 release=1
+
+pkgname=libnl3
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/networking"
 
-pkgname=libnl3
-
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=https://www.infradead.org/~tgr/libnl/files/$tarname
+fetch=http://github.com/thom311/libnl/releases/download/libnl3_4_0/$tarname
 
 description="
 Netlink protocol library suite.
@@ -57,6 +57,9 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    # A patch taken from "Alpine Linux"
+    patch -p1 < "${worktree}/patches/libnl3/libnl3-musl.patch"
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
