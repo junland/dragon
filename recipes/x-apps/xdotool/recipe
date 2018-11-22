@@ -1,6 +1,7 @@
 # Build recipe for xdotool.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,25 +25,25 @@ outdir="${outdir}/${arch}/x-apps"
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://github.com/jordansissel/xdotool/releases/download/v3.20160805.1/"$tarname"
+fetch=http://github.com/jordansissel/xdotool/releases/download/v${version}/$tarname
+
+homepage=http://www.semicomplete.com/projects/xdotool/
 
 description="
-xdotool: Fake input from the mouse and keyboard very easily.
+Fake input from the mouse and keyboard very easily.
 
-Also supports window manager actions such as moving, activating, and other
-actions on windows.
-libxdo: C library for doing the same.
+xdotool also supports window manager actions such as moving,
+activating, and other actions on windows.
 
-See the website for more up-to-date documentation
-  http://www.semicomplete.com/projects/xdotool/
-or the manpage listed below.
+For more information, visit:
+$homepage
 "
 
 homepage=http://www.semicomplete.com/projects/xdotool/
-license="Custom"
+license=Custom
 
 # Source documentation
-docs="CHANGELIST COPYRIGHT README "
+docs="CHANGELIST COPYRIGHT README VERSION"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -53,36 +54,18 @@ build()
 
     cd "$srcdir"
 
-    make -j${jobs} V=1
-    make -j${jobs}  install  \
-          DESTDIR="$destdir" \
+    make -j${jobs} V=1 CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
           PREFIX=/usr \
-          LDCONFIG=true 
+          INSTALLLIB=/usr/lib${libSuffix} \
+          INSTALLMAN=$mandir \
+          LDCONFIG=true \
+          DESTDIR="$destdir" \
+          install
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
-
-    # Compress and link man pages (if needed)
-    if test -d "${destdir}/$mandir"
-    then
-        (
-            cd "${destdir}/$mandir"
-            find . -type f -exec lzip -9 '{}' +
-            find . -type l | while read -r file
-            do
-                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
-                rm -- "$file"
-            done
-        )
-    fi
+    lzip -9 "${destdir}/${mandir}/man1/xdotool.1"
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}/"
 }
-
 
