@@ -643,23 +643,22 @@ create_mode()
 
 delete_mode()
 {
-    expunge=$1
+    expunge="${1%%.tlz}"
 
     echo "<<< Deleting package $rootdir${expunge} ..."
 
-    # If package is not a fully qualified directory, prepend it with
-    # the value of packagedir.  The solely '/' does not qualify here.
+    # If package is not a fully qualified directory,
+    # prepend it with the value of packagedir.
 
-    if ! fnmatch '/?*' "$expunge"
+    if ! fnmatch "${packagedir}*" "$expunge"
     then
-        expunge=$(basename -- "$expunge" .tlz)
         expunge="${packagedir}/$expunge"
     fi
 
     # Complain if the package directory does not exist
 
     test -d "$rootdir${expunge}" || {
-        warn "Package directory '$rootdir${expunge}' does not exist."
+        warn "Package directory '$rootdir${expunge}' under $packagedir does not exist."
         return 4
     }
 
