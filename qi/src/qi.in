@@ -666,13 +666,6 @@ delete_mode()
 
     is_readable "$rootdir${expunge}" || exit 4
 
-    # Ignore some signals up to completing the deinstallation
-    trap "" HUP QUIT ABRT TERM
-
-    # To catch and report on interruptions (e.g Ctrl+C),
-    # Note: SIGINT is allowed for cancel packages.
-    trap 'chkstatus_or_exit 2' INT
-
     # Remove package from Graft control
 
     # Scan for possible conflicts, stop if arise
@@ -688,6 +681,9 @@ delete_mode()
             return 6;
         fi
     fi
+
+    # Ignore some signals up to completing the deinstallation
+    trap "" HUP INT QUIT ABRT TERM
 
     # Remove objects (files, links or directories) from the target
     # directory that are in conflict with the package directory
