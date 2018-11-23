@@ -645,7 +645,7 @@ delete_mode()
 {
     expunge="${1%%.tlz}"
 
-    echo "<<< Deleting package $rootdir${expunge} ..."
+    echo "<<< Deleting package $rootdir${expunge} from $packagedir ..."
 
     # If package is not a fully qualified directory,
     # prepend it with the value of packagedir.
@@ -658,7 +658,7 @@ delete_mode()
     # Complain if the package directory does not exist
 
     test -d "$rootdir${expunge}" || {
-        warn "Package directory '$rootdir${expunge}' under $packagedir does not exist."
+        warn "Package directory '$rootdir${expunge}' does not exist."
         return 4
     }
 
@@ -667,7 +667,11 @@ delete_mode()
     is_readable "$rootdir${expunge}" || exit 4
 
     # Ignore some signals up to completing the deinstallation
-    trap "" HUP INT QUIT ABRT TERM
+    trap "" HUP QUIT ABRT TERM
+
+    # To catch and report on interruptions (e.g Ctrl+C),
+    # Note: SIGINT is allowed for cancel packages.
+    trap 'chkstatus_or_exit 2' INT
 
     # Remove package from Graft control
 
