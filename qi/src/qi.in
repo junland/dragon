@@ -421,7 +421,7 @@ build_mode()
                 warn "${_source}.sha256: Checksum file does not exist, yet."
             fi
 
-            # Download the source or resume it if allowed
+            # Download source or resume if allowed
 
             if test ! -e "${tardir}/$_source"
             then
@@ -432,18 +432,18 @@ build_mode()
             case $origin in
             rsync://*)
                     (
-                        cd -- "$tardir" && $rsync $origin || chkstatus_or_exit
+                        cd -- "$tardir" && $rsync $origin || exit $?
                         sha256sum $_source > ${_source}.sha256
-                    )
+                    );  chkstatus_or_exit 10
                 ;;
             *://*)
                     (
-                        cd -- "$tardir" && $netget $origin || chkstatus_or_exit
+                        cd -- "$tardir" && $netget $origin || exit $?
                         sha256sum $_source > ${_source}.sha256
-                    )
+                    );  chkstatus_or_exit 10
                 ;;
             *)
-                warn "Unrecognized protocol for ${origin}."
+                warn "${PROGRAM}: Unrecognized protocol for ${origin}."
                 exit 4
             esac
         done
