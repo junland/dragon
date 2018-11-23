@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 1.0-rc46
+version		= 1.0-rc47
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -132,6 +132,7 @@ dist : doc
 	  $(DISTNAME)/src/qi.in
 	rm -f $(DISTNAME)
 	lzip -v -9 $(DISTNAME).tar
+	sha256sum $(DISTNAME).tar.lz > $(DISTNAME).tar.lz.sha256
 
 distclean : clean
 	-rm -f *.tar *.tar.lz *.tar.lz.*
