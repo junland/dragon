@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=sysvinit
-version=2.91
+version=2.93
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -53,14 +53,14 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Adjust some script paths
+    # Adjust some (rc) script paths
     patch -p0 < "${worktree}/patches/sysvinit/sysvinit-adjust_paths.h.diff"
 
     # Remove several programs installed by other packages
-    patch -p0 < "${worktree}/patches/sysvinit/sysvinit-2.91-dragora_consolidated-1.patch"
+    patch -p1 < "${worktree}/patches/sysvinit/sysvinit-2.93-dragora_consolidated-1.patch"
 
-    make -j${jobs} -C src VERSION="$version" CFLAGS="$QICFLAGS" STATIC="-static"
-    make -j${jobs} -C src ROOT="$destdir" install
+    make -j${jobs} CFLAGS="$QICFLAGS" STATIC="-static"
+    make -j${jobs} ROOT="$destdir" install
 
     strip --strip-unneeded "${destdir}/sbin"/* 2> /dev/null || true
 
