@@ -1,4 +1,4 @@
-# Build recipe for tcl.
+# Build recipe for tk (Tcl/Tk).
 #
 # Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-program=tcl
-version=8.6.9
+program=tk
+version=8.6.9.1
 series_version=8.6
 release=1
 
@@ -30,14 +30,9 @@ fetch=http://prdownloads.sourceforge.net/tcl/$tarname
 homepage=http://www.tcl.tk
 
 description="
-Tool command language.
+The TCL GUI ToolKit.
 
-Tcl (Tool Command Language) is a very powerful but easy to learn
-dynamic programming language, suitable for a very wide range of uses,
-including web and desktop applications, networking, administration,
-testing and many more.  Open source and business-friendly, Tcl is a
-mature yet evolving language that is truly cross platform, easily
-deployed and highly extensible.
+The tk package contains the TCL GUI ToolKit.
 
 For more information, visit:
 $homepage
@@ -50,7 +45,7 @@ docs="ChangeLog README changes license.terms"
 docsdir="${docdir}/${program}-${version}"
 
 # Custom source directory
-srcdir=${program}${version}
+srcdir=${program}8.6.9
 
 build()
 {
@@ -62,8 +57,6 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
-
-    WD="$(pwd)"
 
     cd unix
 
@@ -88,41 +81,25 @@ build()
      $bit_flags
 
     unset bit_flags
-    make -j${jobs} V=1 TCL_LIBRARY=/usr/lib${libSuffix}/tcl${series_version}
+    make -j${jobs} V=1 TK_LIBRARY=/usr/lib${libSuffix}/tcl${series_version}
 
     # Clean up build-directory references/traces
 
-    # Current versions provided on this release
-    tdbc_version=1.1.0
-    itcl_version=4.1.2
-
-    sed -e "s#${WD}/unix#/usr/lib${libSuffix}#"                                                   \
-        -e "s#${WD}#/usr/include#"                                                                \
-        -i tclConfig.sh
-
-    sed -e "s#${WD}/unix/pkgs/tdbc${tdbc_version}#/usr/lib${libSuffix}/tdbc${tdbc_version}#"      \
-        -e "s#${WD}/pkgs/tdbc${tdbc_version}/generic#/usr/include#"                               \
-        -e "s#${WD}/pkgs/tdbc${tdbc_version}/library#/usr/lib${libSuffix}/tcl${series_version}#"  \
-        -e "s#${WD}/pkgs/tdbc${tdbc_version}#/usr/include#"                                       \
-        -i pkgs/tdbc${tdbc_version}/tdbcConfig.sh
-
-    sed -e "s#${WD}/unix/pkgs/itcl${itcl_version}#/usr/lib${libSuffix}/itcl${itcl_version}#"      \
-        -e "s#${WD}/pkgs/itcl${itcl_version}/generic#/usr/include#"                               \
-        -e "s#${WD}/pkgs/itcl${itcl_version}#/usr/include#"                                       \
-        -i pkgs/itcl${itcl_version}/itclConfig.sh
-
-    unset WD tdbc_version itcl_version
+    # Thanks to "Beyond of Linux From Scratch"
+    sed -e "s@^\(TK_SRC_DIR='\).*@\1/usr/include'@" \
+        -e "/TK_B/s@='\(-L\)\?.*unix@='\1/usr/lib${libSuffix}@" \
+        -i tkConfig.sh
 
     make -j${jobs} \
-     TCL_LIBRARY=/usr/lib${libSuffix}/tcl${series_version} \
+     TK_LIBRARY=/usr/lib${libSuffix}/tcl${series_version} \
      DESTDIR="$destdir" install
 
     make -j${jobs} INSTALL_ROOT="$destdir" install-private-headers
 
     # Make symlinks for compatibility
-    ln -s tclsh${series_version} "${destdir}/usr/bin/tclsh"
-    ln -s libtcl${series_version}.so "${destdir}/usr/lib${libSuffix}/libtcl.so"
-    ln -s libtclstub${series_version}.a "${destdir}/usr/lib${libSuffix}/libtclstub.a"
+    ln -s wish${series_version} "${destdir}/usr/bin/wish"
+    ln -s libtk${series_version}.so "${destdir}/usr/lib${libSuffix}/libtk.so"
+    ln -s libtkstub${series_version}.a "${destdir}/usr/lib${libSuffix}/libtkstub.a"
 
     unset series_version
 
