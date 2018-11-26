@@ -1005,24 +1005,20 @@ pkgbase()
 {
     string=$(basename -- "$1" .tlz)
 
-    # Take and count the dashes only
-
-    dashes=$(echo "$string" | tr -cd '-')
-    dashes="${#dashes}"
-
-    # Match cases to print the package name
-    case $dashes in
-    1)
-        # NAME-VERSION
-        echo "${string%-*}"
+    # Match cases to print the package name.
+    #
+    # We will take into account the four segments removing
+    # the last two to print the package (long) name
+    case $string in
+    *-*-*+*)
+        echo "${string%-*-*}"
         ;;
     *)
-        # NAME_[-LONG]-VERSION-ARCH+release
-        echo "${string%-*-*}"
+        echo "$string"
         ;;
     esac
 
-    unset string dashes
+    unset string
 }
 
 unpack()
@@ -1297,7 +1293,7 @@ fi
 
 # Program sanity check
 for need in awk basename bzip2 chmod cp dirname find fold graft grep \
-            lzip mkdir mktemp rm rmdir sed sha256sum stat tar tr
+            lzip mkdir mktemp rm rmdir sed sha256sum stat tar
 do
     if ! type $need 1> /dev/null 2> /dev/null
     then
