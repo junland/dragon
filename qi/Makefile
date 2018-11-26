@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 1.0-rc48
+version		= 1.0-rc49
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -31,8 +31,8 @@ datarootdir	= $(prefix)/share
 infodir		= $(datarootdir)/info
 mandir		= $(datarootdir)/man
 docdir		= $(datarootdir)/doc
-packagedir	= $(prefix)/pkg
-targetdir	= /
+packagedir	= /usr/local/pkgs
+targetdir	= /usr/local
 ##
 DISTNAME	= ${project}-${version}
 
