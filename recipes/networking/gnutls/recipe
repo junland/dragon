@@ -1,6 +1,7 @@
 # Build recipe for gnutls.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 # limitations under the License.
 
 program=gnutls
-version=3.5.19	
+version=3.6.4
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -24,26 +25,28 @@ outdir="${outdir}/${arch}/networking"
 tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
-fetch=http://www.gnupg.org/ftp/gcrypt/gnutls/v3.5/"$tarname"
+fetch=http://www.gnupg.org/ftp/gcrypt/gnutls/v3.6/"$tarname"
 
 description="
-The GnuTLS Transport Layer Security Library
+The GnuTLS Transport Layer Security Library.
 
-GnuTLS is a secure communications library implementing the SSL, TLS and DTLS protocols 
-and technologies around them. It provides a simple C language application programming 
-interface (API) to access the secure communications protocols as well as APIs to parse 
-and write X.509, PKCS #12, and other required structures.
+GnuTLS is a secure communications library implementing the SSL, TLS and
+DTLS protocols and technologies around them.  It provides a simple C
+language application programming  interface (API) to access the secure
+communications protocols as well as APIs to parse and write X.509,
+PKCS #12, and other required structures.
 
-The project strives to provide a secure communications back-end, simple to use and 
-integrated with the rest of the base Linux libraries. A back-end designed to work and be
- secure out of the box, keeping the TLS and PKI complexity outside the applications. 
+The project strives to provide a secure communications back-end, simple
+to use and integrated with the rest of the base Linux libraries.  A
+back-end designed to work and be secure out of the box, keeping the TLS
+and PKI complexity outside the applications. 
 "
 
 homepage=http://gnutls.org/
-license="GPLv2"
+license="LGPLv2+, GPLv3+, GFDL1.3"
 
 # Source documentation
-docs="README.md"
+docs="AUTHORS CONTRIBUTING.md ChangeLog LICENSE NEWS README.md THANKS"
 docsdir="${docdir}/${program}-${version}"
  
 build()
@@ -54,19 +57,26 @@ build()
 
     cd "$srcdir"
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
     --libdir=/usr/lib${libSuffix} \
     --infodir=$infodir \
     --mandir=$mandir \
-    --docdir=$docdir \
+    --docdir=$docsdir \
+    --with-html-dir=${docsdir}/html \
+    --enable-gtk-doc-html=no \
+    --enable-static=no \
     --with-included-libtasn1 \
     --with-included-unistring \
     --without-p11-kit \
     --build="$(cc -dumpmachine)"
- 
+
     make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
@@ -93,5 +103,4 @@ build()
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}/"
 }
-
 
