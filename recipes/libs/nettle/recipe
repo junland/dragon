@@ -1,6 +1,7 @@
 # Build recipe for nettle.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,14 +28,19 @@ tarname=${program}-${version}.tar.gz
 fetch=http://ftp.gnu.org/gnu/nettle/"$tarname"
 
 description="
-a low-level cryptographic library 
+A low-level cryptographic library.
+
+Nettle is a cryptographic library that is designed to fit easily in
+more or less any context: in crypto toolkits for object-oriented
+languages (C++, Python, Pike, ...), in applications like LSH or
+GnuPG, or even in kernel space.
 "
 
 homepage=http://www.lysator.liu.se/~nisse/nettle/
-license="GPLv2"
+license="GPLv2+, GPLv3+, LPGLv3+"
 
 # Source documentation
-docs="README"
+docs="AUTHORS CONTRIBUTING.md COPYING* ChangeLog NEWS README TODO"
 docsdir="${docdir}/${program}-${version}"
  
 build()
@@ -45,11 +51,14 @@ build()
 
     cd "$srcdir"
     
-    ./configure \
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docdir \
+     --enable-static=no \
+     --enable-shared=yes \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
@@ -80,5 +89,4 @@ build()
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}/"
 }
-
 
