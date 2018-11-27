@@ -1,0 +1,94 @@
+# Build recipe for libetpan.
+#
+# Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=libetpan
+version=1.8
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/libs"
+
+tarname=${version}.tar.gz
+
+# Remote source(s)
+fetch=http://github.com/dinhviethoa/libetpan/archive/"$tarname"
+
+description="
+libEtPan is a mail library is to provide a portable, efficient
+middleware for different kinds of mail access
+
+The purpose of this mail library is to provide a portable, efficient framework 
+for different kinds of mail access: IMAP, SMTP, POP and NNTP. 
+
+It provides an API for C language. 
+
+It's the low-level API used by MailCore and MailCore 2. 
+"
+
+homepage=http://www.etpan.org/
+licence="Copyright (C) 2001 - 2005 - DINH Viet Hoa"
+
+# Source documentation
+docs="AUTHORS COPYRIGHT NEWS README.md"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./autogen.sh
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docdir \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+
+
