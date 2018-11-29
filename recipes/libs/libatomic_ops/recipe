@@ -1,0 +1,73 @@
+# Build recipe for libatomic_ops.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=libatomic_ops
+version=7.6.6
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/libs"
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://github.com/ivmai/libatomic_ops/releases/download/v${version}/$tarname
+
+description="
+Implementations for atomic memory.
+
+libatomic_ops provides implementations for atomic memory update
+operations on a number of architectures.  This allows direct use of
+these in reasonably portable code.  Unlike earlier similar packages,
+this one explicitly considers memory barrier semantics, and allows
+the construction of code that involves minimum overhead across a
+variety of architectures.
+"
+
+homepage=http://github.com/ivmai/libatomic_ops
+license=GPLv2+
+
+# Source documentation
+docs="AUTHORS ChangeLog"	# To complement installed documentation.
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --docdir=$docsdir \
+     --enable-static=no \
+     --enable-shared=yes \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"/
+}
+
