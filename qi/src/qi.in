@@ -485,8 +485,23 @@ build_mode()
 
     trap 'chkstatus_or_exit 2' EXIT HUP INT QUIT ABRT TERM
 
+    # Determine if the debugging indicators of the shell should be
+    # retained, assuming that it has been previously passed
+    case $- in *x*)
+        _xtrace_flag_is_set=xtrace_flag_is_set ;;
+    esac
+
     echo "Running build() ..."
-    build ; set +e ; unset build
+    build
+    unset build
+
+    # Turn off possible shell flags coming from the recipe
+
+    set +e
+    if test "$_xtrace_flag_is_set" != xtrace_flag_is_set
+    then
+        set +x
+    fi
 
     # Reset given signals
     trap - EXIT HUP INT QUIT ABRT TERM
