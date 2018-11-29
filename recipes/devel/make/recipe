@@ -1,6 +1,6 @@
 # Build recipe for make.
 #
-# Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 program=make
 version=4.2.1
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -57,17 +57,24 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Configure without GUILE support for embedded scripting for now.
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    # Apply patches from upstream.
+    #
+    # Detect Guile 2.2
+    # http://git.savannah.nongnu.org/cgit/make.git/commit/?id=fbf71ec25a5986d9003ac16ee9e23675feac9053
+    patch -p1 < "${worktree}/patches/make/fbf71ec25a5986d9003ac16ee9e23675feac9053"
+
+    autoreconf -vif
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
-     --without-guile \
+     --with-guile \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Make symlink for "GNU make"
     ( cd "${destdir}/usr/bin" && ln -sf make gmake )
