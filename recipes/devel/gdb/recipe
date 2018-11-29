@@ -16,7 +16,7 @@
 
 program=gdb
 version=8.2
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -30,8 +30,8 @@ description="
 The GNU debugger.
 
 GDB, the GNU Project debugger, allows you to see what is going on
-inside another program while it executes, or what another program was
-doing at the moment it crashed.
+inside another program while it executes, or what another program
+was doing at the moment it crashed.
 "
 
 homepage=http://www.gnu.org/software/gdb
@@ -52,6 +52,9 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # The GUILE support is pending (--with-guile=guile-2.2)
+    # It does not work for GDB 8.2 ...
+
     ./configure \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -59,9 +62,10 @@ build()
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --enable-compressed-debug-sections=none \
+     --with-python=/usr/bin/python3 \
      --with-system-zlib \
      --with-system-readline \
-     --without-guile \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
