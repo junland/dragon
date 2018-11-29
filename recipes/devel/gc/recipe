@@ -1,0 +1,99 @@
+# Build recipe for gc.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=gc
+version=8.0.0
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/devel"
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://www.hboehm.info/gc/gc_source/$tarname
+
+description="
+A garbage collector for C and C++.
+
+The gc package contains the Boehm-Demers-Weiser conservative garbage
+collector, which can be used as a garbage collecting replacement for
+the C malloc function or C++ new operator.  It allows you to allocate
+memory basically as you normally would, without explicitly deallocating
+memory that is no longer useful.  The collector automatically recycles
+memory when it determines that it can no longer be otherwise accessed.
+
+The collector is also used by a number of programming language
+implementations that either use C as intermediate code, want to
+facilitate easier interoperation with C libraries, or just prefer the
+simple collector interface.  Alternatively, the garbage collector may
+be used as a leak detector for C or C++ programs, though that is not
+its primary goal.
+"
+
+homepage=http://www.hboehm.info/gc/
+license=Custom
+
+# Source documentation
+docs="AUTHORS ChangeLog"	# To complement installed documentation.
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-cplusplus \
+     --enable-static=no \
+     --enable-shared=yes \
+     --enable-threads=posix \
+     --with-libatomic-ops=yes \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"/
+}
+
