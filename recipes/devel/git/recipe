@@ -16,7 +16,7 @@
 
 program=git
 version=2.19.2
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -61,7 +61,16 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    echo "NO_GETTEXT=YesPlease" >> config.mak
+    cat << EOF >> config.mak
+NO_GETTEXT=1
+NO_SVN_TESTS=1
+NO_REGEX=1
+NO_NSEC=1
+NO_SYS_POLL_H=1
+NO_PERL_CPAN_FALLBACKS=1
+NEEDS_CRYPTO_WITH_SSL=1
+INSTALL_SYMLINKS=1
+EOF
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -69,11 +78,12 @@ build()
      --mandir=$mandir \
      --docdir=$docsdir \
      --with-libpcre1 \
-     --with-tcltk \
+     --without-tcltk \
      --build="$(cc -dumpmachine)"
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1 INSTALLDIRS=vendor
+    make -j${jobs} V=1 INSTALLDIRS=vendor \
+     DESTDIR="$destdir" install
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
