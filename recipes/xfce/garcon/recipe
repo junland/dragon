@@ -1,6 +1,7 @@
 # Build recipe for garcon.
 #
 # Copyright (C) 2017-2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,8 +34,8 @@ It was started as a rewrite of the former Xfce menu library called
 libxfce4menu.
 "
 
-homepage=http://xfce.org/projects/
-license=LGPLv2
+homepage=http://xfce.org
+license=LGPLv2+
 
 # Source documentation
 docs="AUTHORS COPYING HACKING NEWS README STATUS THANKS TODO"
@@ -43,6 +44,7 @@ docsdir="${docdir}/${program}-${version}"
 build()
 {
     set -e
+
     unpack "${tardir}/$tarname"
     
     cd "$srcdir"
@@ -52,21 +54,21 @@ build()
     
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
+    --libdir=/usr/lib${libSuffix} \
+    --disable-linker-opts \
     --mandir=$mandir \
     --infodir=$infodir \
-    --disable-static \
-    --disable-debug \
+    --enable-static=no \
+    --enable-shared=yes \
+    --enable-debug=no \
+    --enable-libxfce4ui \
     --build="$(cc -dumpmachine)"
     
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
     
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do 
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"/
 }
 
