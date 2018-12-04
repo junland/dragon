@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=libxfce4ui
-version=4.13.3
+version=4.13.4
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -34,8 +34,8 @@ It is used to share commonly used Xfce widgets among the Xfce
 applications.
 "
 
-homepage=http://xfce.org/
-license=GPLv2
+homepage=http://xfce.org
+license=GPLv2v+
 
 # Source documentation
 docs="AUTHORS COPYING NEWS README THANKS TODO"
@@ -44,6 +44,7 @@ docsdir="${docdir}/${program}-${version}"
 build()
 {
     set -e
+
     unpack "${tardir}/$tarname"
     
     cd "$srcdir"
@@ -53,27 +54,26 @@ build()
     
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
+    --libdir=/usr/lib${libSuffix} \
+    --disable-linker-opts \
+    --enable-static=no \
+    --enable-shared=yes \
+    --enable-debug=no \
+    --enable-introspection=yes \
     --with-vendor-info=Dragora \
-    --disable-static \
-    --disable-debug \
+    --with-x \
     --build="$(cc -dumpmachine)"
     
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
     
-    # Add vendor info in /usr/share/xfce4/vendorinfo
-    mkdir -pv "$destdir"/usr/share/xfce4
-    cp -p "${worktree}/archive/libxfce4ui/vendorinfo" "$destdir"/usr/share/xfce4/
-    chmod 644 "$destdir"/usr/share/xfce4/vendorinfo
+    # Add vendor info at usr/share/xfce4/vendorinfo
+    mkdir -p "${destdir}"/usr/share/xfce4
+    cp -p "${worktree}/archive/libxfce4ui/vendorinfo" "${destdir}"/usr/share/xfce4/
+    chmod 644 "${destdir}"/usr/share/xfce4/vendorinfo
     
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do 
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"/
 }
 
