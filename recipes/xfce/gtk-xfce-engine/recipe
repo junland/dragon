@@ -1,6 +1,7 @@
 # Build recipe gtk-xfce-engine.
 #
 # Copyright (C) 2017-2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,14 +30,13 @@ fetch=http://archive.xfce.org/src/xfce/gtk-xfce-engine/3.2/$tarname
 description="
 The engine of Xfce.
 
-The GTK-Xfce-Engine package contains several GTK+-2/3 themes
-and the applications and libraries needed to display them.
-
-This is useful for customizing the appearance of your Xfce desktop.
+The gtk-xfce-engine package contains several GTK+ themes and the
+applications, libraries needed to display them.  This is useful for
+customizing the appearance of your Xfce desktop.
 "
 
-homepage=http://xfce.org/projects/
-license=GPLv2
+homepage=http://xfce.org
+license=GPLv2+
 
 # Source documentation
 docs="AUTHORS COPYING ChangeLog NEWS README"
@@ -45,30 +45,38 @@ docsdir="${docdir}/${program}-${version}"
 build()
 {
     set -e
+
     unpack "${tardir}/$tarname"
-    
+
     cd "$srcdir"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
-    
+
+    # The script glib-mkenums has now been rewritten from Perl to
+    # Python and will crash when it encounters an ISO-8859-1
+    # character in a comment. This sed converts that character to
+    # UTF-8 (Thanks to "Beyond Linux From Scratch")
+    sed -i 's/\xd6/\xc3\x96/' gtk-3.0/xfce_style_types.h
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
+    --libdir=/usr/lib${libSuffix} \
     --mandir=$mandir \
     --infodir=$infodir \
-    --disable-static \
-    --disable-debug \
+    --enable-static=no \
+    --enable-shared=yes \
+    --enable-debug=no \
+    --enable-gtk2 \
+    --enable-gtk3 \
+    --disable-glibtest \
     --build="$(cc -dumpmachine)"
     
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
     
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do
-	cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"/
 }
 
