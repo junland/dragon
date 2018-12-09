@@ -1,6 +1,7 @@
-# Build recipe for Xfdesktop
+# Build recipe for xfdesktop.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 # limitations under the License.
 
 program=xfdesktop
-version=4.13.1
+version=4.12.4
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -24,26 +25,28 @@ outdir="${outdir}/${arch}/xfce"
 tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch=http://archive.xfce.org/src/xfce/xfdesktop/4.13/$tarname
+fetch=http://archive.xfce.org/src/xfce/xfdesktop/4.12/$tarname
 
 description="
 A desktop manager for the Xfce Desktop Environment.
 
-Desktop in this respect means the root window. The manager handles tasks such as
-the background image and color, the root menu and windowlist,
-minimized application icons, and file icons on the desktop.
+Desktop in this respect means the root window.  The manager handles
+tasks such as the background image and color, the root menu and
+windowlist, minimized application icons, and file icons on the
+desktop.
 "
 
-homepage=http://docs.xfce.org/xfce/xfdesktop/start/
-license=GPLv2
+homepage=http://xfce.org
+license=GPLv2+
 
 # Source documentation
-docs="AUTHORS ChangeLog COPYING NEWS README TODO"
+docs="AUTHORS COPYING ChangeLog NEWS README TODO"
 docsdir="${docdir}/${program}-${version}"
 
 build()
 {
     set -e
+
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
@@ -52,23 +55,26 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
-    --disable-thunarx \
-    --disable-static \
-    --disable-debug \
-    --build="$(cc -dumpmachine)"
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --enable-static=no \
+     --enable-shared=yes \
+     --enable-debug=no \
+     --enable-gio-unix=yes \
+     --enable-notifications=yes \
+     --disable-thunarx \
+     --with-file-manager-fallback=spacefm \
+     --with-x \
+     --build="$(cc -dumpmachine)"
 
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    lzip -9 "${destdir}/${mandir}"/man?/*.?
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do 
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
