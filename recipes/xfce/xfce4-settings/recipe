@@ -1,6 +1,7 @@
 # Build recipe for xfce4-settings.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 # limitations under the License.
 
 program=xfce4-settings
-version=4.13.2
+version=4.12.4
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -24,20 +25,20 @@ outdir="${outdir}/${arch}/xfce"
 tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch=http://archive.xfce.org/src/xfce/xfce4-settings/4.13/$tarname
+fetch=http://archive.xfce.org/src/xfce/xfce4-settings/4.12/$tarname
 
 description="
 The Xfce settings manager front-end.
 
-It comes with several different components for configuring 
+It comes with several different components for configuring
 application-independent settings inside xfconf.
 "
 
-homepage=http://docs.xfce.org/xfce/xfce4-settings/start
-license=GPLv2
+homepage=http://xfce.org
+license=GPLv2+
 
 # Source documentation
-docs="AUTHORS COPYING NEWS README TODO"
+docs="AUTHORS COPYING ChangeLog NEWS README TODO"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -50,25 +51,37 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
-    --disable-debug \
-    --build="$(cc -dumpmachine)"
+    # TODO: --enable-sound-settings (requires libcanberra)
 
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --infodir=$infodir \
+     --enable-static=no \
+     --enable-shared=yes \
+     --enable-debug=no \
+     --enable-xrandr=yes \
+     --enable-libnotify=yes \
+     --enable-gio-unix=yes \
+     --enable-xcursor=yes \
+     --enable-xorg-libinput=yes \
+     --enable-libxklavier=yes \
+     --enable-pluggable-dialogs=yes \
+     --disable-upower-glib \
+     --disable-linker-opts \
+     --with-x \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Prevent icon crash
-    find "${destdir}"/usr/share/icons -type f -name "icon-theme.cache" -exec rm -f {} \;
+    find "${destdir}"/usr/share/icons \
+     -type f -name "icon-theme.cache" -exec rm -f {} \;
   	
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do
-	cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
