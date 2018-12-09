@@ -1,6 +1,7 @@
-# Build recipe for xfce4-session
+# Build recipe for xfce4-session.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
+# Copyright (C) 2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 # limitations under the License.
 
 program=xfce4-session
-version=4.13.0
+version=4.12.1
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -24,25 +25,27 @@ outdir="${outdir}/${arch}/xfce"
 tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch=http://archive.xfce.org/src/xfce/xfce4-session/4.13/$tarname
+fetch=http://archive.xfce.org/src/xfce/xfce4-session/4.12/$tarname
 
 description="
-A session manager for Xfce.
+Session manager for Xfce.
 
 Its task is to save the state of your desktop and restore it during a
 next startup.  You can create several different sessions and choose one
 of them on startup.
 "
-homepage=http://xfce.org/
-license=GPLv2
+
+homepage=http://xfce.org
+license=GPLv2+
 
 # Source documentation
-docs="AUTHORS BUGS COPYING NEWS README TODO"
+docs="AUTHORS BUGS COPYING ChangeLog NEWS README TODO"
 docsdir="${docdir}/${program}-${version}"
 
 build()
 {
     set -e
+
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
@@ -51,23 +54,35 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --infodir=$infodir \
-    --disable-static \
-    --disable-debug \
-    --disable-legacy-sm \
-    --build="$(cc -dumpmachine)"
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --enable-static=no \
+     --enable-shared=yes \
+     --enable-debug=no \
+     --disable-linker-opts \
+     --disable-legacy-sm \
+     --disable-polkit \
+     --disable-upower \
+     --with-x \
+     --build="$(cc -dumpmachine)"
 
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Move Xfce's xinitrc to etc/X11/xinit
+
+    mkdir -p "${destdir}/etc/X11/xinit"
+    mv "${destdir}/etc/xdg/xfce4/xinitrc" \
+       "${destdir}/etc/X11/xinit/xinitrc.xfce"
+    chmod 644 "${destdir}/etc/X11/xinit/xinitrc.xfce"
+
+    touch "${destdir}/etc/X11/xinit/.graft-config"
+
+    lzip -9 "${destdir}/${mandir}"/man?/*.?
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do
-	cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
