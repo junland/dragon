@@ -1,0 +1,66 @@
+# Build recipe for iso-codes.
+#
+# Copyright (C) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=iso-codes
+version=4.1
+arch=noarch
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/data"
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=http://anduin.linuxfromscratch.org/BLFS/iso-codes/$tarname
+
+description="
+ISO country, language, script and currency codes and translations.
+
+This package provides lists of various ISO standards (e.g. country,
+language, language scripts, and currency names) in one place, rather
+than repeated in many programs throughout the system.
+"
+
+homepage=http://salsa.debian.org/iso-codes-team/iso-codes
+license=GPLv2+
+
+docs="COPYING ChangeLog.md README.md TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} V=1 DESTDIR="$destdir" install-strip
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
