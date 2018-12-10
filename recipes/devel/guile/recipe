@@ -16,7 +16,7 @@
 
 program=guile
 version=2.2.4
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -69,9 +69,14 @@ build()
      --with-threads \
      --build="$(cc -dumpmachine)"
 
-    make -j${jobs} V=1 && make V=1 html
-    make -j${jobs} DESTDIR="$destdir" install-strip && \
-     make -j${jobs} DESTDIR="$destdir" install-html
+    # Uncomment the following (two) commented lines if you want to
+    # build the documentation.  We do not build it by default in
+    # order to save 9M, approx.
+
+    make -j${jobs} V=1
+    #make V=1 html
+    make -j${jobs} DESTDIR="$destdir" install-strip
+    #make -j${jobs} DESTDIR="$destdir" install-html
 
     # Move misplaced file(s) for GDB
     mkdir -p "${destdir}/usr/share/gdb/auto-load/usr/lib${libSuffix}"
