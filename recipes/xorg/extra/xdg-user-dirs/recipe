@@ -1,0 +1,95 @@
+# Build recipe for xdg-user-dirs.
+#
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=xdg-user-dirs
+version=0.17
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/xorg/extra"
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=https://user-dirs.freedesktop.org/releases/$tarname
+
+description="
+A tool to help manage user directories like the Desktop folder.
+
+xdg-user-dirs is a tool to help manage \"well known\" user directories
+like the desktop folder and the music folder.  It also handles
+localization (i.e. translation) of the filenames.
+
+The way it works is that xdg-user-dirs-update is run very early in the
+login phase.  This program reads a configuration file, and a set of
+default directories.  It then creates localized versions of these
+directories in the users home directory and sets up a config file in
+\$(XDG_CONFIG_HOME)/user-dirs.dirs (XDG_CONFIG_HOME defaults to
+~/.config) that applications can read to find these directories.
+"
+
+homepage=http://freedesktop.org/wiki/Software/xdg-user-dirs
+license=GPLv2+
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --disable-documentation \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # To manage dot new files via graft(1)
+    touch "${destdir}/etc/xdg/.graft-config"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
