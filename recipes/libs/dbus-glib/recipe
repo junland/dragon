@@ -17,10 +17,13 @@
 
 program=dbus-glib
 version=0.110
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
+
+# Set a custom package name preventing its replacement
+pkgname="$(echo $program | tr - _)"
 
 tarname=${program}-${version}.tar.gz
 
@@ -43,6 +46,7 @@ docsdir="${docdir}/${program}-${version}"
 build()
 {
     set -e
+
     unpack "${tardir}/$tarname"
     
     cd "$srcdir"
@@ -54,22 +58,18 @@ build()
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
-     --enable-shared \
-     --disable-static \
+     --enable-static=no \
+     --enable-shared=yes \
      --build="$(cc -dumpmachine)"
     
     make -j${jobs} V=1
-    make -j${jobs} V=1 DESTDIR="$destdir" install
+    make -j${jobs} V=1 DESTDIR="$destdir" install-strip
 
     # Compress manpages
-    lzip -9 "${destdir}/${mandir}/man1"/*.1
+    lzip -9 "${destdir}/${mandir}/"/man?/*.?
     
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
