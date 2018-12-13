@@ -1,0 +1,84 @@
+# Build recipe for popt.
+#
+# Copyright (C) 2017 Alan Beadle, ab.beadle@gmail.com.
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=popt
+version=1.16
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/libs"
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://rpm5.org/files/${program}/${tarname}
+
+description="
+Popt is a C library for parsing command line parameters.
+
+Popt was heavily influenced by the getopt() and getopt_long()
+functions, but it improves on them by allowing more powerful
+argument expansion.
+"
+
+homepage=http://rpm5.org
+license="MIT X Consortium"
+
+# Source documentation
+docs="CHANGES COPYING README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    # Update for hosts based on musl
+    cp -f "${worktree}/archive/common/config.guess" ./config.guess
+    cp -f "${worktree}/archive/common/config.sub" ./config.sub
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --datarootdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-static=no \
+     --enable-shared=yes \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1 libdir=/usr/lib${libSuffix} \
+                       pkgconfigdir=/usr/lib${libSuffix}/pkgconfig
+
+    make -j${jobs} libdir=/usr/lib${libSuffix} \
+                   pkgconfigdir=/usr/lib${libSuffix}/pkgconfig \
+                   DESTDIR="${destdir}" install-strip
+
+    # Compress man pages
+    lzip -9 "${destdir}/${mandir}"/man?/*
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
