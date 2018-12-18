@@ -16,8 +16,8 @@
 # limitations under the License.
 
 program=nasm
-version=2.13.03
-release=2
+version=2.14
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -43,6 +43,7 @@ docsdir="${docdir}/${program}-${version}"
 build()
 {
     set -e
+
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
@@ -50,29 +51,22 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Fix FTBFS to compile under GCC8 (thanks to BLFS!)
-    sed \
-     -e '/seg_init/d'                      \
-     -e 's/pure_func seg_alloc/seg_alloc/' \
-     -i include/nasmlib.h
-
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --mandir=$mandir \
-    --build="$(cc -dumpmachine)"
+     $configure_args \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --disable-pdf-compression \
+     --enable-sections \
+     --build="$(cc -dumpmachine)"
 
-    make -j${jobs}
-    make -j${jobs} INSTALLROOT="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install install_rdf
 
     # Compress manpages
-    lzip -9 "${destdir}/${mandir}/man1"/*.1
+    lzip -9 "${destdir}/${mandir}/"man1/*.1
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
