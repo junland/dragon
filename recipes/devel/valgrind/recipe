@@ -16,8 +16,8 @@
 # limitations under the License.
 
 program=valgrind
-version=3.13.0
-release=4
+version=3.14.0
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -77,18 +77,22 @@ build()
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --disable-ubsan \
      --enable-tls \
      --enable-inner \
+     --disable-ubsan \
      $arch_options
 
     unset arch_options
+
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
-    # Remove valgrind manual in order to reduce the package size
-    # considerably, we already provide the manual in HTML format
-    rm -f "${destdir}${docsdir}"/*.pdf "${destdir}${docsdir}"/*.ps
+    # Remove installed Valgrind's documentation for reduce the package size
+    rm -rf "${destdir}${docsdir}"
+
+    # Strip ELF executables excluding shared objects (as suggested)
+    find "$destdir" -type f | xargs file | awk '/ELF/ && /executable/' | \
+     cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
@@ -113,13 +117,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
