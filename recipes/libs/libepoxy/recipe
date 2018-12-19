@@ -16,8 +16,8 @@
 # limitations under the License.
 
 program=libepoxy
-version=1.5.2
-release=2
+version=1.5.3
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
@@ -40,8 +40,8 @@ homepage=http://github.com/anholt/libepoxy
 license=MIT
 
 # Source documentation
-docs="COPYING ChangeLog README.md"
-docsdir="${docdir}/${pkgname}-${version}"
+docs="COPYING README.md"
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
@@ -54,37 +54,23 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --docdir=$docsdir \
-     --infodir=$infodir \
-     --mandir=$mandir \
-     --build="$(cc -dumpmachine)"
+    mkdir -p build
+    cd build
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     -Dglx=yes \
+     -Degl=yes \
+     -Dx11=true \
+     ..
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
+    ninja
+    DESTDIR="$destdir" ninja install
 
-    # Compress and link man pages (if needed)
-    if test -d "${destdir}/$mandir"
-    then
-        (
-            cd "${destdir}/$mandir"
-            find . -type f -exec lzip -9 '{}' +
-            find . -type l | while read -r file
-            do
-                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
-                rm -- "$file"
-            done
-        )
-    fi
+    cd ..
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
