@@ -15,16 +15,16 @@
 # limitations under the License.
 
 program=libcap
-version=2.25
-release=3
+version=2.26
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
 
-tarname=${program}-${version}.tar.xz
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/$tarname
+fetch=http://mirrors.edge.kernel.org/pub/linux/libs/security/linux-privs/libcap2/$tarname
 
 description="
 Library with capabilities for POSIX.1e.
@@ -54,17 +54,6 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Apply patches from Debian in order to have a more corrected
-    # libcap2 package, this set of patches allows the compilation
-    # under Gperf v3+, among other things ...
-    patch -p1 < "${worktree}/patches/libcap/ldlibs.patch"
-    patch -p1 < "${worktree}/patches/libcap/setcap-error-message.patch"
-    patch -p1 < "${worktree}/patches/libcap/Don-t-hardcode-build-flags.patch"
-    patch -p1 < "${worktree}/patches/libcap/Syntax-fixes-for-man-pages.patch"
-    patch -p1 < "${worktree}/patches/libcap/Hide-private-symbols.patch"
-    patch -p1 < "${worktree}/patches/libcap/Avoid-sys-capability.h-on-build-architecture.patch"
-    patch -p1 < "${worktree}/patches/libcap/Spelling-fixes.patch"
-
     make DEBUG="" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS"
 
     make install RAISE_SETFCAP=no \
@@ -92,6 +81,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"/
+    cp -p $docs "${destdir}${docsdir}"
 }
 
