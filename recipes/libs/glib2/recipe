@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=glib
-version=2.56.2
-short_version=2.56
+version=2.58.2
+short_version=2.58
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -42,7 +42,7 @@ homepage=http://wiki.gnome.org/Projects/GLib
 license=LGPLv2.1
 
 # Source documentation
-docs="AUTHORS COPYING ChangeLog HACKING NEWS README README.commits"
+docs="AUTHORS COPYING HACKING NEWS README"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -56,32 +56,32 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
-     --mandir=$mandir \
-     --docdir=$docsdir \
-     --enable-static \
-     --enable-shared \
-     --enable-debug=no \
-     --with-threads=posix \
-     --with-pcre=system \
-     --with-python=/usr/bin/python3 \
-     --build="$(cc -dumpmachine)"
+    mkdir -p build
+    cd build
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     -Diconv=libc \
+     -Dxattr=true \
+     -Dlibmount=true \
+     -Dforce_posix_threads=true \
+     -Dinternal_pcre=false \
+     -Dman=false \
+     -Dgtk_doc=false \
+     -Dfam=false \
+     -Dselinux=false \
+     ..
+
+    ninja
+    DESTDIR="$destdir" ninja install
+
+    cd ..
 
     # Delete generated charset.alias
     rm -f "${destdir}/usr/lib${libSuffix}/charset.alias"
-
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
