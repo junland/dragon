@@ -43,7 +43,7 @@ usage()
      "  -x          Extract packages for debugging purposes"            \
      ""                                                                 \
      "Common options:"                                                  \
-     "  -L          Print and exit default directory locations"         \
+     "  -L          Print default directory locations"                  \
      "  -N          Don't read the configuration file"                  \
      "  -P  <DIR>   Package directory for (de)installations;"           \
      "              only valid for -i, -d, or -u options"               \
@@ -68,8 +68,8 @@ usage()
      "  -a          Architecture to use [detected]"                     \
      "  -j          Parallel jobs for the compiler"                     \
      "  -1          Increment release number (release + 1)"             \
-     "  -3          Resume skipping completed recipes option"           \
      "  -n          Don't create a .tlz package"                        \
+     "  -S          Selects the option to skip completed recipes"       \
      ""                                                                 \
      "Other options:"                                                   \
      "  -h          Display this help and exit"                         \
@@ -209,10 +209,8 @@ build_mode()
 
     # Complain if the file name is not "recipe"
 
-    if test "${recipe##*/}" = recipe
+    if test "${recipe##*/}" != recipe
     then
-        true
-    else
         warn "\`${recipe}' is not a valid recipe name."
         return 4
     fi
@@ -346,7 +344,7 @@ build_mode()
              "    The recipe will be re-processed ..."                   \
              ""
              touch "${CWD}/$recipe"
-        elif test "$opt_ignoreqsts" = opt_ignoreqsts
+        elif test "$opt_skipqsts" = opt_skipqsts
         then
             warn "Recipe for '${full_pkgname}.tlz':  Ignored." ""
             return 0
@@ -383,8 +381,8 @@ build_mode()
                     unset ANSWER
                     echo "Building UNPROCESSED/MODIFIED recipes ..." > /dev/tty
                     echo ""
-                    opt_ignoreqsts=opt_ignoreqsts
-                    readonly opt_ignoreqsts
+                    opt_skipqsts=opt_skipqsts
+                    readonly opt_skipqsts
                     return 0
                     ;;
                 *)
@@ -1146,7 +1144,7 @@ opt_update=opt_update.off
 opt_force=opt_force.off
 opt_keep=opt_keep.off
 opt_incr_release=opt_incr_release.off
-opt_ignoreqsts=opt_ignoreqsts.off
+opt_skipqsts=opt_skipqsts.off
 opt_nopkg=opt_nopkg.off
 opt_prune=opt_prune.off
 rootdir=""
@@ -1170,7 +1168,7 @@ infodir=@INFODIR@
 mandir=@MANDIR@
 docdir=@DOCDIR@
 
-# Store default locations
+# Store (default) directory locations
 QI_TARGETDIR=$targetdir
 QI_PACKAGEDIR=$packagedir
 QI_WORKTREE=$worktree
@@ -1179,7 +1177,7 @@ QI_OUTDIR=$outdir
 
 #### Parse options
 
-while getopts :bcdiouxLNP:t:fkvO:W:Z:a:j:13npr:hV name
+while getopts :bcdiouxLNP:t:fkvO:W:Z:a:j:1nSpr:hV name
 do
     case $name in
     b)
@@ -1269,11 +1267,11 @@ do
     1)
         opt_incr_release=opt_incr_release
         ;;
-    3)
-        opt_ignoreqsts=opt_ignoreqsts
-        ;;
     n)
         opt_nopkg=opt_nopkg
+        ;;
+    S)
+        opt_skipqsts=opt_skipqsts
         ;;
     p)
         opt_prune=opt_prune
