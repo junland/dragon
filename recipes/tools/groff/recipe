@@ -1,6 +1,6 @@
 # Build recipe for groff.
 #
-# Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=groff
-version=1.22.3
+version=1.22.4
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -39,8 +39,8 @@ license=GPLv3+
 
 # Source documentation
 docs="
-BUG-REPORT COPYING ChangeLog FDL LICENSES \
-NEWS PROBLEMS README REVISION TODO VERSION
+ BUG-REPORT COPYING ChangeLog FDL LICENSES \
+ NEWS PROBLEMS README TODO
 "
 
 docsdir="${docdir}/${program}-${version}"
@@ -59,17 +59,14 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Update for hosts based on musl
-    cp -f "${worktree}/archive/common/config.guess" config.guess
-    cp -f "${worktree}/archive/common/config.sub" config.sub
-
-    ./configure \
-    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    ./configure CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" \
+    LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --disable-rpath \
      --with-doc=no \
      --without-x \
      --build="$(cc -dumpmachine)"
