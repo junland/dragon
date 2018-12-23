@@ -16,7 +16,8 @@
 # limitations under the License.
 
 program=libxml2
-version=2.9.8
+version=2.9.9-rc2
+pkgversion="$(echo $version | tr - _)"
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -41,6 +42,9 @@ license=MIT
 docs="AUTHORS ChangeLog Copyright NEWS README TODO"
 docsdir="${docdir}/${program}-${version}"
 
+# The source has a custom directory
+srcdir="${program}-${version%-*}"
+
 build()
 {
     set -e
@@ -53,10 +57,10 @@ build()
 
     # Recommended patch to prevent a segfault when using Python v3
     # (Thanks to Beyond of Linux From Scratch!)
-    patch -p1 < "${worktree}/patches/libxml2/libxml2-2.9.8-python3_hack-1.patch"
-
-    # To ensure that the Python module can be built by python-3.6
-    sed -i '/_PyVerify_fd/,+1d' python/types.c
+#    patch -p1 < "${worktree}/patches/libxml2/libxml2-2.9.8-python3_hack-1.patch"
+#
+#    # To ensure that the Python module can be built by python-3.6
+#    sed -i '/_PyVerify_fd/,+1d' python/types.c
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
