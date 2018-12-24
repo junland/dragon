@@ -16,9 +16,10 @@
 # limitations under the License.
 
 program=libevent
-version=git8483c53-20180914
-pkgversion="$(echo $version | tr - _)"
-release=2
+version=246f44041e0782f728fa5ff2d39113005a1ab02d
+release=1
+
+pkgversion=246f440
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
@@ -58,6 +59,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    sh ./autogen.sh
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
@@ -66,6 +69,14 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
+
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f | xargs file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
+
+    find "$destdir" -type f | xargs file | awk '/current ar archive/' | \
+     cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
