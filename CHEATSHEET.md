@@ -32,7 +32,7 @@ Instructions:
 
 7. `./bootstrap -s2 2>&1 | tee stage2-log.txt`
 
-8. Burn or emulate the ISO image,
+8. Burn or emulate the (hybrid) ISO image from
   *OUTPUT.bootstrap/stage2/cdrom/dragora-live.iso*.
 
 Hint:
@@ -40,7 +40,7 @@ Hint:
 To speed up the build procedure multiple jobs can be passed to the compiler.<br/>
 Just give the -j option to the *bootstrap* script and pass the same one to the<br/>
 connected *qi* in the pipe.  Consider the value for -j taking into account the<br/>
-number of processors + 1, for example: -j3
+number of processors + 1, for example `-j3`
 
 
 ---
