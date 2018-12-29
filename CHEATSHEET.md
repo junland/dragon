@@ -1,4 +1,4 @@
-# Dragora's Cheatsheet
+# Dragora's cheat sheet
 
 ## Bootstrapping
 
@@ -24,5 +24,6 @@ Instructions:
 
 7. `./bootstrap -s2 2>&1 | tee stage2-log.txt`
 
-8. Burn or emulate the ISO image.
+8. Burn or emulate the ISO image
+  (*OUTPUT.bootstrap/stage2/cdrom/dragora-live.iso*).
 
