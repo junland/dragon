@@ -1,4 +1,4 @@
-# Dragora's cheat sheet
+# Dragora's Cheat Sheet
 
 ## Bootstrapping
 
@@ -7,6 +7,14 @@ Prerequisities:
 - Clone or sync the git repository.
 
 - Obtain or sync the sources (tarballs).  See the *sources/README.md* file.
+
+Bootstrapping from Debian systems:
+
+`apt update`
+
+`apt upgrade`
+
+`apt install build-essential flex git lzip texinfo unzip zlib1g zlib1g-dev`
 
 Instructions:
 
@@ -24,6 +32,18 @@ Instructions:
 
 7. `./bootstrap -s2 2>&1 | tee stage2-log.txt`
 
-8. Burn or emulate the ISO image
-  (*OUTPUT.bootstrap/stage2/cdrom/dragora-live.iso*).
+8. Burn or emulate the ISO image,
+  *OUTPUT.bootstrap/stage2/cdrom/dragora-live.iso*.
 
+>    To speed up the build procedure, multiple jobs can be passed to the<br/>
+> compiler.  Just give the -j option to the *bootstrap* script and pass<br/>
+> the same one to the connected *qi* in the pipe.  Consider the value for<br/>
+> -j taking into account the number of processors + 1, e.g -j3
+
+
+---
+
+Under the terms of the GNU Free Documentation License,
+http://www.gnu.org/licenses/fdl.html
+
+Updated: 2018-12-29
