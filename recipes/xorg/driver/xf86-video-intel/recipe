@@ -1,7 +1,7 @@
 # Build recipe for xf86-video-intel.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,8 +16,7 @@
 # limitations under the License.
 
 program=xf86-video-intel
-version=25c9a2fcc83ae7252a178b42262da383e59df744
-pkgversion=25c9a2f
+version=e5ff8e1
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -35,7 +34,7 @@ Video driver for the Xorg X server supporting Intel chipsets.
 This package is part of X11.
 "
 
-homepage=http://www.x.org
+homepage=http://github.com/freedesktop/xorg-xf86-video-intel/
 license="MIT X Consortium"
 
 # Source documentation
@@ -53,18 +52,15 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Note: currently, the default option for sna is causing
-    # compilation troubles, so we set it to 'uxa' by default.
-
     ./autogen.sh CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --disable-sna \
+     --enable-sna \
      --enable-uxa \
-     --with-default-accel=uxa \
+     --with-default-accel=sna \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
@@ -78,6 +74,21 @@ build()
 
     sed -i '/\.TH/s/4/1/' \
      "${destdir}/${mandir}/man1/intel-virtual-output.1"
+
+    # Lines from "Beyond Linux From Scratch"
+
+    mkdir -p "${destdir}/etc/X11/xorg.conf.d"
+    cat << EOF > "${destdir}/etc/X11/xorg.conf.d/20-intel.conf"
+Section "Device"
+    Identifier "Intel Graphics"
+    Driver     "intel"
+    #Option     "DRI" "2"            # DRI 3 (default)
+    #Option     "AccelMethod"  "sna" # Default
+    #Option     "AccelMethod"  "uxa" # Fallback
+EndSection
+
+EOF
+    touch "${destdir}/etc/X11/xorg.conf.d/.graft-config"
 
     # Compress and link man pages (if needed)
     (
