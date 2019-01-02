@@ -1,7 +1,7 @@
 # Build recipe for mesa.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019 Matias Fonzo <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=mesa
-version=18.2.4
+version=18.3.1
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -84,8 +84,11 @@ build()
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
-    # Handle .new file via graft(1)
-    touch "${destdir}/etc/.graft-config"
+    # Handle .new files via graft(1), if any
+    if test -d "${destdir}/etc"
+    then
+        touch "${destdir}/etc/.graft-config"
+    fi
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
