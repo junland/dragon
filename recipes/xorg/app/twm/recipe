@@ -1,7 +1,7 @@
 # Build recipe for twm.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 program=twm
 version=1.0.10
-release=2
+release=3
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg/app"
@@ -59,7 +59,7 @@ build()
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --docdir=$docsdir \
-     || true
+     --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
@@ -67,8 +67,8 @@ build()
     # Include xinitrc file to start TWM
 
     mkdir -p "${destdir}/etc/X11/xinit"
-    cp -p "${worktree}/archive/twm/xinitrc.twm" "${destdir}/etc/X11/xinit/"
-    chmod 644 "${destdir}/etc/X11/xinit/xinitrc.twm"
+    cp -p "${worktree}/archive/twm/xinitrc-twm" "${destdir}/etc/X11/xinit/"
+    chmod 644 "${destdir}/etc/X11/xinit/xinitrc-twm"
 
     touch "${destdir}/etc/X11/xinit/.graft-config"
 
@@ -88,13 +88,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
