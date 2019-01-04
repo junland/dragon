@@ -1,6 +1,6 @@
 # Build recipe for lm_sensors.
 #
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018, 2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,17 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-program=lm_sensors
-version=3.4.0
-release=3
+program=lm-sensors
+version=3-5-0
+release=1
+
+pkgname=lm_sensors
+pkgversion="$(echo $version | tr - .)"
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
 
-tarname=${program}-${version}.tar.bz2
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://ftp.gwdg.de/pub/linux/misc/lm-sensors/$tarname
+fetch=http://github.com/lm-sensors/lm-sensors/archive/V${version}/$tarname
+#fetch=http://ftp.gwdg.de/pub/linux/misc/lm-sensors/$tarname
 
 description="
 Hardware monitoring support.
@@ -40,7 +44,7 @@ license="GPLv2+, LGPLv2.1"
 
 # Source documentation
 docs="CHANGES CONTRIBUTORS COPYING* README doc/fancontrol.txt"
-docsdir="${docdir}/${program}-${version}"
+docsdir="${docdir}/${pkgname}-${pkgversion}"
 
 build()
 {
@@ -49,17 +53,6 @@ build()
     unpack "${tardir}/$tarname"
 
     cd $srcdir
-
-    # Musl does not provide "ldconfig"
-    patch -p0 < "${worktree}/patches/lm_sensors/lm_sensors-noldconfig.patch"
-
-    # Make preparations to compile it under Musl (Thanks to Sabotage Linux)
-
-    sed -i 's@int sensors_yylineno@//int sensors_yylineno@' lib/conf-lex.l
-    for i in superio.c isaset.c isadump.c util.c
-    do
-        sed -i s'@asm/io.h@sys/io.h@g' prog/dump/"$i"
-    done
 
     make -j${jobs} V=1 MACHINE=$arch LIBICONV=-lc \
      BUILD_STATIC_LIB=0 \
