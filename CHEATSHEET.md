@@ -16,26 +16,40 @@ Bootstrapping from Debian systems:
 
 `apt install build-essential flex git lzip texinfo unzip zlib1g zlib1g-dev`
 
-Instructions:
+### Instructions:
 
-1. `./bootstrap -s0 2>&1 | tee stage0-log.txt`
+Creates a cross compiler for your native architecture:
 
-2. `./bootstrap -s1 2>&1 | tee stage1-log.txt`
+`./bootstrap -s0 2>&1 | tee stage0-log.txt`
 
-3. `./enter-chroot`
+Prepare a temporary system using the recent cross compiler:
 
-4. `qi -o /usr/src/qi/recipes/*.order | qi -b -S -p -i - 2>&1 | tee build-log.txt`
+`./bootstrap -s1 2>&1 | tee stage1-log.txt`
 
-5. `passwd root`
+Enter the temporary system:
 
-6. `exit`
+`./enter-chroot`
 
-7. `./bootstrap -s2 2>&1 | tee stage2-log.txt`
+Start replacing the temporary system with the final system:
 
-8. Burn or emulate the (hybrid) ISO image from
-  *OUTPUT.bootstrap/stage2/cdrom/dragora-live.iso*.
+`qi -o /usr/src/qi/recipes/*.order | qi -b -S -p -i - 2>&1 | tee build-log.txt`
 
-Hint:
+Set custom modifications, like a password for the superuser:
+
+`passwd root`
+
+Exit from change root:
+
+`exit`
+
+Produce an ISO image from the Stage 2:
+
+`./bootstrap -s2 2>&1 | tee stage2-log.txt`
+
+Burn or emulate the (hybrid) ISO image at:
+*OUTPUT.bootstrap/stage2/cdrom/dragora-live.iso*.
+
+Hints:
 
 To speed up the build procedure multiple jobs can be passed to the compiler.<br/>
 Just give the -j option to the *bootstrap* script and pass the same one to the<br/>
@@ -48,4 +62,4 @@ number of processors + 1, for example `-j3`
 Under the terms of the GNU Free Documentation License,
 http://www.gnu.org/licenses/fdl.html
 
-Updated: 2018-12-29
+Updated: 2019-01-05
