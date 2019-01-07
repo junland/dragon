@@ -1,7 +1,7 @@
 # Build script to compose the Live CD image.
 #
 # Copyright (c) 2017 MMPG.
-# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019 Matias Fonzo <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,10 +16,20 @@
 # limitations under the License.
 
 # Perform sanity checks (requirements)
-type mksquashfs > /dev/null  || exit 2;
-type mkisofs > /dev/null     || exit 2;
+
+if ! test -e "${rootdir}/squashfs-tools_lzip/mksquashfs"
+then
+    echo "Local \`${rootdir}/squashfs-tools_lzip/mksquashfs' does not exist." 1>&2
+    exit 2;
+fi
+if ! type mkisofs > /dev/null
+then
+    echo "mkisofs is not in your PATH, please install it to proceed." 1>&2
+    exit 2;
+fi
 
 # This depends on the existence of the stage 1
+
 if test ! -d "${output}/stage1/usr/pkg"
 then
     echo "The stage number 1 does not exist or is incomplete." 1>&2
