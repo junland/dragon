@@ -14,7 +14,7 @@ Bootstrapping from Debian systems:
 
 `apt upgrade`
 
-`apt install build-essential flex git lzip texinfo unzip zlib1g zlib1g-dev`
+`apt install build-essential flex git lzip genisoimage texinfo unzip zlib1g zlib1g-dev`
 
 ### Instructions:
 
@@ -46,7 +46,7 @@ Produce an ISO image from the Stage 2:
 
 `./bootstrap -s2 2>&1 | tee stage2-log.txt`
 
-Burn or emulate the (hybrid) ISO image at:
+Burn or emulate the (hybrid) ISO image at
 *OUTPUT.bootstrap/stage2/cdrom/dragora-live.iso*.
 
 Hints:
@@ -62,4 +62,4 @@ number of processors + 1, for example `-j3`
 Under the terms of the GNU Free Documentation License,
 http://www.gnu.org/licenses/fdl.html
 
-Updated: 2019-01-05
+Updated: 2019-01-07
