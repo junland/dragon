@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Default mkisofs(8) invocation name
+MKISOFS=mkisofs
+
 # Perform sanity checks (requirements)
 
 if ! test -e "${rootdir}/squashfs-tools_lzip/mksquashfs"
@@ -24,8 +27,14 @@ then
 fi
 if ! type mkisofs > /dev/null
 then
-    echo "mkisofs is not in your PATH, please install it to proceed." 1>&2
-    exit 2;
+    echo "mkisofs is not found in your PATH, trying to find genisoimage ..." 1>&2
+    if type genisoimage > /dev/null
+    then
+        MKISOFS=genisoimage
+    else
+        echo "mkisofs or genisoimage are not found in your PATH for proceed." 1>&2
+        exit 2;
+    fi
 fi
 
 # This depends on the existence of the stage 1
@@ -83,13 +92,14 @@ rm -f ./dragora.sfs
 cd -- "$CDROM"
 
 rm -f ./dragora-live*
-mkisofs -v -o dragora-live.iso                            \
-        -iso-level 2                                      \
-        -no-emul-boot -boot-load-size 4 -boot-info-table  \
-        -b "isolinux/isolinux.bin"                        \
-        -c "isolinux/boot.cat"                            \
-        -A 'Dragora' -V 'Dragora'                         \
-        .
+$MKISOFS -v -o dragora-live.iso                            \
+         -iso-level 2                                      \
+         -no-emul-boot -boot-load-size 4 -boot-info-table  \
+         -b "isolinux/isolinux.bin"                        \
+         -c "isolinux/boot.cat"                            \
+         -A 'Dragora' -V 'Dragora'                         \
+         .
+unset MKISOFS
 
 echo "Applying \"hybrid booting\" to the ISO image ..."
 "${worktree}"/archive/isolinux/isohybrid.pl dragora-live.iso
