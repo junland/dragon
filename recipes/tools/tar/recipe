@@ -17,7 +17,7 @@
 
 program=tar
 version=1.31
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
@@ -58,6 +58,10 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    # A regression for tar 1.31+:
+    # http://git.savannah.nongnu.org/cgit/tar.git/commit/?id=85c005ee1345c342f707f3c55317daf6cb050603
+    patch -p1 < "${worktree}/patches/tar/85c005ee1345c342f707f3c55317daf6cb050603"
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
     FORCE_UNSAFE_CONFIGURE="1" \
