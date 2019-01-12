@@ -1,6 +1,6 @@
 # Build recipe for GCC.
 #
-# Copyright (c) 2015-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2015-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 program=gcc
 version=8-20181221
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -116,6 +116,10 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} V=1 DESTDIR="$destdir" install-strip
+
+    # Strip ELF executables only excluding shared objects
+    find "$destdir" -type f | xargs file | awk '/ELF/ && /executable/' | \
+     cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
 
     # Back to source dir
     cd .. && cd "$srcdir"
