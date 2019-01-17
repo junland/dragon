@@ -1,6 +1,6 @@
 # Build recipe for lzlib.
 #
-# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=lzlib
-version=1.10
+version=1.11
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -55,7 +55,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CFLAGS="$QICFLAGS -Wall -W" \
+    LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
@@ -64,6 +65,9 @@ build()
 
     make -j${jobs}
     make -j${jobs} DESTDIR="$destdir" install
+
+    # To install minilzip
+    make -j${jobs} DESTDIR="$destdir" install-bin
 
     # Compress info documents
 
