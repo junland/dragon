@@ -43,12 +43,15 @@ of usable threads is limited by file size; on files larger than a
 few GB plzip can use hundreds of processors, but on files of only a
 few MB plzip is no faster than lzip.
 
-For more information, visit: $homepage
+Plzip is the default version of Lzip used in Dragora as the main 'lzip'.
 "
+
+# Limit package name to the program name
+full_pkgname=$program
 
 # Source documentation
 docs="AUTHORS COPYING ChangeLog NEWS README"
-docsdir="${docdir}/${program}-${version}"
+docsdir="${docdir}/${program}"
 
 build()
 {
@@ -62,14 +65,14 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     ./configure CXXFLAGS="$QICXXFLAGS -Wall -W" \
-    LDFLAGS="$QILDFLAGS" \
+    LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --infodir=$infodir \
      --mandir=$mandir \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} DESTDIR="$destdir" install-as-lzip
 
     # Compress info documents and manual page
 
@@ -77,6 +80,9 @@ build()
     lzip -9 \
      "${destdir}/${infodir}/plzip.info" \
      "${destdir}/${mandir}/man1/plzip.1"
+
+    # Make symlink for compatibility
+    ln -s plzip.1.lz "${destdir}/${mandir}/man1/lzip.1.lz"
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
