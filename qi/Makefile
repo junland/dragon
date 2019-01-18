@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 1.0-rc53
+version		= 1.0-rc54
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -119,6 +119,7 @@ dist : doc
 	  $(DISTNAME)/Makefile \
 	  $(DISTNAME)/NEWS \
 	  $(DISTNAME)/README \
+	  $(DISTNAME)/TODO \
 	  $(DISTNAME)/configure \
 	  $(DISTNAME)/doc/recipe \
 	  $(DISTNAME)/doc/document*.css \
