@@ -1,6 +1,6 @@
 # Build recipe for GNU bash.
 #
-# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=bash
-version=4.4
-release=2
+version=5.0
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/shells"
@@ -55,7 +55,7 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     # Apply patches from upstream
-    for file in "${worktree}"/patches/bash/bash44-???*
+    for file in "${worktree}"/patches/bash/bash50-???*
     do
         if test -f "$file"
         then
@@ -64,14 +64,16 @@ build()
     done
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     LIBS="-lncursesw" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
      --enable-static-link \
-     --with-installed-readline \
+     --enable-multibyte \
      --with-curses \
+     --with-installed-readline \
      --without-bash-malloc \
      --build="$(cc -dumpmachine)"
 
