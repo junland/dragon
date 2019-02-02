@@ -1,0 +1,189 @@
+#! /bin/sh -
+#
+# A script to configure the keyboard map on console
+#
+# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Exit immediately on any error
+set -e
+
+PROGRAM="${0##*/}"
+TMPDIR="${TMPDIR:-/tmp}"
+TMPFILE="${TMPDIR}/${PROGRAM}.${RANDOM-0}$$"
+LOCKFILE="${TMPDIR}/dragora-keymap.lockfile"
+OUTPUT="${TMPFILE}.data"
+KEYMAPS="${KEYMAPS:-/usr/share/keymaps/i386}"
+
+chkstatus_or_exit()
+{
+    status=$?
+
+    # Clean up temporary files
+    rm -f -- "$TMPFILE" "$LOCKFILE"
+
+    if test $status -ne 0
+    then
+        echo "Return status = $status" 1>&2
+        exit 2;
+    fi
+
+    unset status
+}
+
+# Sanity checks
+
+if test ! -d "$TMPDIR"
+then
+    echo "${PROGRAM}: \`${TMPDIR}' is not a qualified temporary directory" 1>&2
+    exit 1;
+fi
+if test ! -w "$TMPDIR"
+then
+    echo "${PROGRAM}: \`${TMPDIR}' is not a writable temporary directory" 1>&2
+    exit 1;
+fi
+if test ! -d "$KEYMAPS"
+then
+    echo "${PROGRAM}: \`${KEYMAPS}' the specified directory is not valid" 1>&2
+    exit 1;
+fi
+
+trap 'chkstatus_or_exit' EXIT HUP INT QUIT ABRT TERM
+
+umask 077;      # Remove access for all but user.
+
+# Unfortunately, loadkeys(1) is limited to the superuser;
+# we set a lock to allow only one instance of the script.
+
+if ( set -C ; echo ": $PROGRAM - locked" > $LOCKFILE ) 2> /dev/null
+then
+    true
+else
+    if test -e "$LOCKFILE"
+    then
+        echo "Only one instance of \`${PROGRAM}' is allowed." 1>&2
+        exit 1;
+    else
+        echo "${PROGRAM}: \`${LOCKFILE}' lock failed." 1>&2
+        exit 2;
+    fi
+fi
+
+# Compose output file to be shown
+
+# Use a portable find(1) in terms of options, plus sort(1),
+# redirects the standard error to see any possible error
+search="$(find "$KEYMAPS" -name '*.map*' -print | sort 2> /dev/tty)"
+
+if test -z "$search"
+then
+    echo "No keyboard maps were found in \`${KEYMAPS}'." 1>&2
+    exit 1;
+fi
+
+# Header
+printf "%s\n" \
+ 'dialog --colors \'                                            \
+ ' --backtitle "\Zb${PROGRAM} - Keyboard map configuration" \'  \
+ ' --title "MAIN MENU" --menu \'                                \
+ '"Welcome to \Zb${PROGRAM}\Zn!\n\n\'                           \
+ 'The following menu list is organized as \n\'                  \
+ 'keyboard \"layout/language\". \n\n\'                          \
+ 'Select a keyboard map for the console:" 19 56 10 \'           \
+ > $OUTPUT
+
+# Append 'search' to the body
+
+for item in $search
+do
+    level="${item%/*}"		# Remove all except the last slash.
+    level="${level##*/}"	# Starting-point under which it was found.
+    item="${item%.map*}"	# Remove extension(s).
+    item="${item##*/}"		# Get the base name.
+
+    # Ignore unwanted map directories
+    case $level in
+    include | fgGIod)
+        continue
+        ;;
+    *)
+        echo "\"${level}/$item\"        \"\" \\" >> $OUTPUT
+        ;;
+    esac
+done
+unset item level \
+      search
+
+# End of
+printf "2> \$TMPFILE\n\n" >> $OUTPUT
+
+# Import menu
+. $OUTPUT
+
+# Read answer from 'TMPFILE'
+
+echo "" >> $TMPFILE;		# Append new line for reading.
+IFS= read -r REPLY < $TMPFILE || exit 2;
+
+# Compose values by layout/map to be set
+
+layout="${REPLY%/*}"
+map="${REPLY##*/}"
+
+unset REPLY
+
+# The temporary files are not needed anymore
+rm -f -- "$TMPFILE" "$OUTPUT"
+
+umask 022;	# Remove write permission for group and other.
+
+# Set keyboard map
+loadkeys "${layout}/$map"
+
+while true
+do
+    testkeys="$(
+     dialog --colors \
+      --no-mouse --no-cancel --no-ok \
+      --backtitle "\Zb${PROGRAM} - Keymap test" \
+      --title "TEST" --hline "${layout}/$map" \
+      --inputbox "Try the chosen keyboard map by typing something.\n\n\
+Once satisfied type \"\Zb1\ZB\" (or \Zby\ZB) and press \ZbENTER\ZB. \n\
+Type \"\Zb2\ZB\" (or \Zbn\ZB) plus \ZbENTER\ZB to choose a different
+keyboard map." 12 56 2>&1 > /dev/tty
+    )"
+    case $testkeys in
+    1 | Y | y)
+        break
+        ;;
+    2 | N | n)
+        rm -- "$LOCKFILE"
+        exec "$0"
+        ;;
+    esac
+done
+unset testkeys
+
+dialog --colors \
+ --backtitle "\Zb${PROGRAM} - Configuration file" \
+ --title "SAVE" --yesno \
+"Would do you like to save this change for the next reboot?." 7 54
+
+dialog --clear
+
+echo "Setting 'RC_KEYMAP=${layout}/$map' on /etc/rc.conf ..."
+echo ",s/^\(RC_KEYMAP\)=.*/\1=${layout}\/${map}/"$'\nw' | \
+ ed -s /etc/rc.conf && echo Done.
+

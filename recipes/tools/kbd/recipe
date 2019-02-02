@@ -1,6 +1,6 @@
 # Build recipe for kbd.
 #
-# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 program=kbd
 version=2.0.4
-release=2
+release=3
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
@@ -72,6 +72,13 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
+
+    # Include menu-driven tool to configure the mouse
+
+    mkdir -p "${destdir}/usr/sbin"
+    cp -p "${worktree}/archive/dragora-tools/dragora-keymap" \
+          "${destdir}/usr/sbin"
+    chmod 755 "${destdir}/usr/sbin/dragora-keymap"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
