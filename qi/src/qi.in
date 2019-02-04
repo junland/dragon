@@ -643,7 +643,7 @@ create_mode()
 
     echo "{#} Creating package $name at $directory ..."
 
-    ( umask 022 ; tar cvf - ./* | lzip -9cvv ) > "${directory}/$name"
+    ( umask 022 ; tarlz --solid -9 -cvf - ./* ) > "${directory}/$name"
     chkstatus_or_exit 3
 
     echo "Package created \"${directory}/${name}\"."
@@ -743,7 +743,7 @@ install_mode()
     name=$(basename -- "$1" .tlz)
 
     echo "Checking tarball integrity ..."
-    tar -tf "$1" > /dev/null
+    tarlz -tf "$1" > /dev/null
     chkstatus_or_exit 3
 
     # Create package directory using 'name'
@@ -771,7 +771,7 @@ install_mode()
     trap "" HUP INT QUIT ABRT TERM
 
     echo "Decompressing $1 ..."
-    ( cd -- "$rootdir${packagedir}/$name" && lzip -cd - | tar xpf - ) < "$1"
+    ( cd -- "$rootdir${packagedir}/$name" && tarlz -xf - ) < "$1"
     chkstatus_or_exit 3
 
     # Transite package to Graft control
@@ -999,7 +999,7 @@ extract_mode()
     mkdir -p -m 700 -- $PRVDIR
 
     echo "Extracting package $name ..."
-    ( umask 000 ; cd -- $PRVDIR && lzip -cd - | tar xpvf - ) < "$1"
+    ( umask 000 ; cd -- $PRVDIR && tarlz -xvf - ) < "$1"
     if test $? -ne 0
     then
         # Try to remove (empty) 'PRVDIR' on failure
@@ -1043,28 +1043,28 @@ unpack()
     do
         case $file in
         *.tar)
-            tar tf "$file" > /dev/null && \
-            tar xpf "$file"
+            tar -tf "$file" > /dev/null && \
+            tar -xpf "$file"
             chkstatus_or_exit 3
             ;;
         *.tar.gz | *.tgz | *.tar.Z )
-            gzip -cd "$file" | tar tf - > /dev/null && \
-            gzip -cd "$file" | tar xpf -
+            gzip -cd "$file" | tar -tf - > /dev/null && \
+            gzip -cd "$file" | tar -xpf -
             chkstatus_or_exit 3
             ;;
         *.tar.bz2 | *.tbz2 | *.tbz )
-            bzip2 -cd "$file" | tar tf - > /dev/null && \
-            bzip2 -cd "$file" | tar xpf -
+            bzip2 -cd "$file" | tar -tf - > /dev/null && \
+            bzip2 -cd "$file" | tar -xpf -
             chkstatus_or_exit 3
             ;;
         *.tar.lz | *.tlz )
-            lzip -cd "$file" | tar tf - > /dev/null && \
-            lzip -cd "$file" | tar xpf -
+            tarlz -tf "$file" > /dev/null && \
+            tarlz -xf "$file"
             chkstatus_or_exit 3
             ;;
         *.tar.xz | *.txz )
-            xz -cd "$file" | tar tf - > /dev/null && \
-            xz -cd "$file" | tar xpf -
+            xz -cd "$file" | tar -tf - > /dev/null && \
+            xz -cd "$file" | tar -xpf -
             chkstatus_or_exit 3
             ;;
         *.zip | *.ZIP )
@@ -1136,7 +1136,7 @@ EOF
 PROGRAM="${0##*/}"
 packagedir=@PACKAGEDIR@
 targetdir=@TARGETDIR@
-blacklist="perl graft tar plzip musl glibc"
+blacklist="perl graft tarlz plzip musl glibc"
 RC=RC
 RCFILE=@SYSCONFDIR@/qirc
 opt_install=opt_install.off
@@ -1309,7 +1309,7 @@ fi
 
 # Program sanity check
 for need in awk basename bzip2 chmod cp dirname find fold graft grep \
-            lzip mkdir mktemp rm rmdir sed sha256sum stat tar
+            lzip mkdir mktemp rm rmdir sed sha256sum stat tar tarlz
 do
     if ! type $need 1> /dev/null 2> /dev/null
     then
