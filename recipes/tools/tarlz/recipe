@@ -1,0 +1,85 @@
+# Build recipe for tarlz.
+#
+# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=tarlz
+version=0.10a
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/tools"
+
+tarname=${program}-${version}.tar.lz
+
+# Remote source(s)
+fetch=http://download.savannah.gnu.org/releases/lzip/tarlz/tarlz-0.10a.tar.lz
+
+homepage=http://lzip.nongnu.org/tarlz.html
+license=GPLv2+
+
+description="
+Archiver with multimember lzip compression.
+
+Tarlz is a combined implementation of the tar archiver and the lzip
+compressor. By default tarlz creates, lists and extracts archives in a
+simplified posix pax format compressed with lzip on a per file basis.
+Each tar member is compressed in its own lzip member, as well as the
+end-of-file blocks. This method adds an indexed lzip layer on top of
+the tar archive, making it possible to decode the archive safely in
+parallel.  The resulting multimember tar.lz archive is fully backward
+compatible with standard tar tools like GNU tar, which treat it like
+any other tar.lz archive.  Tarlz can append files to the end of such
+compressed archives.
+"
+
+# Limit package name to the program name
+full_pkgname=$program
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README"
+docsdir="${docdir}/${program}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure CXXFLAGS+="$QICXXFLAGS" LDFLAGS="$QILDFLAGS -static" \
+     $configure_args \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress info documents and manual page
+
+    rm -f "${destdir}/${infodir}/dir";	# Redundancy
+    lzip -9 \
+     "${destdir}/${infodir}/tarlz.info" \
+     "${destdir}/${mandir}/man1/tarlz.1"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
