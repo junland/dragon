@@ -571,7 +571,7 @@ build_mode()
     # Back to the current working directory
     cd -- "$CWD" || chkstatus_or_exit
 
-    # Delete 'srcdir' or 'destdir' if -k is not given
+    # Delete 'srcdir' or 'destdir' if -k was not given
     if test "$opt_keep" != opt_keep
     then
         echo "Deleting temporary directories ..."
@@ -582,10 +582,12 @@ build_mode()
         then
             if test -z "$keep_srcdir"
             then
-                rm -rf -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
-                echo "removed directory: '${TMPDIR}/${srcdir}'"
+                (
+                    cd -- "$TMPDIR" && rm -rf -- "$srcdir" && \
+                     echo "removed directory: '${TMPDIR}/${srcdir}'"
+                );  chkstatus_or_exit
             else
-                warn "The variable 'keep_srcdir' is set:" \
+                warn "The variable 'keep_srcdir' has been set;" \
                      "'${TMPDIR}/${srcdir}' will not be deleted."
             fi
         fi
@@ -641,15 +643,16 @@ create_mode()
         exit 4
     }
 
-    echo "{#} Creating package $name at $directory ..."
+    echo "{#} Creating package $name ..."
 
     ( umask 022 ; tarlz --solid -9 -cvf - * ) > "${directory}/$name"
     chkstatus_or_exit 3
 
-    echo "Package created \"${directory}/${name}\"."
-
-    echo "${directory}/$name: Creating SHA256 checksum ..."
     ( cd -- "$directory" && sha256sum $name > ${name}.sha256 )
+    chkstatus_or_exit 4
+
+    echo "Package created \`${directory}/${name}'."
+    echo ""
 
     # Remove used variables
     unset directory name
@@ -659,7 +662,7 @@ delete_mode()
 {
     expunge="${packagedir}/$(basename -- $1 .tlz)"
 
-    echo "<<< Deleting package $rootdir${expunge} ..."
+    echo "{<} Deleting package $rootdir${expunge} ..."
 
     # Complain if the package directory does not exist
 
@@ -705,7 +708,7 @@ delete_mode()
     # Delete package directory
     if test "$opt_keep" != opt_keep
     then
-        echo "Deleting package directory, if present ..."
+        echo "Deleting package directory, if it exists as such ..."
 
         if test -d "${rootdir}$expunge"
         then
@@ -737,7 +740,7 @@ install_mode()
 
     # Make preparations to install the package
 
-    echo ">>> Installing package $1 ..."
+    echo "{>} Installing package $1 ..."
 
     # Get the filename
     name=$(basename -- "$1" .tlz)
@@ -894,7 +897,7 @@ upgrade_mode()
     # Get the filename
     incoming=$(basename -- "$1" .tlz)
 
-    echo "<>> Upgrading package $incoming ..."
+    echo "{^} Upgrading to $incoming ..."
 
     if test "$opt_force" != opt_force && test -e "${packagedir}/$incoming"
     then
@@ -1308,8 +1311,8 @@ then
 fi
 
 # Program sanity check
-for need in awk basename bzip2 chmod cp dirname find fold graft grep \
-            lzip mkdir mktemp rm rmdir sed sha256sum stat tar tarlz
+for need in awk basename chmod cp dirname find fold graft grep \
+            mkdir mktemp rm rmdir sed sha256sum stat tar tarlz
 do
     if ! type $need 1> /dev/null 2> /dev/null
     then
