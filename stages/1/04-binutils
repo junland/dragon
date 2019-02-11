@@ -1,6 +1,6 @@
 # Build script for binutils.
 #
-# Copyright (c) 2014-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2014-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version=2.31.1
+version=2.32
 
 cd -- "$TMPDIR"
 rm -rf binutils-${version}
@@ -23,7 +23,7 @@ unpack "${worktree}/sources/binutils-${version}.tar.lz"
 # Build instructions
 cd binutils-${version}
 
-patch -Np1 -i "${worktree}/patches/binutils/branch-updates.diff"
+#patch -Np1 -i "${worktree}/patches/binutils/branch-updates.diff"
 patch -Np1 -i "${worktree}/patches/binutils/136_bfd_pic.patch"
 
 # Build in a separate directory
@@ -44,7 +44,10 @@ CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
  --host=$target \
  --target=$target \
  --enable-deterministic-archives \
+ --enable-relro \
+ --enable-threads \
  --enable-64-bit-bfd \
+ --enable-initfini-array \
  --disable-compressed-debug-sections \
  --disable-nls \
  --disable-werror \
@@ -57,7 +60,7 @@ make -j${jobs} MAKEINFO="true"
 make -j${jobs} MAKEINFO="true" install
 
 # Make a new ld(1) containing another search path,
-# this is handled by 16-toolchain (called from musl's recipe)
+# this is handled by "20-toolchain" (called from musl's recipe)
 make -C ld clean
 make -C ld LIB_PATH=/usr/lib${libSuffix}:/lib
 cp -f ld/ld-new /tools/bin
