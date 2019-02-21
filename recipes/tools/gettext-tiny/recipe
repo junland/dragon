@@ -1,6 +1,6 @@
 # Build recipe for gettext-tiny.
 #
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=gettext-tiny
-version=9c1b862f4ecc8c8aacb353ee7754f7e53d64347b
-pkgversion=9c1b862
+version=ece94b7de3f051a4a417599f1cbf1e5cb6bfbb74
+pkgversion=ece94b7
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -72,6 +72,13 @@ build()
 
     strip --strip-unneeded "${destdir}/usr/bin"/* 2> /dev/null || true;
     strip --strip-debug "${destdir}/usr/lib${libSuffix}/libintl.a"
+
+    # Introduce our custom version of 'autopoint' which
+    # works well under busybox's ash, mksh shells.
+
+    cp -p "${worktree}/archive/gettext-tiny/autopoint" \
+          "${destdir}/usr/bin/"
+    chmod 755 "${destdir}/usr/bin/autopoint"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
