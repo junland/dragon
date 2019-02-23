@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=musl
-version=1691b23955590d1eb66a11158fdd91c86337e886
-release=2
+version=ad795d56ba3fb9d69f524ee676e3b1e2355cceb7
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
@@ -86,10 +86,10 @@ build()
     ln -sf /usr/lib${libSuffix}/libc.so "${destdir}/usr/bin/ldd"
 
     # Create dynamic linker runtime file taking -$(ARCH) as reference
-    for file in "${destdir}"/lib/ld-musl-*.so*
+    for file in "${destdir}"/lib/ld-musl-*.so.1
     do
-        ld_path="${file##*/}"		# Basename
-        ld_path="${ld_path%%.so*}.path"	# Get the rid of .so*
+        ld_path="${file##*/}"			# Basename
+        ld_path="${ld_path%%.so.1}.path"	# Get the rid of .so.1
         export ld_path
         break;
     done
@@ -106,11 +106,11 @@ build()
 
 EOF
         chmod 644 "${destdir}"/etc/$ld_path
-        unset ld_path
         touch "${destdir}/etc/.graft-config"
     else
         echo "WARNING: \$ld_path is empty." 1>&2
     fi
+    unset ld_path
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
