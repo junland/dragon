@@ -1,6 +1,14 @@
 
 cd etc/rc.d && ln -sf rc.shutdown rc.reboot
 
+echo "Creating ${rootdir}/run/initctl interface, if needed ..."
+if test ! -p "${rootdir}/run/initctl"
+then
+    mkdir -p -- "${rootdir}/run"
+    rm -f -- "${rootdir}/run/initctl"
+    mknod -m 600 -- "${rootdir}/run/initctl" p
+fi
+
 # Reload init(8)
 init U || kill -s HUP 1
 

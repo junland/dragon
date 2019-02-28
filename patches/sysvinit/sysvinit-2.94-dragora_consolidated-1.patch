@@ -1,9 +1,9 @@
---- sysvinit-2.93/src/Makefile.orig	2018-11-24 13:38:12.000000000 -0300
-+++ sysvinit-2.93/src/Makefile	2018-11-24 16:08:39.042099643 -0300
+--- sysvinit-2.94/src/Makefile.orig	2019-02-24 20:26:33.000000000 -0300
++++ sysvinit-2.94/src/Makefile	2019-02-28 16:13:38.917036402 -0300
 @@ -24,18 +24,18 @@
  # For some known distributions we do not build all programs, otherwise we do.
  BIN	=
- SBIN	= init halt shutdown runlevel killall5 fstab-decode
+ SBIN	= init halt shutdown runlevel killall5 fstab-decode logsave
 -USRBIN	= last mesg readbootlog
 +USRBIN	= readbootlog
  
@@ -12,7 +12,7 @@
  MAN5	= initscript.5 inittab.5 initctl.5
 -MAN8	= halt.8 init.8 killall5.8 pidof.8 poweroff.8 reboot.8 runlevel.8
 +MAN8	= halt.8 init.8 killall5.8 poweroff.8 reboot.8 runlevel.8
- MAN8	+= shutdown.8 telinit.8 fstab-decode.8
+ MAN8	+= shutdown.8 telinit.8 fstab-decode.8 logsave.8
  
  ifeq ($(DISTRO),)
 -SBIN	+= sulogin bootlogd
@@ -47,7 +47,7 @@
  
  all:		$(BIN) $(SBIN) $(USRBIN)
  
-@@ -197,10 +197,10 @@
+@@ -206,10 +206,10 @@
  		ln -sf halt $(ROOT)/sbin/reboot
  		ln -sf halt $(ROOT)/sbin/poweroff
  		ln -sf init $(ROOT)/sbin/telinit
@@ -62,7 +62,7 @@
  		$(INSTALL_DIR) $(ROOT)/usr/include/
  		$(INSTALL_DATA) initreq.h $(ROOT)/usr/include/
  		$(INSTALL_DIR) $(ROOT)$(MANDIR)/man1/
-@@ -222,8 +222,8 @@
+@@ -231,8 +231,8 @@
  		#
  		# This part is skipped on Debian systems, the
  		# debian.preinst script takes care of it.
