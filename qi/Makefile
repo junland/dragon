@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 1.0-rc57
+version		= 1.0-rc58
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -40,7 +40,7 @@ MAKEINFO	= makeinfo
 INSTALL         = install
 INSTALL_PROGRAM = ${INSTALL} -p -m 755
 INSTALL_DATA    = ${INSTALL} -p -m 644
-INSTALL_DIR     = ${INSTALL} -d -m 755
+INSTALL_DIR     = mkdir -p -m 755
 HELP2MAN_OPTS   = --version-option=-V
 
 .PHONY: all \
@@ -112,7 +112,7 @@ doc/$(project).html : doc/$(project).texi
 
 dist : doc
 	ln -sf . $(DISTNAME)
-	tar -Hustar -cvf $(DISTNAME).tar \
+	tarlz --solid -9 -cvf $(DISTNAME).tar.lz \
 	  $(DISTNAME)/AUTHORS \
 	  $(DISTNAME)/COPYING \
 	  $(DISTNAME)/CREDITS \
@@ -132,7 +132,6 @@ dist : doc
 	  $(DISTNAME)/etc/$(project)rc.in \
 	  $(DISTNAME)/src/qi.in
 	rm -f $(DISTNAME)
-	lzip -v -9 $(DISTNAME).tar
 	sha256sum $(DISTNAME).tar.lz > $(DISTNAME).tar.lz.sha256
 
 distclean : clean
@@ -158,6 +157,8 @@ install : all install-info install-man
 
 	@echo "*** Installing config file on $(DESTDIR)${sysconfdir} ..."
 	$(INSTALL_DATA) etc/$(project)rc "$(DESTDIR)${sysconfdir}/$(project)rc"
+
+	@echo "Done."
 
 install-info :
 

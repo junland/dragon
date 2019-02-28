@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=qi
-version=1.0-rc57
+version=1.0-rc58
 arch=noarch
 release=1
 
@@ -66,7 +66,18 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure $configure_args --packagedir=/usr/pkg --targetdir=/
+    ./configure \
+     --prefix=/usr \
+     --libexecdir=/usr/libexec \
+     --bindir=/usr/bin \
+     --sbindir=/usr/sbin \
+     --sysconfdir=/etc \
+     --localstatedir=/var \
+     --infodir=/usr/share/info \
+     --mandir=/usr/share/man \
+     --docdir=/usr/share/doc \
+     --packagedir=/usr/pkg \
+     --targetdir=/
 
     make -j${jobs} DESTDIR="$destdir" install
 
@@ -75,7 +86,7 @@ build()
     # Copy the config file used in the temporary system
     if test -r /tools/etc/qirc
     then
-        cp -p /tools/etc/qirc "${destdir}/etc/qirc"
+        cp -p /tools/etc/qirc "${destdir}/etc/"
         cp -p /tools/etc/qirc "${destdir}/etc/qirc.bak"
         chmod 644 "${destdir}"/etc/qirc*
     fi
