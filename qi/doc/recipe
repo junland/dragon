@@ -1,6 +1,6 @@
-# Sample and complete recipe for clzip (dynamically-linked).
+# Build recipe for tarlz.
 #
-# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,36 +14,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-program=clzip
-version=1.10
+program=tarlz
+version=0.12
 release=1
 
-tarname=${program}-${version}.tar.gz
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/tools"
+
+tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
-fetch=http://download.savannah.gnu.org/releases/lzip/clzip/$tarname
+fetch=http://download-mirror.savannah.gnu.org/releases/lzip/tarlz/$tarname
+
+homepage=http://lzip.nongnu.org/tarlz.html
+license=GPLv2+
 
 description="
-C version of the high-quality data compressor Lzip.
+Archiver with multimember lzip compression.
 
-Clzip is a lossless data compressor with a user interface similar to
-the one of gzip or bzip2.  Clzip is about as fast as gzip, compresses
-most files more than bzip2, and is better than both from a data
-recovery perspective.
-
-Clzip uses the lzip file format; the files produced by clzip are fully
-compatible with lzip-1.4 or newer, and can be rescued with lziprecover.
-
-Clzip is in fact a C language version of lzip, intended for embedded
-devices or systems lacking a C++ compiler.
+Tarlz is a combined implementation of the tar archiver and the lzip
+compressor. By default tarlz creates, lists and extracts archives in a
+simplified posix pax format compressed with lzip on a per file basis.
+Each tar member is compressed in its own lzip member, as well as the
+end-of-file blocks. This method adds an indexed lzip layer on top of
+the tar archive, making it possible to decode the archive safely in
+parallel.  The resulting multimember tar.lz archive is fully backward
+compatible with standard tar tools like GNU tar, which treat it like
+any other tar.lz archive.  Tarlz can append files to the end of such
+compressed archives.
 "
 
-homepage=http://lzip.nongnu.org/clzip.html
-license=GPLv2+
+# Limit package name to the program name
+full_pkgname=$program
 
 # Source documentation
 docs="AUTHORS COPYING ChangeLog NEWS README"
-docsdir="${docdir}/${program}-${version}"
+docsdir="${docdir}/${program}"
 
 build()
 {
@@ -53,21 +59,24 @@ build()
 
     cd "$srcdir"
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure CXXFLAGS+="$QICXXFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --infodir=$infodir \
      --mandir=$mandir \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install-as-lzip
+    make -j${jobs} DESTDIR="$destdir" install
 
     # Compress info documents and manual page
 
     rm -f "${destdir}/${infodir}/dir";	# Redundancy
     lzip -9 \
-     "${destdir}/${infodir}/clzip.info" \
-     "${destdir}/${mandir}/man1/clzip.1"
+     "${destdir}/${infodir}/tarlz.info" \
+     "${destdir}/${mandir}/man1/tarlz.1"
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
