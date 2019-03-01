@@ -4,6 +4,12 @@
 
 Prerequisities:
 
+- A working C compiler, system toolchain, utilities.
+
+- Enough hard disk space (7GB+) for the whole process.
+
+- A superuser account is needed to perform all the steps.
+
 - Clone or sync the git repository.
 
 - Obtain or sync the sources (tarballs).  See the *sources/README.md* file.
@@ -14,7 +20,7 @@ Bootstrapping from Debian systems:
 
 `apt upgrade`
 
-`apt install build-essential flex git lzip genisoimage texinfo unzip zlib1g zlib1g-dev`
+`apt install build-essential flex git lzip genisoimage texinfo unzip zlib1g zlib1g-dev liblz1`
 
 ### Instructions:
 
@@ -38,7 +44,7 @@ Set custom modifications, like a password for the superuser:
 
 `passwd root`
 
-Exit from change root:
+Exit from the temporal session (enter-chroot):
 
 `exit`
 
@@ -62,4 +68,4 @@ number of processors + 1, for example `-j3`
 Under the terms of the GNU Free Documentation License,
 http://www.gnu.org/licenses/fdl.html
 
-Updated: 2019-01-07
+Updated: 2019-03-01
