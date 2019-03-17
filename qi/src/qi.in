@@ -902,13 +902,12 @@ upgrade_mode()
 
     # Check packages in the blacklist for installation
 
-    echo ""
     echo "Checking blacklist ..."
     for item in $blacklist
     do
         case $item in
         ${incoming}*)
-            if test ! -e "${packagedir}/$incoming"
+            if test ! -e "$rootdir${packagedir}/$incoming"
             then
                 warn \
                  ""                                                   \
@@ -919,28 +918,28 @@ upgrade_mode()
                 return 0
             fi
 
-            if is_newer "$1" "${packagedir}/$incoming"
+            if is_newer "$1" "$rootdir${packagedir}/$incoming"
             then
                 warn \
                  ""                                                             \
                  "Incoming package is more RECENT than the installed package:"  \
                  ""                                                             \
                  "$( stat -c "%y %n" "$1" )"                                    \
-                 "$( stat -c "%y %n" "${packagedir}/$incoming" )"               \
+                 "$( stat -c "%y %n" "$rootdir${packagedir}/$incoming" )"       \
                  ""                                                             \
                  "    The package declared in the blacklist will be"            \
                  "    installed as part of the upgrade process ..."             \
                  ""
                 opt_prune=opt_prune install_mode "$1"
-                touch "${packagedir}/$incoming"
+                touch "$rootdir${packagedir}/$incoming"
                 return 0
             else
                 warn \
-                 ""                                                \
-                 "Blacklisted package is already up-to-date:"      \
-                 ""                                                \
-                 "$( stat -c "%y %n" "${packagedir}/$incoming" )"  \
-                 "$( stat -c "%y %n" "$1" )"                       \
+                 ""                                                        \
+                 "Blacklisted package is already up-to-date:"              \
+                 ""                                                        \
+                 "$( stat -c "%y %n" "$rootdir${packagedir}/$incoming" )"  \
+                 "$( stat -c "%y %n" "$1" )"                               \
                  ""
                 return 6
             fi
@@ -950,7 +949,8 @@ upgrade_mode()
     unset item
 
     # Check package pre-existence
-    if test "$opt_force" != opt_force && test -e "${packagedir}/$incoming"
+    if test "$opt_force" != opt_force && \
+       test -e "$rootdir${packagedir}/$incoming"
     then
         warn \
          ""                                                                \
@@ -966,7 +966,7 @@ upgrade_mode()
 
     # Pre-install the package in the custom 'packagedir'
 
-    save_packagedir="$packagedir"
+    save_packagedir="$rootdir${packagedir}"
     packagedir="$PRVLOC"
 
     echo "Pre-installing package in a temporary location ..."
