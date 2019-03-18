@@ -40,6 +40,7 @@ usage()
      "  -i          Install packages"                                   \
      "  -o          Resolve build order through .order files"           \
      "  -u          Update packages (implies -i, -d with -p)"           \
+     "  -w          Warn about files that will be installed"            \
      "  -x          Extract packages for debugging purposes"            \
      ""                                                                 \
      "Common options:"                                                  \
@@ -1011,6 +1012,21 @@ upgrade_mode()
     unset incoming PRVLOC
 }
 
+warn_mode()
+{
+    # Complain if the package does not end in .tlz
+
+    if ! fnmatch '*.tlz' "$1"
+    then
+        warn "\`${1}' does not end in .tlz"
+        return 4
+    fi
+
+    # List files excluding directory names
+    tarlz -tvvf "$1" | awk '!/^drwx/'
+    chkstatus_or_exit 3
+}
+
 extract_mode()
 {
     # Perform sanity checks before package extraction
@@ -1215,7 +1231,7 @@ QI_OUTDIR=$outdir
 
 #### Parse options
 
-while getopts :bcdiouxLNP:t:fkvO:W:Z:a:j:1nSpr:hV name
+while getopts :bcdiouwxLNP:t:fkvO:W:Z:a:j:1nSpr:hV name
 do
     case $name in
     b)
@@ -1256,6 +1272,9 @@ do
         then
             opt_update=opt_update
         fi
+        ;;
+    w)
+        mode=warn_mode
         ;;
     x)
         mode=extract_mode
