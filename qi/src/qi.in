@@ -1014,6 +1014,10 @@ upgrade_mode()
 
 warn_mode()
 {
+    # Complain if the package cannot be well-read
+
+    is_readable "$1" || exit 4
+
     # Complain if the package does not end in .tlz
 
     if ! fnmatch '*.tlz' "$1"
@@ -1022,9 +1026,14 @@ warn_mode()
         return 4
     fi
 
-    # List files excluding directory names
-    tarlz -tvvf "$1" | awk '!/^drwx/'
-    chkstatus_or_exit 3
+    # List content of files excluding directories
+    while test -f "$1"
+    do
+        tarlz -tvvf "$1" | awk '!/^drwx/'
+        chkstatus_or_exit 3
+        shift;
+    done
+    return 0
 }
 
 extract_mode()
