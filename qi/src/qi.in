@@ -1416,6 +1416,32 @@ fi
 
 umask 022;	# Remove write permission for group and other.
 
+# Validate 'packagedir' and 'targetdir' as canonical directories
+
+# The single slash '/' does not qualify here
+if ! fnmatch '/?*' "$packagedir"
+then
+    warn "${PROGRAM}: Package directory \`${packagedir}' is not fully qualified"
+    exit 4
+fi
+if test ! -d "$packagedir"
+then
+    warn "${PROGRAM}: Package directory \`${packagedir}' does not exist"
+    exit 4
+fi
+
+# The single slash '/' is valid here
+if ! fnmatch '/*' "$targetdir"
+then
+    warn "${PROGRAM}: Target directory \`${targetdir}' is not fully qualified"
+    exit 4
+fi
+if test ! -d "$targetdir"
+then
+    warn "${PROGRAM}: Target directory \`${targetdir}' does not exist"
+    exit 4
+fi
+
 # Validate 'rootdir' directory
 
 if test -n "$rootdir"
@@ -1437,7 +1463,7 @@ then
         # Unset variables coming from eval
         unset GRAFT_PERL GRAFT_LOGFILE GRAFT_TARGETDIR GRAFT_PACKAGEDIR
     else
-        warn "${PROGRAM}: \`${rootdir}' is not a qualified root directory"
+        warn "${PROGRAM}: Root directory \`${rootdir}' is not fully qualified"
         exit 4
     fi
     export rootdir
