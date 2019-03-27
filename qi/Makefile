@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 1.0-rc58
+version		= 1.0-rc59
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -102,13 +102,13 @@ man : doc/qi.1
 
 doc/qi.1 : src/qi
 	LC_ALL=C help2man ${HELP2MAN_OPTS} \
-	 -n 'package manager' -o $@ src/qi
+	 -n 'a user-friendly package manager' -o $@ src/qi
 
 html : doc/$(project).html
 
 doc/$(project).html : doc/$(project).texi
 	cd doc && LC_ALL=C $(MAKEINFO) --html --no-split \
-	 --css-ref=document-1.0.1.css $(project).texi
+	 $(project).texi
 
 dist : doc
 	ln -sf . $(DISTNAME)
