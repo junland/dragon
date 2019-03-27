@@ -2,20 +2,20 @@
 @comment $Id@w{$}
 @comment %**start of header
 @setfilename qi.info
-@settitle Qi manual
+@settitle Qi user guide
 @documentencoding ISO-8859-1
 @syncodeindex pg cp
 @comment %**end of header
 
-@set VERSION 1.0-rc4
-@set UPDATED 30 Jan 2017
+@set VERSION 1.0-rc59
+@set UPDATED 27 March 2019
 
 @copying
-This manual is for Qi (version @value{VERSION},
-@value{UPDATED}), which is a simple source builder and package manager.
+This user guide is for Qi (version @value{VERSION},
+@value{UPDATED}), which is a simple but well-integrated package manager.
 
-Copyright @copyright{} 2015, 2016, 2017 Matias A. Fonzo, Argentina,
-Santiago del Estero.
+Copyright @copyright{} 2019 Matias Andres Fonzo, Santiago del Estero,
+Argentina.
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -27,16 +27,16 @@ Texts.  A copy of the license is included in the section entitled
 @end quotation
 @end copying
 
-@dircategory Texinfo documentation system
+@dircategory Package management
 @direntry
-* Qi: (qi).                     Source builder and package manager.
+* Qi: (qi).                     A user-friendly package manager.
 @end direntry
 
 @titlepage
 @finalout
 @title Qi
 @subtitle for version @value{VERSION}, @value{UPDATED}
-@author Matias A. Fonzo (@email{selk@@dragora.org})
+@author Matias Fonzo (@email{selk@@dragora.org})
 
 @page
 @vskip 0pt plus 1filll
@@ -49,321 +49,243 @@ Texts.  A copy of the license is included in the section entitled
 @node Top
 @top
 
-This manual is for Qi (version @value{VERSION},
+This user guide is for Qi (version @value{VERSION},
 @value{UPDATED}).
 @end ifnottex
 
 @menu
-* Introduction::                    Purpose, description
-* Invocation::                      Command-line interface
-* The qirc file::                   Configuration file
-* Packages::                        Managing packages
-* Recipes::                         Building packages
-* Order files::                     Handling the build order
-* Examine packages::                Debugging purposes
-* Messages::                        Output messages
-* Exit status::                     Exit codes
-* GNU Free Documentation License::
+* Introduction::              Description and features of qi
+* Invoking qi::               Command-line options
+* The qirc file::             Configuration file
+* Packages::                  Managing packages
+* Recipes::                   Building packages
+* License::                   GNU Free Documentation License
 * Index::
 @end menu
 
 @sp 1
-Copyright @copyright{} 2015-2017 Matias A. Fonzo, Argentina, Santiago
-del Estero.
+Copyright (C) 2019 Matias Fonzo.
 
-The Qi home page can be found at @uref{http://www.dragora.org}.
+Qi's home page can be found at @uref{http://www.dragora.org}.
 @w{Send bug reports or suggestions to @email{dragora-users@@nongnu.org}.}
-
 
 @node Introduction
 @chapter Introduction
 @cindex introduction
 
-Qi is a source builder and a package manager:
+Qi is a simple but well-integrated package manager.  It can creates,
+install, remove, and upgrade software packages.  Qi produces binary
+packages using recipe names, these are files containing specific
+instructions to build every source.  Qi can manage multiple packages
+under a single directory hierarchy, this method allows to maintain a set
+of packages and multiple versions of them.  This means that Qi could be
+used as the main package manager or as complementary.
 
-It contains a set of (individual) tools to build, install, remove, and
-upgrade software packages.  It follows the philosophy of simplicity
-without adding too many features, such as those that can be found in
-popular package managers.  Basically it does two things: builds
-packages and manages them.
+   Qi offers a friendly command line interface, a global configuration
+file, a simple recipe layout to deploy software packages; it can also
+work with binary packages in parallel, speeding up installations and
+produced packages.  The used format for packages is a simplified but
+safe POSIX pax archive compressed with lzip.
 
-  Qi constructs the sources using recipe names, files that contain
-specific instructions to build every source.  As result, a binary
-package is obtained which can be installed, removed, upgraded, or
-inspected in the system.
+Qi is a POSIX-compliant shell script released under the terms of the
+GNU General Public License.  It has only two major dependencies for the
+magic: graft(1) and tarlz(1), the rest is expected to be found in any
+Unix-like system.
 
-The packages are managed thanks to an external tool called
-@emph{graft(1)}, which provides a mechanism for managing multiple
-packages under a single directory hierarchy, it was inspired by both
-Depot (Carnegie Mellon University) and Stow (Bob Glickstein).  In this
-aspect, Qi complements Graft: it can work with packages, check them,
-solve conflicts, and more...
-
-
-@node Invocation
-@chapter Invocation
+@node Invoking qi
+@chapter Invoking qi
 @cindex invocation
 
-The synopsis to invoke Qi is:
+This chapter describes the synopsis and command line options for
+invoke Qi.
 
 @example
-pkg<action> [options] [package|recipe|order] ...
+Usage: qi [@var{OPTION}]... [@var{FILE}]...
 @end example
 
 @noindent
-The following commands or actions are supported by Qi:
+One mandatory option specifies the operation that @samp{qi} should
+perform, other options are meant to detail how this operation should be
+performed.
 
-@table @samp
-
-@item pkghelp
-Shows the help.
-
-@item pkgadd
-Add the packages to the system using @emph{graft(1)} for linking.
-
-@item pkgremove
-Remove the packages from the system.
-
-@item pkgupgrade
-Upgrade software packages.
-
-@item pkgbuild
-Build packages using recipe files.
-
-@item pkgorder
-Resolves the build order through .order files.
-
-@item pkgerupt
-Examine packages for debugging purposes.
-
-@sp 1
 @noindent
-@strong{Global options}
+qi supports the following options to operate:
 
-There are global or common options for the commands, as well as specific to each one.
+@table @code
+@item -b
+Build package using recipe names.
 
-@item -h
-Show options for the given command and exit.
+@item -c
+Create .tlz package from directory.
 
-@sp 1
-@noindent
-@strong{Options for command @samp{pkgadd}:}
-
-@item -f
-Force package installation (implies -p).
-
-@item -P
-Extract package on an installation tree.
-
-This option sets @samp{$@{packagedir@}}.
-
-Default value: @emph{PREFIX/pkg}
-
-@item -p
-Prune conflicts.
-
-@item -t
-Target directory for linking.
-
-This option sets @samp{$@{targetdir@}}.
-
-Default value: @emph{/}
-
-@item -V
-@emph{graft(1)} very verbose.
-
-@item -w
-Warn about the files that will be linked.
-
-@sp 1
-@noindent
-@strong{Options for command @samp{pkgremove}:}
-
-@item -k
-Keep (don't delete) package directory.
-
-@item -P
-Remove from an installation tree.
-
-This option sets @samp{$@{packagedir@}}.
-
-Default value: @emph{PREFIX/pkg}
-
-@item -p
-Prune conflicts.
-
-@item -t
-Target directory for unlinking.
-
-This option sets @samp{$@{targetdir@}}.
-
-Default value: @emph{/}
-
-@item -V
-@emph{graft(1)} very verbose.
-
-@sp 1
-@noindent
-@strong{Options for command @samp{pkgupgrade}:}
-
-@item -k
-Keep (don't delete) package directory.
-
-@item -P
-Package installation tree.
-
-This option sets @samp{$@{packagedir@}}.
-
-Default value: @emph{PREFIX/pkg}
-
-@item -t
-Target directory.
-
-This option sets @samp{$@{targetdir@}}.
-
-Default value: @emph{/}
-
-@item -V
-Enable (very) verbose mode.
-
-@item -w
-Warn about packages that will be upgraded.
-
-@sp 1
-@noindent
-@strong{Options for command @samp{pkgbuild}:}
-
-@item -a
-Architecture to use.
-
-This option sets @samp{$@{arch@}}.
-
-Default value is obtained via @emph{uname(1)} as @samp{uname -m}.
+@item -d
+Delete packages.
 
 @item -i
-Increment release number.
-
-This option increment the release number when a package is produced.
-
-@item -j
-Parallel jobs for the compiler
-
-This option sets @samp{$@{jobs@}}.
-
-Default value: @emph{1}
-
-@item -k
-Keep (don't delete) @samp{$@{srcdir@}} and @samp{$@{destdir@}}.
-
-@item -n
-Don't create a .tlz package.
+Install packages.
 
 @item -o
+Resolve build order through .order files.
+
+@item -u
+Update packages (implies -i, -d and -p options).
+
+@item -w
+Warn about files that will be linked.
+
+@item -x
+Extract a package for debugging purposes.
+@end table
+
+@noindent
+There are common options between modes:
+
+@table @code
+@item -N
+Do not read the configuration file.
+
+This will omit any value on the qirc file.
+
+@item -P <DIR>
+Package directory for installations.
+
+This option sets @samp{$@{packagedir@}}.
+
+Only valid for -i, -d, or -u options.
+
+@item -f
+Force option.
+
+This can force the build of a recipe, or update a pre-existing package.
+
+Only valid for -b, -u options.
+
+@item -t <DIR>
+Target directory for symbolic links.
+
+This option sets @samp{$@{targetdir@}}.
+
+Only valid for -i, -d, or -u options.
+
+@item -k
+Keep (don't delete) @samp{$@{srcdir@}} or @samp{$@{destdir@}} on build
+mode.
+
+Keep (don't delete) package directory on delete mode.
+
+Only valid for -b, -d or -u options.
+
+@item -p
+Prune conflicts on package installations.
+
+This option may proceed with the package installation if one or
+more conflicts occur.
+
+@item -r /rootdir
+Use the fully qualified named directory as the root directory for all
+qi operations.  The target directory and package directory will
+be relative to the specified directory.
+
+@item -v
+Be verbose (a 2nd -v gives more).
+@end table
+
+@noindent
+Options for build mode (-b):
+
+@table @code
+@item -O <DIR>
 Where the produced packages are written.
 
 This option sets @samp{$@{outdir@}}.
 
-Default value: @emph{/var/cache/qi/packages}
+@item -W <DIR>
+Where archives, patches, and recipes are expected.
 
-@item -U
-Perform package upgrade after build.
+This option sets @samp{$@{worktree@}}.
 
-This option calls to @command{pkgupgrade}.
+@item -Z <DIR>
+Where (compressed) sources will be found.
 
-@sp 1
-@noindent
-@strong{Options for command @samp{pkgorder}:}
+This option sets @samp{$@{tardir@}}.
 
-@item -x
-Exclude depends file.
+@item -a
+Architecture to use.
 
-@section Environment
-@cindex environment
+Default value is obtained via uname(1) as @samp{uname -m}.
 
-Some influential environment variables:
+@item -j
+Parallel jobs for the compiler.
 
-@item QICFLAGS
-C compiler flags for building packages.
+If not specified, default sets to 1.
 
-Default value: @emph{"-g0 -Os"}
+@item -1
+Increment release number (@samp{$@{release@}} + 1).
 
-@item QICXXFLAGS
-C++ compiler flags for building packages.
+It will be omitted if the -n option is being used.
 
-Default value: @emph{"-g0 -Os"}
+@item -n
+Don't create a .tlz package.
 
-@item QILDFLAGS
-Linker flags for building packages.
+@item -S
+Selects the option to skip completed recipes.
 
-Default value: @emph{-s}
-
-@item DOPOST
-post-install script control variable.
-
-The @env{DOPOST} variable is currently used for @command{pkgadd},
-@command{pkgupgrade}, @command{pkgbuild} (when option -U is given).
-
-A different value than "DOPOST" omits the execution of the post-install
-script (if any).
-
-@item RC
-Runtime configuration file.
-
-A different value than "RC" overrides the configuration file.
-
-This is used by: @command{pkgadd}, @command{pkgremove},
-@command{pkgupgrade}, @command{pkgbuild}.
-
-@item TMPDIR
-Temporary directory (by default @emph{/tmp}).
-
-@env{TMPDIR} is expanded with random numbers for major security.
-
-This is used by: @command{pkgbuild}, @command{pkgerupt}.
+This means, in interactive mode, when the dialog
+to summarize recipes is showed.
 @end table
 
-@section Notes
-@cindex notes
+@noindent
+Informative options:
 
-@itemize @bullet
-@item Command names has been prefixed with @samp{pkg} to facilitate the
-set in relation to its purpose.
+@table @code
+@item -L
+Print default directory locations.
 
-@item The @emph{PREFIX} reference is related with the installation
-prefix of Qi.
+This will print the target directory, package directory, working tree,
+the directory for tarballs, and the output directory for produced
+packages.
 
-@item All the options can be mixed.  Options specified in the
-command-line have priority over the config file @file{qirc}.
-If there are no options, and if @file{qirc} is not present,
-default (internal) values will be used instead.
-@end itemize
+@item -h
+Display the help describing the options and then exit.
+
+@item -V
+Print the version number and license information.
+The version number should be included in all bug reports.
+@end table
+
+@noindent
+Expected arguments beyond of options are package directories and regular
+files: recipes or files ending in .tlz, .order.  When FILE is -, qi can
+read from the standard input.  See examples in @ref{Packages}.
 
 
 @node The qirc file
 @chapter The qirc file
-@cindex the qirc file
+@cindex configuration file
 
-@file{qirc} is the configuration file for Qi used at runtime during the
-installation, removal of a package or when a recipe is built.  This
-file is optional, and it can be useful to define variables and
-configure external tools (such as a download manager) for default use.
+The global @file{qirc} file offers a way to define variables and tools
+(such as a download manager) for default use.  This file is used by qi
+at runtime for e.g to build, install, remove or upgrade packages.
+
+@noindent
+It has the following rules:
 
 @itemize @bullet
-@item Variables are declared as @samp{name=value}.
+@item Variables must be declared as @samp{name=value}.
 
 @item Declaration of values should only take one line, no line break.
 
-@item Assignments like @samp{name=$var} are only interpreted as
-literal.
+@item For security reasons, assignments like @samp{name=$var} are only
+interpreted as literal.
 @end itemize
 
 @noindent
-The options specified in the command-line can override the values
-specified in the configuration file.  For more information, see
-@ref{Invocation}.
+The command line options related to the package directory and target
+directory plus some of the options used for the build mode can override
+some values in @file{qirc}.  See @ref{Invoking qi}.
 
 @noindent
-The order in which Qi looks for this file is:
+The order in which qi looks for this file is:
 
 @enumerate
 @item
@@ -375,312 +297,290 @@ The order in which Qi looks for this file is:
 @- System-wide.
 @end enumerate
 
-If you intend to run Qi for a specific user, you should copy the file
-@samp{$@{sysconfdir@}/qirc} to @env{$@{HOME@}/.qirc} setting
-@samp{$@{packagedir@}} and @samp{$@{targetdir@}} for your @env{$HOME}.
+If you intend to run qi as effective user, the file
+@samp{$@{sysconfdir@}/qirc} could be copied to @env{$@{HOME@}/.qirc}
+setting the paths for @samp{$@{packagedir@}} and @samp{$@{targetdir@}}
+according to the @env{$HOME}.
 
 
 @node Packages
 @chapter Packages
-@cindex packages
+@cindex managing packages
 
 A package is a suite of programs usually distributed in binary form
 which may also contain manual pages, documentation, or any other file
 associated to a specific software.
 
-The Qi package format is a simple redistributable @emph{tar(1)} archive
-compressed with @emph{lzip(1)}.  The package extension ends in ".tlz".
+The package format used by qi is a simplified POSIX pax archive
+compressed with lzip.  The file extension for packages ends in .tlz
 
 @noindent
-Both package installation and package deinstallation are managed using
-@samp{$@{packagedir@}} and @samp{$@{targetdir@}}:
+Both package installation and package de-installation are managed using
+two important (internal) variables: @samp{$@{packagedir@}} and
+@samp{$@{targetdir@}}, these values can be changed in the
+configuration file or via options.
 
-@samp{$@{packagedir@}} is a common directory tree where the package contents
-is decompressed (resides).  By default the tree is located at
-@emph{PREFIX/pkg}.
+@samp{$@{packagedir@}} is a common directory tree where the package
+contents will be decompressed (will reside).
 
 @samp{$@{targetdir@}} is a target directory where the links will be
-made taking @samp{$@{packagedir@}/package_name} into account.
+made by graft(1) taking @samp{$@{packagedir@}/package_name} into account.
 
-  Packages are installed in self-contained directory trees and symbolic
+@noindent
+Packages are installed in self-contained directory trees and symbolic
 links from a common area are made to the package files.  This allows
 multiple versions of the same package to co-exist on the one system.
 
-  All the links to install or to remove a package are managed using
-@emph{graft(1)}.  Since multiple packages can be installed or removed
-at the same time, certain conflicts may arise between the packages.
+@section Package conflicts
+@cindex package conflicts
 
-  According to the User's Guide of Graft@footnote{The official guide
-for Graft can be found at
-@url{http://peters.gormand.com.au/Home/tools/graft/graft.html}.},
-a conflict is defined as one of the following conditions:
+All the links to install or remove a package are handled by graft(1).
+Since multiple packages can be installed or removed at the same time,
+certain conflicts may arise between the packages.
+
+@noindent
+graft@footnote{The official guide for Graft can be found at
+@url{http://peters.gormand.com.au/Home/tools/graft/graft.html}.}
+defines a CONFLICT as one of the following conditions:
 
 @itemize @bullet
-@item If the package object is a directory and the target object exists
-but is not a directory.
+@item
+If the package object is a directory and the target object exists but is
+not a directory.
 
-@item If the package object is not a directory and the target object
-exists and is not a symbolic link.
+@item
+If the package object is not a directory and the target object exists
+and is not a symbolic link.
 
-@item If the package object is not a directory and the target object
-exists and is a symbolic link to something other than the package
-object.
+@item
+If the package object is not a directory and the target object exists
+and is a symbolic link to something other than the package object.
 @end itemize
 
 @noindent
-Qi's default behavior is to not proceed with the installation when a
-conflict occurs.  But when a package that is going to be removed is in
-conflict with another package, @emph{graft(1)} removes those parts that
-are not in conflict, leaving the links belonging to the original
-package.  This behavior can be changed if the option -p is specified
-(see the examples below).
+The default behavior of qi for an incoming package is to ABORT if a
+conflict arises.  When a package is going to be deleted, qi tells to
+graft(1) to remove those parts that are not in conflict, leaving the
+links to the belonging package.  This behavior can be forced if the
+-p option is given.
 
-@section Adding packages
-@cindex adding packages
-
-This sort order is particularly useful just before the actual package
-installation, because it helps to understand how the package
-installation works:
-
-@enumerate
-@item Detects and reports if the package is already installed.
-
-@item Ignores some signals up to completing the installation:
-HUP INT QUIT ABRT TERM.
-
-@item The integrity of the file (package) is checked.
-
-@item Creates required directory for the package as
-@samp{$@{packagedir@}/package_name}.
-
-@item Decompress the content of the package in
-@samp{$@{packagedir@}/package_name}.
-
-@item A test of the package is performed before completing the
-installation to see if there are no conflicts with another package.
-This is the default behavior if -p is not supplied.
-
-@item @emph{graft(1)} is invoked to install symbolic links from
-the package installation directory to the target directory.
-
-@item If the meta file is readable, the description will be shown for
-the package.
-
-@item Run post install instructions from @file{post-install}, if any.
-@end enumerate
-
-@noindent
-@emph{Usage:} pkgadd [-hfpVw] [-P <DIR>] [-t <DIR>] [package.tlz ...]
+@section Installing packages
+@cindex package installation
 
 To install a single package, simply type:
 
 @example
-pkgadd coreutils-8.24-x86_64+1.tlz
+qi -i coreutils-8.30-i586+1.tlz
 @end example
 
-To install multiple packages at once:
+@noindent
+To install multiple packages at once, type:
 
 @example
-pkgadd gcc-4.9.3-x86_64+1.tlz rafaela-2.2-i586+1.tlz ...
+qi -i gcc-8.3.0-i586+1.tlz rafaela-2.2-i586+1.tlz ...
 @end example
 
+@noindent
 Warn about the files that will be linked:
 
 @example
-pkgadd -w gcc-4.9.3-x86_64+1.tlz
+qi -w bash-5.0-i586+1.tlz
 @end example
 
-@itemize @bullet
-@item This is to verify the content of a package before installing it.
-@end itemize
-
-See what happens when a package is installed (very verbose):
-
-@example
-pkgadd -V mariana-3.0-x86_64+1.tlz
-@end example
-
-@itemize @bullet
-@item This is for a detailed (long) output.
-@end itemize
-
-Installing in a different directory tree and target:
-
-@example
-pkgadd -P /tmp/pkgdir -T /tmp/targetdir lzip-1.17-i586+1.tlz
-@end example
-
-  When a package is already installed, @command{pkgadd} refuses to
-continue.  This is to keep some control over the database of your
-packages, if you really want to force the installation of a package,
-you can use the -f option (which implies -p).  See below.
-
-@strong{Pruning conflicts}
-
-Remove objects (files, links or directories) from the target
-directory that are in conflict with the package directory:
-
-@example
-pkgadd -p zutils-1.4-x86_64+1.tlz
-@end example
-
-When the -p option is used, it proceeds to install the package
-normally, but first will try to remove any conflict.  Use it with care,
-combine this option with -V.
-
-@section Removing packages
-@cindex removing packages
-
-This sort order is particularly useful just before the actual package
-deinstallation, because it helps to understand how the package
-deinstallation works:
-
-@enumerate
-@item Look for a package name to remove inside of
-@samp{$@{packagedir@}}.  Package names must be specified using the full
-package name, such as "name-version-arch+release.tlz" or specifying the
-package name directory.
-
-@item Ignores some signals up to completing the deinstallation:
-HUP INT QUIT ABRT TERM.
-
-@item @emph{graft(1)} is invoked to remove symbolic links from
-the package installation directory to the target directory:
-
-If a conflict exists with another package, those links that are not in
-conflict will be preserved.  It's possible to prune all the conflicts
-using the -p option.
-
-@item Remove directories made empty by package deletion.  This has
-effect on @samp{$@{targetdir@}} but not for @samp{$@{packagedir@}}.
-
-@item The package directory is deleted if the option -k is not
-supplied.
-@end enumerate
+This is to verify the content of a package before installing it.
 
 @noindent
-@emph{Usage:} pkgremove [-hkpV] [-P <DIR>] [-t <DIR>] [package_name ...]
-
-To remove a package, just execute the command:
+See the process of an installation (very verbose):
 
 @example
-pkgremove xz-5.2.2-x86_64+1
+qi -i -v mariana-3.0-i586+1.tlz
 @end example
 
-To remove multiple versions of the same package:
+A second -v gives more.
+
+@noindent
+Installing package in a different location:
 
 @example
-pkgremove xz*
+qi -r /media/floppy -i lzip-1.21-i586+1.tlz
 @end example
 
-To remove multiple packages at once:
+The -r option assumes @samp{$@{targetdir@}} and @samp{$@{packagedir@}}.
+See:
 
 @example
-pkgremove foo bar baz ...
+qi -r /home/selk -P /pkgs -t / -i lzip-1.21-i586+1.tlz
 @end example
 
+In this case the content of "lzip-1.21-i586+1.tlz" will be decompressed
+into @samp{/home/selk/pkgs/lzip-1.21-i586+1}.  Assuming that the main
+binary for lzip is under @samp{/home/selk/pkgs/lzip-1.21-i586+1/usr/bin/}
+the target for "usr/bin" will be created at @samp{/home/selk}.  Considering
+that you have exported the @env{PATH} as @samp{$@{HOME@}/usr/bin}, now the
+system is able to see the recent lzip.
+
+@noindent
+Installing from a list of packages using standard input:
+
+@example
+cat FILELIST.txt | qi -i -
+@end example
+
+The list of packages must contain full path names to be passed in the
+installation, e.g:
+/var/cache/qi/packages/x86_64/devel/tcl-8.6.9-x86_64+1.tlz
+/var/cache/qi/packages/x86_64/devel/tk-8.6.9.1-x86_64+1.tlz
+/var/cache/qi/packages/x86_64/devel/vala-0.42.3-x86_64+1.tlz
+
+@section Removing packages
+@cindex package de-installation
+
+To remove a package, simply type:
+
+@example
+qi -d xz-5.2.4-i586+1.tlz
+@end example
+
+@noindent
+Delete mode will match the package name using @samp{$@{packagedir@}} as
+prefix.  For example, if the value of @samp{$@{packagedir@}} is set to
+/usr/local/pkgs, this will be equal to:
+@sp 1
+@example
+qi -d /usr/local/pkgs/xz-5.2.4-i586+1
+@end example
+
+@noindent
 Detailed output (very verbose):
 
 @example
-pkgremove -V xz-5.2.2-x86_64+1
+qi -d -v /usr/local/pkgs/xz-5.2.4-i586+1
 @end example
 
-Removing from a different directory tree and target:
+A second -v gives more.
+
+@noindent
+By default the delete mode does not preserve a package directory after
+removing its links from @samp{$@{targetdir@}}, but this behavior can be
+changed if the -k option is passed:
 
 @example
-pkgremove -P /tmp/pkgdir -T /tmp/targetdir lzip-1.17-x86_64+1
+qi -d -k /usr/local/pkgs/lzip-1.21-i586+1
 @end example
 
-Pruning conflicts:
+This means that the links to the package can be reactivated, later:
+@sp 1
+@example
+cd /usr/local/pkgs && graft -i lzip-1.21-i586+1
+@end example
+
+@noindent
+Removing package from a different location:
 
 @example
-pkgremove -p -V hunter
+qi -r /home/cthulhu -P /pkgs -t / -d xz-5.2.4-i586+1
 @end example
+
+@noindent
+Removing a package using standard input:
+
+@example
+echo "vala-0.42.3-x86_64+1" | qi -d -
+@end example
+
+This will match with the package directory.
 
 @section Upgrading packages
-@cindex upgrading packages
+@cindex package upgrade
 
-This sort order is particularly useful just before the actual package
-upgrade, because it helps to understand how the package upgrade works:
-
-@enumerate
-@item Prepare temporary location for the incoming package.
-
-@item Pre-install incoming package into the temporary location.
-
-@item Remove packages under the same name: this is considered
-as the old packages. (Default behaviour if -k is not supplied).
-
-@item Upgrade or install the package calling to @command{pkgadd}.
-
-@item Delete temporary location of the package.
-@end enumerate
+The upgrade mode inherits the properties of the installation and removal
+process.  To make sure that a package is updated, the package is installed
+in a temporary directory taking @samp{$@{packagedir@}} into account.  Once
+the incoming package is pre-installed, qi can proceed to search and delete
+packages that have the same name (considered as previous ones).  Finally,
+the package is re-installed at its final location and the temporary
+directory is removed.
 
 @noindent
-@emph{Usage:} pkgupgrade [-hkVw] [-P <DIR>] [-t <DIR>] [package.tlz ...]
-
-Upgrading a package is simple as:
+To upgrade a package, just type:
 
 @example
-pkgupgrade coreutils-8.25-x86_64+1.tlz
+qi -u gcc-9.0.1-i586+1.tlz
+@end example
+
+This will proceed to update "gcc-9.0.1-i586+1" removing other versions
+of "gcc" (if any).
+
+@noindent
+If you want to keep the package directory of found versions during the
+upgrade process, just pass:
+
+@example
+qi -u -k gcc-9.0.1-i586+1.tlz
 @end example
 
 @noindent
-@samp{pkgupgrade} uses @command{pkgadd} and @command{pkgremove} to
-upgrade software packages.  So it inherits the properties of each
-utility, except here, only the essential options are provided.  For
-example, the option -V (for a detailed output) belongs to when these
-utilities are invoked.  The options -P and -t work in the same way as
-the previous examples for @command{pkgadd}, @command{pkgremove}.
-@samp{pkgupgrade} will try to update the package or to install it
-(in case it has not been installed).
-
-To see what packages will be updated (if any), always type:
+To see the upgrade process (very verbose):
 
 @example
-pkgupgrade -w coreutils-8.25-x86_64+1.tlz
+qi -u -v gcc-9.0.1-i586+1.tlz
 @end example
 
-@section Notes
-@cindex notes
+A second -v gives more.
 
-@itemize @bullet
-@item Some signals like HUP INT QUIT ABRT TERM are ignored on the
-package installation or deinstallation.  The intention is to ignore
-the cancellation while the package is being installed or removed (e.g.
-Ctrl+C, terminal window closed, etc.).  The installation or removal
-of a package can be crucial for the proper functioning of the system.
+@subsection Package blacklist
+@cindex package blacklist
 
-@item The meta file is read from the directory where the package is
-found.
+To enforce general package facilities, either to install, remove or
+maintain the hierarchy of packages in a clean manner, qi makes use of the
+pruning operation via graft(1):
 
-@item A post-install script is read from
-@samp{$@{packagedir@}/package_name/var/lib/qi/post-install/name.install}.
+There is a risk if those are crucial packages for the proper functioning
+of the system, because it implies to deactivate symbolic links from the
+target directory, @emph{especially} when transitioning an incoming package
+into its final location during upgrade.
 
-@item Default behavior is to upgrade or install a package removing old
-packages, this is "packages found under the same name".  If you want to
-preserve the multiple versions of the same package, you must pass the
--k option.
-@end itemize
+@noindent
+A blacklist for declare package names has been devised for this cases,
+in case that a user decides to upgrade all packages in the system or,
+just the crucial ones, such as the C library.
+
+The blacklist is related to the upgrade mode only, consists in installing
+a package instead of updating it or removing previous versions of it;
+the content of the package will be updated over the existing content at
+@samp{$@{packagedir@}}, while the existing links from
+@samp{$@{targetdir@}} will be preserved.  A pruning of links will carried
+out in order to re-link possible differences with the recent content, this
+helps to avoid having dead links in the target directory.
+
+@noindent
+Since the upgrade mode is also used to install a new package, the mechanism
+for blacklist is to install a declared package if it does not already
+exist, if it already exists, it is verified that the binary package is
+newer than the package directory in order to perform an update.
+
+The names of packages for the blacklist can be configured from the
+@file{qirc} file.
 
 
 @node Recipes
 @chapter Recipes
 @cindex recipes
 
-A recipe is a file telling qi what to do.  Most often, the recipe
-tells qi how to build a binary package from a source tarball.
+A recipe is a file telling qi what to do.  Most often, the recipe tells to
+qi how to build a binary package from a source tarball.
 
 A recipe has two parts: a list of variable definitions and a list of
 sections.  By convention, the syntax of a section is:
 
 @example
-section_name() @{
-  section lines
+section_name()
+@{
+    section lines
 @}
 @end example
 
-The section name is followed by parentheses, one space and an opening
+The section name is followed by parentheses, one newline and an opening
 brace.  The line finishing the section contains just a closing brace.
 The section names or the function names currently recognized are
 @samp{build}.
@@ -705,9 +605,8 @@ Definitions of variables in qi have four levels of precedence.
 Options which define variables from the command-line override those
 specified in the @file{qirc} file, while variables defined in the recipe
 override those specified in @file{qirc}, taking priority over those
-variables settled by options via command-line.  Finally, some variables
-(arch, jobs, outdir, worktree, tardir, netget, rsync) have default
-values if they are not defined anywhere.
+variables settled by options via command-line.  Finally, the variables
+have default values if they are not defined anywhere.
 
 Options that set variables through the command-line can only reference
 variables defined in @file{qirc} and variables with default values.
@@ -719,91 +618,105 @@ Definitions of variables in the recipe can only reference variables
 settled by command-line, variables previously defined in the recipe,
 variables defined in @file{qirc}, and variables with default values.
 
-@subsection Special variables
+@section Special variables
 @cindex special variables
 
-The three variables @samp{arch}, @samp{jobs}, and @samp{outdir} can
-only be set using command line options or in @file{qirc}.  If not
-specified, they have default values.
+There are variables which can only be set using the command line options or
+via @file{qirc}, there are other special variables which can be defined or
+redefined in a recipe.  See the following definitions:
 
-  @samp{arch} is the architecture to compose the package name.  Its
-value is available in the recipe as @samp{$@{arch@}}.  Default value is
-the output of @samp{uname -m}.
-
-  @samp{jobs} is the number of jobs to pass to the compiler.  Its
-default value is available in the recipe as @samp{$@{jobs@}}.  Defaults
-to @samp{1}.
-
-  @samp{outdir} is the directory where the produced packages are
-written.  This variable cannot be redefined in the recipe.  Defaults to
+@samp{outdir} is the directory where the produced packages are written.
+This variable can not be redefined in the recipe.  Default sets to
 @samp{/var/cache/qi/packages}.
 
-  @samp{worktree} is the working tree where archives, patches, and
-recipes are expected.  This variable cannot be redefined in the
-recipe.  Defaults to @samp{/usr/src/qi}.
+@samp{worktree} is the working tree where archives, patches, and recipes
+are expected.  This variable can not be redefined in the recipe.  Default
+sets to @samp{/usr/src/qi}.
 
-  The variable @samp{tardir} is defined in the recipe to the directory
-where the tarball containing the source can be found.  The full name of
-the tarball is commonly used as @samp{$@{tardir@}/$tarname}.  A value
-of @samp{.} for @samp{tardir} sets it to the value of the CWD (Current
-Working Directory), this means, from where the recipe is located.
+@samp{tardir} is defined in the recipe to the directory where the tarball
+containing the source can be found.  The full name of the tarball is
+composed as @samp{$@{tardir@}/$tarname}.  Its value is available in the
+recipe as @samp{$@{tardir@}}; a value of . for @samp{tardir} sets it to
+the value of CWD (Current Working Directory), this is where the recipe
+lives.
 
-  The two variables @samp{srcdir} and @samp{destdir} can be defined in
-the recipe, as any other variable, but if they are not, Qi uses default
-values for them when building the package.
+@samp{arch} is the architecture to compose the package name.  Its value is
+available in the recipe as @samp{$@{arch@}}.  Default value is the output
+of @samp{uname -m}.
+
+@samp{jobs} is the number of parallel jobs to pass to the compiler.  Its
+value is available in the recipe as @samp{$@{jobs@}}.  Default sets to
+@samp{1}.
+
+The two variables @samp{$@{srcdir@}} and @samp{$@{destdir@}} can be
+set in the recipe, as any other variable, but if they are not, qi uses
+default values for them when building a package.
 
 @samp{srcdir} contains the source code to be compiled, and defaults to
-@samp{$@{program@}-$@{version@}}.
+@samp{$@{program@}-$@{version@}}.  @samp{destdir} is the place where the
+built package will be installed, and defaults to
+@samp{$@{TMPDIR@}/package-$@{program@}}.
 
-@samp{destdir} is the place where the built package will be installed,
-and defaults to @samp{$@{TMPDIR@}/package-$@{program@}}.
+If @samp{pkgname} is left undefined, the special variable @samp{program}
+is assigned by default.  If @samp{pkgversion} is left undefined, the
+special variable @samp{version} is assigned by default.
 
-  If @samp{pkgname} is left undefined, the special variable
-@samp{program} is assigned by default.  If @samp{pkgversion} is left
-undefined, the special variable @samp{version} is assigned by default.
+@samp{pkgname} and @samp{pkgversion} along with: @samp{version}, @samp{arch},
+and @samp{release} are used to produce the name of the package in the form:
+@samp{$@{pkgname@}-$@{pkgversion@}-$@{arch@}+$@{release@}.tlz}
 
-  @samp{pkgname}, @samp{pkgversion}, along with @samp{version},
-@samp{arch}, and @samp{release}, are used to produce the name of the
-package in the form
-@samp{$@{pkgname@}-$@{pkgversion@}-$@{arch@}+$@{release@}.tlz}.  All of
-them must be defined in the recipe, excepting @samp{arch}, which is
-optional.
+@noindent
+A typical recipe contains:
 
 @itemize @bullet
-@item @samp{program}: name of the package.
+@item @samp{program}: software name.
 
-@item @samp{version}: version of the package.
+It matches the source name.  It is also used to compose the name of the
+package if @samp{$@{pkgname@}} is not specified.
 
-@item @samp{arch}: architecture of the package.
+@item @samp{version}: software version.
 
-@item @samp{release}: release number of the package. It is recommended to 
-increase this number after any significant change in the recipe is made.
+It matches the source name.  It is also used to compose the version of the
+package if @samp{$@{pkgversion@}} is not specified.
+
+@item @samp{arch}: software architecture.
+
+It is used to compose the architecture of the package in which it is
+build.
+
+@item @samp{release}: release number.
+
+This is used to reflect the release number of the package.  It is
+recommended to increase this number after any significant change in
+the recipe or post-install script.
 @end itemize
 
 @noindent
 Obtaining sources over the network must be declared in the recipe using
 the @samp{fetch} variable.  Use double quotes for separated values.
 
-  The variables @samp{netget} and @samp{rsync} can be defined in
-@file{qirc} to establish a network downloader in order to get the
-sources.  If they are not defined, qi uses default values:
+The variables @samp{netget} and @samp{rsync} can be defined in @file{qirc}
+to establish a network downloader in order to get the sources.  If they
+are not defined, qi uses default values:
 
-@samp{netget} is the general network downloader tool for use, and
-defaults to @samp{wget -c -w1 -t3 --no-check-certificate}.
+@samp{netget} is the general network downloader tool, defaults sets to
+@samp{wget -c -w1 -t3 --no-check-certificate}.
 
 @samp{rsync} is the network tool for sources containing the prefix for
-the RSYNC protocol, and defaults to
+the RSYNC protocol, default sets to
 @samp{rsync -v -a -L -z -i --progress}.
 
 @noindent
 There are three important variables to produce meta information of the
-package: @samp{description}, @samp{homepage}, @samp{license}.
+package from a recipe: @samp{description}, @samp{homepage}, and
+@samp{license}.
 
-  The variable @samp{description} is special to write the description of the
-package, which will be shown when installed.
+The variable @samp{description} is used to print the package description
+when a package is installed.
 
-  A description has two parts: a brief description and a long
-description.  By convention, the syntax of a description is:
+@noindent
+A description has two parts: a brief description, and a long description.
+By convention, the syntax of @samp{description} is:
 
 @example
 description="
@@ -813,72 +726,120 @@ Long description.
 "
 @end example
 
-@noindent
 The first (substantial) line of the value is a brief description of the
-software (called the "blurb").  A new (blank) line is followed to
-separate the brief description from the long description.
+software (called "blurb").  A newline follows to separate the @emph{brief
+description} from the @emph{long description}.
 
+@noindent
 An example looks like:
 
 @example
 description="
-A source builder and a package manager.
+The GNU core utilities.
 
-Qi is a source builder and a package manager.  It contains a set of
-tools to build, install, remove, and upgrade software packages.
-
-Qi follows the philosophy of the simplicity without adding too many
-features, such as those that can be found in popular package managers.
-Basically it does two things: builds packages and manages them.
+The GNU core utilities are the basic file, shell and text manipulation
+utilities of the GNU operating system.  These are the core utilities
+which are expected to exist on every operating system.
 "
 @end example
 
-@itemize @bullet
-@item Consider a length limit of 78 characters as maximum.
-@xref{Recipes, The meta file}.
-@end itemize
+Please consider a length limit of 78 characters as maximum, because the same
+one would be used on the meta file creation.  See
+@ref{Recipes, The meta file}.
 
-@noindent
-The @samp{homepage} variable is used simply to declare the main site or
-home of the source, thus:
+The @samp{homepage} variable is used to declare the main site or home:
 
 @example
-homepage=http://www.dragora.org
+homepage=http://www.gnu.org/software/gcc
 @end example
 
-@noindent
 The variable @samp{license} is used for license information@footnote{
 The proposal for @samp{license} was made by Richard M. Stallman at
 @url{http://lists.gnu.org/archive/html/gnu-linux-libre/2016-05/msg00003.html}.}.
 Some code in the program can be covered by license A, license B, or
-license C.  For "separate licensing" or "heterogeneous licensing",
-we suggest using @strong{|} for a disjunction, @strong{&} for a
-conjunction (if that ever happens in a significant way), and comma
-for heterogeneous licensing.  Comma would have lower precedence.  Plus
-added special terms.
+license C.  For "separate licensing" or "heterogeneous licensing", we
+suggest using @strong{|} for a disjunction, @strong{&} for a conjunction
+(if that ever happens in a significant way), and comma for heterogeneous
+licensing.  Comma would have lower precedence, plus added special terms.
 
 @example
-license="LGPL, GPL | Artistic, GPL + added permission"
+license="LGPL, GPL | Artistic + added permission"
 @end example
 
-@subsection Variables from the environment
-@cindex variables from the environment
+@section Building packages
+@cindex package build
+
+A recipe is any valid regular file, qi sets priorities to read a recipe,
+for example, the Current Working Directory has priority over the working
+tree (or where the recipes reside); the @samp{$@{worktree@}/recipes} is
+the second place where to find a recipe, we complete the possibility of
+using the directory name to invoke a recipe if it contains "recipe" inside
+as a valid file name.
+
+@noindent
+To build a single package, type:
+
+@example
+qi -b x-apps/xterm
+@end example
+
+@noindent
+Multiple jobs can be passed to the compiler for speed up the build process:
+
+@example
+qi -b -j3 x-apps/xterm
+@end example
+
+@noindent
+Update or install the produced package (if it is not already installed)
+when finish:
+
+@example
+qi -b -j3 -u x-apps/xterm
+@end example
+
+@noindent
+Only process a recipe but do not create the binary package:
+
+@example
+qi -b -n dict/aspell
+@end example
+
+The options -i or -u have no effect when -n is given.
+
+@noindent
+This can be useful to inspect the build process of recipe:
+
+qi -b -k -n dict/aspell 2>&1 | tee aspell-buildlog.txt
+
+The -k option could preserve the source directory and the destination
+directory for later inspection.  A log file of the build process will be
+created redirecting both, standard error and standard output to tee(1).
+
+@section Variables from the environment
+@cindex environment variables
+
+Qi has environment variables which can be used at build time:
+
+The variable @env{TMPDIR} sets the temporary directory for sources, by
+default, this is used to prepend @samp{$@{srcdir@}} and
+@samp{$@{destdir@}}.  By convention, its value is @samp{/tmp}.
 
 The variables @env{QICFLAGS}, @env{QICXXFLAGS}, and @env{QILDFLAGS} have
 no effect by default.  The environment variables such as @env{CFLAGS},
-@env{CXXFLAGS}, and @env{LDFLAGS} are unset at compile time.
+@env{CXXFLAGS}, and @env{LDFLAGS} are unset at compile time:
 
+@noindent
 Recommended practices is to set variables in front of @samp{configure}
 or in front of @emph{make(1)} instead of exporting to the environment.
 As follows:
 
 @quotation
-Variables not defined in a site shell script can be set in the
-environment passed to configure. However, some packages may run
-configure again during the build, and the customized values of these
-variables may be lost. In order to avoid this problem, you should set
-them in the configure command line, using @samp{VAR=value}.  For
-example:
+Variables not defined in a site shell script can be set in the environment
+passed to configure.  However, some packages may run configure again
+during the build, and the customized values of these variables may be
+lost.  In order to avoid this problem, you should set them in the
+configure command line, using @samp{VAR=value}.  For example:
 
 @code{./configure CC=/usr/local2/bin/gcc}
 
@@ -886,9 +847,10 @@ example:
 @end quotation
 
 @quotation
-Indeed, while configure can notice the definition of CC in @samp{./configure
-CC=bizarre-cc}, it is impossible to notice it in @samp{CC=bizarre-cc
-./configure}, which, unfortunately, is what most users do.
+Indeed, while configure can notice the definition of CC in
+@samp{./configure CC=bizarre-cc}, it is impossible to notice it in
+@samp{CC=bizarre-cc ./configure}, which, unfortunately, is what most
+users do.
 
 [...]
 
@@ -899,9 +861,9 @@ configure: error: changes in the environment can compromise the build.
 
 @quotation
 It is not wise for makefiles to depend for their functioning on
-environment variables set up outside their control, since this would
-cause different users to get different results from the same makefile.
-This is against the whole purpose of most makefiles. 
+environment variables set up outside their control, since this would cause
+different users to get different results from the same makefile.  This is
+against the whole purpose of most makefiles.
 
 @url{http://gnu.org/software/make/manual/make.html#Environment}
 @end quotation
@@ -909,490 +871,56 @@ This is against the whole purpose of most makefiles.
 @section The meta file
 @cindex the meta file
 
-The "meta file" is an external file created by @command{pkgbuild} when
-a recipe is processed and when a package is produced.  The file is
-generated as @samp{$@{full_pkgname@}.tlz.txt} which contains
-information about the package such as @samp{program}, @samp{version},
-@samp{release}.  Also definitions of the special variables
-@samp{fetch}, @samp{description}, @samp{homepage}, @samp{license}.
+The "meta file" is a regular file created during the build mode, it
+contains information about the package such as program name, program
+version, release, fetch address, description, and other minor data
+extracted from the processed recipe.  The name of the file is generated as
+@samp{$@{full_pkgname@}.tlz.txt}, it has the purpose to reflect essential
+information to the user without having to look inside the package content.
 
-A meta file has the purpose to extract information and the purpose to
-reflect essential information to the user without having to check
-inside the package itself.
-
-The meta file is basically composed as:
+The content of a meta file looks like:
 
 @example
-# Description
+#
+# The Bourne Again SHell.
+#
+# Bash is an sh-compatible shell that incorporates useful features from
+# the Korn shell (ksh) and C shell (csh).  It is intended to conform to
+# the IEEE POSIX P1003.2/ISO 9945.2 shell and tools standard.
+#
+# It offers functional improvements over sh for both programming and
+# interactive use.
+#
 
-variable=value
-...
-@end example
-
-@noindent
-The description is extracted from the declared variable
-@samp{description}, where each line is interpreted literally and where
-the description is pre-formatted to fit in (exactly) 80 columns.  Plus
-@samp{# } is prepend to each line.
-
-Followed by new line, the rest is composed by variables; the inclusion
-of its values, may vary.  For example, in addition to the special
-variables, there are implicit variables such as @samp{blurb},
-@samp{depends}.
-
-  The @samp{blurb} variable is related to the special variable
-@samp{description}.  Always taking the first (substantial) line
-or "brief description".
-
-  The value of @samp{depends} only will be included if the
-@file{depends} file is a regular file.  @xref{Order files, The depends
-file}.
-
-@noindent
-Now let's take a look on a real example of a meta file:
-
-@example
-# A lossless data compressor based on the LZMA algorithm.
-# 
-# Clzip is a lossless data compressor with a user interface similar to
-# the one of gzip or bzip2.  Clzip is about as fast as gzip, compresses
-# most files more than bzip2, and is better than both from a data
-# recovery perspective.
-# 
-# Clzip uses the lzip file format; the files produced by clzip are fully
-# compatible with lzip-1.4 or newer, and can be rescued with lziprecover.
-# 
-# Clzip is in fact a C language version of lzip, intended for embedded
-# devices or systems lacking a C++ compiler.
-
-QICFLAGS="-g0 -Os"
-QICXXFLAGS="-g0 -Os"
+QICFLAGS="-g0 -Os -mtune=generic -pipe"
+QICXXFLAGS="-g0 -Os -mtune=generic -pipe"
 QILDFLAGS="-s"
-program=clzip
-version=1.8
+program=bash
+version=5.0
 release=1
-blurb="A lossless data compressor based on the LZMA algorithm."
-homepage="http://lzip.nongnu.org/clzip.html"
-license="GPLv2+"
-fetch="http://download.savannah.gnu.org/releases/lzip/clzip/clzip-1.8.tar.gz"
-depends=" "
-
+blurb="The Bourne Again SHell."
+homepage="http://www.gnu.org/software/bash"
+license="GPLv3+"
+fetch="ftp://ftp.gnu.org/gnu/bash/bash-5.0.tar.gz"
+replace=""
 @end example
 
-Creation of the meta file is made in @samp{$@{outdir@}}.
+The package description is extracted from the declared variable
+@samp{description}, each line will be interpreted literally and
+pre-formatted to fit in (exactly) 80 columns, plus the character
+@samp{# } will be prefixed to each line in the description.
 
-@section Building packages
-@cindex building packages
+In addition to the special variables, there are implicit variables such as
+@samp{blurb}:
 
-This sort order is particularly useful just before the actual package
-build, because it helps to understand how a package is being built:
+The @samp{blurb} variable is related to the special variable
+@samp{description}.  Its value is composed using the first (substantial)
+line of @samp{description} (know as the "brief description").
 
-@enumerate
-@item A recipe is read from the current directory, if not, it will be
-looked in @samp{$@{worktree@}/recipes}.  Names of recipes can be
-invoked relative to @samp{$@{worktree@}/recipes}.  The recipe must be
-a regular file and must be readable by the user who is running the
-command.
 
-@item Checks are made when the recipe is imported (included), essential
-variable names cannot be empty: @samp{program}, @samp{version},
-@samp{release}.  Also the main function @samp{build()} must be present.
 
-@item @command{pkgbuild} tries to obtain the sources remotely if it
-does not exist locally (@samp{$@{tardir@}}).  Once the source is
-already in place, its timestamp is updated, creating or updating the
-SHA1 sum.
 
-@item Required directories are created: @samp{$@{TMPDIR@}/$srcdir},
-@samp{$@{outdir@}}, @samp{$@{destdir@}/var/lib/qi/recipes}.
-
-@item Sane ownerships and permissions are applied to the full source
-directory: @samp{$@{TMPDIR@}/$srcdir}.
-
-@item The main function @samp{build()} is called.  Exits immediately if
-a command exits with a non-zero status.
-
-@item A package is going to be created under the following conditions:
-
-@itemize @bullet
-@item If @samp{$@{destdir@}} is not empty.
-
-@item If the option -n was not given.
-@end itemize
-
-A copy of the recipe (file) is included on
-@samp{$@{destdir@}/var/lib/qi/recipes} as @samp{$@{full_pkgname@}.recipe}.
-
-If the @file{post-install} script is in the current working directory
-or from where the recipe name resides, it will be added as
-@samp{$@{destdir@}/var/lib/qi/post-install/$@{full_pkgname@}.install}.
-
-The package is produced from the content of @samp{$@{destdir@}}.  First,
-creating a tarball, and then compressing it using the maximum level of
-compression of @emph{lzip(1)}.
-
-@item By default, directories like @samp{$@{TMPDIR@}/$srcdir} and
-@samp{$@{destdir@}} are deleted.
-
-@item If the option -U is given, @command{pkgupgrade} is invoked to
-install or upgrade the package.
-
-@end enumerate
-
-@noindent
-@emph{Usage:} pkgbuild [-hiknU] [-a <ARCH>] [-j <JOBS>] [-o <DIR>] [recipe ...]
-
-To build a single package, simply type:
-
-@example
-pkgbuild clzip.recipe
-@end example
-
-Compile passing parallel jobs to the compiler for speed up the process:
-
-@example
-pkgbuild -j4 clzip.recipe
-@end example
-
-To build and install or upgrade multiple packages at once:
-
-@example
-pkgbuild -U clzip.recipe zutils.recipe matias.recipe
-@end example
-
-Reading recipes and building from the output of a command:
-
-@example
-cat depends | pkgbuild -
-@end example
-
-Incrementing the release number after a significant change in a recipe:
-@example
-pkgbuild -i stargazer.recipe
-@end example
-
-@noindent
-If the recipe name cannot be read from the current directory or from
-a specific path name, @samp{$@{worktree@}/recipes} is used for the
-search:
-
-There is a special case for the names of recipes @samp{recipe}.
-@command{pkgbuild} can complete the recipe name without being required
-to be specified in the command-line, only if the name of the recipe is
-@samp{recipe}.  For example:
-
-@example
-pkgbuild devel/gcc
-@end example
-
-Will complete the search as @samp{$@{worktree@}/recipes/devel/gcc/recipe}.
-
-@section Writing recipes
-@cindex writing recipes
-
-@subsection Internal functions
-@cindex internal functions
-
-Some internal functions are available to be applied on the recipe:
-
-@table @samp
-
-@item unpack()
-The unpack function can decompress multiple (compressed) files while
-verifies the integrity.  Depending on where the function is called,
-the decompression occurs in the current working directory.
-
-Usage: @code{unpack file(s) ...}
-
-The cases supported for the special extensions are: *.tar, *.tar.*,
-*.tgz*, *.tbz*, *.tlz*, *.txz*, *.zip, *.ZIP, *.gz, *.bz2, *.lz.
-@end table
-
-
-@node Order files
-@chapter Order files
-@cindex .order files
-
-@command{pkgorder} has the purpose to resolve the build order through
-.order files.  In other words, is a good complement for
-@command{pkgbuild}.
-
-@noindent
-@emph{Usage:} pkgorder [-x] [file_name.order ...]
-
-@noindent
-Basically, @command{pkgorder} reads from a declared file which ends in
-".order".  The output is an ordered list of recipe names which can be
-passed to @command{pkgbuild} (via a pipe) to build a number or a series
-of packages.
-
-@sc{Declaration}
-
-If 'a' depends on 'b' and 'c', and 'c' depends on 'b' as well, the file
-might look like:
-
-@example
-a.recipe: c.recipe b.recipe
-b.recipe:
-c.recipe: b.recipe
-@end example
-
-Each letter represents a recipe name, complete dependencies for
-the first recipe name are listed in descending order, which is
-printed from right to left, and removed from left to right:
-
-@sc{Output}
-
-@example
-b.recipe
-c.recipe
-a.recipe
-@end example
-
-@itemize @bullet
-@item Commented lines starting with a '#' are allowed.  Blank lines,
-colons, parentheses, and end of line are removed.
-@end itemize
-
-@section The depends file
-@cindex the depends file
-
-When @command{pkgorder} read from an order file; by default, it will
-proceed to read the dependencies of each recipe.  This behavior can be
-omitted if the -x option is given.
-
-  The procedure for reading the dependencies of each recipe is
-extracting the directory location where the order file resides.  Then
-it iterates over the declared items extracting its location in search
-of the special file @file{depends}.
-
-@itemize @bullet
-@item The @file{depends} file only is read (sequentially) if it is
-a regular file and is not empty.
-@end itemize
-
-@noindent
-The special file @file{depends} must contain a list of prerequisites
-for the recipe.  Prerequisites are names of valid recipes, including
-its location.  The location must be relative to @samp{$@{worktree@}}
-(variable described in @ref{Recipes}).
-
-Example of a @file{depends} file declared for @emph{bash.recipe}:
-
-@example
-libs/readline/readline.recipe
-@end example
-
-Then, if @emph{core/bash/bash.recipe} has been declared on
-@emph{core.order}, the output would be:
-
-@example
-...
-libs/readline/readline.recipe
-core/bash/bash.recipe
-...
-@end example
-
-Combined in a pipe, @emph{readline} represents the first dependency
-of @emph{bash}:
-
-@example
-@code{pkgorder core.order | pkgbuild -U -}
-@end example
-
-
-@node Examine packages
-@chapter Examine packages
-@cindex examine packages
-
-@command{pkgerupt} is a special command to examine packages for
-debugging purposes.
-
-@noindent
-@emph{Usage:} pkgerupt [-h] [package.tlz ...]
-
-When a package name is given @command{pkgerupt} will create a random
-directory for the package.  The prefix directory where the random
-directory is created is controlled by the @env{TMPDIR} variable,
-by default @env{TMPDIR} is assigned to @emph{/tmp}.  Creation mode
-is "u=,g=rwx,o=rwx" (0700).
-
-The extraction to inspecting a package is equivalent to the shell
-instruction:
-
-@example
-@code{( umask 000 && cd -- $PRVDIR && lzip -cd - | tar -xf - ) < $file}
-@end example
-
-The package content is decompressed in the random (private) directory
-via pipe.  Creation mode is "u=rwx,g=rwx,o=rwx" (0777).
-
-  If there is any substantial change, consider increasing the build
-number when repackaging: edit the value of the @samp{release} variable
-(recipe), compose the output file using the new number.
-
-
-@node Messages
-@chapter Messages
-@cindex output messages
-
-Some symbols are used for output messages to help to identify
-the messages shown by the tools in Qi.  There are four simple
-categories where the symbols are represented:
-
-@sp 1
-@noindent
-@strong{Specifics}
-
-This symbols are unique to identify the running tool:
-
-@table @samp
-@item +
-This symbol belongs to the @command{pkgadd} tool.
-
-@item -
-This symbol belongs to the @command{pkgremove} tool.
-
-@item ~
-This symbol belongs to the @command{pkgupgrade} tool.
-
-@item #
-This symbol belongs to the @command{pkgbuild} tool.
-
-@item =
-This symbol belongs to the @command{pkgerupt} tool.
-
-@item %
-This symbol is used to scan a package or to warn when
-the option is used.
-
-Specific symbols are enclosed between @samp{( )}.
-@end table
-
-@table @samp
-@strong{Preventive}
-
-Preventive symbols are intended to alert the user about unforeseen
-or important situations, and to meet requirements before proceeding:
-
-@item *
-Normally used for testing compressed sources, obtain remote sources,
-or set system permissions.
-
-Preventive symbols are enclosed between @samp{[ ]}.
-@end table
-
-@table @samp
-@strong{Informative}
-
-Informative symbols are intended to inform users the most essential
-tasks during the execution:
-
-@item i
-Symbol used when a task is going to be performed or when a task has
-been completed.
-
-@item !
-This symbol informs about deleting files.
-
-Informative symbols are enclosed between @samp{[ ]}.
-@end table
-
-@strong{Transitory}
-
-Transitory symbols are part for occasional changes (@samp{@@}) but no
-less important.  Also to invoke Qi tools externally (@samp{^}).
-
-Transitory symbols are enclosed between @samp{@{ @}}.
-
-
-@node Exit status
-@chapter Exit status
-@cindex exit codes
-
-All the conditions of exit codes are described in this chapter.
-
-@table @samp
-
-@item 0
-Successful completion (no errors).
-
-@item 1
-@strong{Minor common errors:}
-
-@itemize @minus
-@item Illegal option.
-
-@item Option requires an argument.
-
-@item Internal function to load not found.
-
-@item Program (prerequisite) is not available.
-@end itemize
-
-@item 2
-@strong{Command execution error}
-
-Evaluation of external commands or shell arguments.  If it fails,
-returns 2.
-
-@item 3
-@strong{Integrity check error for compressed files}
-
-Compressed files means:
-
-@itemize @minus
-@item All the tarballs supported by @emph{tar(1)}.
-
-@item Zip files supported by @emph{unzip(1)}.
-
-@item Gzip files supported by @emph{gzip(1)}.
-
-@item Bzip2 files supported by @emph{bzip2(1)}.
-
-@item Lzip files supported by @emph{lzip(1)}.
-@end itemize
-
-@item 4
-@strong{File empty, not regular, or expected}
-
-Commonly, it is expected:
-
-@itemize @minus
-@item A binary package (.tlz).
-
-@item An installed package to remove.
-
-@item A recipe file.
-
-@item A file of order (.order).
-@end itemize
-
-@item 5
-@strong{Empty or not defined variable}
-
-This exit code is used for reporting about empty or undefined variables.
-Usually, variables of the recipe or assigned arrays that are tested.
-
-@item 6
-@strong{Package already installed}
-
-The package directory for an incoming package already exists.
-
-@item 10
-@strong{Network manager error}
-
-Exit status from the execution of the network manager tool and its
-arguments.
-@end table
-
-@noindent
-@cartouche
-Error messages are reported to the standard error.
-@end cartouche
-
-
-@node GNU Free Documentation License
+@node License
 @appendix GNU Free Documentation License
 
 @include fdl.texi
