@@ -1,6 +1,6 @@
 This is qi.info, produced by makeinfo version 6.6 from qi.texi.
 
-This user guide is for Qi (version 1.0-rc59, 27 March 2019), which is a
+This user guide is for Qi (version 1.0-rc59, 28 March 2019), which is a
 simple but well-integrated package manager.
 
    Copyright © 2019 Matias Andres Fonzo, Santiago del Estero, Argentina.
@@ -22,7 +22,7 @@ File: qi.info,  Node: Top,  Next: Introduction,  Up: (dir)
 Qi user guide
 *************
 
-This user guide is for Qi (version 1.0-rc59, 27 March 2019).
+This user guide is for Qi (version 1.0-rc59, 28 March 2019).
 
 * Menu:
 
@@ -32,6 +32,7 @@ This user guide is for Qi (version 1.0-rc59, 27 March 2019).
 * Packages::                  Managing packages
 * Recipes::                   Building packages
 * Order files::               Handling build order
+* Exit status::               Exit codes
 * License::                   GNU Free Documentation License
 * Index::
 
@@ -53,18 +54,18 @@ packages using recipe names, these are files containing specific
 instructions to build every source.  Qi can manage multiple packages
 under a single directory hierarchy, this method allows to maintain a set
 of packages and multiple versions of them.  This means that Qi could be
-used as the main package manager or as complementary.
+used as the main package manager or complement the existing one.
 
    Qi offers a friendly command line interface, a global configuration
-file, a simple recipe layout to deploy software packages; it can also
-work with binary packages in parallel, speeding up installations and
-produced packages.  The used format for packages is a simplified but
-safe POSIX pax archive compressed with lzip.
+file, a simple recipe layout to deploy software packages; also works
+with binary packages in parallel, speeding up installations and packages
+in production.  The used format for packages is a simplified but safe
+POSIX pax archive compressed with lzip.
 
-   Qi is a POSIX-compliant shell script released under the terms of the
-GNU General Public License.  It has only two major dependencies for the
-magic: graft(1) and tarlz(1), the rest is expected to be found in any
-Unix-like system.
+   Qi is a modern (POSIX-compliant) shell script released under the
+terms of the GNU General Public License.  There are only two major
+dependencies for the magic: graft(1) and tarlz(1), the rest is expected
+to be found in any Unix-like system.
 
 
 File: qi.info,  Node: Invoking qi,  Next: The qirc file,  Prev: Introduction,  Up: Top
@@ -420,6 +421,10 @@ To see the upgrade process (very verbose):
 
    A second -v gives more.
 
+To force the upgrade of an existing package:
+
+     qi -u -f gcc-9.0.1-i586+1.tlz
+
 4.4.1 Package blacklist
 -----------------------
 
@@ -450,8 +455,8 @@ already exist, if it already exists, it is verified that the binary
 package is newer than the package directory in order to perform an
 update.
 
-   The names of packages for the blacklist can be configured from the
-'qirc' file.
+   Package names for the blacklist can be set from the configuration
+file.
 
    ---------- Footnotes ----------
 
@@ -557,7 +562,10 @@ variable 'version' is assigned by default.
 'release' are used to produce the name of the package in the form:
 '${pkgname}-${pkgversion}-${arch}+${release}.tlz'
 
-A typical recipe contains:
+   A special variable called 'replace' can be used to declare package
+names that will be replaced at the time of installation.
+
+A typical recipe contains the following variables:
 
    * 'program': software name.
 
@@ -593,13 +601,10 @@ not defined, qi uses default values:
    'rsync' is the network tool for sources containing the prefix for the
 RSYNC protocol, default sets to 'rsync -v -a -L -z -i --progress'.
 
-There are three important variables to produce meta information of the
-package from a recipe: 'description', 'homepage', and 'license'.
-
    The variable 'description' is used to print the package description
 when a package is installed.
 
-A description has two parts: a brief description, and a long
+   A description has two parts: a brief description, and a long
 description.  By convention, the syntax of 'description' is:
 
      description="
@@ -647,8 +652,8 @@ A recipe is any valid regular file, qi sets priorities to read a recipe,
 for example, the Current Working Directory has priority over the working
 tree (or where the recipes reside); the '${worktree}/recipes' is the
 second place where to find a recipe, we complete the possibility of
-using the directory name to invoke a recipe if it contains "recipe"
-inside as a valid file name.
+using the directory name to invoke a recipe if it contains "recipe" as a
+valid file name.
 
 To build a single package, type:
 
@@ -778,7 +783,7 @@ of 'description' (mentioned as the "brief description").
 <http://lists.gnu.org/archive/html/gnu-linux-libre/2016-05/msg00003.html>.
 
 
-File: qi.info,  Node: Order files,  Next: License,  Prev: Recipes,  Up: Top
+File: qi.info,  Node: Order files,  Next: Exit status,  Prev: Recipes,  Up: Top
 
 6 Order files
 *************
@@ -818,7 +823,7 @@ if the content is:
 
      qi -o imglibs.order | qi -b -i -
 
-   The output of 'qi -o imglibs.order' will tell to qi in which order it
+   The output of 'qi -o imglibs.order' tells to qi in which order it
 should build the recipes/packages:
 
      devel/nasm
@@ -827,7 +832,89 @@ should build the recipes/packages:
      libs/tiff
 
 
-File: qi.info,  Node: License,  Next: Index,  Prev: Order files,  Up: Top
+File: qi.info,  Node: Exit status,  Next: License,  Prev: Order files,  Up: Top
+
+7 Exit status
+*************
+
+All the conditions of exit codes are described in this chapter.
+
+'0'
+     Successful completion (no errors).
+
+'1'
+     Minor common errors:
+
+        - Help usage on illegal options or required arguments.
+
+        - Program needed by qi (prerequisite) is not available.
+
+'2'
+     Command execution error:
+
+     This code is used to return the evaluation of external commands and
+     shell arguments in case of error.
+
+'3'
+     Integrity check error for compressed files.
+
+     Compressed files means:
+
+        - Tarball files from tar(1).  Supported extensions: .tar,
+          .tar.gz, .tgz, .tar.Z, .tar.bz2, .tbz2, .tbz, .tar.xz, .txz
+
+        - Tarballs files from tarlz(1).  Supported extension: .tar.lz,
+          .tlz
+
+        - Zip files from unzip(1): Supported extensions: .zip, .ZIP
+
+        - Gzip files from gzip(1): Supported extensions: .gz, .Z
+
+        - Bzip2 files from bzip2(1): Supported extensions: .bz2
+
+        - Lzip files from lzip(1): Supported extensions: .lz
+
+        - Xz files from xz(1).  Supported extensions: .xz
+
+'4'
+     File empty, not regular, or expected.
+
+     Commonly, it is expected:
+
+        - An argument for the mode of operation.
+
+        - A readable file or directory.
+
+        - A binary package (.tlz).
+
+        - A valid recipe.
+
+        - An order file (.order).
+
+        - A protocol supported by the network downloader tool.
+
+        - A checksum file (.sha256).
+
+'5'
+     Empty or not defined variable:
+
+     This code is used to report empty or undefined variables; usually,
+     variables coming from a recipe, or assigned arrays that are tested.
+
+'6'
+     Package already installed:
+
+     The package directory for an incoming .tlz package that already
+     exists.
+
+'10'
+     Network manager error:
+
+     This code is used if the network downloader tool fails for some
+     reason.
+
+
+File: qi.info,  Node: License,  Next: Index,  Prev: Exit status,  Up: Top
 
 Appendix A GNU Free Documentation License
 *****************************************
@@ -1319,11 +1406,12 @@ Index
 
 * configuration file:                    The qirc file.       (line   6)
 * environment variables:                 Recipes.             (line 223)
+* exit codes:                            Exit status.         (line   6)
 * handling build order:                  Order files.         (line   6)
 * introduction:                          Introduction.        (line   6)
 * invocation:                            Invoking qi.         (line   6)
 * managing packages:                     Packages.            (line   6)
-* package blacklist:                     Packages.            (line 172)
+* package blacklist:                     Packages.            (line 176)
 * package build:                         Recipes.             (line 185)
 * package conflicts:                     Packages.            (line  30)
 * package de-installation:               Packages.            (line 104)
@@ -1338,16 +1426,17 @@ Index
 
 Tag Table:
 Node: Top807
-Node: Introduction1511
-Node: Invoking qi2651
-Node: The qirc file6013
-Node: Packages7091
-Ref: Packages-Footnote-114064
-Node: Recipes14177
-Ref: Recipes-Footnote-126134
-Node: Order files26279
-Node: License27608
-Node: Index52724
+Node: Introduction1552
+Node: Invoking qi2714
+Node: The qirc file6076
+Node: Packages7154
+Ref: Packages-Footnote-114201
+Node: Recipes14314
+Ref: Recipes-Footnote-126282
+Node: Order files26427
+Node: Exit status27756
+Node: License29710
+Node: Index54826
 
 End Tag Table
 

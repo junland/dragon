@@ -8,7 +8,7 @@
 @comment %**end of header
 
 @set VERSION 1.0-rc59
-@set UPDATED 27 March 2019
+@set UPDATED 28 March 2019
 
 @copying
 This user guide is for Qi (version @value{VERSION},
@@ -60,6 +60,7 @@ This user guide is for Qi (version @value{VERSION},
 * Packages::                  Managing packages
 * Recipes::                   Building packages
 * Order files::               Handling build order
+* Exit status::               Exit codes
 * License::                   GNU Free Documentation License
 * Index::
 @end menu
@@ -80,17 +81,17 @@ packages using recipe names, these are files containing specific
 instructions to build every source.  Qi can manage multiple packages
 under a single directory hierarchy, this method allows to maintain a set
 of packages and multiple versions of them.  This means that Qi could be
-used as the main package manager or as complementary.
+used as the main package manager or complement the existing one.
 
-   Qi offers a friendly command line interface, a global configuration
-file, a simple recipe layout to deploy software packages; it can also
-work with binary packages in parallel, speeding up installations and
-produced packages.  The used format for packages is a simplified but
-safe POSIX pax archive compressed with lzip.
+Qi offers a friendly command line interface, a global configuration file,
+a simple recipe layout to deploy software packages; also works with binary
+packages in parallel, speeding up installations and packages in
+production.  The used format for packages is a simplified but safe POSIX
+pax archive compressed with lzip.
 
-Qi is a POSIX-compliant shell script released under the terms of the
-GNU General Public License.  It has only two major dependencies for the
-magic: graft(1) and tarlz(1), the rest is expected to be found in any
+Qi is a modern (POSIX-compliant) shell script released under the terms of
+the GNU General Public License.  There are only two major dependencies for
+the magic: graft(1) and tarlz(1), the rest is expected to be found in any
 Unix-like system.
 
 @node Invoking qi
@@ -529,6 +530,13 @@ qi -u -v gcc-9.0.1-i586+1.tlz
 
 A second -v gives more.
 
+@noindent
+To force the upgrade of an existing package:
+
+@example
+qi -u -f gcc-9.0.1-i586+1.tlz
+@end example
+
 @subsection Package blacklist
 @cindex package blacklist
 
@@ -560,8 +568,7 @@ for blacklist is to install a declared package if it does not already
 exist, if it already exists, it is verified that the binary package is
 newer than the package directory in order to perform an update.
 
-The names of packages for the blacklist can be configured from the
-@file{qirc} file.
+Package names for the blacklist can be set from the configuration file.
 
 
 @node Recipes
@@ -666,8 +673,11 @@ special variable @samp{version} is assigned by default.
 and @samp{release} are used to produce the name of the package in the form:
 @samp{$@{pkgname@}-$@{pkgversion@}-$@{arch@}+$@{release@}.tlz}
 
+A special variable called @samp{replace} can be used to declare package
+names that will be replaced at the time of installation.
+
 @noindent
-A typical recipe contains:
+A typical recipe contains the following variables:
 
 @itemize @bullet
 @item @samp{program}: software name.
@@ -707,15 +717,9 @@ are not defined, qi uses default values:
 the RSYNC protocol, default sets to
 @samp{rsync -v -a -L -z -i --progress}.
 
-@noindent
-There are three important variables to produce meta information of the
-package from a recipe: @samp{description}, @samp{homepage}, and
-@samp{license}.
-
 The variable @samp{description} is used to print the package description
 when a package is installed.
 
-@noindent
 A description has two parts: a brief description, and a long description.
 By convention, the syntax of @samp{description} is:
 
@@ -774,8 +778,8 @@ A recipe is any valid regular file, qi sets priorities to read a recipe,
 for example, the Current Working Directory has priority over the working
 tree (or where the recipes reside); the @samp{$@{worktree@}/recipes} is
 the second place where to find a recipe, we complete the possibility of
-using the directory name to invoke a recipe if it contains "recipe" inside
-as a valid file name.
+using the directory name to invoke a recipe if it contains "recipe" as a
+valid file name.
 
 @noindent
 To build a single package, type:
@@ -967,7 +971,7 @@ To proceed with each recipe, we can type:
 qi -o imglibs.order | qi -b -i -
 @end example
 
-The output of @samp{qi -o imglibs.order} will tell to qi in which order it
+The output of @samp{qi -o imglibs.order} tells to qi in which order it
 should build the recipes/packages:
 
 @example
@@ -976,6 +980,100 @@ libs/libjpeg-turbo
 x-libs/jasper
 libs/tiff
 @end example
+
+
+@node Exit status
+@chapter Exit status
+@cindex exit codes
+
+All the conditions of exit codes are described in this chapter.
+
+@table @samp
+@item 0
+Successful completion (no errors).
+
+@item 1
+Minor common errors:
+
+@itemize @minus
+@item Help usage on illegal options or required arguments.
+
+@item Program needed by qi (prerequisite) is not available.
+@end itemize
+
+@item 2
+Command execution error:
+
+This code is used to return the evaluation of external commands and shell
+arguments in case of error.
+
+@item 3
+Integrity check error for compressed files.
+
+Compressed files means:
+
+@itemize @minus
+@item Tarball files from tar(1).
+Supported extensions: .tar, .tar.gz, .tgz, .tar.Z, .tar.bz2, .tbz2, .tbz,
+.tar.xz, .txz
+
+@item Tarballs files from tarlz(1).
+Supported extension: .tar.lz, .tlz
+
+@item Zip files from unzip(1):
+Supported extensions: .zip, .ZIP
+
+@item Gzip files from gzip(1):
+Supported extensions: .gz, .Z
+
+@item Bzip2 files from bzip2(1):
+Supported extensions: .bz2
+
+@item Lzip files from lzip(1):
+Supported extensions: .lz
+
+@item Xz files from xz(1).
+Supported extensions: .xz
+@end itemize
+
+@item 4
+File empty, not regular, or expected.
+
+Commonly, it is expected:
+
+@itemize @minus
+@item An argument for the mode of operation.
+
+@item A readable file or directory.
+
+@item A binary package (.tlz).
+
+@item A valid recipe.
+
+@item An order file (.order).
+
+@item A protocol supported by the network downloader tool.
+
+@item A checksum file (.sha256).
+@end itemize
+
+@item 5
+Empty or not defined variable:
+
+This code is used to report empty or undefined variables; usually,
+variables coming from a recipe, or assigned arrays that are tested.
+
+@item 6
+Package already installed:
+
+The package directory for an incoming .tlz package that already exists.
+
+@item 10
+Network manager error:
+
+This code is used if the network downloader tool fails for some reason.
+@end table
+
 
 @node License
 @appendix GNU Free Documentation License

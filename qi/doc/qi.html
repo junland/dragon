@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <!-- This user guide is for Qi (version 1.0-rc59,
-27 March 2019), which is a simple but well-integrated package manager.
+28 March 2019), which is a simple but well-integrated package manager.
 
 Copyright (C) 2019 Matias Andres Fonzo, Santiago del Estero,
 Argentina.
@@ -83,6 +83,7 @@ ul.no-bullet {list-style: none}
     <li><a id="toc-The-meta-file" href="#The-meta-file">5.5 The meta file</a></li>
   </ul></li>
   <li><a id="toc-Order-files-1" href="#Order-files">6 Order files</a></li>
+  <li><a id="toc-Exit-status-1" href="#Exit-status">7 Exit status</a></li>
   <li><a id="toc-GNU-Free-Documentation-License" href="#License">Appendix A GNU Free Documentation License</a></li>
   <li><a id="toc-Index-1" href="#Index">Index</a></li>
 </ul>
@@ -95,7 +96,7 @@ Next: <a href="#Introduction" accesskey="n" rel="next">Introduction</a>, Up: <a 
 </div>
 <span id="SEC_Top"></span>
 <p>This user guide is for Qi (version 1.0-rc59,
-27 March 2019).
+28 March 2019).
 </p>
 <table class="menu" border="0" cellspacing="0">
 <tr><td align="left" valign="top">&bull; <a href="#Introduction" accesskey="1">Introduction</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">Description and features of qi
@@ -110,9 +111,11 @@ Next: <a href="#Introduction" accesskey="n" rel="next">Introduction</a>, Up: <a 
 </td></tr>
 <tr><td align="left" valign="top">&bull; <a href="#Order-files" accesskey="6">Order files</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">Handling build order
 </td></tr>
-<tr><td align="left" valign="top">&bull; <a href="#License" accesskey="7">License</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">GNU Free Documentation License
+<tr><td align="left" valign="top">&bull; <a href="#Exit-status" accesskey="7">Exit status</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">Exit codes
 </td></tr>
-<tr><td align="left" valign="top">&bull; <a href="#Index" accesskey="8">Index</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">
+<tr><td align="left" valign="top">&bull; <a href="#License" accesskey="8">License</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">GNU Free Documentation License
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="#Index" accesskey="9">Index</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">
 </td></tr>
 </table>
 
@@ -136,17 +139,17 @@ packages using recipe names, these are files containing specific
 instructions to build every source.  Qi can manage multiple packages
 under a single directory hierarchy, this method allows to maintain a set
 of packages and multiple versions of them.  This means that Qi could be
-used as the main package manager or as complementary.
+used as the main package manager or complement the existing one.
 </p>
-<p>Qi offers a friendly command line interface, a global configuration
-file, a simple recipe layout to deploy software packages; it can also
-work with binary packages in parallel, speeding up installations and
-produced packages.  The used format for packages is a simplified but
-safe POSIX pax archive compressed with lzip.
+<p>Qi offers a friendly command line interface, a global configuration file,
+a simple recipe layout to deploy software packages; also works with binary
+packages in parallel, speeding up installations and packages in
+production.  The used format for packages is a simplified but safe POSIX
+pax archive compressed with lzip.
 </p>
-<p>Qi is a POSIX-compliant shell script released under the terms of the
-GNU General Public License.  It has only two major dependencies for the
-magic: graft(1) and tarlz(1), the rest is expected to be found in any
+<p>Qi is a modern (POSIX-compliant) shell script released under the terms of
+the GNU General Public License.  There are only two major dependencies for
+the magic: graft(1) and tarlz(1), the rest is expected to be found in any
 Unix-like system.
 </p>
 <hr>
@@ -592,6 +595,12 @@ upgrade process, just pass:
 
 <p>A second -v gives more.
 </p>
+<p>To force the upgrade of an existing package:
+</p>
+<div class="example">
+<pre class="example">qi -u -f gcc-9.0.1-i586+1.tlz
+</pre></div>
+
 <span id="Package-blacklist"></span><h4 class="subsection">4.4.1 Package blacklist</h4>
 <span id="index-package-blacklist"></span>
 
@@ -621,8 +630,7 @@ for blacklist is to install a declared package if it does not already
 exist, if it already exists, it is verified that the binary package is
 newer than the package directory in order to perform an update.
 </p>
-<p>The names of packages for the blacklist can be configured from the
-<samp>qirc</samp> file.
+<p>Package names for the blacklist can be set from the configuration file.
 </p>
 
 <hr>
@@ -731,7 +739,10 @@ special variable &lsquo;<samp>version</samp>&rsquo; is assigned by default.
 and &lsquo;<samp>release</samp>&rsquo; are used to produce the name of the package in the form:
 &lsquo;<samp>${pkgname}-${pkgversion}-${arch}+${release}.tlz</samp>&rsquo;
 </p>
-<p>A typical recipe contains:
+<p>A special variable called &lsquo;<samp>replace</samp>&rsquo; can be used to declare package
+names that will be replaced at the time of installation.
+</p>
+<p>A typical recipe contains the following variables:
 </p>
 <ul>
 <li> &lsquo;<samp>program</samp>&rsquo;: software name.
@@ -769,10 +780,6 @@ are not defined, qi uses default values:
 <p>&lsquo;<samp>rsync</samp>&rsquo; is the network tool for sources containing the prefix for
 the RSYNC protocol, default sets to
 &lsquo;<samp>rsync -v -a -L -z -i --progress</samp>&rsquo;.
-</p>
-<p>There are three important variables to produce meta information of the
-package from a recipe: &lsquo;<samp>description</samp>&rsquo;, &lsquo;<samp>homepage</samp>&rsquo;, and
-&lsquo;<samp>license</samp>&rsquo;.
 </p>
 <p>The variable &lsquo;<samp>description</samp>&rsquo; is used to print the package description
 when a package is installed.
@@ -832,8 +839,8 @@ licensing.  Comma would have lower precedence, plus added special terms.
 for example, the Current Working Directory has priority over the working
 tree (or where the recipes reside); the &lsquo;<samp>${worktree}/recipes</samp>&rsquo; is
 the second place where to find a recipe, we complete the possibility of
-using the directory name to invoke a recipe if it contains &quot;recipe&quot; inside
-as a valid file name.
+using the directory name to invoke a recipe if it contains &quot;recipe&quot; as a
+valid file name.
 </p>
 <p>To build a single package, type:
 </p>
@@ -974,7 +981,7 @@ line of &lsquo;<samp>description</samp>&rsquo; (mentioned as the &quot;brief des
 <hr>
 <span id="Order-files"></span><div class="header">
 <p>
-Next: <a href="#License" accesskey="n" rel="next">License</a>, Previous: <a href="#Recipes" accesskey="p" rel="prev">Recipes</a>, Up: <a href="#Top" accesskey="u" rel="up">Top</a> &nbsp; [<a href="#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="#Index" title="Index" rel="index">Index</a>]</p>
+Next: <a href="#Exit-status" accesskey="n" rel="next">Exit status</a>, Previous: <a href="#Recipes" accesskey="p" rel="prev">Recipes</a>, Up: <a href="#Top" accesskey="u" rel="up">Top</a> &nbsp; [<a href="#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="#Index" title="Index" rel="index">Index</a>]</p>
 </div>
 <span id="Order-files-1"></span><h2 class="chapter">6 Order files</h2>
 <span id="index-handling-build-order"></span>
@@ -1022,7 +1029,7 @@ libs/tiff: libs/libjpeg-turbo
 <pre class="example">qi -o imglibs.order | qi -b -i -
 </pre></div>
 
-<p>The output of &lsquo;<samp>qi -o imglibs.order</samp>&rsquo; will tell to qi in which order it
+<p>The output of &lsquo;<samp>qi -o imglibs.order</samp>&rsquo; tells to qi in which order it
 should build the recipes/packages:
 </p>
 <div class="example">
@@ -1032,10 +1039,116 @@ x-libs/jasper
 libs/tiff
 </pre></div>
 
+
+<hr>
+<span id="Exit-status"></span><div class="header">
+<p>
+Next: <a href="#License" accesskey="n" rel="next">License</a>, Previous: <a href="#Order-files" accesskey="p" rel="prev">Order files</a>, Up: <a href="#Top" accesskey="u" rel="up">Top</a> &nbsp; [<a href="#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="#Index" title="Index" rel="index">Index</a>]</p>
+</div>
+<span id="Exit-status-1"></span><h2 class="chapter">7 Exit status</h2>
+<span id="index-exit-codes"></span>
+
+<p>All the conditions of exit codes are described in this chapter.
+</p>
+<dl compact="compact">
+<dt>&lsquo;<samp>0</samp>&rsquo;</dt>
+<dd><p>Successful completion (no errors).
+</p>
+</dd>
+<dt>&lsquo;<samp>1</samp>&rsquo;</dt>
+<dd><p>Minor common errors:
+</p>
+<ul class="no-bullet">
+<li>- Help usage on illegal options or required arguments.
+
+</li><li>- Program needed by qi (prerequisite) is not available.
+</li></ul>
+
+</dd>
+<dt>&lsquo;<samp>2</samp>&rsquo;</dt>
+<dd><p>Command execution error:
+</p>
+<p>This code is used to return the evaluation of external commands and shell
+arguments in case of error.
+</p>
+</dd>
+<dt>&lsquo;<samp>3</samp>&rsquo;</dt>
+<dd><p>Integrity check error for compressed files.
+</p>
+<p>Compressed files means:
+</p>
+<ul class="no-bullet">
+<li>- Tarball files from tar(1).
+Supported extensions: .tar, .tar.gz, .tgz, .tar.Z, .tar.bz2, .tbz2, .tbz,
+.tar.xz, .txz
+
+</li><li>- Tarballs files from tarlz(1).
+Supported extension: .tar.lz, .tlz
+
+</li><li>- Zip files from unzip(1):
+Supported extensions: .zip, .ZIP
+
+</li><li>- Gzip files from gzip(1):
+Supported extensions: .gz, .Z
+
+</li><li>- Bzip2 files from bzip2(1):
+Supported extensions: .bz2
+
+</li><li>- Lzip files from lzip(1):
+Supported extensions: .lz
+
+</li><li>- Xz files from xz(1).
+Supported extensions: .xz
+</li></ul>
+
+</dd>
+<dt>&lsquo;<samp>4</samp>&rsquo;</dt>
+<dd><p>File empty, not regular, or expected.
+</p>
+<p>Commonly, it is expected:
+</p>
+<ul class="no-bullet">
+<li>- An argument for the mode of operation.
+
+</li><li>- A readable file or directory.
+
+</li><li>- A binary package (.tlz).
+
+</li><li>- A valid recipe.
+
+</li><li>- An order file (.order).
+
+</li><li>- A protocol supported by the network downloader tool.
+
+</li><li>- A checksum file (.sha256).
+</li></ul>
+
+</dd>
+<dt>&lsquo;<samp>5</samp>&rsquo;</dt>
+<dd><p>Empty or not defined variable:
+</p>
+<p>This code is used to report empty or undefined variables; usually,
+variables coming from a recipe, or assigned arrays that are tested.
+</p>
+</dd>
+<dt>&lsquo;<samp>6</samp>&rsquo;</dt>
+<dd><p>Package already installed:
+</p>
+<p>The package directory for an incoming .tlz package that already exists.
+</p>
+</dd>
+<dt>&lsquo;<samp>10</samp>&rsquo;</dt>
+<dd><p>Network manager error:
+</p>
+<p>This code is used if the network downloader tool fails for some reason.
+</p></dd>
+</dl>
+
+
 <hr>
 <span id="License"></span><div class="header">
 <p>
-Next: <a href="#Index" accesskey="n" rel="next">Index</a>, Previous: <a href="#Order-files" accesskey="p" rel="prev">Order files</a>, Up: <a href="#Top" accesskey="u" rel="up">Top</a> &nbsp; [<a href="#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="#Index" title="Index" rel="index">Index</a>]</p>
+Next: <a href="#Index" accesskey="n" rel="next">Index</a>, Previous: <a href="#Exit-status" accesskey="p" rel="prev">Exit status</a>, Up: <a href="#Top" accesskey="u" rel="up">Top</a> &nbsp; [<a href="#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="#Index" title="Index" rel="index">Index</a>]</p>
 </div>
 <span id="GNU-Free-Documentation-License"></span><h2 class="appendix">Appendix A GNU Free Documentation License</h2>
 
@@ -1544,6 +1657,7 @@ Previous: <a href="#License" accesskey="p" rel="prev">License</a>, Up: <a href="
 <tr><td colspan="4"> <hr></td></tr>
 <tr><th id="Index_cp_letter-E">E</th><td></td><td></td></tr>
 <tr><td></td><td valign="top"><a href="#index-environment-variables">environment variables</a>:</td><td>&nbsp;</td><td valign="top"><a href="#Recipes">Recipes</a></td></tr>
+<tr><td></td><td valign="top"><a href="#index-exit-codes">exit codes</a>:</td><td>&nbsp;</td><td valign="top"><a href="#Exit-status">Exit status</a></td></tr>
 <tr><td colspan="4"> <hr></td></tr>
 <tr><th id="Index_cp_letter-H">H</th><td></td><td></td></tr>
 <tr><td></td><td valign="top"><a href="#index-handling-build-order">handling build order</a>:</td><td>&nbsp;</td><td valign="top"><a href="#Order-files">Order files</a></td></tr>
