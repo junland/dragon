@@ -82,6 +82,7 @@ ul.no-bullet {list-style: none}
     <li><a id="toc-Variables-from-the-environment" href="#Variables-from-the-environment">5.4 Variables from the environment</a></li>
     <li><a id="toc-The-meta-file" href="#The-meta-file">5.5 The meta file</a></li>
   </ul></li>
+  <li><a id="toc-Order-files-1" href="#Order-files">6 Order files</a></li>
   <li><a id="toc-GNU-Free-Documentation-License" href="#License">Appendix A GNU Free Documentation License</a></li>
   <li><a id="toc-Index-1" href="#Index">Index</a></li>
 </ul>
@@ -107,9 +108,11 @@ Next: <a href="#Introduction" accesskey="n" rel="next">Introduction</a>, Up: <a 
 </td></tr>
 <tr><td align="left" valign="top">&bull; <a href="#Recipes" accesskey="5">Recipes</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">Building packages
 </td></tr>
-<tr><td align="left" valign="top">&bull; <a href="#License" accesskey="6">License</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">GNU Free Documentation License
+<tr><td align="left" valign="top">&bull; <a href="#Order-files" accesskey="6">Order files</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">Handling build order
 </td></tr>
-<tr><td align="left" valign="top">&bull; <a href="#Index" accesskey="7">Index</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">
+<tr><td align="left" valign="top">&bull; <a href="#License" accesskey="7">License</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">GNU Free Documentation License
+</td></tr>
+<tr><td align="left" valign="top">&bull; <a href="#Index" accesskey="8">Index</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">
 </td></tr>
 </table>
 
@@ -513,7 +516,7 @@ installation, e.g:
 <p>Delete mode will match the package name using &lsquo;<samp>${packagedir}</samp>&rsquo; as
 prefix.  For example, if the value of &lsquo;<samp>${packagedir}</samp>&rsquo; is set to
 /usr/local/pkgs, this will be equal to:
-</p><br>
+</p>
 <div class="example">
 <pre class="example">qi -d /usr/local/pkgs/xz-5.2.4-i586+1
 </pre></div>
@@ -535,7 +538,7 @@ changed if the -k option is passed:
 </pre></div>
 
 <p>This means that the links to the package can be reactivated, later:
-</p><br>
+</p>
 <div class="example">
 <pre class="example">cd /usr/local/pkgs &amp;&amp; graft -i lzip-1.21-i586+1
 </pre></div>
@@ -625,7 +628,7 @@ newer than the package directory in order to perform an update.
 <hr>
 <span id="Recipes"></span><div class="header">
 <p>
-Next: <a href="#License" accesskey="n" rel="next">License</a>, Previous: <a href="#Packages" accesskey="p" rel="prev">Packages</a>, Up: <a href="#Top" accesskey="u" rel="up">Top</a> &nbsp; [<a href="#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="#Index" title="Index" rel="index">Index</a>]</p>
+Next: <a href="#Order-files" accesskey="n" rel="next">Order files</a>, Previous: <a href="#Packages" accesskey="p" rel="prev">Packages</a>, Up: <a href="#Top" accesskey="u" rel="up">Top</a> &nbsp; [<a href="#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="#Index" title="Index" rel="index">Index</a>]</p>
 </div>
 <span id="Recipes-1"></span><h2 class="chapter">5 Recipes</h2>
 <span id="index-recipes"></span>
@@ -803,9 +806,9 @@ which are expected to exist on every operating system.
 
 <p>Please consider a length limit of 78 characters as maximum, because the same
 one would be used on the meta file creation.  See
-<a href="#Recipes">The meta file</a>.
+<a href="#Recipes">The meta file</a> section.
 </p>
-<p>The &lsquo;<samp>homepage</samp>&rsquo; variable is used to declare the main site or home:
+<p>The &lsquo;<samp>homepage</samp>&rsquo; variable is used to declare the main site or home page:
 </p>
 <div class="example">
 <pre class="example">homepage=http://www.gnu.org/software/gcc
@@ -874,7 +877,7 @@ created redirecting both, standard error and standard output to tee(1).
 </p>
 <p>The variable <code>TMPDIR</code> sets the temporary directory for sources, by
 default, this is used to prepend &lsquo;<samp>${srcdir}</samp>&rsquo; and
-&lsquo;<samp>${destdir}</samp>&rsquo;.  By convention, its value is &lsquo;<samp>/tmp</samp>&rsquo;.
+&lsquo;<samp>${destdir}</samp>&rsquo;.  By convention its value is &lsquo;<samp>/tmp</samp>&rsquo;.
 </p>
 <p>The variables <code>QICFLAGS</code>, <code>QICXXFLAGS</code>, and <code>QILDFLAGS</code> have
 no effect by default.  The environment variables such as <code>CFLAGS</code>,
@@ -955,25 +958,84 @@ fetch=&quot;ftp://ftp.gnu.org/gnu/bash/bash-5.0.tar.gz&quot;
 replace=&quot;&quot;
 </pre></div>
 
-<p>The package description is extracted from the declared variable
-&lsquo;<samp>description</samp>&rsquo;, each line will be interpreted literally and
-pre-formatted to fit in (exactly) 80 columns, plus the character
-&lsquo;<samp># </samp>&rsquo; will be prefixed to each line in the description.
+<p>A package description is extracted from the variable &lsquo;<samp>description</samp>&rsquo;,
+each line will be interpreted literally and pre-formatted to fit in
+(exactly) 80 columns, plus the character &lsquo;<samp># </samp>&rsquo; will be prefixed to
+each line in the description.
 </p>
 <p>In addition to the special variables, there are implicit variables such as
 &lsquo;<samp>blurb</samp>&rsquo;:
 </p>
 <p>The &lsquo;<samp>blurb</samp>&rsquo; variable is related to the special variable
 &lsquo;<samp>description</samp>&rsquo;.  Its value is composed using the first (substantial)
-line of &lsquo;<samp>description</samp>&rsquo; (know as the &quot;brief description&quot;).
+line of &lsquo;<samp>description</samp>&rsquo; (mentioned as the &quot;brief description&quot;).
 </p>
 
+<hr>
+<span id="Order-files"></span><div class="header">
+<p>
+Next: <a href="#License" accesskey="n" rel="next">License</a>, Previous: <a href="#Recipes" accesskey="p" rel="prev">Recipes</a>, Up: <a href="#Top" accesskey="u" rel="up">Top</a> &nbsp; [<a href="#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="#Index" title="Index" rel="index">Index</a>]</p>
+</div>
+<span id="Order-files-1"></span><h2 class="chapter">6 Order files</h2>
+<span id="index-handling-build-order"></span>
 
+<p>The order mode has the purpose to resolve the build order through
+.order files.  A .order file contains a list of recipe names, by default
+does not perform any action other than to print a resolved list in descending
+order.  For example, if <strong>a</strong> depends on <strong>b</strong> and <strong>c</strong>,
+and <strong>c</strong> depends on <strong>b</strong> as well, the file might look like:
+</p>
+<div class="example">
+<pre class="example">a: c b
+b:
+c: b
+</pre></div>
+
+<p>Each letter represents a recipe name, complete dependencies for
+the first recipe name are listed in descending order, which is
+printed from right to left, and removed from left to right:
+</p>
+<p><small>OUTPUT</small>
+</p>
+<div class="example">
+<pre class="example">b
+c
+a
+</pre></div>
+
+<p>Declaration of blank lines, colons, parentheses, and end of line are
+ignored.  Comments are allowed for lines that begin with &lsquo;<samp>#</samp>&rsquo;.
+</p>
+<p>An order file could be used to build a serie of packages, for example, if
+the content is:
+</p>
+<div class="example">
+<pre class="example"># Image handling libraries
+libs/libjpeg-turbo: devel/nasm
+x-libs/jasper: libs/libjpeg-turbo
+libs/tiff: libs/libjpeg-turbo
+</pre></div>
+
+<p>To proceed with each recipe, we can type:
+</p>
+<div class="example">
+<pre class="example">qi -o imglibs.order | qi -b -i -
+</pre></div>
+
+<p>The output of &lsquo;<samp>qi -o imglibs.order</samp>&rsquo; will tell to qi in which order it
+should build the recipes/packages:
+</p>
+<div class="example">
+<pre class="example">devel/nasm
+libs/libjpeg-turbo
+x-libs/jasper
+libs/tiff
+</pre></div>
 
 <hr>
 <span id="License"></span><div class="header">
 <p>
-Next: <a href="#Index" accesskey="n" rel="next">Index</a>, Previous: <a href="#Recipes" accesskey="p" rel="prev">Recipes</a>, Up: <a href="#Top" accesskey="u" rel="up">Top</a> &nbsp; [<a href="#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="#Index" title="Index" rel="index">Index</a>]</p>
+Next: <a href="#Index" accesskey="n" rel="next">Index</a>, Previous: <a href="#Order-files" accesskey="p" rel="prev">Order files</a>, Up: <a href="#Top" accesskey="u" rel="up">Top</a> &nbsp; [<a href="#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="#Index" title="Index" rel="index">Index</a>]</p>
 </div>
 <span id="GNU-Free-Documentation-License"></span><h2 class="appendix">Appendix A GNU Free Documentation License</h2>
 
@@ -1457,6 +1519,8 @@ Previous: <a href="#License" accesskey="p" rel="prev">License</a>, Up: <a href="
  &nbsp; 
 <a class="summary-letter" href="#Index_cp_letter-E"><b>E</b></a>
  &nbsp; 
+<a class="summary-letter" href="#Index_cp_letter-H"><b>H</b></a>
+ &nbsp; 
 <a class="summary-letter" href="#Index_cp_letter-I"><b>I</b></a>
  &nbsp; 
 <a class="summary-letter" href="#Index_cp_letter-M"><b>M</b></a>
@@ -1480,6 +1544,9 @@ Previous: <a href="#License" accesskey="p" rel="prev">License</a>, Up: <a href="
 <tr><td colspan="4"> <hr></td></tr>
 <tr><th id="Index_cp_letter-E">E</th><td></td><td></td></tr>
 <tr><td></td><td valign="top"><a href="#index-environment-variables">environment variables</a>:</td><td>&nbsp;</td><td valign="top"><a href="#Recipes">Recipes</a></td></tr>
+<tr><td colspan="4"> <hr></td></tr>
+<tr><th id="Index_cp_letter-H">H</th><td></td><td></td></tr>
+<tr><td></td><td valign="top"><a href="#index-handling-build-order">handling build order</a>:</td><td>&nbsp;</td><td valign="top"><a href="#Order-files">Order files</a></td></tr>
 <tr><td colspan="4"> <hr></td></tr>
 <tr><th id="Index_cp_letter-I">I</th><td></td><td></td></tr>
 <tr><td></td><td valign="top"><a href="#index-introduction">introduction</a>:</td><td>&nbsp;</td><td valign="top"><a href="#Introduction">Introduction</a></td></tr>
@@ -1512,6 +1579,8 @@ Previous: <a href="#License" accesskey="p" rel="prev">License</a>, Up: <a href="
 <table><tr><th valign="top">Jump to: &nbsp; </th><td><a class="summary-letter" href="#Index_cp_letter-C"><b>C</b></a>
  &nbsp; 
 <a class="summary-letter" href="#Index_cp_letter-E"><b>E</b></a>
+ &nbsp; 
+<a class="summary-letter" href="#Index_cp_letter-H"><b>H</b></a>
  &nbsp; 
 <a class="summary-letter" href="#Index_cp_letter-I"><b>I</b></a>
  &nbsp; 

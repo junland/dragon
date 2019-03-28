@@ -31,6 +31,7 @@ This user guide is for Qi (version 1.0-rc59, 27 March 2019).
 * The qirc file::             Configuration file
 * Packages::                  Managing packages
 * Recipes::                   Building packages
+* Order files::               Handling build order
 * License::                   GNU Free Documentation License
 * Index::
 
@@ -458,7 +459,7 @@ update.
 <http://peters.gormand.com.au/Home/tools/graft/graft.html>.
 
 
-File: qi.info,  Node: Recipes,  Next: License,  Prev: Packages,  Up: Top
+File: qi.info,  Node: Recipes,  Next: Order files,  Prev: Packages,  Up: Top
 
 5 Recipes
 *********
@@ -623,9 +624,10 @@ An example looks like:
 
    Please consider a length limit of 78 characters as maximum, because
 the same one would be used on the meta file creation.  See *note The
-meta file: Recipes.
+meta file: Recipes. section.
 
-   The 'homepage' variable is used to declare the main site or home:
+   The 'homepage' variable is used to declare the main site or home
+page:
 
      homepage=http://www.gnu.org/software/gcc
 
@@ -683,7 +685,7 @@ Qi has environment variables which can be used at build time:
 
    The variable 'TMPDIR' sets the temporary directory for sources, by
 default, this is used to prepend '${srcdir}' and '${destdir}'.  By
-convention, its value is '/tmp'.
+convention its value is '/tmp'.
 
    The variables 'QICFLAGS', 'QICXXFLAGS', and 'QILDFLAGS' have no
 effect by default.  The environment variables such as 'CFLAGS',
@@ -758,17 +760,17 @@ content.
      fetch="ftp://ftp.gnu.org/gnu/bash/bash-5.0.tar.gz"
      replace=""
 
-   The package description is extracted from the declared variable
-'description', each line will be interpreted literally and pre-formatted
-to fit in (exactly) 80 columns, plus the character '# ' will be prefixed
-to each line in the description.
+   A package description is extracted from the variable 'description',
+each line will be interpreted literally and pre-formatted to fit in
+(exactly) 80 columns, plus the character '# ' will be prefixed to each
+line in the description.
 
    In addition to the special variables, there are implicit variables
 such as 'blurb':
 
    The 'blurb' variable is related to the special variable
 'description'.  Its value is composed using the first (substantial) line
-of 'description' (know as the "brief description").
+of 'description' (mentioned as the "brief description").
 
    ---------- Footnotes ----------
 
@@ -776,7 +778,56 @@ of 'description' (know as the "brief description").
 <http://lists.gnu.org/archive/html/gnu-linux-libre/2016-05/msg00003.html>.
 
 
-File: qi.info,  Node: License,  Next: Index,  Prev: Recipes,  Up: Top
+File: qi.info,  Node: Order files,  Next: License,  Prev: Recipes,  Up: Top
+
+6 Order files
+*************
+
+The order mode has the purpose to resolve the build order through .order
+files.  A .order file contains a list of recipe names, by default does
+not perform any action other than to print a resolved list in descending
+order.  For example, if *a* depends on *b* and *c*, and *c* depends on
+*b* as well, the file might look like:
+
+     a: c b
+     b:
+     c: b
+
+   Each letter represents a recipe name, complete dependencies for the
+first recipe name are listed in descending order, which is printed from
+right to left, and removed from left to right:
+
+   OUTPUT
+
+     b
+     c
+     a
+
+   Declaration of blank lines, colons, parentheses, and end of line are
+ignored.  Comments are allowed for lines that begin with '#'.
+
+An order file could be used to build a serie of packages, for example,
+if the content is:
+
+     # Image handling libraries
+     libs/libjpeg-turbo: devel/nasm
+     x-libs/jasper: libs/libjpeg-turbo
+     libs/tiff: libs/libjpeg-turbo
+
+   To proceed with each recipe, we can type:
+
+     qi -o imglibs.order | qi -b -i -
+
+   The output of 'qi -o imglibs.order' will tell to qi in which order it
+should build the recipes/packages:
+
+     devel/nasm
+     libs/libjpeg-turbo
+     x-libs/jasper
+     libs/tiff
+
+
+File: qi.info,  Node: License,  Next: Index,  Prev: Order files,  Up: Top
 
 Appendix A GNU Free Documentation License
 *****************************************
@@ -1267,34 +1318,36 @@ Index
 * Menu:
 
 * configuration file:                    The qirc file.       (line   6)
-* environment variables:                 Recipes.             (line 222)
+* environment variables:                 Recipes.             (line 223)
+* handling build order:                  Order files.         (line   6)
 * introduction:                          Introduction.        (line   6)
 * invocation:                            Invoking qi.         (line   6)
 * managing packages:                     Packages.            (line   6)
 * package blacklist:                     Packages.            (line 172)
-* package build:                         Recipes.             (line 184)
+* package build:                         Recipes.             (line 185)
 * package conflicts:                     Packages.            (line  30)
 * package de-installation:               Packages.            (line 104)
 * package installation:                  Packages.            (line  55)
 * package upgrade:                       Packages.            (line 143)
 * recipes:                               Recipes.             (line   6)
 * special variables:                     Recipes.             (line  58)
-* the meta file:                         Recipes.             (line 268)
+* the meta file:                         Recipes.             (line 269)
 * variables:                             Recipes.             (line  29)
 
 
 
 Tag Table:
 Node: Top807
-Node: Introduction1460
-Node: Invoking qi2600
-Node: The qirc file5962
-Node: Packages7040
-Ref: Packages-Footnote-114013
-Node: Recipes14126
-Ref: Recipes-Footnote-126072
-Node: License26217
-Node: Index51329
+Node: Introduction1511
+Node: Invoking qi2651
+Node: The qirc file6013
+Node: Packages7091
+Ref: Packages-Footnote-114064
+Node: Recipes14177
+Ref: Recipes-Footnote-126134
+Node: Order files26279
+Node: License27608
+Node: Index52724
 
 End Tag Table
 
