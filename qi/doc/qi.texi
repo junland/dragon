@@ -8,7 +8,7 @@
 @comment %**end of header
 
 @set VERSION 1.0-rc59
-@set UPDATED 29 March 2019
+@set UPDATED 30 March 2019
 
 @copying
 This user guide is for Qi (version @value{VERSION},
@@ -29,7 +29,7 @@ Texts.  A copy of the license is included in the section entitled
 
 @dircategory Package management
 @direntry
-* Qi: (qi).                     A user-friendly package manager.
+* Qi: (qi).                   A user-friendly package manager.
 @end direntry
 
 @titlepage
@@ -60,6 +60,7 @@ This user guide is for Qi (version @value{VERSION},
 * Packages::                  Managing packages
 * Recipes::                   Building packages
 * Order files::               Handling build order
+* Creating packages::         Making Qi packages
 * Examining packages::        Debugging purposes
 * Exit status::               Exit codes
 * License::                   GNU Free Documentation License
@@ -830,7 +831,7 @@ Qi has environment variables which can be used at build time:
 The variable @env{TMPDIR} sets the temporary directory for sources, which is
 used for package extractions (see @ref{Examining packages}) and to prepend
 the value of @samp{$@{srcdir@}} and @samp{$@{destdir@}} on build mode.  By
-convention its default value is equal to @samp{/tmp}.
+convention its default value is equal to @samp{/usr/src/qi/build}.
 
 The variables @env{QICFLAGS}, @env{QICXXFLAGS}, and @env{QILDFLAGS} have
 no effect by default.  The environment variables such as @env{CFLAGS},
@@ -985,6 +986,39 @@ libs/libjpeg-turbo
 x-libs/jasper
 libs/tiff
 @end example
+
+
+@node Creating packages
+@chapter Creating packages
+@cindex package creation
+
+The "creation mode" is an internal function of qi to make new Qi compatible
+packages, the creation mode is available through the -c option.  A package
+is produced using the contents of the Current Directory, finally the
+package is written out to the file name.
+
+@example
+Usage: qi -c [@var{OUTPUT/packagename.tlz}]...
+@end example
+
+The argument for the file name to be written must contain a fully
+qualified named directory as the output directory where the produced
+package will be written.  The file name should be composed using the
+full name: name-version-architecture+release.tlz
+
+@sc{Example}
+
+@example
+cd /usr/local/pkgs
+cd claws-mail-3.17.1-x86_64+1
+qi -c /var/cache/qi/packages/x86_64/local/claws-mail-3.17.1-x86_64+1.tlz
+@end example
+
+In this case, the package "claws-mail-3.17.1-x86_64+1.tlz" will be written
+into @samp{/var/cache/qi/packages/x86_64/local/}.
+
+@noindent
+All produced packages are complemented by a checksum file (.sha256).
 
 
 @node Examining packages
