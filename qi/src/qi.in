@@ -620,29 +620,24 @@ build_mode()
 create_mode()
 {
     directory=$(dirname -- "$1")
-    name=$(basename -- "$1")
 
     # Perform sanity checks
 
+    if ! fnmatch '/?*' "$directory"
+    then
+        warn "${PROGRAM}: Output directory \`${directory}' is not fully qualified"
+        exit 4
+    fi
     is_readable "$directory" || exit 4
 
-    # Check again to find out if it is a valid directory
-    test -d "$directory" || {
-        warn "Package directory '$name' does not exist."
-        exit 4
-    }
+    name=$(basename -- "$1")
 
-    test "$directory" = . && {
-        warn "Cannot create package on current working directory."
+    if test "$name" = "${name%.tlz}"
+    then
+        warn "Package format '$name' not supported." \
+             "It should be \"name-version-architecture+release.tlz\""
         exit 4
-    }
-
-    test "$name" = "${name%.tlz}" && {
-        warn \
-         "Package format '$name' not supported." \
-         "It should be \`name-version-architecture+release.tlz'"
-        exit 4
-    }
+    fi
 
     echo "{#} Creating package $name ..."
 
@@ -652,7 +647,7 @@ create_mode()
     ( cd -- "$directory" && sha256sum $name > ${name}.sha256 )
     chkstatus_or_exit 4
 
-    echo "Package created \`${directory}/${name}'."
+    echo "Package created on \`${directory}/${name}'."
     echo ""
 
     # Remove used variables
