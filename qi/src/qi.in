@@ -29,60 +29,62 @@
 usage()
 {
     printf "%s\n" \
-     "Qi - A practical and user-friendly package manager."              \
-     ""                                                                 \
-     "Usage: $PROGRAM [OPTION...] [FILE]..."                            \
-     ""                                                                 \
-     "Operation mode:"                                                  \
-     "  -b          Build packages using recipes"                       \
-     "  -c          Create .tlz package from directory"                 \
-     "  -d          Delete packages"                                    \
-     "  -i          Install packages"                                   \
-     "  -o          Resolve build order through .order files"           \
-     "  -u          Update packages (implies -i, -d with -p)"           \
-     "  -w          Warn about files that will be installed"            \
-     "  -x          Extract packages for debugging purposes"            \
-     ""                                                                 \
-     "Common options:"                                                  \
-     "  -L          Print default directory locations"                  \
-     "  -N          Don't read the configuration file"                  \
-     "  -P  <DIR>   Package directory for (de)installations;"           \
-     "              (only valid for -i, -d, or -u options)"             \
-     "  -f          Force package upgrade"                              \
-     "              Force build a recipe"                               \
-     "  -t  <DIR>   Target directory for symbolic links"                \
-     "              (only valid for -i, -d, or -u options)"             \
-     "  -k          Keep (don't delete) srcdir or destdir"              \
-     "              Keep (don't delete) package directory"              \
-     "              (only valid for -b, -d or -u options)"              \
-     "  -p          Prune conflicts on package (de)installation"        \
-     "  -r          Use the named directory as the root directory"      \
-     "              for installing, deleting, or upgrading packages."   \
-     "              The target directory, package directory will be"    \
-     "              relative to this specific directory"                \
-     "  -v          Be verbose (a 2nd -v gives more)"                   \
-     ""                                                                 \
-     "Options for 'build' mode (-b):"                                   \
-     "  -O  <DIR>   Where the produced packages are written"            \
-     "  -W  <DIR>   Where archives, patches, and recipes are expected"  \
-     "  -Z  <DIR>   Where (compressed) sources will be found"           \
-     "  -a          Architecture to use [detected]"                     \
-     "  -j          Parallel jobs for the compiler"                     \
-     "  -1          Increment release number (release + 1)"             \
-     "  -n          Don't create a .tlz package"                        \
-     "  -S          Selects the option to skip completed recipes"       \
-     ""                                                                 \
-     "Informative options:"                                             \
-     "  -h          Display this help and exit"                         \
-     "  -V          Output version information"                         \
-     ""                                                                 \
-     "Some influential environment variables:"                          \
-     "  TMPDIR      Temporary directory for sources"                    \
-     "  QICFLAGS    C compiler flags"                                   \
-     "  QICXXFLAGS  C++ compiler flags"                                 \
-     "  QILDFLAGS   Linker flags"                                       \
-     ""                                                                 \
-     "When FILE is -, read standard input."                             \
+     "Qi - A user-friendly package manager."                              \
+     ""                                                                   \
+     "Usage: $PROGRAM [OPTION...] [FILE]..."                              \
+     ""                                                                   \
+     "Operation mode:"                                                    \
+     "  -b          Build packages using recipe names"                    \
+     "  -c          Create .tlz package from directory"                   \
+     "  -d          Delete packages"                                      \
+     "  -i          Install packages"                                     \
+     "  -o          Resolve build order through .order files"             \
+     "  -u          Update packages (implies -i, -d with -p)"             \
+     "  -w          Warn about files that will be linked"                 \
+     "  -x          Extract a package for debugging purposes"             \
+     ""                                                                   \
+     "Common options:"                                                    \
+     "  -N          Do not read the configuration file"                   \
+     "  -P <DIR>    Package directory for installations."                 \
+     "                Only valid for -i, -d, or -u options"               \
+     "  -f          This option can force the build of a recipe,"         \
+     "              or force the update of a pre-existing package."       \
+     "                Only valid for -b, -u options"                      \
+     "  -t <DIR>    Target directory for symbolic links."                 \
+     "                Only valid for -i, -d, or -u options"               \
+     "  -k          Keep \`\${srcdir}' or \`\${destdir}' on build mode,"  \
+     "              keep package directory on delete mode."               \
+     "                Only valid for -b, -d or -u options"                \
+     "  -p          Prune conflicts on package installations"             \
+     "  -r <DIR>    Use the fully qualified named directory as the"       \
+     "              root directory for all qi operations.  The target"    \
+     "              directory and package directory will be relative to"  \
+     "              the specified directory, including the log file for"  \
+     "              graft"                                                \
+     "  -v          Be verbose (a 2nd -v gives more)"                     \
+     ""                                                                   \
+     "Options for 'build' mode (-b):"                                     \
+     "  -O  <DIR>   Where the produced packages are written"              \
+     "  -W  <DIR>   Where archives, patches, and recipes are expected"    \
+     "  -Z  <DIR>   Where (compressed) sources will be found"             \
+     "  -a          Architecture to use [detected]"                       \
+     "  -j          Parallel jobs for the compiler"                       \
+     "  -1          Increment release number (\`\${release}' + 1)"        \
+     "  -n          Don't create a .tlz package"                          \
+     "  -S          Selects the option to skip completed recipes"         \
+     ""                                                                   \
+     "Informative options:"                                               \
+     "  -L          Print default directory locations"                    \
+     "  -h          Display this help and exit"                           \
+     "  -V          Output version information"                           \
+     ""                                                                   \
+     "Some influential environment variables:"                            \
+     "  TMPDIR      Temporary directory for sources"                      \
+     "  QICFLAGS    C compiler flags"                                     \
+     "  QICXXFLAGS  C++ compiler flags"                                   \
+     "  QILDFLAGS   Linker flags"                                         \
+     ""                                                                   \
+     "When FILE is -, read standard input."                               \
      ""
 }
 
@@ -366,12 +368,12 @@ build_mode()
             # the user need to pass the option explicitly
             if test ! -t 0
             then
-                printf "%b" \
-                 "Do you want to rebuild this package?\n"   \
-                 "1) Yes, built it\n"                       \
-                 "2) No, skipt it [default]\n"              \
-                 "3) Resume, skipping completed recipes\n"  \
-                 "Choose an option number: " > /dev/tty
+                printf "%s\n" \
+                 "Do you want to rebuild this package?"   \
+                 "1) Yes, built it"                       \
+                 "2) No, skip it [default]"               \
+                 "3) Resume, skipping completed recipes"  \
+                 "Enter an option number:" > /dev/tty
                 IFS= read -r ANSWER < /dev/tty || exit 2;
                 case $ANSWER in
                 1*)
@@ -394,7 +396,7 @@ build_mode()
                     ;;
                 esac
             else
-                warn "Use the -f option to re-process ${CWD}/$recipe." ""
+                warn "Use the -f option to reprocess ${CWD}/$recipe." ""
                 return 6;
             fi
         fi
@@ -1374,7 +1376,7 @@ for need in awk basename chmod cp dirname find fold graft grep \
 do
     if ! type $need 1> /dev/null 2> /dev/null
     then
-        warn "${PROGRAM}: cannot operate without ${need}(1): Check your PATH"
+        warn "${PROGRAM}: Prerequisite \`${need}' not found in PATH"
         exit 2
     fi
 done

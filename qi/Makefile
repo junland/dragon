@@ -102,7 +102,8 @@ man : doc/qi.1
 
 doc/qi.1 : src/qi
 	LC_ALL=C help2man ${HELP2MAN_OPTS} \
-	 -n 'a user-friendly package manager' -o $@ src/qi
+	 -n 'a simple but well-integrated package manager' \
+	 -o $@ src/qi
 
 html : doc/$(project).html
 
