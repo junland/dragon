@@ -120,10 +120,8 @@ dist : doc
 	  $(DISTNAME)/Makefile \
 	  $(DISTNAME)/NEWS \
 	  $(DISTNAME)/README \
-	  $(DISTNAME)/TODO \
 	  $(DISTNAME)/configure \
 	  $(DISTNAME)/doc/recipe \
-	  $(DISTNAME)/doc/document*.css \
 	  $(DISTNAME)/doc/example.order \
 	  $(DISTNAME)/doc/fdl.texi \
 	  $(DISTNAME)/doc/qi.1 \
