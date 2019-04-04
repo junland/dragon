@@ -1,6 +1,6 @@
-This is qi.info, produced by makeinfo version 6.6 from qi.texi.
+This is qi.info, produced by makeinfo version 6.1 from qi.texi.
 
-This user guide is for Qi (version 1.0-rc59, 2 April 2019), which is a
+This user guide is for Qi (version 1.0-rc59, 4 April 2019), which is a
 simple but well-integrated package manager.
 
    Copyright © 2019 Matias Andres Fonzo, Santiago del Estero, Argentina.
@@ -22,7 +22,7 @@ File: qi.info,  Node: Top,  Next: Introduction,  Up: (dir)
 Qi user guide
 *************
 
-This user guide is for Qi (version 1.0-rc59, 2 April 2019).
+This user guide is for Qi (version 1.0-rc59, 4 April 2019).
 
 * Menu:
 
@@ -50,18 +50,18 @@ File: qi.info,  Node: Introduction,  Next: Invoking qi,  Prev: Top,  Up: Top
 1 Introduction
 **************
 
-Qi is a simple but well-integrated package manager.  It can creates,
+Qi is a simple but well-integrated package manager.  It can create,
 install, remove, and upgrade software packages.  Qi produces binary
-packages using recipe names, these are files containing specific
-instructions to build every source.  Qi can manage multiple packages
-under a single directory hierarchy, this method allows to maintain a set
-of packages and multiple versions of them.  This means that Qi could be
-used as the main package manager or complement the existing one.
+packages using recipes, which are files containing specific instructions
+to build each package from source.  Qi can manage multiple packages
+under a single directory hierarchy.  This method allows to maintain a
+set of packages and multiple versions of them.  This means that Qi could
+be used as the main package manager or complement the existing one.
 
    Qi offers a friendly command line interface, a global configuration
 file, a simple recipe layout to deploy software packages; also works
 with binary packages in parallel, speeding up installations and packages
-in production.  The used format for packages is a simplified but safe
+in production.  The format used for packages is a simplified but safe
 POSIX pax archive compressed with lzip.
 
    Qi is a modern (POSIX-compliant) shell script released under the
@@ -115,7 +115,7 @@ There are common options between modes:
 '-N'
      Do not read the configuration file.
 
-     This will omit any value on the qirc file.
+     This will ignore any value in the qirc file.
 
 '-P <DIR>'
      Package directory for installations.
@@ -140,8 +140,8 @@ There are common options between modes:
      Only valid for -i, -d, or -u options.
 
 '-k'
-     Keep (don't delete) '${srcdir}' or '${destdir}' on build mode, keep
-     (don't delete) package directory on delete mode.
+     Keep (don't delete) '${srcdir}' or '${destdir}' in build mode, keep
+     (don't delete) package directory in delete mode.
 
      Only valid for -b, -d or -u options.
 
@@ -163,7 +163,7 @@ There are common options between modes:
 Options for build mode (-b):
 
 '-O <DIR>'
-     Where the produced packages are written.
+     Where the packages produced are written.
 
      This option sets '${outdir}'.
 
@@ -199,7 +199,7 @@ Options for build mode (-b):
      Selects the option to skip completed recipes.
 
      This means, in interactive mode, when the dialog to summarize
-     recipes is showed.
+     recipes is shown.
 
 Informative options:
 
@@ -207,8 +207,8 @@ Informative options:
      Print default directory locations.
 
      This will print the target directory, package directory, working
-     tree, the directory for tarballs, and the output directory for
-     produced packages.
+     tree, the directory for tarballs, and the output directory for the
+     packages produced.
 
 '-h'
      Display the help describing the options and then exit.
@@ -217,9 +217,9 @@ Informative options:
      Print the version number and license information.  The version
      number should be included in all bug reports.
 
-Expected arguments beyond of options are package directories and regular
-files: recipes or files ending in .tlz, .order.  When FILE is -, qi can
-read from the standard input.  See examples in *note Packages::.
+Expected non-option arguments are package directories and regular files:
+recipes or files ending in .tlz, .order.  When FILE is -, qi can read
+from the standard input.  See examples in *note Packages::.
 
 
 File: qi.info,  Node: The qirc file,  Next: Packages,  Prev: Invoking qi,  Up: Top
@@ -229,7 +229,7 @@ File: qi.info,  Node: The qirc file,  Next: Packages,  Prev: Invoking qi,  Up: T
 
 The global 'qirc' file offers a way to define variables and tools (such
 as a download manager) for default use.  This file is used by qi at
-runtime for e.g to build, install, remove or upgrade packages.
+runtime, e.g., to build, install, remove or upgrade packages.
 
 It has the following rules:
 
@@ -265,7 +265,7 @@ which may also contain manual pages, documentation, or any other file
 associated to a specific software.
 
    The package format used by qi is a simplified POSIX pax archive
-compressed with lzip.  The file extension for packages ends in .tlz
+compressed with lzip.  The file extension for packages is '.tlz'.
 
 Both package installation and package de-installation are managed using
 two important (internal) variables: '${packagedir}' and '${targetdir}',
@@ -279,7 +279,7 @@ graft(1) taking '${packagedir}/package_name' into account.
 
 Packages are installed in self-contained directory trees and symbolic
 links from a common area are made to the package files.  This allows
-multiple versions of the same package to co-exist on the one system.
+multiple versions of the same package to coexist on the same system.
 
 4.1 Package conflicts
 =====================
@@ -350,7 +350,7 @@ Installing from a list of packages using standard input:
      cat FILELIST.txt | qi -i -
 
    The list of packages must contain full path names to be passed in the
-installation, e.g:
+installation, e.g.:
 /var/cache/qi/packages/x86_64/devel/tcl-8.6.9-x86_64+1.tlz
 /var/cache/qi/packages/x86_64/devel/tk-8.6.9.1-x86_64+1.tlz
 /var/cache/qi/packages/x86_64/devel/vala-0.42.3-x86_64+1.tlz
@@ -412,7 +412,7 @@ To upgrade a package, just type:
    This will proceed to update "gcc-9.0.1-i586+1" removing other
 versions of "gcc" (if any).
 
-If you want to keep the package directory of found versions during the
+If you want to keep the package directories of versions found during the
 upgrade process, just pass:
 
      qi -u -k gcc-9.0.1-i586+1.tlz
@@ -430,30 +430,30 @@ To force the upgrade of an existing package:
 4.4.1 Package blacklist
 -----------------------
 
-To enforce general package facilities, either to install, remove or
+To implement general package facilities, either to install, remove or
 maintain the hierarchy of packages in a clean manner, qi makes use of
 the pruning operation via graft(1):
 
    There is a risk if those are crucial packages for the proper
-functioning of the system, because it implies to deactivate symbolic
-links from the target directory, _especially_ when transitioning an
+functioning of the system, because it implies the deactivation of
+symbolic from the target directory, _especially_ when transitioning an
 incoming package into its final location during upgrade.
 
-A blacklist for declare package names has been devised for this cases,
-in case that a user decides to upgrade all packages in the system or,
-just the crucial ones, such as the C library.
+A blacklist of package names has been devised for the case where a user
+decides to upgrade all packages in the system, or just the crucial ones,
+such as the C library.
 
    The blacklist is related to the upgrade mode only, consists in
 installing a package instead of updating it or removing previous
 versions of it; the content of the package will be updated over the
 existing content at '${packagedir}', while the existing links from
-'${targetdir}' will be preserved.  A pruning of links will carried out
-in order to re-link possible differences with the recent content, this
-helps to avoid having dead links in the target directory.
+'${targetdir}' will be preserved.  A pruning of links will be carried
+out in order to re-link possible differences with the recent content,
+this helps to avoid leaving dead links in the target directory.
 
 Since the upgrade mode is also used to install a new package, the
 mechanism for blacklist is to install a declared package if it does not
-already exist, if it already exists, it is verified that the binary
+already exist.  If it already exists, it is verified that the binary
 package is newer than the package directory in order to perform an
 update.
 
@@ -472,7 +472,7 @@ File: qi.info,  Node: Recipes,  Next: Order files,  Prev: Packages,  Up: Top
 *********
 
 A recipe is a file telling qi what to do.  Most often, the recipe tells
-to qi how to build a binary package from a source tarball.
+qi how to build a binary package from a source tarball.
 
    A recipe has two parts: a list of variable definitions and a list of
 sections.  By convention, the syntax of a section is:
@@ -501,14 +501,14 @@ other variables or in calls to external commands.
 
    Variables can represent lists of file names, options to pass to
 compilers, programs to run, directories to look in for source files,
-directories to write output in, or anything else you can imagine.
+directories to write output to, or anything else you can imagine.
 
    Definitions of variables in qi have four levels of precedence.
 Options which define variables from the command-line override those
 specified in the 'qirc' file, while variables defined in the recipe
 override those specified in 'qirc', taking priority over those variables
-settled by options via command-line.  Finally, the variables have
-default values if they are not defined anywhere.
+set by command-line options.  Finally, the variables have default values
+if they are not defined anywhere.
 
    Options that set variables through the command-line can only
 reference variables defined in 'qirc' and variables with default values.
@@ -517,7 +517,7 @@ reference variables defined in 'qirc' and variables with default values.
 previously defined in 'qirc' and variables with default values.
 
    Definitions of variables in the recipe can only reference variables
-settled by command-line, variables previously defined in the recipe,
+set by the command-line, variables previously defined in the recipe,
 variables defined in 'qirc', and variables with default values.
 
 5.2 Special variables
@@ -527,7 +527,7 @@ There are variables which can only be set using the command line options
 or via 'qirc', there are other special variables which can be defined or
 redefined in a recipe.  See the following definitions:
 
-   'outdir' is the directory where the produced packages are written.
+   'outdir' is the directory where the packages produced are written.
 This variable can not be redefined in the recipe.  Default sets to
 '/var/cache/qi/packages'.
 
@@ -546,7 +546,7 @@ available in the recipe as '${arch}'.  Default value is the output of
 'uname -m'.
 
    'jobs' is the number of parallel jobs to pass to the compiler.  Its
-value is available in the recipe as '${jobs}'.  Default sets to '1'.
+value is available in the recipe as '${jobs}'.  The default value is 1.
 
    The two variables '${srcdir}' and '${destdir}' can be set in the
 recipe, as any other variable, but if they are not, qi uses default
@@ -615,9 +615,10 @@ description.  By convention, the syntax of 'description' is:
      Long description.
      "
 
-   The first (substantial) line of the value is a brief description of
-the software (called "blurb").  A newline follows to separate the _brief
-description_ from the _long description_.
+   The first line of the value represented is a brief description of the
+software (called "blurb").  A blank line separates the _brief
+description_ from the _long description_, it should contain a more
+descriptive description of the software.
 
 An example looks like:
 
@@ -655,23 +656,23 @@ TO DO.
 5.4 Building packages
 =====================
 
-A recipe is any valid regular file, qi sets priorities to read a recipe,
-for example, the Current Working Directory has priority over the working
-tree (or where the recipes reside); the '${worktree}/recipes' is the
-second place where to find a recipe, we complete the possibility of
-using the directory name to invoke a recipe if it contains "recipe" as a
-valid file name.
+A recipe is any valid regular file.  qi sets priorities to read a
+recipe, for example, the Current Working Directory has priority over the
+working tree (or where the recipes reside); the '${worktree}/recipes' is
+the second place where qi searchs for a recipe.  We complete the
+possibility of using the directory name to invoke a recipe if it
+contains "recipe" as a valid file name.
 
 To build a single package, type:
 
      qi -b x-apps/xterm
 
-Multiple jobs can be passed to the compiler for speed up the build
+Multiple jobs can be passed to the compiler to speed up the build
 process:
 
      qi -b -j3 x-apps/xterm
 
-Update or install the produced package (if it is not already installed)
+Update or install the package produced (if it is not already installed)
 when finish:
 
      qi -b -j3 -u x-apps/xterm
@@ -696,16 +697,17 @@ created redirecting both, standard error and standard output to tee(1).
 Qi has environment variables which can be used at build time:
 
    The variable 'TMPDIR' sets the temporary directory for sources, which
-is used for package extractions (see *note Examining packages::) and to
-prepend the value of '${srcdir}' and '${destdir}' on build mode.  By
-convention its default value is equal to '/usr/src/qi/build'.
+is used for package extractions (see *note Examining packages::) and is
+prepended to the value of '${srcdir}' and '${destdir}' in build mode.
+By convention its default value is equal to '/usr/src/qi/build'.
 
    The variables 'QICFLAGS', 'QICXXFLAGS', and 'QILDFLAGS' have no
 effect by default.  The environment variables such as 'CFLAGS',
 'CXXFLAGS', and 'LDFLAGS' are unset at compile time:
 
-Recommended practices is to set variables in front of 'configure' or in
-front of _make(1)_ instead of exporting to the environment.  As follows:
+Recommended practice is to set variables in the command line of
+'configure' or _make(1)_ instead of exporting to the environment.  As
+follows:
 
      Variables not defined in a site shell script can be set in the
      environment passed to configure.  However, some packages may run
@@ -744,7 +746,7 @@ The "meta file" is a regular file created during the build mode, it
 contains information about the package such as program name, program
 version, release, fetch address, description, and other minor data
 extracted from processed recipes.  The name of the file is generated as
-'${full_pkgname}.tlz.txt', it has the purpose to reflect essential
+'${full_pkgname}.tlz.txt', and its purpose is to reflect essential
 information to the user without having to look inside the package
 content.
 
@@ -796,11 +798,11 @@ File: qi.info,  Node: Order files,  Next: Creating packages,  Prev: Recipes,  Up
 6 Order files
 *************
 
-The order mode has the purpose to resolve the build order through .order
-files.  An order file contains a list of recipe names, by default does
-not perform any action other than to print a resolved list in descending
-order.  For example, if *a* depends on *b* and *c*, and *c* depends on
-*b* as well, the file might look like:
+The order mode has the purpose of resolving the build order through
+.order files.  An order file contains a list of recipe names, by default
+does not perform any action other than to print a resolved list in
+descending order.  For example, if *a* depends on *b* and *c*, and *c*
+depends on *b* as well, the file might look like:
 
      a: c b
      b:
@@ -816,10 +818,10 @@ right to left, and removed from left to right:
      c
      a
 
-   Declaration of blank lines, colons, parentheses, and end of line are
-simply ignored.  Comments are allowed for lines that begin with '#'.
+   Blank lines, colons and parentheses are simply ignored.  Comment
+lines beginning with '#' are allowed.
 
-An order file could be used to build a serie of packages, for example,
+An order file could be used to build a series of packages, for example,
 if the content is:
 
      # Image handling libraries
@@ -847,15 +849,15 @@ File: qi.info,  Node: Creating packages,  Next: Examining packages,  Prev: Order
 *******************
 
 The "creation mode" is an internal function of qi to make new Qi
-compatible packages, the creation mode is available through the -c
+compatible compatible packages, the creation mode is selected by the -c
 option.  A package is produced using the contents of the Current
-Directory, finally the package is written out to the file name.
+Directory, and the package file is written out.
 
      Usage: qi -c [OUTPUT/PACKAGENAME.TLZ]...
 
    The argument for the file name to be written must contain a fully
-qualified named directory as the output directory where the produced
-package will be written.  The file name should be composed using the
+qualified named directory as the output directory where the package
+produced will be written.  The file name should be composed using the
 full name: name-version-architecture+release.tlz
 
    EXAMPLE
@@ -867,7 +869,7 @@ full name: name-version-architecture+release.tlz
    In this case, the package "claws-mail-3.17.1-x86_64+1.tlz" will be
 written into '/var/cache/qi/packages/x86_64/local/'.
 
-All produced packages are complemented by a checksum file (.sha256).
+All packages produced are complemented by a checksum file (.sha256).
 
 
 File: qi.info,  Node: Examining packages,  Next: Exit status,  Prev: Creating packages,  Up: Top
@@ -876,9 +878,9 @@ File: qi.info,  Node: Examining packages,  Next: Exit status,  Prev: Creating pa
 ********************
 
 The "extraction mode" serves to examine binary packages for debugging
-purposes, the extraction mode is available through the -x option.  It
-consists of decompressing a package into a single directory, verifying
-its integrity and preserving its properties.
+purposes.  The extraction mode is selected by the -x option.  It
+decompresses a package into a single directory, verifying its integrity
+and preserving its properties.
 
      Usage: qi -x [PACKAGENAME.TLZ]...
 
@@ -888,7 +890,8 @@ its integrity and preserving its properties.
 
    This action will put the content of "mksh-R56c-x86_64+1.tlz" into a
 single directory, this will be a private directory for the user who
-requested the action, creation mode will be equal to *u=,g=rwx,o=rwx
+
+   requested the action, creation mode will be equal to *u=rwx,g=,o=
 (0700)*.  The package content will reside on this location, default mask
 to deploy the content will be equal to *u=rwx,g=rwx,o=rwx (0000)*.
 
@@ -901,7 +904,7 @@ File: qi.info,  Node: Exit status,  Next: License,  Prev: Examining packages,  U
 9 Exit status
 *************
 
-All the conditions of exit codes are described in this chapter.
+All the exit codes are described in this chapter.
 
 '0'
      Successful completion (no errors).
@@ -927,7 +930,7 @@ All the conditions of exit codes are described in this chapter.
         - Tarball files from tar(1).  Supported extensions: .tar,
           .tar.gz, .tgz, .tar.Z, .tar.bz2, .tbz2, .tbz, .tar.xz, .txz
 
-        - Tarballs files from tarlz(1).  Supported extensions: .tar.lz,
+        - Tarball files from tarlz(1).  Supported extensions: .tar.lz,
           .tlz
 
         - Zip files from unzip(1).  Supported extensions: .zip, .ZIP
@@ -968,8 +971,7 @@ All the conditions of exit codes are described in this chapter.
 '6'
      Package already installed:
 
-     The package directory for an incoming .tlz package that already
-     exists.
+     The package directory for an incoming .tlz package already exists.
 
 '10'
      Network manager error:
@@ -1469,14 +1471,14 @@ Index
 * Menu:
 
 * configuration file:                    The qirc file.       (line   6)
-* environment variables:                 Recipes.             (line 228)
+* environment variables:                 Recipes.             (line 229)
 * exit codes:                            Exit status.         (line   6)
 * handling build order:                  Order files.         (line   6)
 * introduction:                          Introduction.        (line   6)
 * invocation:                            Invoking qi.         (line   6)
 * managing packages:                     Packages.            (line   6)
 * package blacklist:                     Packages.            (line 176)
-* package build:                         Recipes.             (line 190)
+* package build:                         Recipes.             (line 191)
 * package conflicts:                     Packages.            (line  30)
 * package creation:                      Creating packages.   (line   6)
 * package de-installation:               Packages.            (line 104)
@@ -1485,27 +1487,27 @@ Index
 * package upgrade:                       Packages.            (line 143)
 * recipes:                               Recipes.             (line   6)
 * special variables:                     Recipes.             (line  58)
-* the meta file:                         Recipes.             (line 275)
+* the meta file:                         Recipes.             (line 277)
 * variables:                             Recipes.             (line  29)
-* writing recipes:                       Recipes.             (line 185)
+* writing recipes:                       Recipes.             (line 186)
 
 
 
 Tag Table:
 Node: Top804
 Node: Introduction1646
-Node: Invoking qi2808
-Node: The qirc file6228
-Node: Packages7306
-Ref: Packages-Footnote-114353
-Node: Recipes14466
-Ref: Recipes-Footnote-126568
-Node: Order files26713
-Node: Creating packages28047
-Node: Examining packages29098
-Node: Exit status30025
-Node: License31990
-Node: Index57106
+Node: Invoking qi2815
+Node: The qirc file6233
+Node: Packages7310
+Ref: Packages-Footnote-114346
+Node: Recipes14459
+Ref: Recipes-Footnote-126620
+Node: Order files26765
+Node: Creating packages28067
+Node: Examining packages29107
+Node: Exit status30017
+Node: License31957
+Node: Index57073
 
 End Tag Table
 

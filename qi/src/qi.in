@@ -52,8 +52,8 @@ usage()
      "                Only valid for -b, -u options"                      \
      "  -t <DIR>    Target directory for symbolic links."                 \
      "                Only valid for -i, -d, or -u options"               \
-     "  -k          Keep \`\${srcdir}' or \`\${destdir}' on build mode,"  \
-     "              keep package directory on delete mode."               \
+     "  -k          Keep \`\${srcdir}' or \`\${destdir}' in build mode,"  \
+     "              keep package directory in delete mode."               \
      "                Only valid for -b, -d or -u options"                \
      "  -p          Prune conflicts on package installations"             \
      "  -r <DIR>    Use the fully qualified named directory as the"       \
@@ -64,7 +64,7 @@ usage()
      "  -v          Be verbose (a 2nd -v gives more)"                     \
      ""                                                                   \
      "Options for 'build' mode (-b):"                                     \
-     "  -O  <DIR>   Where the produced packages are written"              \
+     "  -O  <DIR>   Where the packages produced are written"              \
      "  -W  <DIR>   Where archives, patches, and recipes are expected"    \
      "  -Z  <DIR>   Where (compressed) sources will be found"             \
      "  -a          Architecture to use [detected]"                       \
@@ -874,10 +874,11 @@ resolve_mode() {
         return 4
     fi
 
-    # Get a clean list of the file while prints its content in reverse order,
-    # lines containing: colons, comments, parentheses, end of line, and blank
-    # lines, are removed.  The parentheses are used to insert a reference.
-    # The last `awk' in the pipe: removes nonconsecutive lines, duplicate.
+    # Get a clean list of the file while printing its contents in reverse
+    # order. The last `awk 'in the pipeline eliminates the non-consecutive
+    # lines, the duplicates. Blank lines, colons and parentheses are
+    # simply ignored, comment lines beginning with '#' are allowed
+
     awk \
     '{ gsub( /:|^#(.*)$|\([^)]*)|^$/,"" ); for( i=NF; i > 0; i-- ) print $i }' \
      "$1" | awk '!s[$0]++'
