@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 1.0-rc59
+version		= 1.0
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -121,13 +121,15 @@ dist : doc
 	  $(DISTNAME)/NEWS \
 	  $(DISTNAME)/README \
 	  $(DISTNAME)/configure \
-	  $(DISTNAME)/doc/recipe \
 	  $(DISTNAME)/doc/example.order \
 	  $(DISTNAME)/doc/fdl.txt \
 	  $(DISTNAME)/doc/qi.1 \
 	  $(DISTNAME)/doc/$(project).html \
 	  $(DISTNAME)/doc/$(project).info \
 	  $(DISTNAME)/doc/$(project).texi \
+	  $(DISTNAME)/doc/recipe1 \
+	  $(DISTNAME)/doc/recipe2 \
+	  $(DISTNAME)/doc/recipe3 \
 	  $(DISTNAME)/etc/$(project)rc.in \
 	  $(DISTNAME)/src/qi.in
 	rm -f $(DISTNAME)
