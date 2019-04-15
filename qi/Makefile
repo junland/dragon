@@ -123,7 +123,7 @@ dist : doc
 	  $(DISTNAME)/configure \
 	  $(DISTNAME)/doc/recipe \
 	  $(DISTNAME)/doc/example.order \
-	  $(DISTNAME)/doc/fdl.texi \
+	  $(DISTNAME)/doc/fdl.txt \
 	  $(DISTNAME)/doc/qi.1 \
 	  $(DISTNAME)/doc/$(project).html \
 	  $(DISTNAME)/doc/$(project).info \
