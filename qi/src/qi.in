@@ -188,11 +188,18 @@ build_mode()
 {
     recipe=$1
 
-    # A recipe is any valid regular file, the current working directory
-    # has priority over the working tree (or where the recipes reside).
-    # The 'worktree' is the second place where to find a recipe.  Also,
-    # we complete the possibility of using the directory name to invoke
-    # a recipe if it contains "recipe" as valid file name.
+    # A recipe is any valid regular file.  Qi sets priorities for reading a
+    # recipe, the order in which qi looks for a recipe is:
+    #
+    # 1. Current working directory.
+    #
+    # 2. If the specified path name does not contain "recipe" as the last
+    # component.  Qi will complete it by adding "recipe" to the path
+    # name.
+    #
+    # 3. If the recipe is not in the current working directory, it will be
+    # searched under '${worktree}/recipes'.  The last component will be
+    # completed adding "recipe" to the specified path name.
 
     if test ! -f "$recipe"
     then
