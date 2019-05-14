@@ -77,12 +77,12 @@ fi
 dialog --colors \
  --backtitle "\Zb${PROGRAM} - Mouse Configuration" \
  --title "MAIN MENU" --menu \
-"Welcome to \Zb${PROGRAM}\Zn!\n\
-A configuration tool for the mouse selection.\n\n\
+"Welcome to \Z3${PROGRAM}\Zn!\n\
+    A configuration tool for the mouse selection.\n\n\
 The following list is ordered by mouse type and brief description.\n\
 \Zbp\Zns2 is the most common model for laptops.  Otherwise, you can\n\
 select the \Zbu\Znsb model from the list below.\n\n\
-Select a mouse type:" 19 71 5 \
+Select a mouse type:" 20 71 6 \
 "ps2"        "Common protocol for PS2 mice"                  \
 "usb"        "Common protocol for USB mice"                  \
 "bare"       "Microsoft compatible, 2 buttons"               \
@@ -125,7 +125,7 @@ acecad | bare | genitizer | logi* | twid | wacom | mman | ms* | pnp | wp)
      --backtitle "\Zb${PROGRAM} - Serial Port" \
      --title "MOUSE DEVICE" \
      --no-cancel --menu \
-"The protocol \Zb${REPLY}\Zn requires a serial port.\n\n\
+"The protocol \Zb\Z1${REPLY}\Zn requires a serial port.\n\n\
 Which device name would you like to use?" 13 52 4 \
       "ttyS0"  "Serial port 0, COM1 under DOS" \
       "ttyS1"  "Serial port 1, COM2 under DOS" \
@@ -170,24 +170,26 @@ chmod 755 /etc/rc.d/rc.gpm-sample
 dialog --colors \
  --backtitle "\Zb${PROGRAM} - Startup File" \
  --title "RUN CONTROL" --yesno \
-"A run control file could be created to load your settings at \
-boot time.  This file will be saved\nas \Zb/etc/rc.d/rc.gpm\Zn.\n\n\
-Would you like to load \Zbrc.gpm\Zn at boot time?" 10 54 && \
+"A run control file could be created to load your settings\n\
+at boot time.  The file will be saved as \Z1/etc/rc.d/rc.gpm\Zn\n\n\
+Would you like to load this file at boot time?" 8 63 && \
   mv -f -- /etc/rc.d/rc.gpm-sample /etc/rc.d/rc.gpm
 
 dialog --colors \
- --backtitle "\Zb${PROGRAM} - Current Session" \
- --title "MOUSE" --yesno \
-"\ZbGPM\Zn is a cut and paste utility and mouse server \
-for virtual consoles. It is useful to avoid\n\
-typing everything by hand\Zb!\Zn\n\n\
-Would you like to run it now?" 10 54 &&
+ --backtitle "\Zb${PROGRAM} - Mouse Session" \
+ --title "MOUSE SESSION" --yesno \
+"\ZbGPM\Zn is a cut and paste utility and mouse server for \
+virtual consoles.  It is useful to avoid typing everything by \
+hand\Zb!\Zn\n\n\
+Would you like to run it now?" 9 58 &&
 {
+    echo ""
     echo "Stopping any running gpm instance"
     gpm -k 2> /dev/null || killall gpm 2> /dev/null || true;
     sleep 1
 
+    echo ""
     echo "Starting gpm: gpm -m /dev/${DEVICE} -t $REPLY"
     gpm -m /dev/${DEVICE} -t $REPLY
-} || { echo "Okay!" ; exit 1 ; }
+} || { printf "%s\n" "" "Okay!" ; exit 1 ; }
 
