@@ -1,0 +1,103 @@
+Description: fix FTBFS with glibc 2.28
+ .
+Author: Laszlo Boszormenyi (GCS) <gcs@debian.org>
+Bug-Debian: https://bugs.debian.org/916014
+Forwarded: no
+Last-Update: 2018-12-09
+
+---
+
+--- squashfs-tools-4.3.orig/squashfs-tools/mksquashfs.c
++++ squashfs-tools-4.3/squashfs-tools/mksquashfs.c
+@@ -35,6 +35,7 @@
+ #include <stddef.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <fcntl.h>
+ #include <errno.h>
+ #include <dirent.h>
+@@ -986,49 +987,49 @@ int create_inode(squashfs_inode *i_no, s
+ 	}
+ 	else if(type == SQUASHFS_CHRDEV_TYPE || type == SQUASHFS_BLKDEV_TYPE) {
+ 		struct squashfs_dev_inode_header *dev = &inode_header.dev;
+-		unsigned int major = major(buf->st_rdev);
+-		unsigned int minor = minor(buf->st_rdev);
++		unsigned int i_major = major(buf->st_rdev);
++		unsigned int i_minor = minor(buf->st_rdev);
+ 
+-		if(major > 0xfff) {
++		if(i_major > 0xfff) {
+ 			ERROR("Major %d out of range in device node %s, "
+-				"truncating to %d\n", major, filename,
+-				major & 0xfff);
+-			major &= 0xfff;
++				"truncating to %d\n", i_major, filename,
++				i_major & 0xfff);
++			i_major &= 0xfff;
+ 		}
+-		if(minor > 0xfffff) {
++		if(i_minor > 0xfffff) {
+ 			ERROR("Minor %d out of range in device node %s, "
+-				"truncating to %d\n", minor, filename,
+-				minor & 0xfffff);
+-			minor &= 0xfffff;
++				"truncating to %d\n", i_minor, filename,
++				i_minor & 0xfffff);
++			i_minor &= 0xfffff;
+ 		}
+ 		inode = get_inode(sizeof(*dev));
+ 		dev->nlink = nlink;
+-		dev->rdev = (major << 8) | (minor & 0xff) |
+-				((minor & ~0xff) << 12);
++		dev->rdev = (i_major << 8) | (i_minor & 0xff) |
++				((i_minor & ~0xff) << 12);
+ 		SQUASHFS_SWAP_DEV_INODE_HEADER(dev, inode);
+ 		TRACE("Device inode, rdev 0x%x, nlink %d\n", dev->rdev, nlink);
+ 	}
+ 	else if(type == SQUASHFS_LCHRDEV_TYPE || type == SQUASHFS_LBLKDEV_TYPE) {
+ 		struct squashfs_ldev_inode_header *dev = &inode_header.ldev;
+-		unsigned int major = major(buf->st_rdev);
+-		unsigned int minor = minor(buf->st_rdev);
++		unsigned int i_major = major(buf->st_rdev);
++		unsigned int i_minor = minor(buf->st_rdev);
+ 
+-		if(major > 0xfff) {
++		if(i_major > 0xfff) {
+ 			ERROR("Major %d out of range in device node %s, "
+-				"truncating to %d\n", major, filename,
+-				major & 0xfff);
+-			major &= 0xfff;
++				"truncating to %d\n", i_major, filename,
++				i_major & 0xfff);
++			i_major &= 0xfff;
+ 		}
+-		if(minor > 0xfffff) {
++		if(i_minor > 0xfffff) {
+ 			ERROR("Minor %d out of range in device node %s, "
+-				"truncating to %d\n", minor, filename,
+-				minor & 0xfffff);
+-			minor &= 0xfffff;
++				"truncating to %d\n", i_minor, filename,
++				i_minor & 0xfffff);
++			i_minor &= 0xfffff;
+ 		}
+ 		inode = get_inode(sizeof(*dev));
+ 		dev->nlink = nlink;
+-		dev->rdev = (major << 8) | (minor & 0xff) |
+-				((minor & ~0xff) << 12);
++		dev->rdev = (i_major << 8) | (i_minor & 0xff) |
++				((i_minor & ~0xff) << 12);
+ 		dev->xattr = xattr;
+ 		SQUASHFS_SWAP_LDEV_INODE_HEADER(dev, inode);
+ 		TRACE("Device inode, rdev 0x%x, nlink %d\n", dev->rdev, nlink);
+--- squashfs-tools-4.3.orig/squashfs-tools/unsquashfs.c
++++ squashfs-tools-4.3/squashfs-tools/unsquashfs.c
+@@ -35,6 +35,7 @@
+ #include <sys/types.h>
+ #include <sys/time.h>
+ #include <sys/resource.h>
++#include <sys/sysmacros.h>
+ #include <limits.h>
+ #include <ctype.h>
+ 
