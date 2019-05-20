@@ -1,0 +1,77 @@
+Subject: [PATCH 0/2] Preserve the sticky bit
+
+The unsquashfs tool was masking off the sticky bit when running as a
+non-root user. It isn't documented why the bit was being masked off but
+there are at least two possibilities.
+
+The first is because all of the files created by unsquashfs, when
+running as a non-root user, will be owned by the same user since
+unsquashfs can't chown() the files.I think it is still good practice to
+attempt to preserve the sticky bit in this situation because it is
+perfectly valid to have a world-writable directory containing files
+owned by a single user. The sticky bit set on the directory inode would
+prevent other users from deleting those files.
+
+Another reason why the sticky bit was being masked off when running as
+non-root could be due to this snippet from the chmod(2) man page:
+
+  On some filesystems, only the superuser can set the sticky bit, which
+  may have a special meaning. For the sticky bit, and for set-user-ID
+  and set-group-ID bits on directories, see stat(2).
+
+However, I'm not seeing any Linux filesystems that require root
+privileges in order to set the sticky bit after a quick search through
+v4.17. In the case that such filesystems do exist, old behavior is
+preserved by retrying a failed chmod() without the sticky bit.
+
+Setting the sticky bit, when non-root, will not cause any problems in
+unsquashfs because all of the created files will by owned by the same
+user. Therefore, unsquashfs will not run into any of the restricted
+deletion protections after setting the sticky bit on a directory inode
+even if unsquashfs needs to remove or rename a file underneath the
+directory.
+
+Signed-off-by: Tyler Hicks <tyhicks@...>
+---
+ squashfs-tools/unsquashfs.c | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
+
+Origin: https://sourceforge.net/p/squashfs/mailman/message/36343213/
+Forwarded: yes
+Bug-Ubuntu: https://launchpad.net/bugs/1779914
+
+Index: squashfs-tools-4.3/squashfs-tools/unsquashfs.c
+===================================================================
+--- squashfs-tools-4.3.orig/squashfs-tools/unsquashfs.c
++++ squashfs-tools-4.3/squashfs-tools/unsquashfs.c
+@@ -822,7 +822,7 @@ int set_attributes(char *pathname, int m
+ {
+ 	struct utimbuf times = { time, time };
+ 	/* Mode bits that are only useful with root privileges */
+-	mode_t root_mask = S_ISUID | S_ISGID | S_ISVTX;
++	mode_t root_mask = S_ISUID | S_ISGID;
+ 
+ 	if(utime(pathname, &times) == -1) {
+ 		ERROR("set_attributes: failed to set time on %s, because %s\n",
+@@ -841,9 +841,18 @@ int set_attributes(char *pathname, int m
+ 		mode &= ~(root_mask);
+ 
+ 	if((set_mode || (mode & root_mask)) && chmod(pathname, (mode_t) mode) == -1) {
+-		ERROR("set_attributes: failed to change mode %s, because %s\n",
+-			pathname, strerror(errno));
+-		return FALSE;
++		/*
++		 * Some filesystems require root privileges to use the sticky
++		 * bit. If we're not root and chmod() failed with EPERM when the
++		 * sticky bit was included in the mode, try again without the
++		 * sticky bit. Otherwise, fail with an error message.
++		 */
++		if (root_process || errno != EPERM || !(mode & S_ISVTX) ||
++				chmod(pathname, (mode_t) (mode & ~S_ISVTX)) == -1) {
++			ERROR("set_attributes: failed to change mode %s, because %s\n",
++				pathname, strerror(errno));
++			return FALSE;
++		}
+ 	}
+ 
+ 	write_xattr(pathname, xattr);

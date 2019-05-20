@@ -34,8 +34,14 @@ cd squashfs-tools-${version}
 # Apply a patch to include LZIP support
 patch -p1 < "${worktree}/patches/squashfs-tools/squashfs-tools-20180628_lzip-0.diff"
 
-# Fix compilation against glibc 2.28+ (patch coming from Debian)
-patch -p1 < "${worktree}/patches/squashfs-tools/0010-fix_FTBFS_with_glibc_2.28.patch"
+# Apply some patches from http://sources.debian.org/patches/squashfs-tools/1:4.3-12/
+# to make it the final ISO more reliable
+for file in "${worktree}/patches/squashfs-tools"/????-*.patch
+do
+    echo "Applying patch: $file ..."
+    patch -p1 < "$file"
+done
+unset file
 
 cd squashfs-tools
 
