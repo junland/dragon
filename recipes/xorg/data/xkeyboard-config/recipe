@@ -18,7 +18,7 @@
 program=xkeyboard-config
 version=2.27
 arch=noarch
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg/data"
@@ -54,12 +54,19 @@ build()
 
     ./configure $configure_args \
      --docdir=$docsdir \
-     --enable-compat-rules=yes \
+     --enable-compat-rules \
      --with-xkb-base=/etc/X11/xkb \
      --with-xkb-rules-symlink=xfree86,xorg
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
+
+    # To manage .new files via graft(1)
+    for directory in "${destdir}/etc/X11/xkb"/*
+    do
+        test -d "$directory" || continue
+        ( cd -- "$directory" && touch .graft-config )
+    done
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
