@@ -1,0 +1,118 @@
+# This file is part of the 'dragora-installer'.
+
+# Show media menu
+
+while true
+do
+    dialog --colors \
+     --backtitle "\ZbSelecting the installation medium" \
+     --title "INSTALLATION ORIGIN" \
+     --menu \
+"Please select the installation medium containing the software packages \
+to install Dragora:" 10 54 2 \
+     "0" "CDROM" \
+     "1" "Local or mounted directory" \
+     2> ${SUBTMPDIR}/return-MenuMedia
+
+    # Check for selected options
+    case "$(cat ${SUBTMPDIR}/return-MenuMedia)" in
+    0) ## CDROM
+
+        # Try to detect the device name via /proc
+        list="$(awk '/drive name:/{sub(/drive name:/,""); for (i=1; i<=NF; i++) print $i}' /proc/sys/dev/cdrom/info 2> /dev/null)" || true
+
+        # Scan device name(s) containing the packages for Dragora
+        for name in $list cdrom dvd hda hdb hdc hdd hde hdf hdh sr0 sr1 \
+                          sr2 sr3 pcd0 pcd1 pcd2 pcd3 aztcd cdu535 gscd0 \
+                          sonycd optcd sjcd mcdx0 mcdx1 sbpcd cm205cd \
+                          cm206cd mcd ; \
+        do
+            test -n "$name" || continue
+
+            dialog --colors \
+             --backtitle "\ZbCDROM: Discovering drive name" \
+             --title "Searching CDROM drive" --sleep 1 \
+             --infobox "Checking device: /dev/${name}" 3 34
+
+            test -b "$name" || continue
+
+            dialog --colors \
+             --backtitle "\ZbCDROM: /dev/${name}" \
+             --title "Checking device content" --sleep 1 \
+             --infobox "Mounting /dev/${name} under /media/dragora-mount" 3 52
+
+            if mountpoint -q /media/dragora-mount
+            then
+                umount /media/dragora-mount
+            fi
+
+            if mount -t iso9660 /dev/${name} /media/dragora-mount > /dev/null 2>&1
+            then
+                if test -d /media/dragora-mount/packages
+                then
+                    echo "/media/dragora-mount/packages" > ${SUBTMPDIR}/MediumFound
+                    break 2;
+                else
+                    dialog --colors \
+                     --backtitle "\ZbCDROM: Dragora packages" \
+                     --title "CD/DVD content" \
+                     --msgbox \
+"The /dev/${name} device was successfully mounted under the\n\
+/media/dragora-mount directory.  However, the contents\n\
+for the Dragora packages were not found.  They are\n\
+searched through /media/dragora-mount/packages.\n\
+\n\
+Next, the installer will proceed with another device\n\
+looking for the package directory to install Dragora.\n\
+(Let's say, if you inserted the CD/DVD containing the\n\
+Dragora packages in a second CDROM drive)." 14 63
+                fi
+            fi
+        done
+        unset name list
+
+        dialog --colors \
+         --backtitle "\ZbSelecting the installation medium: CDROM (medium not found)" \
+         --title "CDROM detection" \
+         --ok-label "Return" \
+         --msgbox \
+"It was not possible to detect the device name for your CDROM drive.\n\n\
+Please return to the previous menu by pressing \Zb\Z7ENTER\Zn in order to\n\
+try by other means..." 9 71
+        ;;
+    1) ## Local or mounted directory
+        while true
+        do
+            dialog --colors \
+             --backtitle "\ZbSelecting the installation medium: Local or mounted directory" \
+             --title "Define valid directory" \
+             --inputbox \
+"Please enter a directory path containing the packages to\n\
+install Dragora.  Note: the package directory search is\n\
+relative to the specified directory.  For example, if you\n\
+enter \"/media/harddisk\" the installer will complete the\n\
+path by adding \"/media/harddisk/packages\"." 12 62 \
+             2> ${SUBTMPDIR}/return-MenuMedia_case1
+            answer="$(cut -f 1 -d ' ' ${SUBTMPDIR}/return-MenuMedia_case1)"
+
+            test -n "$answer" || continue
+
+            if test ! -d "/${answer}/packages"
+            then
+                dialog --colors \
+                 --backtitle "\ZbSelecting the installation medium: Local or mounted directory" \
+                 --title "Directory not found" \
+                 --ok-label "Return" --msgbox \
+"The \"packages\" subdirectory does not exist under the specified directory:\n\
+\"/${answer#/*}\"" 8 40
+                continue
+            fi
+
+            echo "/${answer}/packages" > ${SUBTMPDIR}/MediumFound
+            unset answer
+            break 2;
+        done
+        ;;
+    esac
+done
+
