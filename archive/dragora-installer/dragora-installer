@@ -1,0 +1,150 @@
+#! /bin/sh -
+#
+# Dragora installer
+#
+# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Exit immediately on any error
+set -e
+
+PROGRAM="${0##*/}"
+TMPDIR="${TMPDIR:-/tmp}"
+TMPFILE="${TMPDIR}/${PROGRAM}.${RANDOM-0}$$"
+LOCKFILE="${TMPDIR}/dragora-installer.lockfile"
+OUTPUT_TTY=/dev/tty3
+
+chkstatus_or_exit()
+{
+    status=$?
+
+    # Clean up temporary files
+    rm -f -- "$TMPFILE" "$LOCKFILE"
+
+    # Clean up temporary subdirectory related to the installer
+    test -d "$SUBTMPDIR" && rm -rf -- "$SUBTMPDIR"
+
+    if test $status -ne 0
+    then
+        printf "%s\n" "" "Return status = $status" 1>&2
+        exit 2;
+    fi
+
+    unset status
+}
+
+# Sanity checks
+
+if test ! -d "$TMPDIR"
+then
+    echo "${PROGRAM}: \`${TMPDIR}' is not a qualified temporary directory" 1>&2
+    exit 1;
+fi
+if test ! -w "$TMPDIR"
+then
+    echo "${PROGRAM}: \`${TMPDIR}' is not a writable temporary directory" 1>&2
+    exit 1;
+fi
+
+trap 'chkstatus_or_exit' EXIT HUP INT QUIT ABRT TERM
+
+umask 077;	# Remove access for all but user.
+
+# Set a lock to allow only one instance of the installer
+
+if ( set -C ; echo ": $PROGRAM - locked" > $LOCKFILE ) 2> /dev/null
+then
+    true
+else
+    if test -e "$LOCKFILE"
+    then
+        echo "Only one instance of \`${PROGRAM}' is allowed." 1>&2
+        exit 1;
+    else
+        echo "${PROGRAM}: \`${LOCKFILE}' lock failed." 1>&2
+        exit 2;
+    fi
+fi
+
+# Create subdirectory to store the files produced by the installer
+
+SUBTMPDIR="${TMPDIR}/${PROGRAM}"	# By default "/tmp/dragora-installer"
+mkdir -p -m 700 -- $SUBTMPDIR
+export SUBTMPDIR
+
+# Detect and prepare list of Linux partition(s)
+
+if fdisk -l | grep -q -m 1 Linux
+then
+    fdisk -l | grep Linux | LC_COLLATE=C sort > ${SUBTMPDIR}/partitions
+else
+    printf "%s\n" \
+     "    Linux partitions were not detected."                               \
+     ""                                                                      \
+     "A Linux partition is required to continue the installation.  You can"  \
+     "use utilities such as fdisk(8), cfdisk(8) or parted(8) to create at"   \
+     "least one Linux partition.  Then run \`${PROGRAM}' again."             \
+     ""
+     exit 1;
+fi
+
+umask 022;	# Remove write permission for group and other.
+
+dialog --colors \
+ --backtitle "\ZbDragora 3.0 Installer" \
+ --hfile "HELP" \
+ --title "INSTALLER INFORMATION" \
+ --msgbox \
+"Welcome to \Z3${PROGRAM}\Zn.\n\n\
+This program prepares Dragora 3.0 to run on your computer.\n\n\
+    - To set up Dragora now, press \Zb\Z7ENTER\Zn.\n\n\
+    - To quit, press \Zb\Z7ESC\Zn.\n\n\
+Please read the installer's help before proceeding (\Zb\Z7F1\Zn)." 14 63
+
+# Try to detect and mount the hybrid ISO image, there may be a USB memory
+# stick already inserted.  If not, the media menu will be displayed.
+
+if ! blkid -t LABEL="Dragora Packages" 2> /dev/null
+then
+    dialog --colors \
+     --backtitle "\ZbInstallation Medium" \
+     --title "Pendrive/SDCard/CDROM" \
+     --msgbox \
+"Please insert the media labeled as \"Dragora Packages\" and\n\
+press \Zb\Z7ENTER\Zn to continue.  Otherwise a media selection menu\n\
+will be displayed." 7 63
+    if blkid -t LABEL="Dragora Packages" 2> /dev/null
+    then
+        mkdir -p -- /media/dragora-mount
+        mount -t iso9660 LABEL="Dragora Packages" /media/dragora-mount 2> /dev/null
+        echo "/media/dragora-mount/packages" > ${SUBTMPDIR}/MediumFound
+    else
+        . ./parts/MenuMedia
+    fi
+fi
+
+# Double-check to see the installation directory
+if test ! -f "${SUBTMPDIR}/MediumFound"
+then
+    dialog --colors \
+     --backtitle "\ZbInstallation Medium" \
+     --title "MEDIUM NOT FOUND" \
+     --sleep 7 --infobox \
+"\nNo means of installation was found to proceed with\n\
+the installation of Dragora.  Please check your\n\
+drives and the directory containing the software\n\
+packages." 8 55
+    exit 99;
+fi
+
