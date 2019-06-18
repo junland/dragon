@@ -115,6 +115,8 @@ Please read the installer's help before proceeding (\Zb\Z7F1\Zn)." 14 63
 # Try to detect and mount the hybrid ISO image, there may be a USB memory
 # stick already inserted.  If not, the media menu will be displayed.
 
+mkdir -p -- /media/dragora-mount
+
 if ! blkid -t LABEL="Dragora Packages" 2> /dev/null
 then
     dialog --colors \
@@ -126,7 +128,6 @@ press \Zb\Z7ENTER\Zn to continue.  Otherwise a media selection menu\n\
 will be displayed." 7 63
     if blkid -t LABEL="Dragora Packages" 2> /dev/null
     then
-        mkdir -p -- /media/dragora-mount
         mount -t iso9660 LABEL="Dragora Packages" /media/dragora-mount 2> /dev/null
         echo "/media/dragora-mount/packages" > ${SUBTMPDIR}/MediumFound
     else
@@ -147,4 +148,7 @@ drives and the directory containing the software\n\
 packages." 8 55
     exit 99;
 fi
+
+# Clean up possible empty mount-directory
+rmdir -- /media/dragora-mount 2> /dev/null || true
 
