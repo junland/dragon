@@ -1,0 +1,73 @@
+# This file is part of the 'dragora-installer'.
+
+# Check for at least one swap partition
+
+if ! fdisk -l 2> /dev/null | grep -q -m 1 swap
+then
+    dialog --colors \
+     --backtitle "\ZbPartitions: Swap" \
+     --title "SWAP PARTITION NOT DETECTED" \
+     --yesno \
+"No swap partitions detected.  This could be important\n\
+to reduce the use of RAM memory...\n\n\
+Would you like to proceed without a swap partition?.\n" 9 58 || \
+    {
+        printf "%s\n" "" \
+         "Please, try to create a swap partition using fdisk(8) or cfdisk(8)." \
+         "Then re-run the installer to give the proper format (if needed)."
+        exit 99;
+    }
+else # Offer format possibility
+
+    list="$(fdisk -l 2> /dev/null | grep -m 1 swap)"
+    device="${list%% *}"
+    size="$(echo $list | awk '{ print $5 }')"
+    unset list
+
+    dialog --colors \
+     --backtitle "\ZbPartitions: Swap format" \
+     --title "SWAP PARTITION DETECTED" \
+     --ok-label "Format" \
+     --cancel-label "Ignore" \
+     --checklist \
+"A swap partition has been detected.\n\n\
+We offer the possibility to format it properly,\n\
+as well as you can simply ignore this part and\n\
+continue if you previously formatted it:\n\n\
+Device name: $device [${size}]" 14 52 1 \
+"$device"    "Check for bad blocks (slow)" off \
+    2> ${SUBTMPDIR}/return-MakeSwap || \
+    {
+        unset device size
+        return 0
+    }
+    unset size	# Next, we're not using it.
+
+    # Give format and activate swap partition
+
+    if test -s "${SUBTMPDIR}/return-MakeSwap"
+    then
+        dialog --colors \
+         --backtitle "\ZbPartitions: Formatting and checking swap partition ${device}" \
+         --title "SWAP PARTITION $device" \
+         --prgbox "mkswap -c $device" 30 72
+    else
+        dialog --colors \
+         --backtitle "\ZbPartitions: Formatting swap partition ${device}" \
+         --title "SWAP PARTITION $device" \
+         --prgbox "mkswap $device" 30 72
+    fi
+
+    dialog --colors \
+     --backtitle "\ZbPartitions: Swap partition activation" \
+     --title "SWAP PARTITION $device" \
+     --prgbox "Activating swap partition..." "swapon -f $device" 30 72
+
+    # Produce fstab entry for physical swap partition
+
+    printf "%-15s %-15s %-11s %-16s %-5s %s\n" \
+     "$device" "swap" "swap" "defaults" "0" "0" > ${SUBTMPDIR}/fstab
+
+    unset device
+fi
+
