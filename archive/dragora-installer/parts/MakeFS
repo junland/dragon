@@ -97,8 +97,8 @@ _mkfs()
      --backtitle "\ZbPartitions: ${2}" \
      --title "FILE SYSTEM FORMAT" \
      --ok-label "Format" --cr-wrap --checklist \
-"The following device can be formatted using the \"${1}\" file system...\n\n\
-$(fdisk -l $2 | head -n 1):" 13 55 1 \
+"The following device can be formatted using the \"${1}\" command:\n\n\
+$(fdisk -l $2 | head -n 1)" 13 55 1 \
 "$2"    "Check for bad blocks (slow)" off \
     2> ${SUBTMPDIR}/return-MakeFS_mkfs || return $?
 
@@ -107,13 +107,21 @@ $(fdisk -l $2 | head -n 1):" 13 55 1 \
         dialog --colors \
          --backtitle "\ZbPartitions: Formatting and checking Linux partition ${2}" \
          --title "${2}: Formatting & Checking" \
-         --prgbox "mkfs.${1} -c $2" 30 72
+         --prgbox "$1 -c $2" 30 72
     else
         dialog --colors \
          --backtitle "\ZbPartitions: Formatting Linux partition ${2}" \
          --title "${2}: Formatting" \
-         --prgbox "mkfs.${1} $2" 30 72
+         --prgbox "$1 $2" 30 72
     fi
+}
+
+_mkxfs()
+{
+    dialog --colors \
+     --backtitle "\ZbPartitions: Formatting Linux partition ${2}" \
+     --title "${2}: Formatting" \
+     --prgbox "$1 -f $2" 30 72
 }
 
 formatMenu()
@@ -137,9 +145,9 @@ Choose a file system for '${1}':" 15 58 5 \
          "xfs"  "A 64-bit journaling file system"  \
         2> ${SUBTMPDIR}/return-MakeFS_formatMenu || _status=$?
 
-        if test "$_status" -ne 0
+        if test -n "$_status"
         then
-            if test "$_status" -eq 2
+            if test $_status -eq 2
             then
                 dialog --colors \
                  --backtitle "\ZbSetting a file system (help)" \
@@ -158,11 +166,11 @@ Choose a file system for '${1}':" 15 58 5 \
 
         # Check for selected options to give the proper format
         case "$(cat -- ${SUBTMPDIR}/return-MakeFS_formatMenu)" in
-        ext2)  _mkfs ext2 $1 ;;
-        ext3)  _mkfs ext3 $1 ;;
-        ext4)  _mkfs ext4 $1 ;;
-        jfs)  true ;;	## TODO: TO BE ADDED.
-        xfs)  true ;;	## TODO: TO BE ADDED.
+        ext2)  _mkfs  mkfs.ext2 $1 ;;
+        ext3)  _mkfs  mkfs.ext3 $1 ;;
+        ext4)  _mkfs  mkfs.ext4 $1 ;;
+         jfs)  _mkfs  jfs_mkfs  $1 ;;
+         xfs)  _mkxfs mkfs.xfs  $1 ;;
         esac
 
         break;
@@ -224,6 +232,7 @@ What would you like to do for '${device}'?" 17 64 3 \
         fi
         ;;
     3)
+        # To verify the existence of the designated root mount point
         if grep -qs -m 1 '/ ' ${SUBTMPDIR}/fstab
         then
             break;
