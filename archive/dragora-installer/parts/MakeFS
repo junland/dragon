@@ -1,0 +1,251 @@
+# This file is part of the 'dragora-installer'.
+#
+# Purpose: Linux partition(s) and mount points.
+
+# Add or refresh list of partitions taking initial
+# list of partitions and temporary fstab into account
+makelist()
+{
+    while read -r line
+    do
+        test -n "$line" || continue
+
+        device="${line%% *}"				# Device name.
+        size="$(echo $line | awk '{ print $5 }')"	# Size field.
+        mnt_point="$( echo "$(awk '{ print $2 }' ${SUBTMPDIR}/fstab 2> /dev/null)" )"
+        format_fs="$( echo "$(awk '{ print $3 }' ${SUBTMPDIR}/fstab 2> /dev/null)" )"
+
+        # Figure out specific file system if it is unknown
+        format_fs="${format_fs:=$(blkid -s TYPE -o value $device)}"
+        export format_fs;	# To propagate it over functions.
+
+        echo "\"${device}\" \"$format_fs [${size}] ${mnt_point}\" \\" \
+         >> ${SUBTMPDIR}/MakeFS_menu
+
+    done < ${SUBTMPDIR}/partitions
+    echo ' 2> ${SUBTMPDIR}/return-MakeFS_menu || _code=$?' \
+     >> ${SUBTMPDIR}/MakeFS_menu
+}
+
+# Ask to assign a valid mount point
+askMountPoint()
+{
+    dialog --colors \
+     --backtitle "\ZbSetting Linux partitions: Mount point for $1" \
+     --title "MOUNT POINT" \
+     --no-cancel --ok-label "Continue" --inputbox \
+"A mount point can be assigned to the partition:\n\n\
+  Consider declaring a complete path such as \"/storage\".\n\
+If you declare the single slash \"/\" it will be designated\n\
+for the (main) root partition.\n\n\
+
+Note: If you use directory names that contain spaces,\n\
+the same will be converted using the octal character\n\
+040, which is interpreted by the file system table.\n\n\
+Enter a mount point for '${1}'.  If you leave\n\
+this blank, any previous entries will be deleted:" 19 63 \
+     2> ${SUBTMPDIR}/return-MakeFS_askMountPoint || return 0
+
+    # We remove possible single/double quotes from the answer.
+    # Also we convert any blank space (tab or space) into the
+    # octal space character (040) to be handled by fstab(5).
+    # This is in case that the user introduce a directory with
+    # blank spaces.  We are not managing the octal tab character
+    # (011) since TAB is a functional key in dialog(1).
+
+    mnt_point="$(sed -e "s/[\'\"]//g" -e 's/[[:blank:]]/\\040/g' \
+                  ${SUBTMPDIR}/return-MakeFS_askMountPoint)"
+
+    if test -n "$mnt_point"
+    then
+        # Determine the sixth field for the fstab
+        case $mnt_point in
+        ^/)  fs_passno=1;;
+         *)  fs_passno=2;;
+        esac
+
+        # Figure out device UUID to be added in the fstab
+        devid="$(blkid $1 | cut -f 2 -d ' ')"
+
+        # Write entry to the fstab removing possible duplicates
+
+        printf "%-15s %-15s %-11s %-16s %-5s %s\n" \
+         "$devid" "$mnt_point" "$format_fs" "defaults" "1" "${fs_passno}" \
+         >> ${SUBTMPDIR}/fstab
+        unset fs_passno
+
+        if test "$(grep -c "^$devid" ${SUBTMPDIR}/fstab)" -gt 1
+        then
+            repeated="$(grep -m 1 -n "^$devid" ${SUBTMPDIR}/fstab)"
+            repeated="${repeated%%:*}"
+            sed -i "${repeated}d" ${SUBTMPDIR}/fstab
+            unset repeated
+        fi
+        unset mnt_point
+    else # Remove the whole entry
+        if test -n "$devid"
+        then
+            sed -i "/^${devid}/d" ${SUBTMPDIR}/fstab
+            unset devid
+        fi
+    fi
+}
+
+_mkfs()
+{
+    dialog --colors \
+     --backtitle "\ZbPartitions: ${2}" \
+     --title "FILE SYSTEM FORMAT" \
+     --ok-label "Format" --cr-wrap --checklist \
+"The following device can be formatted using the \"${1}\" file system...\n\n\
+$(fdisk -l $2 | head -n 1):" 13 55 1 \
+"$2"    "Check for bad blocks (slow)" off \
+    2> ${SUBTMPDIR}/return-MakeFS_mkfs || return $?
+
+    if test -s "${SUBTMPDIR}/return-MakeFS_mkfs"
+    then
+        dialog --colors \
+         --backtitle "\ZbPartitions: Formatting and checking Linux partition ${2}" \
+         --title "${2}: Formatting & Checking" \
+         --prgbox "mkfs.${1} -c $2" 30 72
+    else
+        dialog --colors \
+         --backtitle "\ZbPartitions: Formatting Linux partition ${2}" \
+         --title "${2}: Formatting" \
+         --prgbox "mkfs.${1} $2" 30 72
+    fi
+}
+
+formatMenu()
+{
+    while true
+    do
+        _status=""
+
+        dialog --colors \
+         --backtitle "\Zb${1}: Setting a file system" \
+         --title "FILE SYSTEM SELECTION" \
+         --help-button --default-item "ext3" \
+         --cr-wrap --menu \
+"File systems to choose from.  If you don't know which\n\
+one to choose, please go to the \"Help\" button.\n\n\
+Choose a file system for '${1}':" 15 58 5 \
+         "ext2" "Second extended filesystem"       \
+         "ext3" "Third  extended filesystem"       \
+         "ext4" "Fourth extended filesystem"       \
+         "jfs"  "A Journaled file system"          \
+         "xfs"  "A 64-bit journaling file system"  \
+        2> ${SUBTMPDIR}/return-MakeFS_formatMenu || _status=$?
+
+        if test "$_status" -ne 0
+        then
+            if test "$_status" -eq 2
+            then
+                dialog --colors \
+                 --backtitle "\ZbSetting a file system (help)" \
+                 --title "FILE SYSTEM INFORMATION" \
+                 --textbox HELP_FS 27 75
+                continue;
+            fi
+            return $_status;
+        fi
+
+        # Check if the device is already mounted to be unmounted
+        if grep -q "^$1" /proc/mounts
+        then
+            umount $1 > /dev/null 2>&1 || true
+        fi
+
+        # Check for selected options to give the proper format
+        case "$(cat -- ${SUBTMPDIR}/return-MakeFS_formatMenu)" in
+        ext2)  _mkfs ext2 $1 ;;
+        ext3)  _mkfs ext3 $1 ;;
+        ext4)  _mkfs ext4 $1 ;;
+        jfs)  true ;;	## TODO: TO BE ADDED.
+        xfs)  true ;;	## TODO: TO BE ADDED.
+        esac
+
+        break;
+    done
+}
+
+# Compose partition menu to be displayed
+
+while true
+do
+    cat << EOF > ${SUBTMPDIR}/MakeFS_menu
+dialog --colors \\
+ --backtitle "\ZbPartitions and mount points" \\
+ --title "Setting Linux partitions" \\
+ --ok-button "Establish" --extra-button \\
+ --extra-label "Done" \\
+ --menu \\
+"The following Linux partitions has been detected:\n\n\\
+  Selecting a partition gives you the possibility to set up\n\\
+a file system or a mount point for the boot stage of the system.  \\
+Once this has been established, choose the \\"Done\\" button to \
+continue with the installation." 16 65 5 \\
+EOF
+    makelist; . ${SUBTMPDIR}/MakeFS_menu
+    case ${_code:-$?} in
+    0)
+        device="$(cat -- ${SUBTMPDIR}/return-MakeFS_menu)"
+
+        if test -z "$device"
+        then
+            echo "${PROGRAM}: Error the device list is empty." 1>&2
+            exit 99;
+        fi
+
+        if test -n "$format_fs"
+        then
+            dialog --colors \
+             --backtitle "\ZbPartitions and mount points" \
+             --title "$device" \
+             --no-cancel --menu \
+"* Selected device already contains a file system [${format_fs}] *\n\n\
+You can assign a mount point for system startup, you also\n\
+have the ability to re-format the partition.  If you choose\n\
+the latter, you will lose all your data and will be asked\n\
+for a mounting point.\n\n\
+What would you like to do for '${device}'?" 17 64 3 \
+             "0" "Assign a mount point" \
+             "1" "Format again (data loss risk)" \
+             "<" "Return to previous menu" \
+            2> ${SUBTMPDIR}/return-MakeFS_menu_case || continue;
+
+            # Check for selected options
+            case "$(cat -- ${SUBTMPDIR}/return-MakeFS_menu_case)" in
+            0)  askMountPoint $device ;;
+            1)  formatMenu $device && askMountPoint $device ;;
+            esac
+        else
+            formatMenu $device && askMountPoint $device
+        fi
+        ;;
+    3)
+        if grep -qs -m 1 '/ ' ${SUBTMPDIR}/fstab
+        then
+            break;
+        else
+            dialog --colors \
+             --backtitle "\ZbPartitions and mount points: Unknown mount point for the root partition" \
+             --title "NO MOUNT POINT FOR ROOT" \
+             --ok-label "Return" --msgbox \
+"There is no declared mount point for the root partition.\n\n\
+  Please go back and assign a mount point for the\n\
+root partition.  Remember that the mount point must be\n\
+declared as \"/\" (without quotes and spaces)." 10 60 || \
+             { unset _code ; continue ; }
+        fi
+        ;;
+    *)
+        exit $_code
+        ;;
+    esac
+    unset _code;	# To take the value again.
+done
+
+unset _code device format_fs _status \
+      makelist askMountPoint _mkfs formatMenu
+
