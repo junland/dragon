@@ -112,6 +112,22 @@ fi
 
 umask 022;	# Remove write permission for group and other.
 
+# Determine the maximum size of the terminal to be used on the dialogues.
+# Try using shell variables that set LINES and COLUMNS, first.
+echo "Checking terminal size ..."
+if test -z "$LINES"
+then
+    LINES="$(tput lines)" || \
+     { LINES="$(stty size)" && LINES="${LINES% *}"; }
+fi
+if test -z "$COLUMNS"
+then
+    COLUMNS="$(tput cols)" || \
+     { COLUMNS="$(stty size)" && COLUMNS="${COLUMNS#* }"; }
+fi
+echo "$LINES $COLUMNS"
+export LINES COLUMNS
+
 dialog --colors \
  --backtitle "\ZbDragora 3.0 Installer" \
  --hfile "HELP_F1" \
@@ -169,4 +185,5 @@ fi
 . ./parts/MakeFS	# Verify/give format to Linux partitions.
 . ./parts/FstabEdit	# File system table edition (fstab).
 . ./parts/MountRoot	# Mount root partition for installation.
+. ./parts/FstabMounts	# Mount rest of partitions from fstab.
 

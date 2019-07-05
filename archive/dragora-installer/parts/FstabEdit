@@ -25,10 +25,11 @@ printf "%-43s %-14s %-12s %-16s %-3s %s\n" \
 
 # Show menu to edit the produced fstab (if desired)
 
-dialog --no-shadow \
+dialog --no-shadow --colors \
+ --backtitle "\ZbFile system table (fstab)" \
  --title "FILE SYSTEM TABLE EDITOR" \
  --ok-label "Save/Continue" --no-cancel \
- --defaultno --editbox "${SUBTMPDIR}/fstab" -1 -1 \
+ --defaultno --editbox "${SUBTMPDIR}/fstab" $((LINES - 8)) $COLUMNS \
 2> ${SUBTMPDIR}/fstab.edit
 
 # Check for differences and offer menu to view or apply changes
@@ -60,11 +61,11 @@ the installer will continue with the default fstab." 9 65 || _status=$?
             break;
             ;;
         2) ## Button "View Diff"
-            dialog --colors \
+            dialog --no-shadow --colors \
              --backtitle "\ZbFile system table modification (unified difference)" \
              --title "FILE SYSTEM TABLE CHANGES" \
              --exit-label "Return" \
-             --cr-wrap --textbox "${SUBTMPDIR}/fstab.diff" 0 0 || continue;
+             --cr-wrap --textbox "${SUBTMPDIR}/fstab.diff" $((LINES - 8)) $COLUMNS || continue;
             ;;
         *) ## Any other code
             return $_status
