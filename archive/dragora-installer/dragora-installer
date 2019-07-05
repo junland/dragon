@@ -32,15 +32,23 @@ chkstatus_or_exit()
 {
     status=$?
 
+    echo ""
+
     # Clean up temporary files
     rm -f -- "$TMPFILE" "$LOCKFILE"
 
     # Clean up temporary subdirectory related to the installer
     test -d "$SUBTMPDIR" && rm -rf -- "$SUBTMPDIR"
 
+    # Check if the root partition has been mounted to be unmounted
+    if mountpoint -q /media/dragora-root
+    then
+        umount -v /media/dragora-root || true
+    fi
+
     if test $status -ne 0
     then
-        printf "%s\n" "" "Return status = $status" 1>&2
+        echo "Return status = $status" 1>&2
         exit 2;
     fi
 
