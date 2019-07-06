@@ -88,7 +88,6 @@ fi
 
 SUBTMPDIR="${TMPDIR}/.${PROGRAM}"	# Default sets to "${HOME}/.dragora-installer".
 mkdir -p -m 700 -- $SUBTMPDIR
-export SUBTMPDIR
 
 umask 022;	# Remove write permission for group and other.
 
@@ -122,11 +121,12 @@ then
      { COLUMNS="$(stty size)" && COLUMNS="${COLUMNS#* }"; }
 fi
 echo "$LINES $COLUMNS"
-export LINES COLUMNS
+
+export SUBTMPDIR LINES COLUMNS
 
 dialog --colors \
  --backtitle "\ZbDragora 3.0 Installer" \
- --hfile "HELP_F1" \
+ --hfile "@PARTS@HELP_F1" \
  --title "INSTALLER INFORMATION" \
  --msgbox \
 "Welcome to \Z3${PROGRAM}\Zn.\n\n\
@@ -154,7 +154,7 @@ will be displayed." 7 63
         mount -t iso9660 LABEL="Dragora Packages" /media/dragora-medium 2> /dev/null
         echo "/media/dragora-medium/packages" > ${SUBTMPDIR}/MediumFound
     else
-        . ./parts/MenuMedia
+        . @PARTS@MenuMedia
     fi
 fi
 
@@ -177,9 +177,9 @@ packages." 8 55
     exit 99;
 fi
 
-. ./parts/MakeSwap	# Verify/give format to a Swap partition.
-. ./parts/MakeFS	# Verify/give format to Linux partitions.
-. ./parts/FstabEdit	# File system table edition (fstab).
-. ./parts/MountRoot	# Mount root partition for installation.
-. ./parts/FstabMounts	# Mount rest of partitions from fstab.
+. @PARTS@MakeSwap	# Verify/give format to a Swap partition.
+. @PARTS@MakeFS		# Verify/give format to Linux partitions.
+. @PARTS@FstabEdit	# File system table edition (fstab).
+. @PARTS@MountRoot	# Mount root partition for installation.
+. @PARTS@FstabMounts	# Mount rest of partitions from fstab.
 
