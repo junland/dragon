@@ -1,0 +1,50 @@
+# This file is part of the 'dragora-installer'.
+#
+# Purpose: Make mount points and mount non-root filesystems from fstab.
+
+# Make declared mount points from fstab, excluding
+# commentaries, root, and possible swapfile.
+makePoint()
+{
+    for directory in $(egrep -v '^#|swap|/ ' ${SUBTMPDIR}/fstab | \
+                      awk '{ print substr($2,2) }')
+    do
+        test -n "$directory" || continue
+
+        # Make sure to translate converted \040 blank spaces
+        # into common spaces for directory creation (see MakeFS)
+        directory="$(printf "%s" "$directory" | tr '\\040' ' ')"
+
+        if test ! -d "/media/dragora-root/$directory"
+        then
+            mkdir -p -- "/media/dragora-root/$directory"
+        fi
+    done
+    unset directory
+}
+
+mountNonRoot()
+{
+    if test -s "${SUBTMPDIR}/fstab"
+    then
+        #awk '!/^#/ && !/\/ / && !/fd0/ && !/proc/ && !/swap/ { print $1,$2 }' \
+        awk '!/^#/ && !/\/ / && !/proc/ && !/swap/ { print $1,$2 }' \
+         ${SUBTMPDIR}/fstab | while IFS=" " read -r device mntpoint
+         do
+             umount $device > /dev/null 2>&1 || true
+
+             mntpoint="$(printf "%s" "$mntpoint" | tr '\\040' ' ')"
+             mount -v $device "$mntpoint" || exit $?
+             sleep 2
+
+# 2>&1 | dialog --colors \
+#              --backtitle "\ZbNon-root filesystems" \
+#              --title "NON-ROOT MOUNTS" --cr-wrap --sleep 2 \
+#              --progressbox "Mounting rest of filesystems: $device" $((LINES / 2)) $COLUMNS
+         done
+    fi
+}
+
+makePoint
+mountNonRoot
+
