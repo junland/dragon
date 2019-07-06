@@ -2,9 +2,9 @@
 #
 # Purpose: Make mount points and mount non-root filesystems from fstab.
 
-# Make declared mount points from fstab, excluding
+# Make declared mount points from fstab, exclude:
 # commentaries, root, and possible swapfile.
-makePoint()
+MountPoint()
 {
     for directory in $(egrep -v '^#|swap|/ ' ${SUBTMPDIR}/fstab | \
                       awk '{ print substr($2,2) }')
@@ -34,17 +34,16 @@ mountNonRoot()
              umount $device > /dev/null 2>&1 || true
 
              mntpoint="$(printf "%s" "$mntpoint" | tr '\\040' ' ')"
-             mount -v $device "$mntpoint" || exit $?
-             sleep 2
+             mntpoint="/media/dragora-root/${mntpoint}"
 
-# 2>&1 | dialog --colors \
-#              --backtitle "\ZbNon-root filesystems" \
-#              --title "NON-ROOT MOUNTS" --cr-wrap --sleep 2 \
-#              --progressbox "Mounting rest of filesystems: $device" $((LINES / 2)) $COLUMNS
+             echo ""
+             echo "Mounting $device ..."
+             mount -v $device "$mntpoint" || exit $?
+             sleep 1
          done
     fi
 }
 
-makePoint
+mountPoint
 mountNonRoot
 
