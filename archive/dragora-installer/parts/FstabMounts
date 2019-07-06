@@ -4,7 +4,7 @@
 
 # Make declared mount points from fstab, exclude:
 # commentaries, root, and possible swapfile.
-MountPoint()
+mountPoint()
 {
     for directory in $(egrep -v '^#|swap|/ ' ${SUBTMPDIR}/fstab | \
                       awk '{ print substr($2,2) }')
@@ -27,8 +27,7 @@ mountNonRoot()
 {
     if test -s "${SUBTMPDIR}/fstab"
     then
-        #awk '!/^#/ && !/\/ / && !/fd0/ && !/proc/ && !/swap/ { print $1,$2 }' \
-        awk '!/^#/ && !/\/ / && !/proc/ && !/swap/ { print $1,$2 }' \
+        awk '!/^#/ && !/\/ / && !/fd0/ && !/proc/ && !/swap/ { print $1,$2 }' \
          ${SUBTMPDIR}/fstab | while IFS=" " read -r device mntpoint
          do
              umount $device > /dev/null 2>&1 || true
@@ -44,6 +43,38 @@ mountNonRoot()
     fi
 }
 
-mountPoint
-mountNonRoot
+if test ! -r /media/dragora-root/etc/fstab
+then
+    mountPoint
+    mountNonRoot
+
+    # Copy fstab into root partition
+    mkdir -p -- /media/dragora-root/etc && \
+     cp -f -- ${SUBTMPDIR}/fstab /media/dragora-root/etc/
+else
+    dialog --no-shadow --colors \
+     --backtitle "\ZbFile system table (fstab)" \
+     --title "EXISTING FILE SYSTEM TABLE" \
+     --yesno \
+"A file system table already exists on the mounted root
+partition (/media/dragora-root/etc/fstab).\n\n\
+Overwrite this file only if:\n\
+  - This is a new installation.\n\
+  - You are installing a new kernel image.\n\
+  - To create a boot disk with a new kernel.\n\n\
+In this case, you must configure the system to boot\n\
+properly.\n\n\
+Do not overwrite the file system table:\n\
+  - If you are adding software to the existing system.\n\n\
+In this case, reconfigure the system and end with the\n\
+installation process.\n\n\
+Do you want to replace the existing fstab with the new one?" \
+22 64 || return 0
+    mountPoint
+    mountNonRoot
+    mkdir -p -- /media/dragora-root/etc && \
+     cp -f -- ${SUBTMPDIR}/fstab /media/dragora-root/etc/
+fi
+
+unset mountPoint mountNonRoot
 
