@@ -54,23 +54,22 @@ build()
 
     cd "$srcdir"
 
-    patch -Np1 -i ${worktree}/patches/icewm/ldflags.patch
+    patch -Np1 -i "${worktree}/patches/icewm/ldflags.patch"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
     mkdir BUILD
     cd BUILD
-
     cmake \
-     -DCMAKE_C_FLAGS:STRING="$QICFLAGS"               \
+     -DCMAKE_CXX_FLAGS:STRING="$QICXXFLAGS"           \
      -DCMAKE_EXE_LINKER_FLAGS:STRING="$QILDFLAGS"     \
      -DCMAKE_INSTALL_PREFIX=/usr                      \
      -DCMAKE_BUILD_TYPE=Release                       \
      -DCMAKE_SKIP_INSTALL_RPATH=YES                   \
      ..
 
-    make -j${jobs}
+    make VERBOSE=1 -j${jobs}
     make -j${jobs} DESTDIR="$destdir" install
 
     # Include xinitrc file to start IceWM
