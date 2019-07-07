@@ -93,17 +93,17 @@ umask 022;	# Remove write permission for group and other.
 
 # Detect and prepare initial list of Linux partition(s)
 
-if fdisk -l | grep -q -m 1 Linux
+if fdisk -l | grep -m 1 Linux | grep -q -v swap
 then
-    fdisk -l | grep Linux | LC_COLLATE=C sort > ${SUBTMPDIR}/partitions
+    fdisk -l | grep Linux | grep -v swap | LC_COLLATE=C sort \
+     > ${SUBTMPDIR}/partitions
 else
     printf "%s\n" \
      "    Linux partitions were not detected."                               \
      ""                                                                      \
      "A Linux partition is required to continue the installation.  You can"  \
      "use utilities such as fdisk(8), cfdisk(8) or parted(8) to create at"   \
-     "least one Linux partition.  Then run \`${PROGRAM}' again."             \
-     ""
+     "least one Linux partition.  Then run \`${PROGRAM}' again."
      exit 1;
 fi
 
