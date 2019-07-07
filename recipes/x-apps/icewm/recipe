@@ -1,7 +1,7 @@
 # Build recipe for icewm.
 #
-# Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
-# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019 Lucas Skoldqvist, <frusen@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,18 +16,18 @@
 # limitations under the License.
 
 program=icewm
-version=1.4.2
-release=4
+version=1.5.5
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/x-apps"
 
-tarname=${program}-${version}.tar.bz2
+tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
-fetch=http://github.com/bbidulock/icewm/releases/download/${version}/$tarname
+fetch=http://github.com/ice-wm/icewm/releases/download/${version}/$tarname
 
-homepage=http://ice-wm.org/
+homepage=https://ice-wm.org/
 
 description="
 IceWM Window Manager.
@@ -54,33 +54,25 @@ build()
 
     cd "$srcdir"
 
-    patch -Np0 -i ${worktree}/patches/icewm/fix-strlcat_strlcpy.patch
-    patch -Np0 -i ${worktree}/patches/icewm/musl.patch
+    patch -Np1 -i "${worktree}/patches/icewm/ldflags.patch"
 
-    # Note: IceWM has sound support for GUI events, this requires the
-    # libsndfile dependency, and also has been marked as experimental;
-    # we turn it to OFF by default.
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" \
-    LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --mandir=$mandir \
-     --enable-static=no \
-     --enable-shared=yes \
-     --docdir=$docsdir \
-     --enable-shaped-decorations \
-     --enable-gradients \
-     --disable-guievents \
-     --disable-menus-gnome2 \
-     --with-x \
-     --build="$(cc -dumpmachine)"
- 
-    make -j${jobs} V=1
+    mkdir BUILD
+    cd BUILD
+    cmake \
+     -DCMAKE_CXX_FLAGS:STRING="$QICXXFLAGS"           \
+     -DCMAKE_EXE_LINKER_FLAGS:STRING="$QILDFLAGS"     \
+     -DCMAKE_INSTALL_PREFIX=/usr                      \
+     -DCMAKE_BUILD_TYPE=Release                       \
+     -DCMAKE_SKIP_INSTALL_RPATH=YES                   \
+     ..
+
+    make VERBOSE=1 -j${jobs}
     make -j${jobs} DESTDIR="$destdir" install
 
-    # Include xinitrc file to start ICEWM
-
+    # Include xinitrc file to start IceWM
     mkdir -p "${destdir}/etc/X11/xinit"
     cp -p "${worktree}/archive/icewm/xinitrc-icewm" "${destdir}/etc/X11/xinit/"
     chmod 644 "${destdir}/etc/X11/xinit/xinitrc-icewm"
@@ -101,8 +93,10 @@ build()
         )
     fi
 
+    cd ..
+
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}/"
+    cp -p $docs "${destdir}${docsdir}"
 }
 
