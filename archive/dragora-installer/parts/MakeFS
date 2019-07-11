@@ -16,7 +16,11 @@ makeMenu()
         # Get device mount point and file system type
         devpoint="$(awk -v patr=$device '$1 == patr { print $2 }' ${SUBTMPDIR}/fstab 2> /dev/null)"
         formatfs="$(awk -v patr=$device '$1 == patr { print $3 }' ${SUBTMPDIR}/fstab 2> /dev/null)"
-        formatfs="${formatfs:-$(blkid -s TYPE -o value $device 2> /dev/null)}"
+
+        if test -z "$formatfs" || test "$formatfs" = defaults
+        then
+            formatfs="$(blkid -s TYPE -o value $device 2> /dev/null)"
+        fi
 
         # Write entry to be showed on the MakeFS menu
         echo "\"${device}\" \"${formatfs:-Linux} ${size} $devpoint\" \\" \
@@ -73,7 +77,7 @@ this blank, any previous entries will be deleted:" 19 63 \
          "$1" "$mntpoint" "$formatfs" "defaults" "1" "${fs_passno}" \
          >> ${SUBTMPDIR}/fstab
 
-        unset fs_passno
+        unset fs_passno formatfs
 
         # Remove possible duplicates
         if test "$(grep -c "^$1" ${SUBTMPDIR}/fstab)" -gt 1
@@ -84,9 +88,9 @@ this blank, any previous entries will be deleted:" 19 63 \
             unset repeated
         fi
     else # Remove the whole fstab entry
-        if test -n "$1"
+        if test -n "$1" && test -f "${SUBTMPDIR}/fstab"
         then
-            escape_slash="$(echo $1 | sed 's/\//\\\//g')"
+            escape_slash="$(printf '%s' "$1" | sed 's/\//\\\//g')"
             sed -i "/${escape_slash}/d" ${SUBTMPDIR}/fstab
             unset escape_slash
         fi
@@ -148,24 +152,21 @@ Choose a file system for '${1}':" 15 58 5 \
          "xfs"  "A 64-bit journaling file system"  \
         2> ${SUBTMPDIR}/return-MakeFS_formatMenu || _status=$?
 
-        if test -n "$_status"
+        if test -n "$_status" && test $_status -ne 0
         then
             if test $_status -eq 2
             then
                 dialog --colors \
                  --backtitle "\ZbSetting a file system (help)" \
-                 --title "FILE SYSTEM INFORMATION" \
+                 --title "ABOUT FILE SYSTEMS" \
                  --textbox "@PARTS@HELP_FS" 27 75
                 continue;
             fi
             return $_status;
         fi
 
-        # Check if the device is already mounted to be unmounted
-        if grep -q "^$1" /proc/mounts
-        then
-            umount $1 > /dev/null 2>&1 || true
-        fi
+        # Try to unmount the device if it is already mounted
+        umount $1 > /dev/null 2>&1 || true
 
         # Check for selected options to give the proper format
         case "$(cat -- ${SUBTMPDIR}/return-MakeFS_formatMenu)" in
@@ -258,5 +259,5 @@ be declared as \"/\" (without quotes and spaces)." 10 60 || \
     unset _code;	# To take the value again.
 done
 
-unset makeMenu _mkfs _mkxfs FormatMenu formatfs _code _status
+unset makeMenu _mkfs _mkxfs FormatMenu _code _status
 
