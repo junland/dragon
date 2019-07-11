@@ -88,7 +88,7 @@ this blank, any previous entries will be deleted:" 19 63 \
             unset repeated
         fi
     else # Remove the whole fstab entry
-        if test -n "$1" && test -f "${SUBTMPDIR}/fstab"
+        if test -n "$1" && test -s "${SUBTMPDIR}/fstab"
         then
             escape_slash="$(printf '%s' "$1" | sed 's/\//\\\//g')"
             sed -i "/${escape_slash}/d" ${SUBTMPDIR}/fstab
@@ -133,15 +133,11 @@ _mkxfs()
 
 formatMenu()
 {
-    while true
-    do
-        _status=""
-
-        dialog --colors \
-         --backtitle "\Zb${1}: Setting a file system" \
-         --title "FILE SYSTEM SELECTION" \
-         --help-button --default-item "ext3" \
-         --cr-wrap --menu \
+    dialog --colors \
+     --backtitle "\Zb${1}: Setting a file system" \
+     --title "FILE SYSTEM SELECTION" \
+     --help-button --default-item "ext3" \
+     --cr-wrap --menu \
 "File systems to choose from.  If you don't know which\n\
 one to choose, please go to the \"Help\" button.\n\n\
 Choose a file system for '${1}':" 15 58 5 \
@@ -150,35 +146,33 @@ Choose a file system for '${1}':" 15 58 5 \
          "ext4" "Fourth extended filesystem"       \
          "jfs"  "A Journaled file system"          \
          "xfs"  "A 64-bit journaling file system"  \
-        2> ${SUBTMPDIR}/return-MakeFS_formatMenu || _status=$?
+    2> ${SUBTMPDIR}/return-MakeFS_formatMenu || _status=$?
 
-        if test -n "$_status" && test $_status -ne 0
+    if test -n "$_status" && test $_status -ne 0
+    then
+        if test $_status -eq 2
         then
-            if test $_status -eq 2
-            then
-                dialog --colors \
-                 --backtitle "\ZbSetting a file system (help)" \
-                 --title "ABOUT FILE SYSTEMS" \
-                 --textbox "@PARTS@HELP_FS" 27 75
-                continue;
-            fi
-            return $_status;
+            dialog --colors \
+             --backtitle "\ZbSetting a file system (help)" \
+             --title "ABOUT FILE SYSTEMS" \
+             --textbox "@PARTS@HELP_FS" 27 75
+            continue;
         fi
+        return $_status;
+    fi
+    unset _status
 
-        # Try to unmount the device if it is already mounted
-        umount $1 > /dev/null 2>&1 || true
+    # Try to unmount the device if it is already mounted
+    umount $1 > /dev/null 2>&1 || true
 
-        # Check for selected options to give the proper format
-        case "$(cat -- ${SUBTMPDIR}/return-MakeFS_formatMenu)" in
-        ext2)  _mkfs  mkfs.ext2 $1 ;;
-        ext3)  _mkfs  mkfs.ext3 $1 ;;
-        ext4)  _mkfs  mkfs.ext4 $1 ;;
-         jfs)  _mkfs  jfs_mkfs  $1 ;;
-         xfs)  _mkxfs mkfs.xfs  $1 ;;
-        esac
-
-        break;
-    done
+    # Check for selected options to give the proper format
+    case "$(cat -- ${SUBTMPDIR}/return-MakeFS_formatMenu)" in
+    ext2)  _mkfs  mkfs.ext2 $1 ;;
+    ext3)  _mkfs  mkfs.ext3 $1 ;;
+    ext4)  _mkfs  mkfs.ext4 $1 ;;
+     jfs)  _mkfs  jfs_mkfs  $1 ;;
+     xfs)  _mkxfs mkfs.xfs  $1 ;;
+    esac
 }
 
 # Compose partition menu to be displayed
@@ -259,5 +253,5 @@ be declared as \"/\" (without quotes and spaces)." 10 60 || \
     unset _code;	# To take the value again.
 done
 
-unset makeMenu _mkfs _mkxfs FormatMenu _code _status
+unset makeMenu _mkfs _mkxfs FormatMenu _code
 
