@@ -18,7 +18,7 @@
 program=xkeyboard-config
 version=2.27
 arch=noarch
-release=2
+release=3
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg/data"
@@ -65,6 +65,10 @@ build()
     for directory in "${destdir}/etc/X11/xkb"/*
     do
         test -d "$directory" || continue
+
+        # Exclude files from "rules" directory which should not be edited.
+        test "${directory##*/}" = rules && continue
+
         ( cd -- "$directory" && touch .graft-config )
     done
 
