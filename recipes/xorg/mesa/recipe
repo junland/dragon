@@ -17,7 +17,7 @@
 
 program=mesa
 version=19.0.4
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg/mesa"
@@ -52,9 +52,16 @@ build()
     # To increment compatibility with Musl (Thanks to "Alpine Linux")
     patch -p1 < "${worktree}/patches/mesa/adjust-cache-deflate-buffer.patch"
     patch -p1 < "${worktree}/patches/mesa/musl-fix-includes.patch"
+    patch -p1 < "${worktree}/patches/mesa/add-glx-use-tls.patch"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    case $arch in
+    x86_64 | i?86)
+        arch_options="--enable-glx-read-only-text --disable-asm"
+        ;;
+    esac
 
     ./configure CPPFLAGS="-D_XOPEN_SOURCE=700" \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
@@ -67,11 +74,11 @@ build()
      --disable-llvm \
      --disable-gallium-llvm \
      --disable-xvmc \
-     --disable-glx-tls \
-     --enable-glx \
-     --enable-texture-float \
-     --enable-gles1 \
+     --disable-gles1 \
      --enable-gles2 \
+     --disable-glx-tls \
+     --enable-glx="dri" \
+     --enable-texture-float \
      --enable-gbm \
      --enable-shared-glapi \
      --enable-gallium-extra-hud \
@@ -80,13 +87,14 @@ build()
      --enable-gallium-osmesa \
      --enable-xa \
      --enable-nine \
-     --enable-xlib-lease \
      --enable-lmsensors \
      --with-gallium-drivers="i915,nouveau,r600,swrast" \
      --with-platforms="drm,x11" \
      --with-dri-driverdir=/usr/lib${libSuffix}/xorg/modules/dri \
-     --build="$(cc -dumpmachine)"
+     --build="$(cc -dumpmachine)" \
+     $arch_options
 
+    unset arch_options
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
