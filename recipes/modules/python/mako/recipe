@@ -1,0 +1,75 @@
+# Build recipe for mako.
+#
+# Copyright (C) 2019 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=Mako
+version=1.0.13
+release=1
+
+pkgname=mako
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/modules/python"
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://files.pythonhosted.org/packages/fa/29/8016763284d8fab844224f7cc5675cb4a388ebda0eb5a403260187e48435/$tarname
+
+description="
+Mako is a template library written in Python.
+
+It provides a familiar, non-XML syntax which compiles into Python
+modules for maximum performance.  Mako's syntax and API borrows
+from the best ideas of many others, including Django and
+Jinja2templates, Cheetah, Myghty, and Genshi.  Conceptually,
+Mako is an embedded Python (i.e. Python Server Page) language,
+which refines the familiar ideas of componentized layout and
+inheritance to produce one of the most straightforward and
+flexible models available, while also maintaining close ties
+to Python calling and scoping semantics.
+"
+
+homepage=http://www.makotemplates.org
+license=MIT
+
+docs="AUTHORS CHANGES LICENSE PKG-INFO README.rst"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    # Install for both, Python versions 2 and 3
+
+    for i in 2 3
+    do
+        python${i} setup.py build
+        python${i} setup.py install --prefix=/usr --root="$destdir" --optimize=1
+    done
+    unset i
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
