@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=libdrm
-version=2.4.97
+version=2.4.99
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -52,16 +52,26 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --mandir=$mandir \
-     --docdir=$docsdir \
-     --enable-udev \
-     --build="$(cc -dumpmachine)"
+    # Apply a patch in order to compile against musl (Thanks to "Alpine Linux")
+    patch -Np1 -i "${worktree}/patches/libdrm/libdrm-ioctl.patch"
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    mkdir -p build
+    cd build
+
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     -Dudev=true \
+     -Dcairo-tests=false \
+     -Dvalgrind=false \
+     ..
+
+    ninja
+    DESTDIR="$destdir" ninja install
+
+    cd ..
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
