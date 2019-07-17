@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=dragora-installer
-version=20190713
+version=20190717
 arch=noarch
 release=1
 
@@ -36,6 +36,26 @@ build()
 {
     set -e
 
+    # Define package location according to supported architectures
+    case "$(uname -m)" in
+    x86_64)
+        package_arch=x86_64
+        ;;
+    i?86)
+        package_arch=i586
+        ;;
+    *)
+        echo ""
+        echo "The Dragora installer will not be available for the architecture in"
+        echo "which it is being compiled.  This package will not be produced."
+        echo "Please contact the developers at <dragora-users@nongnu.org>."
+        echo ""
+        echo "Press ENTER to continue."
+        read -r message
+        unset package_arch message
+        exit 0
+    esac
+
     mkdir -p "${destdir}"/usr/sbin \
              "${destdir}"/usr/libexec/dragora-installer
 
@@ -52,10 +72,13 @@ build()
                 "${destdir}"/usr/libexec/dragora-installer/*
     do
         sed -e "s|@PARTS@|/usr/libexec/dragora-installer/|g" \
+            -e "s|@ARCH@|${package_arch}|g" \
             -i "$file"
     done
 
     chmod 755 "${destdir}"/usr/sbin/dragora-installer
     chmod 644 "${destdir}"/usr/libexec/dragora-installer/*
+
+    unset package_arch
 }
 
