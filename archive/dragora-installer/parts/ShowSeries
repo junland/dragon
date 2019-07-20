@@ -105,7 +105,21 @@ then
     echo '"xfce" "" on "Xfce is a lightweight desktop environment for UNIX-like operating systems." \' \
      >> ${SUBTMPDIR}/ShowSeries
 fi
+
+# Check if there are any detected series
+if test ! -f ${SUBTMPDIR}/ShowSeries || test ! -s ${SUBTMPDIR}/ShowSeries
+then
+    echo "${PROGRAM}: Error no series was detected.  Aborting..." 1>&2
+    exit 99;
+fi
 echo ' 2> ${SUBTMPDIR}/return-ShowSeries' >> ${SUBTMPDIR}/ShowSeries
+touch ${SUBTMPDIR}/return-ShowSeries
 
 . ${SUBTMPDIR}/ShowSeries;	# Show menu.
+
+if test ! -f ${SUBTMPDIR}/return-ShowSeries || test ! -s ${SUBTMPDIR}/return-ShowSeries
+then
+    echo "${PROGRAM}: Error no series was selected.  Aborting..." 1>&2
+    exit 99;
+fi
 
