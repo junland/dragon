@@ -1,0 +1,43 @@
+# This file is part of the 'dragora-installer'.
+#
+# Purpose: To install .tlz packages from chosen series.
+
+dialog --colors \
+ --backtitle "\ZbInstallation mode" \
+ --title "SELECT THE INSTALLATION MODE" \
+ --no-cancel --menu "" 7 66 0 \
+"All"     "Install packages from selected series" \
+"Expert"  "Select packages from each selected series" \
+ 2> ${SUBTMPDIR}/return-InstallPackages
+
+dialog --clear
+
+# Check for selected options
+case "$(cat -- ${SUBTMPDIR}/return-InstallPackages)" in
+All)
+    echo "" > ${SUBTMDPIR}/return-InstallPackages_All;		# Clean up file.
+    echo "" >> ${SUBTMPDIR}/return-ShowSeries;			# Append new line for reading.
+    IFS= read -r REPLY < ${SUBTMPDIR}/return-ShowSeries;	# Read selected series.
+    for series in $REPLY
+    do
+        find ${MEDIUM_SOURCE}/@ARCH@/$series -type f -name '*.tlz' \
+         >> ${SUBTMPDIR}/return-InstallPackages_All
+    done
+    unset series REPLY
+
+    # Proceed to install the packages with an ordered list
+
+    if test -s ${SUBTMPDIR}/return-InstallPackages_All
+    then
+        echo "${PROGRAM}: Error the package list is empty." 1>&2
+        exit 99;
+    fi
+
+    LC_COLLATE=C sort ${SUBTMPDIR}/return-InstallPackages_All | \
+     qi -r /media/dragora-root -P /usr/pkg -t / -i -
+    ;;
+Expert)
+    :
+    ;;
+esac
+
