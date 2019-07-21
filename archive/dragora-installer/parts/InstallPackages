@@ -7,7 +7,7 @@ dialog --colors \
  --title "SELECT THE INSTALLATION MODE" \
  --no-cancel --menu "" 7 66 0 \
 "All"     "Install packages from selected series" \
-"Expert"  "Select packages from each selected series" \
+"Expert"  "Select packages from chosen series" \
  2> ${SUBTMPDIR}/return-InstallPackages
 
 dialog --clear
@@ -20,17 +20,21 @@ All)
     IFS= read -r REPLY < ${SUBTMPDIR}/return-ShowSeries;	# Read selected series.
     for series in $REPLY
     do
-        find ${MEDIUM_SOURCE}/@ARCH@/$series -type f -name '*.tlz' \
-         >> ${SUBTMPDIR}/return-InstallPackages_All
+        find ${MEDIUM_SOURCE}/noarch/$series ${MEDIUM_SOURCE}/@ARCH@/$series \
+         -type f -name '*.tlz' >> ${SUBTMPDIR}/return-InstallPackages_All \
+          2> /dev/null || true
     done
-    unset series REPLY
+    unset REPLY series
 
     # Proceed to install the packages with an ordered list
 
-    if test -s ${SUBTMPDIR}/return-InstallPackages_All
+    LC_COLLATE=C sort -u ${SUBTMPDIR}/return-InstallPackages_All \
+     > ${SUBTMPDIR}/return-InstallPackages_All.sorted 2> /dev/null || true
+
+    if test -s ${SUBTMPDIR}/return-InstallPackages_All.sorted
     then
-        LC_COLLATE=C sort ${SUBTMPDIR}/return-InstallPackages_All | \
-         qi -r /media/dragora-root -P /usr/pkg -t / -i -
+        qi -r /media/dragora-root -P /usr/pkg -t / -i - \
+         < ${SUBTMPDIR}/return-InstallPackages_All.sorted
     else
         echo "${PROGRAM}: Error the package list is empty." 1>&2
         exit 99;
