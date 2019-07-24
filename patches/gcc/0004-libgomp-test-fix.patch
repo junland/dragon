@@ -1,44 +1,45 @@
-From 6fc4c3ebff42687eb20f12f2410ec75daa9a02f7 Mon Sep 17 00:00:00 2001
+From 61c15ebc2895bdee5f4460a17b015bb47177fa90 Mon Sep 17 00:00:00 2001
 From: Szabolcs Nagy <nsz@port70.net>
 Date: Sun, 6 Nov 2016 03:11:18 +0000
-Subject: [PATCH 04/12] libgomp test fix
+Subject: [PATCH 04/13] libgomp test fix
 
 ---
- libgomp/testsuite/Makefile.am     | 5 +++++
+ libgomp/testsuite/Makefile.am     | 6 ++++++
  libgomp/testsuite/Makefile.in     | 5 +++++
  libgomp/testsuite/lib/libgomp.exp | 3 +++
- 3 files changed, 13 insertions(+)
+ 3 files changed, 14 insertions(+)
 
 diff --git a/libgomp/testsuite/Makefile.am b/libgomp/testsuite/Makefile.am
-index e2a3f460eb0..3309f71e02e 100644
+index 2100f49e53b..fa25b3a0604 100644
 --- a/libgomp/testsuite/Makefile.am
 +++ b/libgomp/testsuite/Makefile.am
-@@ -12,6 +12,11 @@ _RUNTEST = $(shell if test -f $(top_srcdir)/../dejagnu/runtest; then \
+@@ -12,6 +12,12 @@ _RUNTEST = $(shell if test -f $(top_srcdir)/../dejagnu/runtest; then \
  	     echo $(top_srcdir)/../dejagnu/runtest; else echo runtest; fi)
- RUNTEST = "$(_RUNTEST) $(AM_RUNTESTFLAGS)"
+ RUNTESTDEFAULTFLAGS = --tool $$tool --srcdir $$srcdir
  
 +EXTRA_DEJAGNU_SITE_CONFIG = extra.exp
 +
 +extra.exp:
 +	echo 'set BUILD_CC "$(CC)"' > $@.tmp
 +	mv $@.tmp $@
- 
++
  # Instead of directly in ../testsuite/libgomp-test-support.exp.in, the
  # following variables have to be "routed through" this Makefile, for expansion
+ # of the several (Makefile) variables used therein.
 diff --git a/libgomp/testsuite/Makefile.in b/libgomp/testsuite/Makefile.in
-index 9310138c32c..4c0cc0a3013 100644
+index 80315b15a7d..cdbf35695f7 100644
 --- a/libgomp/testsuite/Makefile.in
 +++ b/libgomp/testsuite/Makefile.in
-@@ -254,6 +254,7 @@ _RUNTEST = $(shell if test -f $(top_srcdir)/../dejagnu/runtest; then \
+@@ -303,6 +303,7 @@ _RUNTEST = $(shell if test -f $(top_srcdir)/../dejagnu/runtest; then \
  	     echo $(top_srcdir)/../dejagnu/runtest; else echo runtest; fi)
  
- RUNTEST = "$(_RUNTEST) $(AM_RUNTESTFLAGS)"
+ RUNTESTDEFAULTFLAGS = --tool $$tool --srcdir $$srcdir
 +EXTRA_DEJAGNU_SITE_CONFIG = extra.exp
  all: all-am
  
  .SUFFIXES:
-@@ -462,6 +463,10 @@ uninstall-am:
- 	ps ps-am uninstall uninstall-am
+@@ -464,6 +465,10 @@ uninstall-am:
+ .PRECIOUS: Makefile
  
  
 +extra.exp:
@@ -49,10 +50,10 @@ index 9310138c32c..4c0cc0a3013 100644
  # following variables have to be "routed through" this Makefile, for expansion
  # of the several (Makefile) variables used therein.
 diff --git a/libgomp/testsuite/lib/libgomp.exp b/libgomp/testsuite/lib/libgomp.exp
-index ea3da2cb383..e7df78916ea 100644
+index 14d9b5f1305..186b0ba0b57 100644
 --- a/libgomp/testsuite/lib/libgomp.exp
 +++ b/libgomp/testsuite/lib/libgomp.exp
-@@ -86,6 +86,7 @@ proc libgomp_init { args } {
+@@ -68,6 +68,7 @@ proc libgomp_init { args } {
      global ALWAYS_CFLAGS
      global CFLAGS
      global TOOL_EXECUTABLE TOOL_OPTIONS
@@ -60,7 +61,7 @@ index ea3da2cb383..e7df78916ea 100644
      global GCC_UNDER_TEST
      global TESTING_IN_BUILD_TREE
      global target_triplet
-@@ -108,6 +109,8 @@ proc libgomp_init { args } {
+@@ -90,6 +91,8 @@ proc libgomp_init { args } {
      if ![info exists GCC_UNDER_TEST] then {
  	if [info exists TOOL_EXECUTABLE] {
  	    set GCC_UNDER_TEST $TOOL_EXECUTABLE
@@ -70,5 +71,5 @@ index ea3da2cb383..e7df78916ea 100644
  	    set GCC_UNDER_TEST "[find_gcc]"
  	}
 -- 
-2.17.1
+2.21.0
 

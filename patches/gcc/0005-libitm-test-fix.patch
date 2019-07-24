@@ -1,7 +1,7 @@
-From 2011d56c400f60670fb52bc1d161940cf92f59a7 Mon Sep 17 00:00:00 2001
+From 300560c8d4a63c9bb43a01289269cec707e5ea6d Mon Sep 17 00:00:00 2001
 From: Szabolcs Nagy <nsz@port70.net>
 Date: Sun, 6 Nov 2016 03:13:26 +0000
-Subject: [PATCH 05/12] libitm test fix
+Subject: [PATCH 05/13] libitm test fix
 
 ---
  libitm/testsuite/Makefile.am    | 6 ++++++
@@ -10,13 +10,13 @@ Subject: [PATCH 05/12] libitm test fix
  3 files changed, 14 insertions(+)
 
 diff --git a/libitm/testsuite/Makefile.am b/libitm/testsuite/Makefile.am
-index a9a0144185a..a19101aac54 100644
+index 41cfbc46e4b..16f82bdf691 100644
 --- a/libitm/testsuite/Makefile.am
 +++ b/libitm/testsuite/Makefile.am
 @@ -11,3 +11,9 @@ EXPECT = $(shell if test -f $(top_builddir)/../expect/expect; then \
  _RUNTEST = $(shell if test -f $(top_srcdir)/../dejagnu/runtest; then \
  	     echo $(top_srcdir)/../dejagnu/runtest; else echo runtest; fi)
- RUNTEST = "$(_RUNTEST) $(AM_RUNTESTFLAGS)"
+ RUNTEST = $(_RUNTEST) $(AM_RUNTESTFLAGS)
 +
 +EXTRA_DEJAGNU_SITE_CONFIG = extra.exp
 +
@@ -24,19 +24,19 @@ index a9a0144185a..a19101aac54 100644
 +	echo 'set BUILD_CC "$(CC)"' > $@.tmp
 +	mv $@.tmp $@
 diff --git a/libitm/testsuite/Makefile.in b/libitm/testsuite/Makefile.in
-index 34dcdd2dae0..458932c315d 100644
+index 991f02c0b3b..fa331cabfc4 100644
 --- a/libitm/testsuite/Makefile.in
 +++ b/libitm/testsuite/Makefile.in
-@@ -234,6 +234,7 @@ _RUNTEST = $(shell if test -f $(top_srcdir)/../dejagnu/runtest; then \
+@@ -285,6 +285,7 @@ _RUNTEST = $(shell if test -f $(top_srcdir)/../dejagnu/runtest; then \
  	     echo $(top_srcdir)/../dejagnu/runtest; else echo runtest; fi)
  
- RUNTEST = "$(_RUNTEST) $(AM_RUNTESTFLAGS)"
+ RUNTEST = $(_RUNTEST) $(AM_RUNTESTFLAGS)
 +EXTRA_DEJAGNU_SITE_CONFIG = extra.exp
  all: all-am
  
  .SUFFIXES:
-@@ -440,6 +441,10 @@ uninstall-am:
- 	uninstall uninstall-am
+@@ -492,6 +493,10 @@ uninstall-am:
+ .PRECIOUS: Makefile
  
  
 +extra.exp:
@@ -47,10 +47,10 @@ index 34dcdd2dae0..458932c315d 100644
  # Otherwise a system limit (for SysV at least) may be exceeded.
  .NOEXPORT:
 diff --git a/libitm/testsuite/lib/libitm.exp b/libitm/testsuite/lib/libitm.exp
-index b3c7eb94f94..5f06cb6c50e 100644
+index b3d247b9f98..47c2cd55dac 100644
 --- a/libitm/testsuite/lib/libitm.exp
 +++ b/libitm/testsuite/lib/libitm.exp
-@@ -75,6 +75,7 @@ proc libitm_init { args } {
+@@ -77,6 +77,7 @@ proc libitm_init { args } {
      global ALWAYS_CFLAGS
      global CFLAGS
      global TOOL_EXECUTABLE TOOL_OPTIONS
@@ -58,7 +58,7 @@ index b3c7eb94f94..5f06cb6c50e 100644
      global GCC_UNDER_TEST
      global TESTING_IN_BUILD_TREE
      global target_triplet
-@@ -90,6 +91,8 @@ proc libitm_init { args } {
+@@ -92,6 +93,8 @@ proc libitm_init { args } {
      if ![info exists GCC_UNDER_TEST] then {
  	if [info exists TOOL_EXECUTABLE] {
  	    set GCC_UNDER_TEST $TOOL_EXECUTABLE
@@ -68,5 +68,5 @@ index b3c7eb94f94..5f06cb6c50e 100644
  	    set GCC_UNDER_TEST "[find_gcc]"
  	}
 -- 
-2.17.1
+2.21.0
 
