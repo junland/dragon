@@ -1,6 +1,6 @@
 # Build recipe for mdadm.
 #
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 program=mdadm
 version=4.1
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
@@ -50,6 +50,9 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    # Patch to include sysmacros.h unconditionally
+    patch -Np1 -i "${worktree}/patches/mdadm/mdadm-4.1_sysmacros.diff"
 
     # Do not stop on warnings
     sed -i 's/-Werror//' Makefile
