@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=xf86-video-intel
-version=e5ff8e1
+version=20190724_6f4972d5
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -26,7 +26,10 @@ tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
 #fetch=http://anduin.linuxfromscratch.org/BLFS/xf86-video-intel/$tarname
-fetch=http://rsync.dragora.org/current/sources/$tarname
+fetch="
+  http://rsync.dragora.org/current/sources/$tarname
+  http://mirror.cedia.org.ec/dragora/current/sources/$tarname
+"
 
 description="
 Video driver for the Xorg X server supporting Intel chipsets.
@@ -52,28 +55,23 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./autogen.sh CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
-     --mandir=$mandir \
-     --docdir=$docsdir \
-     --enable-sna \
-     --enable-uxa \
-     --with-default-accel=sna \
-     --build="$(cc -dumpmachine)"
+    mkdir -p build
+    cd build
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     -Dvalgrind=false \
+     -Ddefault-dri=3 \
+     -Ddefault-accel=uxa \
+     ..
 
-    # Fix manpage number (thanks to BLFS!)
+    ninja
+    DESTDIR="$destdir" ninja install
 
-    mkdir -p "${destdir}/${mandir}/man1"
-    mv "${destdir}/${mandir}/man4/intel-virtual-output.4" \
-       "${destdir}/${mandir}/man1/intel-virtual-output.1" 
-
-    sed -i '/\.TH/s/4/1/' \
-     "${destdir}/${mandir}/man1/intel-virtual-output.1"
+    cd ..
 
     # Compress and link man pages (if needed)
     (
