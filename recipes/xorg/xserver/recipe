@@ -1,7 +1,7 @@
 # Build recipe for xorg-server.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=xorg-server
-version=1.20.3
+version=1.20.5
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -38,7 +38,7 @@ homepage=http://www.x.org
 license="MIT X Consortium"
 
 # Source documentation
-docs="COPYING ChangeLog README"
+docs="COPYING ChangeLog README.md"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -52,10 +52,14 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    sed -i '/^#include <asm\/page.h>/d' Xext/xf86bigfont.c
+    # Fix compilation under ARM (Thanks to "Alpine Linux")
+    patch -Np1 -i "${worktree}/patches/xserver/fix-musl-arm.patch"
 
-    ./configure CPPFLAGS="-D_GNU_SOURCE -D__gid_t=gid_t -D__uid_t=uid_t" \
-     CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    # Adjust headers
+    sed -i '/^#include <asm\/page.h>/d' Xext/xf86bigfont.c
+    sed -i 's#termio.h#termios.h#' hw/xfree86/os-support/xf86_OSlib.h
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
@@ -70,7 +74,7 @@ build()
      --enable-dri2 \
      --enable-dri3 \
      --enable-ipv6 \
-     --disable-suid-wrapper \
+     --enable-suid-wrapper \
      --disable-xfake \
      --disable-systemd-logind \
      --with-int10=x86emu \
