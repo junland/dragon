@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ISO file name
+ISONAME="dragora-3.0_$(date +%Y%m%d)-${arch}"
+
 # Default mkisofs(8) invocation name
 MKISOFS=mkisofs
 
@@ -95,8 +98,8 @@ rm -f ./dragora.sfs
 
 cd -- "$CDROM"
 
-rm -f ./dragora-live*
-$MKISOFS -v -o dragora-live.iso                            \
+rm -f ./${ISONAME}*
+$MKISOFS -v -o ${ISONAME}.iso                              \
          -iso-level 2                                      \
          -no-emul-boot -boot-load-size 4 -boot-info-table  \
          -b "isolinux/isolinux.bin"                        \
@@ -106,15 +109,16 @@ $MKISOFS -v -o dragora-live.iso                            \
 unset MKISOFS
 
 echo "Applying \"hybrid booting\" to the ISO image ..."
-"${worktree}"/archive/isolinux/isohybrid.pl dragora-live.iso
+"${worktree}"/archive/isolinux/isohybrid.pl ${ISONAME}.iso
 
-sha256sum dragora-live.iso > dragora-live.iso.sha256
+echo "Making .sha256 sum ..."
+sha256sum ${ISONAME}.iso > ${ISONAME}.iso.sha256
 
 echo "Finish ..."
 echo ""
 echo "***"
 echo "The ISO image has been produced at"
-echo "    ${CDROM}/dragora-live.iso"
+echo "    ${CDROM}/${ISONAME}.iso"
 echo "***"
 echo ""
 exit 0
