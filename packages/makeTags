@@ -22,7 +22,12 @@ getSize()
     lzip_output="$(plzip -tvvv $1 2>&1)"
 
     # To obtain the uncompressed, compressed size
-    echo $lzip_output | sed -n -e 's/^.*saved. //p'
+    echo $lzip_output | awk '{ print $8 $10 }' | \
+     while IFS=, read -r decompressed compressed
+    do
+        compressed="${compressed%.}"
+        echo "Size $(( $decompressed / 1024 ))K [C], $(( $compressed / 1024 ))K [U]"
+    done
 
     unset lzip_output
 }
@@ -47,8 +52,7 @@ do
 
     directory=$(dirname -- "$meta")
 
-    # Determine output level for the tagfile for
-    # those series with sub-directories
+    # Determine output level for those series with sub-directories
     case $directory in
     */modules/* | */xorg/*)
         output_level=../
@@ -62,7 +66,7 @@ do
     (
         cd -- "$directory"
         echo "    Adding information to tagfile.${category}.tmp"
-        echo "${category}/${pkgname}:${blurb}:ON:#${pkgversion} [$(getSize $(basename -- "${meta%.txt}"))]" \
+        echo "${category}/${pkgname}:${blurb}:ON:#${pkgversion} - $(getSize $(basename -- "${meta%.txt}"))" \
          >> "${output_level}tagfile.${category}.tmp"
     )
     unset output_level
