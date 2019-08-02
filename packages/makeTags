@@ -26,7 +26,7 @@ getSize()
      while IFS=, read -r decompressed compressed
     do
         compressed="${compressed%.}"
-        echo "Size $(( $decompressed / 1024 ))K [C], $(( $compressed / 1024 ))K [U]"
+        echo "Decompressed size $(( $decompressed / 1024 ))K, Compressed size $(( $compressed / 1024 ))K"
     done
 
     unset lzip_output
@@ -66,13 +66,13 @@ do
     (
         cd -- "$directory"
         echo "    Adding information to tagfile.${category}.tmp"
-        echo "${category}/${pkgname}:${blurb}:ON:#${pkgversion} - $(getSize $(basename -- "${meta%.txt}"))" \
+        echo "${pkgname}:${blurb}:ON:Package version ${pkgversion} - $(getSize $(basename -- "${meta%.txt}"))" \
          >> "${output_level}tagfile.${category}.tmp"
     )
     unset output_level
 done
 
-echo "Sorting and removing temporaries tagfile(s) ..."
+echo "Removing temporal tagfile(s) and sorting the final ones ..."
 for tagfile in ./*/*/tagfile.*.tmp
 do
     LC_COLLATE=C sort -- "$tagfile" > "${tagfile%.tmp}"
