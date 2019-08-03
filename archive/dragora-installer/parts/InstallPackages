@@ -1,6 +1,26 @@
 # This file is part of the 'dragora-installer'.
 #
-# Purpose: To install .tlz packages from chosen series.
+# Purpose: Installation of .tlz packages from chosen series.
+
+convertTag()
+{
+    # Get base name of tagfile path
+    tagname="${2##*/}"
+
+    # Compose checklist to be showed by the installer
+    cat << EOF > ${SUBTMPDIR}/InstallPackages_Expert-Selection/${tagname}_${1}
+dialog --colors \\
+ --backtitle "\ZbSelect packages from chosen series" \\
+ --title "[ ${1}/${tagname#*.} ]" \\
+ --item-help --checklist "" 20 $COLUMNS 14 \\
+EOF
+    { # Use quotes and output file for user selection
+        sed -e 's/:/\" \"/g' $2 | sed -e 's/^/\"/;s/$/\" \\\n\\/'
+        echo " 2> \${SUBTMPDIR}/InstallPackages_Expert-Selection/return-${tagname}_${1} || return 0"
+    } >> ${SUBTMPDIR}/InstallPackages_Expert-Selection/${tagname}_${1}
+
+    unset tagname
+}
 
 dialog --colors \
  --backtitle "\ZbInstallation mode" \
@@ -16,17 +36,15 @@ dialog --clear
 case "$(cat -- ${SUBTMPDIR}/return-InstallPackages)" in
 All)
     echo "" > ${SUBTMDPIR}/return-InstallPackages_All;		# Clean up file.
-    echo "" >> ${SUBTMPDIR}/return-ShowSeries;			# Append new line for reading.
     IFS= read -r REPLY < ${SUBTMPDIR}/return-ShowSeries;	# Read selected series.
     for series in $REPLY
     do
         find "${MEDIUM_SOURCE}"/noarch/$series "${MEDIUM_SOURCE}"/@ARCH@/$series \
-         -type f -name '*.tlz' >> ${SUBTMPDIR}/return-InstallPackages_All \
-          2> /dev/null || true
+         -type f -name '*.tlz' >> ${SUBTMPDIR}/return-InstallPackages_All
     done
     unset REPLY series
 
-    # Proceed to install the packages with an ordered list
+    # Proceed to install the packages found with an ordered list
 
     LC_COLLATE=C sort -u ${SUBTMPDIR}/return-InstallPackages_All \
      > ${SUBTMPDIR}/return-InstallPackages_All.sorted 2> /dev/null || true
@@ -36,12 +54,61 @@ All)
         qi -r /media/dragora-root -P /usr/pkg -t / -i - \
          < ${SUBTMPDIR}/return-InstallPackages_All.sorted
     else
+        echo ""
         echo "${PROGRAM}: Error the package list is empty." 1>&2
         exit 99;
     fi
     ;;
 Expert)
-    :
+    # Re-create subdirectory for (converted) package tags
+    rm -rf -- ${SUBTMPDIR}/InstallPackages_Expert-Selection
+    mkdir -p -- ${SUBTMPDIR}/InstallPackages_Expert-Selection
+
+    IFS= read -r REPLY < ${SUBTMPDIR}/return-ShowSeries;	# Read selected series.
+    for series in $REPLY
+    do
+        if test -s "${MEDIUM_SOURCE}"/noarch/${series}/tagfile.${series}
+        then
+            convertTag noarch \
+             "${MEDIUM_SOURCE}"/noarch/${series}/tagfile.${series}
+        fi
+        if test -s "${MEDIUM_SOURCE}"/@ARCH@/${series}/tagfile.${series}
+        then
+            convertTag @ARCH@ \
+             "${MEDIUM_SOURCE}"/@ARCH@/${series}/tagfile.${series}
+        fi
+    done < ${SUBTMPDIR}/return-ShowSeries
+    unset REPLY series convertTag
+
+    # Show package checklist
+    for list in ${SUBTMPDIR}/InstallPackages_Expert-Selection/tagfile*
+    do
+        test -s $list && . $list
+    done
+    unset list
+
+    echo "" > ${SUBTMDPIR}/return-InstallPackages_Expert;	# Clean up file.
+    for package in $(cat -- ${SUBTMPDIR}/InstallPackages_Expert-Selection/return-tagfile.* 2> /dev/null)
+    do
+        find "${MEDIUM_SOURCE}" -type f -name "${package}-*.tlz" \
+         >> ${SUBTMPDIR}/return-InstallPackages_Expert
+    done
+    unset package
+
+    # Proceed to install the packages found with an ordered list
+
+    LC_COLLATE=C sort -u ${SUBTMPDIR}/return-InstallPackages_Expert \
+     > ${SUBTMPDIR}/return-InstallPackages_Expert.sorted 2> /dev/null || true
+
+    if test -s ${SUBTMPDIR}/return-InstallPackages_Expert.sorted
+    then
+        qi -r /media/dragora-root -P /usr/pkg -t / -i - \
+         < ${SUBTMPDIR}/return-InstallPackages_Expert.sorted
+    else
+        echo ""
+        echo "${PROGRAM}: Error the package list is empty." 1>&2
+        exit 99;
+    fi
     ;;
 esac
 
