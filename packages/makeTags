@@ -38,10 +38,9 @@ umask 022
 echo "Deleting any previous (.tmp) tagfile ..."
 find . -type f -name 'tagfile*' -exec rm -f '{}' +
 
-for meta in $(find . -type f -name '*.tlz.txt' -print)
+# Search all packages
+for meta in $(find . -type f -name '*.tlz' -print)
 do
-    test -f "$meta" || continue
-
     # Ignore some package names
     case $meta in
     *_pass?*)
@@ -49,6 +48,12 @@ do
         continue;
         ;;
     esac
+
+    if test ! -e "${meta}.txt"
+    then
+        echo "Error ${meta##*/} does not have a meta tag file." 1>&2
+    fi
+    meta="${meta}.txt"
 
     directory=$(dirname -- "$meta")
 
