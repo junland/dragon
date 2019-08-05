@@ -25,8 +25,7 @@ getSize()
     echo $lzip_output | awk '{ print $8 $10 }' | \
      while IFS=, read -r decompressed compressed
     do
-        compressed="${compressed%.}"
-        echo "Decompressed size $(( $decompressed / 1024 ))K, Compressed size $(( $compressed / 1024 ))K"
+        echo "Decompressed size $(( $decompressed / 1024 ))K, Compressed size $(( ${compressed%.} / 1024 ))K"
     done
 
     unset lzip_output
@@ -38,8 +37,8 @@ umask 022
 echo "Deleting any previous (.tmp) tagfile ..."
 find . -type f -name 'tagfile*' -exec rm -f '{}' +
 
-# Search all packages
-for meta in $(find . -type f -name '*.tlz' -print)
+# Search all .tlz packages
+for meta in $(find . -type f -name '*.tlz')
 do
     # Ignore some package names
     case $meta in
@@ -48,37 +47,39 @@ do
         continue;
         ;;
     esac
-
     if test ! -e "${meta}.txt"
     then
         echo "Error ${meta##*/} does not have a meta tag file." 1>&2
+        exit 99;
     fi
-    meta="${meta}.txt"
 
+    meta="${meta}.txt"
     directory=$(dirname -- "$meta")
+    category="${directory##*/}"
 
     # Determine output level for those series with sub-directories
     case $directory in
     */modules/* | */xorg/*)
         output_level=../
+        parent_level="$(dirname -- $directory)"
+        parent_level="$(basename -- $parent_level)"
+        parent_level=${parent_level}_
         ;;
     esac
-
-    category="${directory##*/}"
 
     echo "Extracting information from $meta ..."
     . $meta
     (
         cd -- "$directory"
-        echo "    Adding information to tagfile.${category}.tmp"
+        echo "    Adding information to ${output_level}tagfile-${parent_level}${category}.tmp"
         echo "${pkgname}:${blurb}:ON:Version ${pkgversion} - $(getSize $(basename -- "${meta%.txt}"))" \
-         >> "${output_level}tagfile.${category}.tmp"
+         >> "${output_level}tagfile-${parent_level}${category}.tmp"
     )
-    unset output_level
+    unset output_level parent_level
 done
 
 echo "Removing temporal tagfile(s) and sorting the final ones ..."
-for tagfile in ./*/*/tagfile.*.tmp
+for tagfile in ./*/*/tagfile*.tmp
 do
     LC_COLLATE=C sort -- "$tagfile" > "${tagfile%.tmp}"
     rm -f -- "$tagfile";			# Delete temporary tagfile.
