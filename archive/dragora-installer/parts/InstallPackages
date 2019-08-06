@@ -2,26 +2,38 @@
 #
 # Purpose: Installation of .tlz packages from chosen series.
 
-convertTag()
+_convertTag()
 {
-    # Get base name of tagfile path
-    tagname="${2##*/}"
+    for file in "$@"
+    do
+        test -s "$file" || continue
 
-    # Compose checklist to be showed by the installer
-    cat << EOF > ${SUBTMPDIR}/InstallPackages_Expert-Selection/${tagname}_${1}
+        # Compose checklist to be showed by the installer
+
+        case $file in
+        */@ARCH@/*)  arch_name=@ARCH@;;
+                 *)  arch_name=noarch;;
+        esac
+
+        tag_name="${file##*/}"
+        (
+            cd -- ${SUBTMPDIR}/return-InstallPackages_Expert.dir || exit $?
+            cat << EOF > ${arch_name}.${tag_name}
 dialog --colors \\
  --backtitle "\ZbSelect packages from chosen series" \\
- --title "[ ${1}/${tagname#*.} ]" \\
- --item-help --checklist "" 20 $COLUMNS 14 \\
+ --title "[ ${arch_name} | ${tag_name#*-} ]" \\
+ --item-help --checklist "" 20 $COLUMNS 15 \\
 EOF
-    { # Use quotes and output file for user selection
-        sed -e 's/:/\" \"/g' $2 | sed -e 's/^/\"/;s/$/\" \\\n\\/'
-        echo " 2> \${SUBTMPDIR}/InstallPackages_Expert-Selection/return-${tagname}_${1} || return 0"
-    } >> ${SUBTMPDIR}/InstallPackages_Expert-Selection/${tagname}_${1}
-
-    unset tagname
+            { # Add double quotes plus output file for items
+              sed -e 's/:/\" \"/g' $file | sed -e 's/^/\"/;s/$/\" \\/'
+              echo " 2> \${SUBTMPDIR}/return-InstallPackages_Expert.dir/return-${arch_name}-${tag_name} || return 0"
+            } >> ${arch_name}.${tag_name}
+        )
+    done
+    unset file arch_name tag_name
 }
 
+# Show menu
 dialog --colors \
  --backtitle "\ZbInstallation mode" \
  --title "SELECT THE INSTALLATION MODE" \
@@ -30,82 +42,83 @@ dialog --colors \
 "Expert"  "Select packages from chosen series" \
  2> ${SUBTMPDIR}/return-InstallPackages
 
-dialog --clear
-
 # Check for selected options
 case "$(cat -- ${SUBTMPDIR}/return-InstallPackages)" in
 All)
-    echo "" > ${SUBTMDPIR}/return-InstallPackages_All;		# Clean up file.
+    : > ${SUBTMPDIR}/return-InstallPackages_All;		# Clean up file.
     IFS= read -r REPLY < ${SUBTMPDIR}/return-ShowSeries;	# Read selected series.
-    for series in $REPLY
+    for serie in $REPLY
     do
-        find "${MEDIUM_SOURCE}"/noarch/$series "${MEDIUM_SOURCE}"/@ARCH@/$series \
-         -type f -name '*.tlz' >> ${SUBTMPDIR}/return-InstallPackages_All
+        find "${MEDIUM_SOURCE}"/noarch/$serie "${MEDIUM_SOURCE}"/@ARCH@/$serie \
+         -type f \( -name '*.tlz' -a ! -name '*_pass*' \) \
+          >> ${SUBTMPDIR}/return-InstallPackages_All 2> /dev/null || true
     done
-    unset REPLY series
+    unset REPLY serie
 
-    # Proceed to install the packages found with an ordered list
+    # Proceed to install the packages found
 
-    LC_COLLATE=C sort -u ${SUBTMPDIR}/return-InstallPackages_All \
-     > ${SUBTMPDIR}/return-InstallPackages_All.sorted 2> /dev/null || true
-
-    if test -s ${SUBTMPDIR}/return-InstallPackages_All.sorted
+    if test -s ${SUBTMPDIR}/return-InstallPackages_All
     then
         qi -r /media/dragora-root -P /usr/pkg -t / -i - \
-         < ${SUBTMPDIR}/return-InstallPackages_All.sorted
+         < ${SUBTMPDIR}/return-InstallPackages_All
     else
-        echo ""
         echo "${PROGRAM}: Error the package list is empty." 1>&2
         exit 99;
     fi
     ;;
 Expert)
     # Re-create subdirectory for (converted) package tags
-    rm -rf -- ${SUBTMPDIR}/InstallPackages_Expert-Selection
-    mkdir -p -- ${SUBTMPDIR}/InstallPackages_Expert-Selection
+    rm -rf -- ${SUBTMPDIR}/return-InstallPackages_Expert.dir
+    mkdir -p -- ${SUBTMPDIR}/return-InstallPackages_Expert.dir
 
     IFS= read -r REPLY < ${SUBTMPDIR}/return-ShowSeries;	# Read selected series.
-    for series in $REPLY
+    for serie in $REPLY
     do
-        if test -s "${MEDIUM_SOURCE}"/noarch/${series}/tagfile.${series}
-        then
-            convertTag noarch \
-             "${MEDIUM_SOURCE}"/noarch/${series}/tagfile.${series}
-        fi
-        if test -s "${MEDIUM_SOURCE}"/@ARCH@/${series}/tagfile.${series}
-        then
-            convertTag @ARCH@ \
-             "${MEDIUM_SOURCE}"/@ARCH@/${series}/tagfile.${series}
-        fi
-    done < ${SUBTMPDIR}/return-ShowSeries
-    unset REPLY series convertTag
+        _convertTag "${MEDIUM_SOURCE}"/noarch/${serie}/tagfile* \
+                    "${MEDIUM_SOURCE}"/@ARCH@/${serie}/tagfile*
+    done
+    unset serie _convertTag
 
     # Show package checklist
-    for list in ${SUBTMPDIR}/InstallPackages_Expert-Selection/tagfile*
+    for list in ${SUBTMPDIR}/return-InstallPackages_Expert.dir/*.tagfile*
     do
-        test -s $list && . $list
+        . $list
     done
     unset list
 
-    echo "" > ${SUBTMDPIR}/return-InstallPackages_Expert;	# Clean up file.
-    for pkgname in $(cat -- ${SUBTMPDIR}/InstallPackages_Expert-Selection/return-tagfile.* 2> /dev/null)
+    # Description of external file list:
+    # .taglist:  All the dialog answers.
+    # .search:   Package search (from selected series, .taglist).
+
+    # Join the answers by turning blank spaces into a new line
+    if ls ${SUBTMPDIR}/return-InstallPackages_Expert.dir/return-* > /dev/null 2>&1
+    then
+        sed -e 's/[[:blank:]]/\n/g' \
+         ${SUBTMPDIR}/return-InstallPackages_Expert.dir/return-* 2> /dev/null | \
+          LC_COLLATE=C sort > ${SUBTMPDIR}/return-InstallPackages_Expert.taglist
+    else
+        echo "${PROGRAM}: Error all series have been canceled from package selection." 1>&2
+        exit 99;
+    fi
+
+    for serie in $REPLY
     do
-        find "${MEDIUM_SOURCE}"/noarch/$series "${MEDIUM_SOURCE}"/@ARCH@/$series \
-         -type f -name "${pkgname}-*.tlz" >> ${SUBTMPDIR}/return-InstallPackages_Expert
+        while read -r name
+        do
+            find "${MEDIUM_SOURCE}"/noarch/$serie "${MEDIUM_SOURCE}"/@ARCH@/$serie \
+             -type f -name "${name}*.tlz" 2> /dev/null | grep -s -w -m 1 $name \
+              >> ${SUBTMPDIR}/return-InstallPackages_Expert.search || true
+        done < ${SUBTMPDIR}/return-InstallPackages_Expert.taglist
     done
-    unset pkgname
+    unset REPLY name
 
-    # Proceed to install the packages found with an ordered list
+    # Proceed to install the chosen packages
 
-    LC_COLLATE=C sort -u ${SUBTMPDIR}/return-InstallPackages_Expert \
-     > ${SUBTMPDIR}/return-InstallPackages_Expert.sorted 2> /dev/null || true
-
-    if test -s ${SUBTMPDIR}/return-InstallPackages_Expert.sorted
+    if test -s ${SUBTMPDIR}/return-InstallPackages_Expert.search
     then
         qi -r /media/dragora-root -P /usr/pkg -t / -i - \
-         < ${SUBTMPDIR}/return-InstallPackages_Expert.sorted
+         < ${SUBTMPDIR}/return-InstallPackages_Expert.search
     else
-        echo ""
         echo "${PROGRAM}: Error the package list is empty." 1>&2
         exit 99;
     fi
