@@ -21,7 +21,7 @@ _convertTag()
             cat << EOF > ${arch_name}.${tag_name}
 dialog --colors \\
  --backtitle "\ZbSelect packages from chosen series" \\
- --title "[ ${arch_name} | ${tag_name#*-} ]" \\
+ --title "[ ${arch_name} | $(printf "%s" "${tag_name#*-}" | tr _ /) ]" \\
  --item-help --checklist "" 20 $COLUMNS 15 \\
 EOF
             { # Add double quotes plus output file for items
@@ -112,7 +112,7 @@ Expert)
         while read -r name
         do
             find "${MEDIUM_SOURCE}"/noarch/$serie "${MEDIUM_SOURCE}"/@ARCH@/$serie \
-             -type f -name "${name}*.tlz" 2> /dev/null | grep -s -w -m 1 $name \
+             -type f -name "${name}*.tlz" 2> /dev/null | fgrep -s -w -m 1 $name \
               >> ${SUBTMPDIR}/return-InstallPackages_Expert.search || true
         done < ${SUBTMPDIR}/return-InstallPackages_Expert.taglist
     done
