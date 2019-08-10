@@ -2,12 +2,12 @@
 # /etc/profile - System-wide startup file for shells.
 #
 
-# Compose the system path, resetting the value of $IFS
+# Compose system path resetting $IFS value
 IFS='
  	'
-PATH=${PATH}:/usr/local/games:/usr/games
+PATH="${PATH}:/usr/local/games:/usr/games"
 
-# Remove write permission for group and other
+# Set default mask: remove write permission for group and other
 umask 022
 
 # Set basic primary prompt
@@ -16,15 +16,18 @@ PS1='$PWD \$ '
 # Set default terminal type if unset
 test -n "${TERM+$TERM}" || TERM=linux
 
-# Default classification and conversion of characters
+# Set default classification and conversion of characters
 LC_CTYPE=C.UTF-8
 
 export PATH LC_CTYPE
 
-# Load profiles
-for file in /etc/profile.d/*.sh
+# Load profile(s)
+for script in /etc/profile.d/*.sh
 do
-    test -r "$file" && . "$file"
+    if test -r "$script"
+    then
+        . "$script"
+    fi
 done
-unset file
+unset script
 
