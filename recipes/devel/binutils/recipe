@@ -16,7 +16,7 @@
 
 program=binutils
 version=2.32
-release=2
+release=3
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -68,6 +68,13 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # To pass extra options to binutils according to the architecture
+    case $arch in
+    i?86 | x86_64)
+        binutils_targets="--enable-targets=i386-efi-pe,x86_64-pep"
+        ;;
+    esac
+
     ../${program}-${version}/configure \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -86,14 +93,15 @@ build()
      --enable-plugins \
      --enable-threads \
      --enable-64-bit-bfd \
-     --enable-targets=i386-efi-pe,x86_64-pep \
      --enable-install-libiberty \
      --enable-initfini-array \
      --disable-werror \
      --disable-compressed-debug-sections \
      --with-system-zlib \
-     --build=$MACHTYPE
+     --build=$MACHTYPE \
+     $binutils_targets
 
+    unset binutils_targets
     make -j${jobs} tooldir=/usr/${MACHTYPE}
     #make -k check
     make -j${jobs} tooldir=/usr/${MACHTYPE} DESTDIR="$destdir" install-strip
