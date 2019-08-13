@@ -23,7 +23,7 @@ unpack "${worktree}/sources/musl-${version}.tar.lz"
 # Build instructions
 cd musl-${version}
 
-# Some tune options for i586, x86_64
+# Tune up some options to optimize i586/x86_64
 patch -Np1 -i "${worktree}/patches/musl/musl-tune.diff"
 
 ./configure CROSS_COMPILE="${target}-" \
@@ -37,6 +37,14 @@ patch -Np1 -i "${worktree}/patches/musl/musl-tune.diff"
 
 make -j${jobs}
 make -j${jobs} DESTDIR="$rootdir" install
+
+# Provide minimal libssp_nonshared.a so we don't need libssp from GCC
+
+${target}-gcc $BTCFLAGS -c "${worktree}/archive/musl/__stack_chk_fail_local.c" \
+                        -o __stack_chk_fail_local.o
+${target}-ar r libssp_nonshared.a __stack_chk_fail_local.o
+
+cp -p libssp_nonshared.a /tools/lib${libSuffix}/
 
 cleanup()
 {

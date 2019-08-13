@@ -16,7 +16,7 @@
 
 program=gcc
 version=9-20190720
-release=2
+release=3
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -62,7 +62,7 @@ build()
     # Apply specific patches for the support in musl.
     # http://port70.net/~nsz/musl/gcc-9.1.0/
 
-    #patch -Np1 -i "${worktree}/patches/gcc/0001-ssp_nonshared.patch"
+    patch -Np1 -i "${worktree}/patches/gcc/0001-ssp_nonshared.patch"
     patch -Np1 -i "${worktree}/patches/gcc/0002-posix_memalign.patch"
     patch -Np1 -i "${worktree}/patches/gcc/0003-libatomic-test-fix.patch"
     patch -Np1 -i "${worktree}/patches/gcc/0004-libgomp-test-fix.patch"
@@ -86,6 +86,7 @@ build()
      $configure_args \
      $multilib_options \
      $gcc_options \
+     gcc_cv_libc_provides_ssp=yes \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --infodir=$infodir \
@@ -103,7 +104,7 @@ build()
      --enable-fully-dynamic-string \
      --enable-default-ssp \
      --enable-default-pie \
-     --disable-libssp \
+     --enable-libssp \
      --disable-symvers \
      --disable-libitm \
      --disable-gnu-indirect-function \
@@ -130,15 +131,6 @@ build()
 
     # Back to source dir
     cd .. && cd "$srcdir"
-
-    # Provide minimal libssp_nonshared.a so we don't need libssp from GCC
-
-    cc $QICFLAGS -c "${worktree}/archive/gcc/__stack_chk_fail_local.c" \
-                 -o __stack_chk_fail_local.o
-    ar r libssp_nonshared.a __stack_chk_fail_local.o
-
-    cp -p libssp_nonshared.a "${destdir}/usr/lib${libSuffix}"
-    strip -g "${destdir}/usr/lib${libSuffix}/libssp_nonshared.a"
 
     # Move misplaced file(s) for GDB
     mkdir -p "${destdir}/usr/share/gdb/auto-load/usr/lib${libSuffix}"

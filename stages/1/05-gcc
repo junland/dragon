@@ -38,7 +38,7 @@ cd gcc-${version}
 # Apply specific patches for the support in musl.
 # http://port70.net/~nsz/musl/gcc-9.1.0/
 
-#patch -Np1 -i "${worktree}/patches/gcc/0001-ssp_nonshared.patch"
+patch -Np1 -i "${worktree}/patches/gcc/0001-ssp_nonshared.patch"
 patch -Np1 -i "${worktree}/patches/gcc/0002-posix_memalign.patch"
 patch -Np1 -i "${worktree}/patches/gcc/0003-libatomic-test-fix.patch"
 patch -Np1 -i "${worktree}/patches/gcc/0004-libgomp-test-fix.patch"
@@ -123,7 +123,7 @@ CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
  --enable-fully-dynamic-string \
  --enable-default-ssp \
  --enable-default-pie \
- --disable-libssp \
+ --enable-libssp \
  --disable-symvers \
  --disable-bootstrap \
  --disable-libstdcxx-pch \
@@ -134,6 +134,7 @@ CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
  --disable-nls \
  --with-local-prefix=/tools \
  --with-native-system-header-dir=/tools/include \
+ gcc_cv_libc_provides_ssp=yes \
  $multilib_options \
  $gcc_options
 
@@ -142,14 +143,6 @@ make -j${jobs} all \
  LD_FOR_TARGET="$LD"
 
 make -j${jobs} install
-
-# Provide minimal libssp_nonshared.a so we don't need libssp from GCC
-
-$BTCC $BTCFLAGS -c "${worktree}/archive/gcc/__stack_chk_fail_local.c" \
-                -o __stack_chk_fail_local.o
-$AR r libssp_nonshared.a __stack_chk_fail_local.o
-
-cp -p libssp_nonshared.a /tools/lib${libSuffix}/
 
 # Unset some imported variables from file
 unset AR AS LD RANLIB READELF STRIP
