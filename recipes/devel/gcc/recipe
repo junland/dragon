@@ -129,6 +129,17 @@ build()
     find "$destdir" -type f | xargs file | awk '/ELF/ && /executable/' | \
      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
 
+    # Provide minimal libssp_nonshared.a
+
+    cc $QICFLAGS -c "${worktree}/archive/gcc/__stack_chk_fail_local.c" \
+                 -o __stack_chk_fail_local.o
+    ar rcs libssp_nonshared.a __stack_chk_fail_local.o
+    cp -p libssp_nonshared.a "${destdir}/usr/lib${libSuffix}"
+    strip -g "${destdir}/usr/lib${libSuffix}/libssp_nonshared.a"
+
+    # Delete rest of uneeded libssp libraries
+    rm -f "${destdir}/usr/lib${libSuffix}"/libssp.*
+
     # Back to source dir
     cd .. && cd "$srcdir"
 

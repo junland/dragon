@@ -38,14 +38,6 @@ patch -Np1 -i "${worktree}/patches/musl/musl-tune.diff"
 make -j${jobs}
 make -j${jobs} DESTDIR="$rootdir" install
 
-# Provide minimal libssp_nonshared.a so we don't need libssp from GCC
-
-${target}-gcc $BTCFLAGS -c "${worktree}/archive/musl/__stack_chk_fail_local.c" \
-                        -o __stack_chk_fail_local.o
-${target}-ar r libssp_nonshared.a __stack_chk_fail_local.o
-
-cp -p libssp_nonshared.a /tools/lib${libSuffix}/
-
 cleanup()
 {
     cd -- "$TMPDIR" && rm -rf musl-${version}

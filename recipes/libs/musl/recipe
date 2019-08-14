@@ -81,15 +81,6 @@ build()
     make -j${jobs}
     make -j${jobs} install DESTDIR="$destdir"
 
-    # Provide minimal libssp_nonshared.a so we don't need libssp from GCC
-
-    cc $QICFLAGS -c "${worktree}/archive/musl/__stack_chk_fail_local.c" \
-                 -o __stack_chk_fail_local.o
-    ar r libssp_nonshared.a __stack_chk_fail_local.o
-
-    cp -p libssp_nonshared.a "${destdir}/usr/lib${libSuffix}"
-    strip -g "${destdir}/usr/lib${libSuffix}/libssp_nonshared.a"
-
     # To print shared library dependencies
     mkdir -p "${destdir}/usr/bin"
     ln -sf /usr/lib${libSuffix}/libc.so "${destdir}/usr/bin/ldd"

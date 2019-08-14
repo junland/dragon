@@ -144,6 +144,18 @@ make -j${jobs} all \
 
 make -j${jobs} install
 
+# Provide minimal libssp_nonshared.a (default)
+
+$BTCC $BTCFLAGS \
+ -c "${worktree}/archive/gcc/__stack_chk_fail_local.c" \
+ -o __stack_chk_fail_local.o
+
+$AR rcs libssp_nonshared.a __stack_chk_fail_local.o
+cp -p libssp_nonshared.a /tools/lib${libSuffix}
+
+# Delete rest of unneeded libssp libraries
+rm -f /tools/lib${libSuffix}/libssp.*
+
 # Unset some imported variables from file
 unset AR AS LD RANLIB READELF STRIP
 
