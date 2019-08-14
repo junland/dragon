@@ -1,6 +1,6 @@
 # Build script for essential symlinks.
 #
-# Copyright (c) 2014-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2014-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,9 +35,17 @@ ln -sf /tools/lib${libSuffix}/libstdc++.so        "${rootdir}/usr/lib${libSuffix
 ln -sf /tools/lib${libSuffix}/libstdc++.so.6      "${rootdir}/usr/lib${libSuffix}"
 ln -sf /tools/lib${libSuffix}/libstdc++.a         "${rootdir}/usr/lib${libSuffix}"
 
+ln -sf /tools/lib${libSuffix}/libssp.so           "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libssp.so.0         "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libssp.so.0.0.0     "${rootdir}/usr/lib${libSuffix}"
+ln -sf /tools/lib${libSuffix}/libssp.a            "${rootdir}/usr/lib${libSuffix}"
 ln -sf /tools/lib${libSuffix}/libssp_nonshared.a  "${rootdir}/usr/lib${libSuffix}"
 
 # Strip temporary prefix
-sed -e 's/tools/usr/' /tools/lib${libSuffix}/libstdc++.la \
- > "${rootdir}/usr/lib${libSuffix}/libstdc++.la"
+for file in libstdc++.la libssp.la libssp_nonshared.la
+do
+    sed -e 's/tools/usr/' /tools/lib${libSuffix}/$file \
+     > "${rootdir}/usr/lib${libSuffix}/$file"
+done
+unset file
 
