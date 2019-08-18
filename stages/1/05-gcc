@@ -38,7 +38,7 @@ cd gcc-${version}
 # Apply specific patches for the support in musl.
 # http://port70.net/~nsz/musl/gcc-9.1.0/
 
-patch -Np1 -i "${worktree}/patches/gcc/0001-ssp_nonshared.patch"
+patch -Np1 -i "${worktree}/patches/gcc/230-musl_libssp.patch"
 patch -Np1 -i "${worktree}/patches/gcc/0002-posix_memalign.patch"
 patch -Np1 -i "${worktree}/patches/gcc/0003-libatomic-test-fix.patch"
 patch -Np1 -i "${worktree}/patches/gcc/0004-libgomp-test-fix.patch"
@@ -134,7 +134,6 @@ CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
  --disable-nls \
  --with-local-prefix=/tools \
  --with-native-system-header-dir=/tools/include \
- gcc_cv_libc_provides_ssp=yes \
  $multilib_options \
  $gcc_options
 
@@ -144,13 +143,12 @@ make -j${jobs} all \
 
 make -j${jobs} install
 
-# Provide minimal libssp_nonshared.a (default)
+# Provide minimal libssp_nonshared.a
 
-$BTCC $BTCFLAGS \
- -c "${worktree}/archive/gcc/__stack_chk_fail_local.c" \
- -o __stack_chk_fail_local.o
-
-$AR rcs libssp_nonshared.a __stack_chk_fail_local.o
+$BTCC -c "${worktree}/archive/gcc/__stack_chk_fail_local.c" \
+      -o __stack_chk_fail_local.o
+$AR rc libssp_nonshared.a __stack_chk_fail_local.o
+$RANLIB libssp_nonshared.a
 cp -p libssp_nonshared.a /tools/lib${libSuffix}
 
 # Unset some imported variables from file

@@ -58,7 +58,7 @@ ln -s ../isl-${isl_version} isl
 # Apply specific patches for the support in musl.
 # http://port70.net/~nsz/musl/gcc-9.1.0/
 
-patch -Np1 -i "${worktree}/patches/gcc/0001-ssp_nonshared.patch"
+patch -Np1 -i "${worktree}/patches/gcc/230-musl_libssp.patch"
 patch -Np1 -i "${worktree}/patches/gcc/0002-posix_memalign.patch"
 patch -Np1 -i "${worktree}/patches/gcc/0003-libatomic-test-fix.patch"
 patch -Np1 -i "${worktree}/patches/gcc/0004-libgomp-test-fix.patch"
@@ -98,7 +98,6 @@ option_list="
  --disable-nls \
  --disable-lto-plugin \
  --with-sysroot="${crossdir}/$target" \
- gcc_cv_libc_provides_ssp=yes \
  $multilib_options \
  $gcc_options
 "
@@ -122,14 +121,14 @@ make -j${jobs} all \
 
 make -j${jobs} install
 
-# Provide minimal libssp_nonshared.a (default)
-
-${target}-gcc $BTCFLAGS \
+# Inset again libssp_nonshared.a overwritten the recent library
+${target}-gcc \
  -c "${worktree}/archive/gcc/__stack_chk_fail_local.c" \
  -o __stack_chk_fail_local.o
 
-${target}-ar rcs libssp_nonshared.a __stack_chk_fail_local.o
-cp -p libssp_nonshared.a "${crossdir}/${target}/lib/"
+${target}-ar rc libssp_nonshared.a __stack_chk_fail_local.o
+${target}-ranlib libssp_nonshared.a
+cp -f libssp_nonshared.a "${crossdir}/${target}/lib/"
 
 cd -- "$TMPDIR"
 

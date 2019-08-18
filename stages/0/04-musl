@@ -32,6 +32,16 @@ cd musl-${version}
 make -j${jobs}
 make -j${jobs} DESTDIR="${crossdir}/$target" install
 
+# Provide minimal libssp_nonshared.a for the bootstrap process
+
+${target}-gcc \
+ -c "${worktree}/archive/gcc/__stack_chk_fail_local.c" \
+ -o __stack_chk_fail_local.o
+
+${target}-ar rc libssp_nonshared.a __stack_chk_fail_local.o
+${target}-ranlib libssp_nonshared.a
+cp -p libssp_nonshared.a "${crossdir}/${target}/lib/"
+
 cleanup()
 {
     cd -- "$TMPDIR" && rm -rf musl-${version}

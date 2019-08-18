@@ -16,7 +16,7 @@
 
 program=gcc
 version=9-20190720
-release=4
+release=5
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -62,7 +62,7 @@ build()
     # Apply specific patches for the support in musl.
     # http://port70.net/~nsz/musl/gcc-9.1.0/
 
-    patch -Np1 -i "${worktree}/patches/gcc/0001-ssp_nonshared.patch"
+    patch -Np1 -i "${worktree}/patches/gcc/230-musl_libssp.patch"
     patch -Np1 -i "${worktree}/patches/gcc/0002-posix_memalign.patch"
     patch -Np1 -i "${worktree}/patches/gcc/0003-libatomic-test-fix.patch"
     patch -Np1 -i "${worktree}/patches/gcc/0004-libgomp-test-fix.patch"
@@ -84,9 +84,6 @@ build()
     ../${program}-${version}/configure SED=sed \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
-     $multilib_options \
-     $gcc_options \
-     gcc_cv_libc_provides_ssp=yes \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --infodir=$infodir \
@@ -116,7 +113,9 @@ build()
      --with-system-zlib \
      --build=$MACHTYPE \
      --host=$MACHTYPE \
-     --target=$MACHTYPE
+     --target=$MACHTYPE \
+     $multilib_options \
+     $gcc_options
 
     make -j${jobs} V=1 \
      BOOT_LDFLAGS="$QILDFLAGS" \
@@ -128,14 +127,6 @@ build()
     # Strip ELF executables only excluding shared objects
     find "$destdir" -type f | xargs file | awk '/ELF/ && /executable/' | \
      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
-
-    # Provide minimal libssp_nonshared.a
-
-    cc $QICFLAGS -c "${worktree}/archive/gcc/__stack_chk_fail_local.c" \
-                 -o __stack_chk_fail_local.o
-    ar rcs libssp_nonshared.a __stack_chk_fail_local.o
-    cp -p libssp_nonshared.a "${destdir}/usr/lib${libSuffix}"
-    strip -g "${destdir}/usr/lib${libSuffix}/libssp_nonshared.a"
 
     # Back to source dir
     cd .. && cd "$srcdir"
