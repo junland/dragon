@@ -16,7 +16,7 @@
 
 program=gcc
 version=9-20190720
-release=5
+release=6
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -128,6 +128,10 @@ build()
     # Strip ELF executables only excluding shared objects
     find "$destdir" -type f | xargs file | awk '/ELF/ && /executable/' | \
      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
+
+    # Strip static libraries in order to reduce the package size
+    find "$destdir" -type f | xargs file | awk '/current ar archive/' | \
+     cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
 
     # Back to source dir
     cd .. && cd "$srcdir"
