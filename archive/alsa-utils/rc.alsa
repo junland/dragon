@@ -1,26 +1,41 @@
 #! /bin/sh -
-# /etc/rc.d/rc.alsa - Start ALSA (Advanced Linux Sound Architecture).
 #
-# Version:  (#)1.00  2009-01-04 (MAF)
-#           (#)1.01  2010-06-21 (MAF)
-#           (#)1.02  2010-12-09 (MAF)
-#           (#)1.03  2011-03-31 (MAF)
-#           (#)1.04  2017-07-27 (MAF)
+# Script to start the Advanced Linux Sound Architecture (ALSA)
 #
-# Written by Matias Fonzo for Dragora GNU/Linux-Libre,
-# under the terms of the Apache License 2.0.
+# Copyright (c) 2017, 2019 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-type alsactl > /dev/null 2>&1 || exit 2;
-type amixer > /dev/null 2>&1 || exit 2;
+# Sanity checks
+if ! type alsactl > /dev/null 2>&1
+then
+    echo "${0}: Error: alsactl(1) is not available." 1>&2
+    exit 127;
+fi
+if ! type amixer > /dev/null 2>&1
+then
+    echo "${0}: Error: amixer(1) is not available." 1>&2
+    exit 127;
+fi
 
 if test -d /proc/asound
 then
-    if test -r /var/lib/alsa/asound.state
+    if test -e /var/lib/alsa/asound.state
     then
-        echo "Restoring ALSA mixer from /var/lib/alsa/asound.state ..."
+        echo "Restoring mixer from /var/lib/alsa/asound.state ..."
         alsactl restore
     else
-        echo "Setting values for the ALSA mixer ..."
+        echo "Setting local values for the ALSA mixer ..."
         amixer set Master 90% unmute       > /dev/null 2>&1
         amixer set Front 80% unmute        > /dev/null 2>&1
         amixer set PCM 80% unmute          > /dev/null 2>&1
