@@ -166,15 +166,13 @@ then
     while IFS='=' read -r variable value
     do
         case $variable in
-        \#* | "")       # Ignore commented or blank lines
-            continue
+        RC_?*)
+            if test -z "$(eval \$$variable)"
+            then
+                eval "$variable=\${value}"
+            fi
             ;;
         esac
-
-        if test -z "$variable"
-        then
-            eval "$variable=\${value}"
-        fi
     done < /etc/rc.conf
 fi
 

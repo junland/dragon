@@ -20,7 +20,7 @@ Bootstrapping from Debian systems:
 
 `apt upgrade`
 
-`apt install build-essential flex git lzip genisoimage texinfo unzip zlib1g zlib1g-dev liblz1`
+`apt install build-essential flex git lzip genisoimage texinfo unzip zlib1g zlib1g-dev liblz1 liblz-dev`
 
 ### Instructions:
 
