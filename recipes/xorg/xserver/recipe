@@ -17,7 +17,7 @@
 
 program=xorg-server
 version=1.20.5
-release=2
+release=3
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg/xserver"
@@ -66,7 +66,6 @@ build()
      --docdir=$docsdir \
      --enable-xf86bigfont \
      --enable-xcsecurity \
-     --enable-tslib \
      --enable-kdrive \
      --enable-config-udev \
      --enable-glamor \
@@ -75,8 +74,8 @@ build()
      --enable-dri3 \
      --enable-ipv6 \
      --enable-suid-wrapper \
-     --disable-xfake \
      --disable-systemd-logind \
+     --with-pic \
      --with-int10=x86emu \
      --with-sha1=libgcrypt \
      --with-default-font-path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi:unscaled,/usr/share/fonts/X11/75dpi:unscaled,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/TTF,/usr/share/fonts/X11/OTF" \
@@ -88,6 +87,11 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Allow old behavior to terminate server keystroke
+    cp -p "${worktree}/archive/xserver/00-keyboard.conf" \
+          "${destdir}/usr/share/X11/xorg.conf.d"
+    chmod 644 "${destdir}/usr/share/X11/xorg.conf.d/00-keyboard.conf"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
