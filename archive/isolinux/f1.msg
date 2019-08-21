@@ -8,8 +8,8 @@ Defaults for the options are specified in brackets.
 RC_HWCLOCK=09.......... 07Set hardware clock timescale, 0futc07 or 0flocal07 [09utc07]
 RC_HOSTNAME=09......... 07Set system host name [09dragora07]
 RC_DOMAINNAME=09....... 07Set system domain name [09example.net07]
-ENABLE_ESPEAKUP=09..... 07Use 0f107 to enable eSpeakup (software synthesizer) [09007]
-ESPEAKUP_VOICE=09...... 07Voice for the software synthesizer [09default07]
+RC_ESPEAKUP=09......... 07Use 0f107 to enable eSpeakup (software synthesizer) [09007]
+RC_EVOICE=09........... 07Voice for the software synthesizer [09default07]
 RC_KEYMAP=09........... 07Keyboard map for the console [09qwerty/us07]
 RC_BLANKTIME=09........ 07Terminal screen blanking in minutes [091507]
 
@@ -18,6 +18,6 @@ command-line parameter is only valid for the current session.  If you
 wish to make a permanent change after booting, please refer to the
 system/distribution documentation.
 
-Note, default password for "root" is: dragora
+IMPORTANT! Default login password for "root" is: dragora
 
-To exit, press [Enter] or [Esc].
+ To continue, press [Enter] or [Esc].
