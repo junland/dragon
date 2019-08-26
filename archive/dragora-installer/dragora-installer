@@ -34,8 +34,6 @@ chkstatus_or_exit()
 {
     status=$?
 
-    echo ""
-
     # Clean up temporary files
     rm -f -- "$TMPFILE" "$LOCKFILE"
 
@@ -47,7 +45,7 @@ chkstatus_or_exit()
 
     if test $status -ne 0
     then
-        echo "Return status = $status" 1>&2
+        printf "%s\n" "" "^ Return status = $status" 1>&2
         exit 2;
     fi
 
@@ -161,6 +159,12 @@ will be displayed." 7 63
     fi
 fi
 
+# Attempt to unmount possible pre-mounted filesystems
+mountpoint -q /media/dragora-root/dev && \
+ umount /media/dragora-root/dev
+mountpoint -q /media/dragora-root/proc && \
+ umount /media/dragora-root/proc
+
 # Clean up possible empty mount-directories
 rmdir -- \
  /media/dragora-medium \
@@ -188,4 +192,9 @@ fi
 . @PARTS@ShowSeries;		# Show software series.
 . @PARTS@InstallPackages;	# Package installation.
 . @PARTS@SetPassword;		# Set password for root.
+. @PARTS@MenuBootloader;	# Boot loader installation.
+
+umount /media/dragora-root/dev   > /dev/null 2>&1 || true
+umount /media/dragora-root/proc  > /dev/null 2>&1 || true
+sync
 
