@@ -195,5 +195,37 @@ fi
 
 umount /media/dragora-root/dev   > /dev/null 2>&1 || true
 umount /media/dragora-root/proc  > /dev/null 2>&1 || true
+
+if test -e /media/dragora-root/etc/fstab
+then
+    if mountpoint -q /media/dragora-medium
+    then
+        umount /media/dragora-medium
+    fi
+    if test -s ${SUBTMPDIR}/SeTCDdev
+    then
+        _status=0
+        dialog --clear --colors \
+         --title "The Setup for Dragora has been completed" \
+         --msgbox \
+"\nWhen you are ready, you can press \Zb\Z7ENTER\Zn to eject the installation disc...\n" 8 70 || _status=$?
+        if test $_status -eq 0
+        then
+            cdrom_device=$(cat < ${SUBTMPDIR}/CDDevice)
+
+            # Try to eject using SCSI commands, fallback on CDROM eject command
+            eject --scsi $cdrom_device || eject --cdrom $cdrom_device
+
+            dialog \
+             --title "The Setup for Dragora has been completed" \
+             --msgbox "\nPlease remove the installation disc.\n" 7 44 || true
+
+            # Attempt to use the tray close command
+            eject -t $cdrom_device > /dev/null 2>&1 || true
+        fi
+        unset _status cdrom_device
+    fi
+fi
+
 sync
 
