@@ -1,0 +1,73 @@
+# This file is part of the 'dragora-installer'.
+#
+# Purpose: Show detected services to activate/deactivate.
+
+addEntry()
+{
+    service=$1
+    description=$2
+
+    if test -s /media/dragora-root/etc/perp/${service}/rc.main
+    then
+        # Detect current changes for previous installations
+
+        sticky_bit=$(find /media/dragora-root/etc/perp/ -name "$service" -perm -1000 -print)
+
+        if test -n "$sticky_bit"
+        then
+            _toggle_flag=on
+        else
+            _toggle_flag=off
+        fi
+
+        echo "\"${service}\" \"\" $_toggle_flag \"${description}\" \\" >> ${SUBTMPDIR}/ConfServices 
+    fi
+    unset service description sticky_bit _toggle_flag
+}
+
+cat << EOF > ${SUBTMPDIR}/ConfServices
+dialog --colors \\
+ --backtitle "\ZbChoosing the running services" \\
+ --title "PERSISTENT PROCESS" --no-cancel \\
+ --item-help --checklist \\
+"A \"persistent process\" is any program intended to be \\
+long-running, highly available, and purpose critical. \\
+Also known and often described as a \"service\", a persistent \\
+process normally provides some essential, on-demand system \\
+service.\n\n\\
+Please select the daemons that you want to start, monitor, log,\n\\
+and control as persistent processes from system startup." 12 71 0 \\
+EOF
+
+addEntry acpid "Advanced Configuration and Power Interface event daemon."
+addEntry crond "Cron daemon."
+addEntry dbus "D-Bus daemon."
+addEntry dhcpcd "DHCP client."
+addEntry inetd "Internet super-server."
+addEntry klog "Simple kernel log daemon."
+addEntry socklog "Unix domain datagram socket for listening on /dev/log."
+addEntry sshd "The OpenSSH (SSH) daemon."
+addEntry udevd "Device event managing daemon [REQUIRED]."
+addEntry wpa_supplicant "Wi-Fi Protected Access client and IEEE 802.1X supplicant."
+unset addEntry
+
+echo ' 2> ${SUBTMPDIR}/return-ConfServices' >> ${SUBTMPDIR}/ConfServices
+echo "" > ${SUBTMPDIR}/return-ConfServices
+
+. ${SUBTMPDIR}/ConfServices;	# Show menu.
+
+test -s ${SUBTMPDIR}/return-ConfServices || return 0;
+
+# Set sticky bit according to the selection
+for service in acpid crond dbus dhcpcd inetd klog socklog sshd udevd \
+               wpa_supplicant ; \
+do
+    if grep -q -o -m 1 "$service" ${SUBTMPDIR}/return-ConfServices
+    then
+        chmod a+t /media/dragora-root/etc/perp/${service}
+    else
+        chmod a-t /media/dragora-root/etc/perp/${service}
+    fi
+done
+unset service
+
