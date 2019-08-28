@@ -1,6 +1,6 @@
 # Build recipe for patch.
 #
-# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 program=patch
 version=2.7.6
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
@@ -50,6 +50,10 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    # Update for hosts based on musl
+    cp -f "${worktree}/archive/common/config.guess" build-aux/config.guess
+    cp -f "${worktree}/archive/common/config.sub" build-aux/config.sub
 
     # http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-1000156
     patch -p1 < "${worktree}/patches/patch/Fix_segfault_with_mangled_rename_patch.patch"
