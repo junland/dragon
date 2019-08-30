@@ -17,7 +17,7 @@
 
 program=findutils
 version=4.7.0
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
@@ -48,6 +48,11 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # Fix minor memory leak in sharefile handling.
+    #
+    # http://git.savannah.gnu.org/cgit/findutils.git/commit/?id=9ad78c90c77636b5491f63470ed241123ca85cf6
+    patch -Np1 -i "${worktree}/patches/findutils/9ad78c90c77636b5491f63470ed241123ca85cf6"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .

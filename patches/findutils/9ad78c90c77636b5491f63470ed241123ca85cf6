@@ -1,0 +1,44 @@
+From 9ad78c90c77636b5491f63470ed241123ca85cf6 Mon Sep 17 00:00:00 2001
+From: Bernhard Voelker <mail@bernhard-voelker.de>
+Date: Thu, 29 Aug 2019 08:36:26 +0200
+Subject: find: fix minor memory leak in sharefile handling
+
+When sharefile_fopen fails to open the given file, e.g. due to the lack
+of permissions, then the name of the file is not freed.
+
+$ valgrind -v --leak-check=full find/find . -maxdepth 0 -fprint /
+...
+==28139== 2 bytes in 1 blocks are definitely lost in loss record 2 of 11
+==28139==    at 0x483677F: malloc (in /usr/lib64/valgrind/vgpreload_memcheck-amd64-linux.so)
+==28139==    by 0x4923DBA: strdup (strdup.c:42)
+==28139==    by 0x409E80: sharefile_fopen (sharefile.c:150)
+==28139==    by 0x40CCA0: open_output_file (parser.c:3390)
+==28139==    by 0x40CFA8: parse_fprint (parser.c:1010)
+==28139==    by 0x408341: build_expression_tree (tree.c:1295)
+==28139==    by 0x403AF7: main (ftsfind.c:712)
+
+This memory leak is a trivial issue because find will terminate anyway
+due to the error.
+
+* find/sharefile.c (sharefile_open): Call entry_free instead of simple
+free to also free the strdup-ed filename.
+---
+ find/sharefile.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/find/sharefile.c b/find/sharefile.c
+index 02d25cc..e82aec1 100644
+--- a/find/sharefile.c
++++ b/find/sharefile.c
+@@ -156,7 +156,7 @@ sharefile_fopen (sharefile_handle h, const char *filename)
+ 
+   if (NULL == (new_entry->fp = fopen_safer (filename, p->mode)))
+     {
+-      free (new_entry);
++      entry_free (new_entry);
+       return NULL;
+     }
+   else
+-- 
+cgit v1.0-41-gc330
+
