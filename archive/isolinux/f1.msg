@@ -1,7 +1,7 @@
                                02Dragora
-                       08http://www.dragora.org
+                       08http://www.dragora.org07
 
-09Boot options:07
+Boot options:
 
 Defaults for the options are specified in brackets.
 
@@ -16,8 +16,8 @@ RC_BLANKTIME=09........ 07Terminal screen blanking in minutes [091507]
 These are boot parameters for the distribution's startup.  Any passed
 command-line parameter is only valid for the current session.  If you
 wish to make a permanent change after booting, please refer to the
-system/distribution documentation.
+distribution documentation.
 
-IMPORTANT! Default login password for "root" is: dragora
+0fIMPORTANT! Default login password for "root" is: dragora07
 
- To continue, press [Enter] or [Esc].
+    To continue, press [Enter] or [Esc].
