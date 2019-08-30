@@ -17,7 +17,7 @@
 
 program=xorg-server
 version=1.20.5
-release=3
+release=4
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg/xserver"
@@ -92,6 +92,13 @@ build()
     cp -p "${worktree}/archive/xserver/00-keyboard.conf" \
           "${destdir}/usr/share/X11/xorg.conf.d"
     chmod 644 "${destdir}/usr/share/X11/xorg.conf.d/00-keyboard.conf"
+
+    # Set the suid bit on the Xorg application.
+    #
+    # This will allow us to switch between tty1 and tty7 with the
+    # Ctrl-Alt-F1 and Ctrl-Alt-F7 key combinations (see
+    # recipes/xorg/app/xinit/recipe).  Thanks to BLFS!
+    chmod u+s "${destdir}/usr/libexec/Xorg"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
