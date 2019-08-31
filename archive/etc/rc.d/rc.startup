@@ -96,7 +96,7 @@ hwclock --hctosys --localtime
 if test ! -f /fastboot
 then
     # Limit number of filesystem checkers using the max. number of processors
-    FSCK_MAX_INST=$(nproc 2>/dev/null) || FSCK_MAX_INST=1
+    FSCK_MAX_INST=$(nproc 2> /dev/null) || FSCK_MAX_INST=1
 
     # Force checks if the regular file '/forcefsck' exists
     test -f /forcefsck && forcefsck_flag=-f
@@ -197,8 +197,13 @@ fi
 unset RC_HWCLOCK
 
 # Re-mount the root filesystem in *read-write mode*
-echo "(Startup) Remounting root filesystem in read-write mode"
-mount -v -n -o remount,rw /
+echo "(Startup) Remounting root filesystem in read-write mode:"
+if ! test -w /
+then
+    mount -v -n -o remount,rw /
+else
+    echo "    The root filesystem is already in read-write mode." 1>&2
+fi
 
 # In modern distributions /etc/mtab is a symbolic link to /proc/mounts
 rm -f /etc/mtab
