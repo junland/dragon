@@ -16,7 +16,7 @@
 
 program=fuse
 version=2.9.9
-release=1
+release=2
 
 # Set custom package name
 pkgname=fuse2
@@ -71,9 +71,11 @@ build()
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
-    # Move provided init script to start FUSE
-    mv "${destdir}/etc/rc.d/fuse" "${destdir}/etc/rc.d/rc.fuse"
+    # Replace rc script with a better one from Dragora!
+    rm -f "${destdir}/etc/rc.d/fuse"
+    cp -p "${worktree}/archive/fuse/rc.fuse" "${destdir}/etc/rc.d/"
     chmod 755 "${destdir}/etc/rc.d/rc.fuse"
+
     touch "${destdir}/etc/rc.d/.graft-config"
 
     # Rules for FUSE are already managed by eudev
