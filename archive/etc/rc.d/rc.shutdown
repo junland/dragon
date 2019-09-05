@@ -71,12 +71,19 @@ sync
 killall5 -15 -o $$
 sleep 9
 
+# Stop FUSE file system
+if test -x /etc/rc.d/rc.fuse
+then
+    /etc/rc.d/rc.fuse stop
+fi
+
 echo "(Shutdown) Deactivating swap devices"
 swapoff -v -a
 
 echo "(Shutdown) Unmounting local and remote file systems"
 umount -v -a -r
 sleep 1
+sync
 
 echo "(Shutdown) Remounting root filesystem in read-only mode"
 mount -n -o remount,ro /
@@ -86,12 +93,12 @@ wait
 
 # Reboot, or halt the system
 case $0 in
-    *.reboot)
-        echo "Rebooting ..."
-        reboot -d -f
-        ;;
-    *)
-        halt -d -f -p
-        ;;
+*.reboot)
+    echo "Rebooting ..."
+    reboot -d -f
+    ;;
+*)
+    halt -d -f -p
+    ;;
 esac
 
