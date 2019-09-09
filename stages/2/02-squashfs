@@ -14,13 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# From http://github.com/plougher/squashfs-tools
-version=20190415_3197524
+version=4.4
 
 cd -- "$TMPDIR"
 rm -rf squashfs-tools-${version} \
        "${rootdir}/squashfs-tools_lzip"
-unpack "${worktree}/sources/squashfs-tools-${version}.tar.lz"
+unpack "${worktree}/sources/squashfs-tools-${version}.tar.gz"
 
 # Build instructions
 cd squashfs-tools-${version}
@@ -31,16 +30,7 @@ cd squashfs-tools-${version}
 # this will produce the compressed squash-image
 
 # Apply a patch to include LZIP support
-patch -p1 < "${worktree}/patches/squashfs-tools/squashfs-tools-20180628_lzip-0.diff"
-
-# Apply some patches from http://sources.debian.org/patches/squashfs-tools/1:4.3-12/
-# to make the Live ISO image more reliable
-for file in "${worktree}/patches/squashfs-tools"/????-*.patch
-do
-    echo "Applying patch: $file ..."
-    patch -p1 < "$file"
-done
-unset file
+patch -p1 < "${worktree}/patches/squashfs-tools/squashfs-tools-4.4_lzip-0.diff"
 
 cd squashfs-tools
 

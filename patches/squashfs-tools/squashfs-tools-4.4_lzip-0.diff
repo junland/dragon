@@ -1,104 +1,6 @@
-diff -urdN squashfs-tools-master/INSTALL squashfs-tools-master.new/INSTALL
---- squashfs-tools-master/INSTALL	2018-06-12 06:07:02.000000000 +0200
-+++ squashfs-tools-master.new/INSTALL	2018-07-10 13:27:23.000000000 +0200
-@@ -26,5 +26,5 @@
- 
- By default the tools are built with GZIP compression and extended attribute
- support.  Read the Makefile in squashfs-tools/ for instructions on building
--LZO, LZ4 and XZ compression support, and for instructions on disabling GZIP
--and extended attribute support if desired.
-+LZIP, LZO, LZ4 and XZ compression support, and for instructions on disabling
-+GZIP and extended attribute support if desired.
-diff -urdN squashfs-tools-master/RELEASE-README squashfs-tools-master.new/RELEASE-README
---- squashfs-tools-master/RELEASE-README	2018-06-12 06:07:02.000000000 +0200
-+++ squashfs-tools-master.new/RELEASE-README	2018-07-10 13:27:23.000000000 +0200
-@@ -8,7 +8,7 @@
- for details of changes.
- 
- Squashfs is a highly compressed read-only filesystem for Linux.
--It uses either gzip/xz/lzo/lz4 compression to compress both files, inodes
-+It uses either gzip/lzip/xz/lzo/lz4 compression to compress both files, inodes
- and directories.  Inodes in the system are very small and all blocks are
- packed to minimise data overhead. Block sizes greater than 4K are supported
- up to a maximum of 1Mbytes (default block size 128K).
-@@ -39,7 +39,7 @@
- 
- 6. File duplicates are detected and removed.
- 
--7. Filesystems can be compressed with gzip, xz (lzma2), lzo or lz4
-+7. Filesystems can be compressed with gzip, lzip, xz (lzma2), lzo or lz4
-    compression algorithms.
- 
- 1.1 Extended attributes (xattrs)
-@@ -103,6 +103,7 @@
- -comp <comp>		select <comp> compression
- 			Compressors available:
- 				gzip (default)
-+				lzip
- 				lzo
- 				lz4
- 				xz
-@@ -181,6 +182,15 @@
- 		and choose the best compression.
- 		Available strategies: default, filtered, huffman_only,
- 		run_length_encoded and fixed
-+	lzip
-+	  -Xcompression-level <compression-level>
-+		<compression-level> should be 0 .. 9 (default 9)
-+	  -Xdict-size <dict-size>
-+		Use <dict-size> as the LZIP dictionary size.  The dictionary
-+		size can be specified as a percentage of the block size, or
-+		as an absolute value.  The dictionary size must be less than
-+		or equal to the block size and 4096 bytes or larger.
-+		Example dict-sizes are 25%, 37.5% or 8K, 32K, etc.
- 	lzo
- 	  -Xalgorithm <algorithm>
- 		Where <algorithm> is one of:
-@@ -279,7 +289,7 @@
- algorithm.  This algorithm offers a good trade-off between compression
- ratio, and memory and time taken to decompress.
- 
--Squashfs also supports LZ4, LZO and XZ (LZMA2) compression.  LZO offers worse
-+Squashfs also supports LZIP, LZ4, LZO and XZ compression.  LZO offers worse
- compression ratio than gzip, but is faster to decompress.  XZ offers better
- compression ratio than gzip, but at the expense of greater memory and time
- to decompress (and significantly more time to compress).  LZ4 is similar
-@@ -304,6 +314,15 @@
- 		and choose the best compression.
- 		Available strategies: default, filtered, huffman_only,
- 		run_length_encoded and fixed
-+	lzip
-+	  -Xcompression-level <compression-level>
-+		<compression-level> should be 0 .. 9 (default 9)
-+	  -Xdict-size <dict-size>
-+		Use <dict-size> as the LZIP dictionary size.  The dictionary
-+		size can be specified as a percentage of the block size, or
-+		as an absolute value.  The dictionary size must be less than
-+		or equal to the block size and 4096 bytes or larger.
-+		Example dict-sizes are 25%, 37.5% or 8K, 32K, etc.
- 	lzo
- 	  -Xalgorithm <algorithm>
- 		Where <algorithm> is one of:
-@@ -340,7 +359,7 @@
- web sites should be consulted to understand their behaviour.  In general
- the Mksquashfs compression defaults for each compressor are optimised to
- give the best performance for each compressor, where what constitutes
--best depends on the compressor.  For gzip/xz best means highest compression,
-+best depends on the compressor.  For gzip/lzip/xz best means highest compression,
- for LZO/LZ4 best means a tradeoff between compression and (de)-compression
- overhead (LZO/LZ4 by definition are intended for weaker processors).
- 
-@@ -767,6 +786,7 @@
- 
- Decompressors available:
- 	gzip
-+	lzip
- 	lzo
- 	lz4
- 	xz
-diff -urdN squashfs-tools-master/squashfs-tools/Makefile squashfs-tools-master.new/squashfs-tools/Makefile
---- squashfs-tools-master/squashfs-tools/Makefile	2018-06-12 06:07:02.000000000 +0200
-+++ squashfs-tools-master.new/squashfs-tools/Makefile	2018-07-10 13:27:23.000000000 +0200
+diff -urdN squashfs-tools-4.4/squashfs-tools/Makefile squashfs-tools-4.4.new/squashfs-tools/Makefile
+--- squashfs-tools-4.4/squashfs-tools/Makefile	2019-08-29 03:58:04.000000000 +0200
++++ squashfs-tools-4.4.new/squashfs-tools/Makefile	2019-09-07 18:49:55.000000000 +0200
 @@ -17,6 +17,15 @@
  #
  GZIP_SUPPORT = 1
@@ -115,7 +17,16 @@ diff -urdN squashfs-tools-master/squashfs-tools/Makefile squashfs-tools-master.n
  ########### Building XZ support #############
  #
  # LZMA2 compression.
-@@ -143,6 +152,14 @@
+@@ -85,7 +94,7 @@
+ # in Mksquashfs.  Obviously the compression algorithm must have been
+ # selected to be built
+ #
+-COMP_DEFAULT = gzip
++COMP_DEFAULT = lzip
+ 
+ 
+ ###############################################
+@@ -172,6 +181,14 @@
  COMPRESSORS += gzip
  endif
  
@@ -130,18 +41,7 @@ diff -urdN squashfs-tools-master/squashfs-tools/Makefile squashfs-tools-master.n
  ifeq ($(LZMA_SUPPORT),1)
  LZMA_OBJS = $(LZMA_DIR)/C/Alloc.o $(LZMA_DIR)/C/LzFind.o \
  	$(LZMA_DIR)/C/LzmaDec.o $(LZMA_DIR)/C/LzmaEnc.o $(LZMA_DIR)/C/LzmaLib.o
-@@ -229,8 +246,8 @@
- # At least one compressor must have been selected
- #
- ifndef COMPRESSORS
--$(error "No compressor selected! Select one or more of GZIP, LZMA, XZ, LZO or \
--	LZ4!")
-+$(error "No compressor selected! Select one or more of GZIP, LZIP, LZMA, XZ, \
-+	LZO, LZ4 or ZSTD!")
- endif
- 
- #
-@@ -285,6 +302,8 @@
+@@ -321,6 +338,8 @@
  
  gzip_wrapper.o: gzip_wrapper.c squashfs_fs.h gzip_wrapper.h compressor.h
  
@@ -150,9 +50,9 @@ diff -urdN squashfs-tools-master/squashfs-tools/Makefile squashfs-tools-master.n
  lzma_wrapper.o: lzma_wrapper.c compressor.h squashfs_fs.h
  
  lzma_xz_wrapper.o: lzma_xz_wrapper.c compressor.h squashfs_fs.h
-diff -urdN squashfs-tools-master/squashfs-tools/compressor.c squashfs-tools-master.new/squashfs-tools/compressor.c
---- squashfs-tools-master/squashfs-tools/compressor.c	2018-06-12 06:07:02.000000000 +0200
-+++ squashfs-tools-master.new/squashfs-tools/compressor.c	2018-07-10 13:27:23.000000000 +0200
+diff -urdN squashfs-tools-4.4/squashfs-tools/compressor.c squashfs-tools-4.4.new/squashfs-tools/compressor.c
+--- squashfs-tools-4.4/squashfs-tools/compressor.c	2019-08-29 03:58:04.000000000 +0200
++++ squashfs-tools-4.4.new/squashfs-tools/compressor.c	2019-09-07 18:22:09.000000000 +0200
 @@ -33,6 +33,14 @@
  extern struct compressor gzip_comp_ops;
  #endif
@@ -176,9 +76,9 @@ diff -urdN squashfs-tools-master/squashfs-tools/compressor.c squashfs-tools-mast
  	&lzma_comp_ops,
  	&lzo_comp_ops,
  	&lz4_comp_ops,
-diff -urdN squashfs-tools-master/squashfs-tools/lzip_wrapper.c squashfs-tools-master.new/squashfs-tools/lzip_wrapper.c
---- squashfs-tools-master/squashfs-tools/lzip_wrapper.c	1970-01-01 01:00:00.000000000 +0100
-+++ squashfs-tools-master.new/squashfs-tools/lzip_wrapper.c	2018-07-10 14:57:57.000000000 +0200
+diff -urdN squashfs-tools-4.4/squashfs-tools/lzip_wrapper.c squashfs-tools-4.4.new/squashfs-tools/lzip_wrapper.c
+--- squashfs-tools-4.4/squashfs-tools/lzip_wrapper.c	1970-01-01 01:00:00.000000000 +0100
++++ squashfs-tools-4.4.new/squashfs-tools/lzip_wrapper.c	2019-09-07 18:22:09.000000000 +0200
 @@ -0,0 +1,462 @@
 +/*
 + * Copyright (c) 2014
@@ -642,9 +542,9 @@ diff -urdN squashfs-tools-master/squashfs-tools/lzip_wrapper.c squashfs-tools-ma
 +	.name = "lzip",
 +	.supported = 1
 +};
-diff -urdN squashfs-tools-master/squashfs-tools/lzip_wrapper.h squashfs-tools-master.new/squashfs-tools/lzip_wrapper.h
---- squashfs-tools-master/squashfs-tools/lzip_wrapper.h	1970-01-01 01:00:00.000000000 +0100
-+++ squashfs-tools-master.new/squashfs-tools/lzip_wrapper.h	2018-06-10 11:22:39.000000000 +0200
+diff -urdN squashfs-tools-4.4/squashfs-tools/lzip_wrapper.h squashfs-tools-4.4.new/squashfs-tools/lzip_wrapper.h
+--- squashfs-tools-4.4/squashfs-tools/lzip_wrapper.h	1970-01-01 01:00:00.000000000 +0100
++++ squashfs-tools-4.4.new/squashfs-tools/lzip_wrapper.h	2019-09-07 18:22:09.000000000 +0200
 @@ -0,0 +1,58 @@
 +#ifndef LZIP_WRAPPER_H
 +#define LZIP_WRAPPER_H
@@ -704,10 +604,10 @@ diff -urdN squashfs-tools-master/squashfs-tools/lzip_wrapper.h squashfs-tools-ma
 +	short match_len_limit;
 +};
 +#endif
-diff -urdN squashfs-tools-master/squashfs-tools/squashfs_fs.h squashfs-tools-master.new/squashfs-tools/squashfs_fs.h
---- squashfs-tools-master/squashfs-tools/squashfs_fs.h	2018-06-12 06:07:02.000000000 +0200
-+++ squashfs-tools-master.new/squashfs-tools/squashfs_fs.h	2018-07-10 13:27:23.000000000 +0200
-@@ -282,6 +282,7 @@
+diff -urdN squashfs-tools-4.4/squashfs-tools/squashfs_fs.h squashfs-tools-4.4.new/squashfs-tools/squashfs_fs.h
+--- squashfs-tools-4.4/squashfs-tools/squashfs_fs.h	2019-08-29 03:58:04.000000000 +0200
++++ squashfs-tools-4.4.new/squashfs-tools/squashfs_fs.h	2019-09-07 18:22:09.000000000 +0200
+@@ -285,6 +285,7 @@
  #define XZ_COMPRESSION		4
  #define LZ4_COMPRESSION		5
  #define ZSTD_COMPRESSION	6
