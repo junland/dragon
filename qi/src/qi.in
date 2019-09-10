@@ -147,7 +147,7 @@ chkstatus_or_exit()
 
     if test $status -ne 0
     then
-        echo "Return status = $status" 1>&2
+        echo "^ Return status = $status" 1>&2
         exit ${1-2};	# If not given, defaults to 2
     fi
 
@@ -278,6 +278,7 @@ build_mode()
 
     echo "{@} Building from ${CWD}/$recipe ..."
     . "${CWD}/$recipe"
+    chkstatus_or_exit
 
     # Check for required variables
     if test -z "$program"
@@ -497,7 +498,7 @@ build_mode()
     # Determine if the debugging indicators of the shell should be
     # retained, assuming that it has been previously passed
     case $- in *x*)
-        _xtrace_flag_is_set=xtrace_flag_is_set ;;
+        _xtrace_flag=_xtrace_flag_is_set ;;
     esac
 
     echo "Running build() ..."
@@ -507,7 +508,7 @@ build_mode()
     # Turn off possible shell flags coming from the recipe
 
     set +e
-    if test "$_xtrace_flag_is_set" != xtrace_flag_is_set
+    if test "${_xtrace_flag:+$_xtrace_flag}" != _xtrace_flag_is_set
     then
         set +x
     fi
@@ -566,7 +567,7 @@ build_mode()
             unset item
         fi
 
-        # Create meta file for the package information
+        # Create meta file for package information
         echo "Creating meta file ${full_pkgname}.tlz.txt ..."
         do_meta > "${outdir}/${full_pkgname}.tlz.txt" || chkstatus_or_exit
 
