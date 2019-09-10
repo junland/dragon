@@ -16,7 +16,7 @@
 
 program=lpppd
 version=20190505_bb70b17
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/networking"
@@ -75,6 +75,19 @@ build()
     make -j${jobs} DESTDIR="$destdir" install
 
     cd ..
+
+    # Include pppd headers to expose rp-pppoe plugins
+    mkdir -p "${destdir}/usr/include/pppd"
+    for file in pppd/*.h
+    do
+        cp -p $file "${destdir}/usr/include/pppd"/
+        chmod 644 "${destdir}/usr/include/pppd/${file##*/}"
+    done
+    unset file
+
+    mkdir -p "${destdir}/usr/include/net"
+    cp -p include/net/ppp_defs.h "${destdir}/usr/include/net"/
+    chmod 644  "${destdir}/usr/include/net/ppp_defs.h"
 
     # Add configuration files
     mkdir -p "${destdir}/etc/ppp/peers"
