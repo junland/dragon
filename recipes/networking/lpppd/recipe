@@ -1,0 +1,121 @@
+# Build recipe for lpppd (a fork of ppp).
+#
+# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=lpppd
+version=20190505_bb70b17
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/networking"
+
+tarname=${program}-${version}.tar.lz
+
+# Remote source(s)
+fetch="
+ http://rsync.dragora.org/current/sources/$tarname
+ http://mirror.cedia.org.ec/dragora/current/sources/$tarname
+"
+
+description="
+PPP daemon and associated utilities.
+
+The lpppd package is a fork based on Paul Mackerras' PPP:
+
+  Targets glibc, musl libc and uClibc.
+  Collecting patches from various sources.
+  Use CMake build system.
+  Support for non-Linux systems removed.
+  Legacy protocol and library support removed.
+  Some general code modernization.
+  Building of plugins not supported at this time.
+"
+
+homepage=http://github.com/snickl/lpppd
+license="GPLv2+ | Public domain, BSD-style notices"
+
+# Source documentation
+docs="CHANGELOG.md FAQ PLUGINS README* SETUP"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    mkdir BUILD
+    cd BUILD
+
+    cmake \
+     -DCMAKE_C_FLAGS:STRING="$QICFLAGS"            \
+     -DCMAKE_EXE_LINKER_FLAGS:STRING="$QILDFLAGS"  \
+     -DCMAKE_INSTALL_PREFIX=/usr                   \
+     -DCMAKE_BUILD_TYPE=Release                    \
+     -DOPTION_LPPPD_INET6=ON                       \
+     -DOPTION_LPPPD_PPPD_FILTER=ON                 \
+     -DOPTION_LPPPD_PPPD_MULTILINK=ON              \
+     ..
+
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    cd ..
+
+    # Add configuration files
+    mkdir -p "${destdir}/etc/ppp/peers"
+    for file in etc.ppp/*
+    do
+        cp -p $file "${destdir}/etc/ppp"/
+        chmod 644 "${destdir}/etc/ppp/${file##*/}"
+    done
+    unset file
+
+    chmod 600 "${destdir}"/etc/ppp/*-secrets*
+    touch "${destdir}/etc/ppp/.graft-config"
+
+    # Include scripts
+    for file in plog poff pon
+    do
+        cp -p scripts/${file} "${destdir}/usr/sbin"/
+        chmod 755 "${destdir}/usr/sbin/$file"
+    done
+    unset file
+
+    # Include manual page for pon
+    mkdir -p "${destdir}/${mandir}/man1"
+    cp -p scripts/pon.1 "${destdir}/${mandir}/man1"/
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"/
+}
+
