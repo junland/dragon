@@ -1,7 +1,8 @@
-# archive/ - Specific files included by the packages.
+## archive/ - Contains specific files to be included from recipes.
 
-A subdirectory here is represented with the name of the program,
-it can contains configuration files, headers, or substantial files
-(trivial differences).  Each of them is located in their corresponding
-directories to reflect from where they come from.
+The sub-directories listed here are represented using the name of the
+software to be packaged or using the package name.  Sub-directories
+can contain configuration files, headers and substantial files to be
+used from a specific recipe (which is where the final software package
+will be incorporated and produced from).
 

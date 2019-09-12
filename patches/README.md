@@ -1,6 +1,7 @@
-# patches/ - Patches files.
+## patches/ - Contains patches that will be included from recipes.
 
-This directory contains specific differences for programs used
-in the build process.  Each subdirectory is represented with
-the name of the program.
+The sub-directories listed here are represented using the name of the
+software to be packaged or using the package name.  The sub-directories
+contain specific patches that will be applied for the necessary
+compilation of the program through the use of recipes.
 
