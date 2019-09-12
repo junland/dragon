@@ -1,7 +1,7 @@
-# Build recipe for fittstool.
+# Build recipe for fittsen (fork of fittstool).
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-program=fittstool
-version=7d68920
+program=fittsen
+version=20190618_277dd4f
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -34,11 +34,11 @@ Utility to bind commands to mouse button events on the screen corners,
 via a simple and concise configuration file.
 "
 
-homepage=http://github.com/jeanCarloMachado/fittstool
-license="GPLv2+"
+homepage=http://notabug.org/frusen/fittsen
+license=GPLv2+
 
 # Source documentation
-docs="Authors COPYING ChangeLog README.md "
+docs="LICENSE* README.md github.README.md"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -49,10 +49,18 @@ build()
 
     cd "$srcdir"
 
-    make -j${jobs} CFLAGS="$QICFLAGS"
-    make -j${jobs} DESTDIR="$destdir" install
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
 
-    strip --strip-unneeded "${destdir}/usr/bin/fittstool"
+    make -j${jobs} CFLAGS="$QICFLAGS"
+
+    mkdir -p "${destdir}/usr/bin"
+    cp -p fittsen "${destdir}/usr/bin"/
+    chmod 755 "${destdir}/usr/bin/fittsen"
+    strip --strip-unneeded "${destdir}/usr/bin/fittsen"
+
+    # Make symlink for compatibility with fittstool
+    ( cd "${destdir}/usr/bin" && ln -sf fittsen fittstool )
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
