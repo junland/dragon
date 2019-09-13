@@ -16,7 +16,7 @@
 
 program=ruby
 version=2.6.4
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -52,6 +52,10 @@ build()
 
     cd "$srcdir"
 
+    # A patch to avoid installing platform-specific gems with binaries
+    # linked against Glibc (Thanks to "Alpine Linux")
+    patch -Np1 -i "${worktree}/patches/ruby/rubygems-avoid-platform-specific-gems.patch"
+
     # Update for hosts based on musl
     cp -f "${worktree}/archive/common/config.guess" tool/config.guess
     cp -f "${worktree}/archive/common/config.sub" tool/config.sub
@@ -59,15 +63,19 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    INSTALL="install" \
+    ./configure CFLAGS="$QICFLAGS -fno-omit-frame-pointer -fno-strict-aliasing" \
+    LDFLAGS="$QILDFLAGS" INSTALL="install" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --docdir=$docsdir \
      --enable-shared \
-     --disable-install-capi \
+     --enable-ipv6 \
+     --with-sitedir=/usr/local/share/ruby \
+     --with-sitearchdir=/usr/local/lib${libSuffix}/ruby \
      --without-compress-debug-sections \
+     --disable-rpath \
+     --disable-install-capi \
      --build="$(cc -dumpmachine)" \
      ac_cv_func_isnan=yes \
      ac_cv_func_isinf=yes
