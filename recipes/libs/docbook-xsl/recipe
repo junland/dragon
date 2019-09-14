@@ -78,38 +78,43 @@ build()
     mkdir -p "${destdir}/var/lib/qi"
     cat << EOF > "${destdir}/var/lib/qi/${full_pkgname}.sh"
 
-echo "Creating etc/xml/catalog (version: $version) ..."
-xmlcatalog --noout --create etc/xml/catalog
+# XML catalog
+if test ! -e etc/xml/catalog
+then
+    echo "Creating etc/xml/catalog (from docbook-xsl-${version}) ..."
+    xmlcatalog --noout --create etc/xml/catalog
+fi
 
+echo "Adding XML (XSL) definitions to etc/xml/catalog ..."
 xmlcatalog --noout --add "rewriteSystem" \\
- "http://cdn.docbook.org/release/xsl-nons/${version}"  \\
- "file://usr/share/xml/docbook/xsl-stylesheets-nons-${version}"  \\
+ "http://cdn.docbook.org/release/xsl-nons/${version}" \\
+ "file://usr/share/xml/docbook/xsl-stylesheets-nons-${version}" \\
  etc/xml/catalog
 
 xmlcatalog --noout --add "rewriteURI" \\
- "http://cdn.docbook.org/release/xsl-nons/${version}"  \\
- "file://usr/share/xml/docbook/xsl-stylesheets-nons-${version}"  \\
+ "http://cdn.docbook.org/release/xsl-nons/${version}" \\
+ "file://usr/share/xml/docbook/xsl-stylesheets-nons-${version}" \\
  etc/xml/catalog
 
 xmlcatalog --noout --add "rewriteSystem" \\
- "http://cdn.docbook.org/release/xsl-nons/current"  \\
- "file://usr/share/xml/docbook/xsl-stylesheets-nons-${version}"  \\
+ "http://cdn.docbook.org/release/xsl-nons/current" \\
+ "file://usr/share/xml/docbook/xsl-stylesheets-nons-${version}" \\
  etc/xml/catalog
 
 xmlcatalog --noout --add "rewriteURI" \\
- "http://cdn.docbook.org/release/xsl-nons/current"  \\
- "file://usr/share/xml/docbook/xsl-stylesheets-nons-${version}"  \\
+ "http://cdn.docbook.org/release/xsl-nons/current" \\
+ "file://usr/share/xml/docbook/xsl-stylesheets-nons-${version}" \\
  etc/xml/catalog
 
 # Sourceforge URIs
 xmlcatalog --noout --add "rewriteSystem" \\
- "http://docbook.sourceforge.net/release/xsl/current"  \\
- "/usr/share/xml/docbook/xsl-stylesheets-nons-${version}"  \\
+ "http://docbook.sourceforge.net/release/xsl/current" \\
+ "/usr/share/xml/docbook/xsl-stylesheets-nons-${version}" \\
  etc/xml/catalog
 
 xmlcatalog --noout --add "rewriteURI" \\
- "http://docbook.sourceforge.net/release/xsl/current"  \\
- "/usr/share/xml/docbook/xsl-stylesheets-nons-${version}"  \\
+ "http://docbook.sourceforge.net/release/xsl/current" \\
+ "/usr/share/xml/docbook/xsl-stylesheets-nons-${version}" \\
  etc/xml/catalog
 
 EOF
