@@ -54,8 +54,6 @@ build()
 {
     set -e
 
-    set -x
-
     # Unzip the sources in an own directory
     for _version in $version 4.4 4.3 4.2 4.1.2
     do
@@ -102,7 +100,9 @@ then
     xmlcatalog --noout --create etc/xml/docbook
 fi
 
+echo ""
 echo "Updating etc/xml/docbook ..."
+
 xmlcatalog --noout --add "public" \\
  "-//OASIS//DTD DocBook XML V4.5//EN" \\
  "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" \\
@@ -165,7 +165,9 @@ then
     xmlcatalog --noout --create etc/xml/catalog
 fi
 
+echo ""
 echo "Updating etc/xml/catalog ..."
+
 xmlcatalog --noout --add "delegatePublic" \\
  "-//OASIS//ENTITIES DocBook XML" \\
  "file:///etc/xml/docbook" \\
@@ -186,38 +188,39 @@ xmlcatalog --noout --add "delegateURI" \\
  "file:///etc/xml/docbook" \\
  etc/xml/catalog
 
-# Add identifiers support
+echo ""
+printf "%s" "Adding identifiers from previous version:"
 
 for DTDVERSION in 4.4 4.3 4.2 4.1.2
 do
-    echo "Adding identifiers from previous version (${DTDVERSION}) ..."
+    printf "%s" " v\${DTDVERSION}"
 
     # etc/xml/docbook
 
     xmlcatalog --noout --add "public" \\
-     "-//OASIS//DTD DocBook XML V$DTDVERSION//EN" \\
-     "http://www.oasis-open.org/docbook/xml/${DTDVERSION}/docbookx.dtd" \\
+     "-//OASIS//DTD DocBook XML V\${DTDVERSION}//EN" \\
+     "http://www.oasis-open.org/docbook/xml/\${DTDVERSION}/docbookx.dtd" \\
      etc/xml/docbook
 
     xmlcatalog --noout --add "rewriteSystem" \\
-     "http://www.oasis-open.org/docbook/xml/${DTDVERSION}" \\
+     "http://www.oasis-open.org/docbook/xml/\${DTDVERSION}" \\
      "file:///usr/share/xml/docbook/xml-dtd-4.5" \\
      etc/xml/docbook
 
     xmlcatalog --noout --add "rewriteURI" \\
-     "http://www.oasis-open.org/docbook/xml/${DTDVERSION}" \\
+     "http://www.oasis-open.org/docbook/xml/\${DTDVERSION}" \\
      "file:///usr/share/xml/docbook/xml-dtd-4.5" \\
      etc/xml/docbook
 
     # etc/xml/catalog
 
     xmlcatalog --noout --add "delegateSystem" \\
-     "http://www.oasis-open.org/docbook/xml/${DTDVERSION}/" \\
+     "http://www.oasis-open.org/docbook/xml/\${DTDVERSION}/" \\
      "file:///etc/xml/docbook" \\
      etc/xml/catalog
 
     xmlcatalog --noout --add "delegateURI" \\
-     "http://www.oasis-open.org/docbook/xml/${DTDVERSION}/" \\
+     "http://www.oasis-open.org/docbook/xml/\${DTDVERSION}/" \\
      "file:///etc/xml/docbook" \\
      etc/xml/catalog
 done
