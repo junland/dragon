@@ -16,7 +16,7 @@
 
 program=libxslt
 version=1.1.33
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
@@ -51,6 +51,15 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    # A security patch to fix a security framework bypass
+    # (Thanks to "Beyond Linux From Scratch")
+    patch -Np1 -i "${worktree}/patches/libxslt/libxslt-1.1.33-security_fix-1.patch"
+
+    # This increases the recursion limit.  This is needed by
+    # some packages for their documentation
+    sed -e 's/3000/5000/' \
+        -i libxslt/transform.c doc/xsltproc.1 doc/xsltproc.xml
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
