@@ -1,7 +1,7 @@
 # Build recipe for xmessage.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 program=xmessage
 version=1.0.5
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg/app"
@@ -52,22 +52,22 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
-     --mandir=$mandir \
-     --docdir=$docsdir \
-     || true
+     $configure_args --mandir=$mandir --docdir=$docsdir
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
+    # Populate etc/X11/app-defaults with settings for xmessage(1)
+    mkdir -p "${destdir}/etc/X11/app-defaults"
+    for file in "${worktree}/archive/xmessage/etc/X11/app-defaults"/*
+    do
+        cp -p "$file" "${destdir}/etc/X11/app-defaults"/
+        chmod 644 "${destdir}/etc/X11/app-defaults/${file##*/}"
+    done
+    unset file
+
+    # To manage dot .new files via graft(1)
+    touch "${destdir}/etc/X11/app-defaults/.graft-config"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -85,13 +85,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
