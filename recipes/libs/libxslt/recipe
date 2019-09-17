@@ -1,6 +1,6 @@
 # Build recipe for libxslt.
 #
-# Copyright (C) 2018, 2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2018-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,9 +21,6 @@ release=1
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
 
-# The installation of this package replaces to
-replace=libxslt_pass1
-
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
@@ -40,7 +37,7 @@ homepage=http://xmlsoft.org
 license=MIT
 
 docs="AUTHORS ChangeLog Copyright NEWS README TODO"
-docsdir="${docdir}/${program}-${pkgversion}"
+docsdir="${docdir}/${program}-${version}"
 
 # The source has a custom directory
 srcdir="${program}-${version%-*}"
@@ -58,7 +55,6 @@ build()
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
      --with-html-dir=${docsdir}/html \
@@ -68,13 +64,6 @@ build()
      
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
-
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
