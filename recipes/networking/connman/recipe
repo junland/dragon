@@ -1,0 +1,121 @@
+# Build recipe for connman.
+#
+# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=connman
+version=1.37
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/networking"
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://mirrors.edge.kernel.org/pub/linux/network/connman/$tarname
+
+description="
+A connection manager.
+
+ConnMan is a daemon for managing Internet connections within embedded
+device and integrates a vast range of communication features usually
+split between many daemons such as DHCP, DNS and NTP.  The result of
+this consolidation is low memory consumption with a fast, coherent,
+synchronized reaction to changing network conditions.
+"
+
+homepage=http://01.org/connman
+license=GPLv2+
+
+# Source documentation
+docs="AUTHORS COPYING ChangeLog NEWS README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # A patch to compile under Musl (Thanks to "Alpine Linux")
+    patch -Np1 -i "${worktree}/patches/connman/libresolv.patch"
+
+    # Update for hosts based on musl
+    cp -f "${worktree}/archive/common/config.guess" config.guess
+    cp -f "${worktree}/archive/common/config.sub" config.sub
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-pie \
+     --enable-static=yes \
+     --enable-shared=no \
+     --disable-wispr \
+     --with-firewall=iptables \
+     --with-dns-backend=internal \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Install perp service for connman
+
+    mkdir -p "${destdir}/etc/perp/connman" \
+             "${destdir}/var/lib/connman"
+
+    cp -p "${worktree}/archive/connman/rc.log" \
+          "${worktree}/archive/connman/rc.main" \
+          "${destdir}/etc/perp/connman/"
+
+    chmod 755 "${destdir}"/etc/perp/connman/rc.*
+
+    # Be an active service by default
+    chmod +t "${destdir}/etc/perp/connman"
+
+    # Inset configuration file from source
+    mkdir -p "${destdir}/etc/connman"
+    cp -p src/main.conf "${destdir}/etc/connman"/
+    chmod 644 "${destdir}/etc/connman/main.conf"
+
+    # To handle config file(s)
+    touch "${destdir}/etc/connman/.graft-config" \
+          "${destdir}/etc/perp/connman/.graft-config"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"/
+}
+
