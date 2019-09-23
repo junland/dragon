@@ -16,7 +16,7 @@
 
 program=ruby
 version=2.6.4
-release=3
+release=4
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -56,6 +56,10 @@ build()
     # linked against Glibc (Thanks to "Alpine Linux")
     patch -Np1 -i "${worktree}/patches/ruby/rubygems-avoid-platform-specific-gems.patch"
 
+    patch -Np1 -i "${worktree}/patches/ruby/fix-get_main_stack.patch"
+    patch -Np1 -i "${worktree}/patches/ruby/test_insns-lower-recursion-depth.patch"
+    patch -Np1 -i "${worktree}/patches/ruby/avoid-rdoc-hook-when-its-failed-to-load-rdoc-library.patch"
+
     # Update for hosts based on musl
     cp -f "${worktree}/archive/common/config.guess" tool/config.guess
     cp -f "${worktree}/archive/common/config.sub" tool/config.sub
@@ -63,7 +67,9 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS -fno-omit-frame-pointer -fno-strict-aliasing" \
+    ./configure \
+    CPPFLAGS="-D_GNU_SOURCE" \
+    CFLAGS="$QICFLAGS -fno-omit-frame-pointer -fno-strict-aliasing" \
     LDFLAGS="$QILDFLAGS" INSTALL="install" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
