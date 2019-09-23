@@ -1,6 +1,6 @@
 # Build recipe for vala.
 #
-# Copyright (C) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2018-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=vala
-version=0.42.3
+version=0.46.1
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -55,10 +55,7 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # A patch to allow building without graphviz (Thanks to BLFS!)
-    patch -Np1 -i "${worktree}/patches/vala/vala-0.42.2-avoid_graphviz-1.patch"
-
-    ACLOCAL= autoreconf -vif
+    # Note: --enable-valadoc requires Graphviz
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -66,6 +63,7 @@ build()
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --disable-valadoc \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
