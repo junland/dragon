@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=readline
-version=7.0
-release=3
+version=8.0
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
@@ -53,13 +53,16 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     # Apply patches from upstream
-    for file in "${worktree}"/patches/readline/readline70-???*
+    for file in "${worktree}"/patches/readline/readline80-???*
     do
         if test -f "$file"
         then
             patch -Np0 -i "$file"
         fi
     done
+
+    # To avoid underlink against ncursesw
+    patch -Np1 -i "${worktree}/patches/readline/readline-ncurses-link.patch"
 
     # Reinstalling Readline will cause the old libraries to be moved to
     # <libraryname>.old, this avoid printing a harmful message about
@@ -74,14 +77,14 @@ build()
      --mandir=$mandir \
      --docdir=$docsdir \
      --enable-multibyte \
-     --enable-static \
-     --enable-shared \
+     --enable-static=yes \
+     --enable-shared=yes \
      --build="$(cc -dumpmachine)"
 
-    make -j${jobs} V=1 SHLIB_LIBS='-lncursesw'
-    make -j${jobs} V=1 SHLIB_LIBS='-lncursesw' DESTDIR="$destdir" install
+    make -j${jobs} V=1
+    make -j${jobs} V=1 DESTDIR="$destdir" install
 
-    # Copy custom inputrc file
+    # Copy our custom inputrc file
     mkdir -p "${destdir}/etc"
     cp -p "${worktree}/archive/readline/etc/inputrc" "${destdir}/etc/"
     chmod 644 "${destdir}/etc/inputrc"
