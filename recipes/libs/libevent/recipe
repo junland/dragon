@@ -1,7 +1,7 @@
 # Build recipe for libevent.
 #
 # Copyright 2018 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright 2018-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,21 +16,17 @@
 # limitations under the License.
 
 program=libevent
-version=246f44041e0782f728fa5ff2d39113005a1ab02d
+version=2.1.11-stable
+pkgversion=$(echo $version | cut -f 1 -d -)
 release=1
-
-pkgversion=246f440
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
 
-tarname=${program}-${version}.tar.lz
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch="
- http://rsync.dragora.org/current/sources/$tarname
- http://csphy.blue/dragora/mirror/current/sources/$tarname
-"
+fetch=http://github.com/libevent/libevent/releases/download/release-${pkgversion}-stable/$tarname
 
 description="
 An event notification library.
@@ -59,24 +55,15 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    sh ./autogen.sh
-
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --docdir=$docsdir \
+     --enable-gcc-hardening \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
-
-    # Strip remaining binaries and libraries
-    find "$destdir" -type f | xargs file | \
-     awk '/ELF/ && /executable/ || /shared object/' | \
-      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
-
-    find "$destdir" -type f | xargs file | awk '/current ar archive/' | \
-     cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
+    make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
