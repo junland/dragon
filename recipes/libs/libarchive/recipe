@@ -16,7 +16,7 @@
 
 program=libarchive
 version=3.4.0
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
@@ -54,6 +54,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # Configure to make use of Expat and Nettle (instead of *ssl)
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
@@ -61,6 +63,8 @@ build()
      --docdir=$docsdir \
      --enable-static=no \
      --enable-shared=yes \
+     --without-xml2 \
+     --without-openssl \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
