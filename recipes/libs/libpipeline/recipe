@@ -1,6 +1,6 @@
 # Build recipe for libpipeline.
 #
-# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=libpipeline
-version=1.5.0
+version=1.5.1
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -57,13 +57,13 @@ build()
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
-     --disable-shared \
-     --enable-static \
+     --enable-static=yes \
+     --enable-shared=no \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} check
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
