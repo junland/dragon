@@ -1,6 +1,6 @@
 # Build recipe for openssh.
 #
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=openssh
-version=7.8p1
-release=2
+version=8.0p1
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/networking"
@@ -57,21 +57,20 @@ build()
     # A patch from Dragora to include a missing header at md5crypt.c file
     patch -p1 < "${worktree}/patches/openssh/openssh-include-stdio.h.patch"
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" LIBS=-ledit \
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" LIBS="-ledit" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --sysconfdir=/etc/ssh \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --enable-strip \
      --with-default-path='/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin' \
      --with-privsep-path=/var/lib/sshd \
      --with-privsep-user=sshd \
      --with-pid-dir=/var/run/sshd \
-     --with-tcp-wrappers \
      --with-md5-passwords \
      --with-pie \
      --without-zlib-version-check \
-     --disable-strip \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
