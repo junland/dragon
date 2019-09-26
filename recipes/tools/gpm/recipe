@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=gpm
-version=54651a0_dragora; # Snapshot from http://github.com/selkfoster/gpm
-release=6
+version=20170809_54651a0; # An snapshot from http://github.com/selkfoster/gpm
+release=7
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
@@ -24,7 +24,10 @@ outdir="${outdir}/${arch}/tools"
 tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
-fetch=http://rsync.dragora.org/current/sources/$tarname
+fetch="
+ http://rsync.dragora.org/current/sources/$tarname
+ http://mirror.cedia.org.ec/dragora/current/sources/$tarname
+"
 
 description="
 Utility and mouse server for virtual consoles.
@@ -56,9 +59,7 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Nope.  This was already generated using
-    # current versions of the autotools (D3)
-    #sh ./autogen.sh
+    sh ./autogen.sh
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -74,7 +75,7 @@ build()
     make -j${jobs} DESTDIR="$destdir" install
     strip --strip-debug "${destdir}/usr/lib${libSuffix}/libgpm.a"
 
-    # Not really needed
+    # Emacs already cover this
     rm -rf "${destdir}/usr/share/emacs"
 
     # Make symlink for compatibility, just in case
