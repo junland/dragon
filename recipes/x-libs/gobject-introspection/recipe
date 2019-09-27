@@ -1,7 +1,7 @@
 # Build recipe for GObject Introspection.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (C) 2018, 2019 Matias Fonzo <selk@dragora.org>.
+# Copyright (C) 2018-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=gobject-introspection
-version=1.58.3
+version=1.62.0
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -25,7 +25,7 @@ outdir="${outdir}/${arch}/x-libs"
 tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
-fetch=http://ftp.gnome.org/pub/gnome/sources/gobject-introspection/1.58/$tarname
+fetch="http://ftp.gnome.org/pub/gnome/sources/gobject-introspection/${version%.*}/$tarname"
 
 description="
 A layer between C libraries (using GObject) and language bindings.
@@ -53,17 +53,20 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --mandir=$mandir \
-     --enable-static=no \
-     --enable-shared=yes \
-     --without-cairo \
-     --build="$(cc -dumpmachine)"
+    mkdir -p build
+    cd build
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     ..
+
+    ninja
+    DESTDIR="$destdir" ninja install
+
+    cd ..
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
