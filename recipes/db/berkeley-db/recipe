@@ -1,6 +1,6 @@
 # Build recipe for the berkeley-db.
 #
-# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=db
-version=6.2.32
-release=2
+version=6.2.38
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/db"
@@ -26,7 +26,11 @@ pkgname=berkeley-db
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://download.oracle.com/berkeley-db/$tarname
+fetch="
+ http://rsync.dragora.org/current/sources/$tarname
+ http://mirror.cedia.org.ec/dragora/current/sources/$tarname
+ http://download.oracle.com/berkeley-db/$tarname
+"
 
 description="
 Berkeley database library.
@@ -54,7 +58,8 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     cd build_unix
-    ../dist/configure CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    ../dist/configure CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" \
+    LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --enable-compat185 \
