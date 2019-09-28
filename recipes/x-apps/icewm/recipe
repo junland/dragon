@@ -16,13 +16,13 @@
 # limitations under the License.
 
 program=icewm
-version=1.5.5
-release=2
+version=1.6.2
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/x-apps"
 
-tarname=${program}-${version}.tar.xz
+tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
 fetch=http://github.com/ice-wm/icewm/releases/download/${version}/$tarname
@@ -54,23 +54,24 @@ build()
 
     cd "$srcdir"
 
-    patch -Np1 -i "${worktree}/patches/icewm/ldflags.patch"
-
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    mkdir BUILD
-    cd BUILD
-    cmake \
-     -DCMAKE_CXX_FLAGS:STRING="$QICXXFLAGS"           \
-     -DCMAKE_EXE_LINKER_FLAGS:STRING="$QILDFLAGS"     \
-     -DCMAKE_INSTALL_PREFIX=/usr                      \
-     -DCMAKE_BUILD_TYPE=Release                       \
-     -DCMAKE_SKIP_INSTALL_RPATH=YES                   \
-     ..
+    ./configure CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --with-docdir=$docsdir \
+     --disable-rpath \
+     --build="$(cc -dumpmachine)"
 
-    make VERBOSE=1 -j${jobs}
+    make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
+
+    mkdir -p "${destdir}/usr/share/xsessions" \
+             "${destdir}/usr/share/applications"
+    cp -p lib/icewm-session.desktop "${destdir}/usr/share/xsessions"
+    cp -p lib/icewm.desktop "${destdir}/usr/share/applications"
 
     # Include xinitrc file to start IceWM
     mkdir -p "${destdir}/etc/X11/xinit"
@@ -92,8 +93,6 @@ build()
             done
         )
     fi
-
-    cd ..
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
