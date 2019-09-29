@@ -1,6 +1,6 @@
 # Build recipe for xorgproto.
 #
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=xorgproto
-version=2018.4
-release=2
+version=2019.1
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg/proto"
@@ -41,7 +41,7 @@ homepage=http://www.x.org
 license="MIT X Consortium"
 
 # Source documentation
-docs="AUTHORS COPYING* README"
+docs="AUTHORS COPYING* README.md"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -68,6 +68,8 @@ build()
     ninja
     DESTDIR="$destdir" ninja install
 
+    cd ..
+
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
     then
@@ -84,13 +86,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
