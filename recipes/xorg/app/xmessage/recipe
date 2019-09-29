@@ -17,7 +17,7 @@
 
 program=xmessage
 version=1.0.5
-release=2
+release=3
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg/app"
@@ -52,21 +52,12 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args --mandir=$mandir --docdir=$docsdir
+     $configure_args --mandir=$mandir --docdir=$docsdir \
+                     --with-appdefaultdir=/etc/X11/app-defaults
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
-    # Populate etc/X11/app-defaults with settings for xmessage(1)
-    mkdir -p "${destdir}/etc/X11/app-defaults"
-    for file in "${worktree}/archive/xmessage/etc/X11/app-defaults"/*
-    do
-        cp -p "$file" "${destdir}/etc/X11/app-defaults"/
-        chmod 644 "${destdir}/etc/X11/app-defaults/${file##*/}"
-    done
-    unset file
-
-    # To manage dot .new files via graft(1)
     touch "${destdir}/etc/X11/app-defaults/.graft-config"
 
     # Compress and link man pages (if needed)

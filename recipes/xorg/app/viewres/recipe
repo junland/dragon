@@ -38,7 +38,7 @@ homepage=http://www.x.org
 license="MIT X Consortium"
 
 # Source documentation
-docs="COPYING ChangeLog README"
+docs="COPYING ChangeLog README.md"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -58,10 +58,13 @@ build()
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --with-appdefaultdir=/etc/X11/app-defaults \
      || true
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
+
+    touch "${destdir}/etc/X11/app-defaults/.graft-config"
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
@@ -86,13 +89,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
