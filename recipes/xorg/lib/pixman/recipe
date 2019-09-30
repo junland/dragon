@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=pixman
-version=0.36.0
+version=0.38.4
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -52,9 +52,16 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    case $arch in
+    i586)
+        extra_options="--disable-sse2 --disable-ssse3"
+        ;;
+    x86_64*)
+        extra_options=--enable-sse2
+        ;;
+    esac
+
     # Note `--disable-gtk' means "disable tests using GTK+".
-    # The rest of the `--disable-*' options are turned off,
-    # cause we are tuning to be generic as possible.
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -65,16 +72,11 @@ build()
      --enable-static=no \
      --enable-libpng=yes \
      --disable-gtk \
-     --disable-mmx \
-     --disable-sse2 \
-     --disable-ssse3 \
      --disable-vmx \
-     --disable-arm-simd \
-     --disable-arm-neon \
-     --disable-arm-iwmmxt \
-     --disable-arm-iwmmxt2 \
-     --build="$(cc -dumpmachine)"
+     --build="$(cc -dumpmachine)" \
+     $extra_options
 
+    unset extra_options
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
