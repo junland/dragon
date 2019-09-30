@@ -16,8 +16,8 @@
 # limitations under the License.
 
 program=mesa
-version=19.0.4
-release=2
+version=19.0.8
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xorg/mesa"
@@ -58,8 +58,8 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     case $arch in
-    x86_64 | i?86)
-        arch_options="--enable-glx-read-only-text --disable-asm"
+    i?86 | x86_64*)
+        extra_options="--enable-glx-read-only-text --disable-asm"
         ;;
     esac
 
@@ -73,12 +73,10 @@ build()
      --disable-debug \
      --disable-llvm \
      --disable-gallium-llvm \
-     --disable-xvmc \
      --disable-gles1 \
      --enable-gles2 \
      --disable-glx-tls \
      --enable-glx="dri" \
-     --enable-texture-float \
      --enable-gbm \
      --enable-shared-glapi \
      --enable-gallium-extra-hud \
@@ -88,13 +86,13 @@ build()
      --enable-xa \
      --enable-nine \
      --enable-lmsensors \
-     --with-gallium-drivers="i915,nouveau,r600,swrast" \
+     --with-gallium-drivers="i915,nouveau,r600,svga,swrast" \
      --with-platforms="drm,x11" \
      --with-dri-driverdir=/usr/lib${libSuffix}/xorg/modules/dri \
      --build="$(cc -dumpmachine)" \
-     $arch_options
+     $extra_options
 
-    unset arch_options
+    unset extra_options
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
