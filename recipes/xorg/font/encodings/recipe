@@ -1,7 +1,7 @@
 # Build recipe for encodings.
 #
 # Copyright (c) 2017 Kelsoo, <kelsoo@dragora.org>.
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017, 2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=encodings
-version=1.0.4
+version=1.0.5
 arch=noarch
 release=1
 
@@ -38,7 +38,7 @@ homepage=http://www.x.org
 license="Public Domain"
 
 # Source documentation
-docs="COPYING ChangeLog README"
+docs="COPYING ChangeLog README.md"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -53,24 +53,14 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     ./configure $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
-     --mandir=$mandir \
      --docdir=$docsdir \
-     || true
+     --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
