@@ -61,10 +61,9 @@ build()
     cmake \
      -DCMAKE_C_FLAGS:STRING="$QICFLAGS"               \
      -DCMAKE_CXX_FLAGS:STRING="$QICXXFLAGS"           \
-     -DCMAKE_EXE_LINKER_FLAGS:STRING="$QILDFLAGS"     \
      -DCMAKE_SHARED_LINKER_FLAGS:STRING="$QILDFLAGS"  \
      -DCMAKE_INSTALL_PREFIX=/usr                      \
-     -DLIB_SUFFIX=/usr/lib${libSuffix}                \
+     -DCMAKE_INSTALL_LIBDIR=lib${libSuffix}           \
      -DCMAKE_INSTALL_MANDIR=$mandir                   \
      -DCMAKE_INSTALL_DOCDIR=$docsdir                  \
      -DCMAKE_BUILD_TYPE=Release                       \
@@ -74,6 +73,8 @@ build()
 
     make -j${jobs}
     make -j${jobs} DESTDIR="$destdir" install
+
+    cd ..
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -88,8 +89,6 @@ build()
             done
         )
     fi
-
-    cd ..
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
