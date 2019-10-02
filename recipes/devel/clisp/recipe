@@ -1,0 +1,118 @@
+# Build recipe for clisp.
+#
+# Copyright (c) 2017 MMPG, <mmpg@vp.pl>.
+# Copyright (c) 2017, 2019 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=clisp
+version=20190924_b07eacba1;	# From http://gitlab.com/gnu-clisp/clisp
+pkgversion=2.49.93.${version}
+release=1
+
+tarname=${program}-${version}.tar.lz
+
+# Remote source(s)
+fetch="
+ http://rsync.dragora.org/current/sources/$tarname
+ http://mirror.cedia.org.ec/dragora/current/sources/$tarname
+"
+
+description="
+An ANSI Common Lisp Implementation.
+
+In computing, CLISP is an implementation of the programming language
+Common Lisp originally developed by Bruno Haible and Michael Stoll for
+the Atari ST.
+
+LISP includes an interpreter, a bytecode compiler, debugger, socket
+interface, high-level foreign language interface, strong
+internationalization support, and two object systems:
+Common Lisp Object System (CLOS) and metaobject protocol (MOP).
+
+It is written in C and Common Lisp. It is now part of the GNU Project
+and is free software, available under the terms of the GNU General
+Public License (GPL).
+"
+
+hompage=http://clisp.org
+license=GPLv2+
+
+# Source documentation
+docs="ANNOUNCE COPYRIGHT GNU-GPL HACKING SUMMARY"
+docsdir="${docdir}/${program}-${pkgversion}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+	
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    # Build in a separate directory
+    rm -rf build
+    mkdir -p build
+
+    cd build
+
+    ../configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    FORCE_UNSAFE_CONFIGURE=1 \
+     --srcdir=../ \
+     --prefix=/usr \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --disable-rpath \
+     --with-dynamic-ffi \
+     --with-module=berkeley-db \
+     --with-module=gdbm \
+     --with-module=pcre \
+     --with-module=zlib \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    cd ..
+
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f | xargs file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
+
+    find "$destdir" -type f | xargs file | awk '/current ar archive/' | \
+     cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
