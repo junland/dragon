@@ -16,8 +16,8 @@
 # limitations under the License.
 
 program=xfce4-session
-version=4.12.1
-release=4
+version=4.14.0
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/xfce"
@@ -25,7 +25,7 @@ outdir="${outdir}/${arch}/xfce"
 tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch=http://archive.xfce.org/src/xfce/xfce4-session/4.12/$tarname
+fetch="http://archive.xfce.org/src/xfce/xfce4-session/${version%.*}/$tarname"
 
 description="
 Session manager for Xfce.
@@ -53,9 +53,6 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Fix invalid option in the xrdb(1) invocation
-    patch -p1 < "${worktree}/patches/xfce4-session/xinitrc-xrdb_options.patch"
-
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
@@ -63,7 +60,6 @@ build()
      --enable-static=no \
      --enable-shared=yes \
      --enable-debug=no \
-     --disable-linker-opts \
      --disable-legacy-sm \
      --disable-polkit \
      --disable-upower \

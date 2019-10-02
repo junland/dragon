@@ -1,7 +1,7 @@
 # Build recipe for libxfce4ui.
 #
 # Copyright (C) 2017-2018, MMPG <mmpg@vp.pl>
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 # limitations under the License.
 
 program=libxfce4ui
-version=4.12.1
+version=4.14.1
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -25,13 +25,13 @@ outdir="${outdir}/${arch}/xfce"
 tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch=http://archive.xfce.org/src/xfce/libxfce4ui/4.12/$tarname
+fetch="http://archive.xfce.org/src/xfce/libxfce4ui/${version%.*}/$tarname"
 
 description="
 The replacement of the old libxfcegui4 library.
 
-It is used to share commonly used Xfce widgets among the Xfce
-applications.
+It is used to share commonly used Xfce
+widgets among the Xfce applications.
 "
 
 homepage=http://xfce.org
@@ -55,7 +55,6 @@ build()
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
     --libdir=/usr/lib${libSuffix} \
-    --disable-linker-opts \
     --enable-static=no \
     --enable-shared=yes \
     --enable-debug=no \
@@ -70,8 +69,8 @@ build()
     # Add local vendor info
 
     mkdir -p "${destdir}"/usr/share/xfce4
-    cat "${worktree}/archive/libxfce4ui/vendorinfo" > \
-     "${destdir}"/usr/share/xfce4/vendorinfo
+    cat "${worktree}/archive/libxfce4ui/vendorinfo" \
+     > "${destdir}"/usr/share/xfce4/vendorinfo
     
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
