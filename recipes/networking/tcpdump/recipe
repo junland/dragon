@@ -1,6 +1,6 @@
 # Build recipe for tcpdump.
 #
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=tcpdump
-version=4.9.2
-release=3
+version=4.9.3
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/networking"
@@ -68,8 +68,11 @@ build()
 
     # Replace hard link with a soft link
 
-    rm -f "${destdir}/usr/sbin/tcpdump"
-    ln -s tcpdump.${version} "${destdir}/usr/sbin/tcpdump"
+    if test -e "${destdir}/usr/sbin/tcpdump.${version}"
+    then
+        rm -f "${destdir}/usr/sbin/tcpdump"
+        ln -s tcpdump.${version} "${destdir}/usr/sbin/tcpdump"
+    fi
 
     # Compress and copy documentation
 
