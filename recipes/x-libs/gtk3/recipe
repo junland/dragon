@@ -17,7 +17,7 @@
 
 program=gtk+
 version=3.24.11
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/x-libs"
@@ -47,6 +47,7 @@ docsdir="${docdir}/${pkgname}-${version}"
 build()
 {
     set -e
+
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
@@ -54,12 +55,13 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -Wl,--no-keep-memory" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --enable-static=no \
      --enable-shared=yes \
+     --enable-debug=no \
      --enable-introspection=yes \
      --enable-xkb=yes \
      --enable-xinerama=yes \
@@ -69,7 +71,8 @@ build()
      --enable-xdamage=yes \
      --enable-explicit-deps=yes \
      --enable-broadway-backend \
-     --enable-x11-backend \
+     --enable-gtk-doc=no \
+     --enable-gtk-doc-html=no \
      --disable-schemas-compile \
      --disable-glibtest \
      --build="$(cc -dumpmachine)"
