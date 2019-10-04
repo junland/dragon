@@ -1,0 +1,19 @@
+
+# Determine location of Perl module
+
+sax=$(perl -MXML::SAX -le 'print $INC{"XML/SAX.pm"}' 2> /dev/null) && \
+sax="${sax%%.pm}/ParserDetails.ini"
+
+# Set up the ParserDetails.ini file, if needed
+echo "Setting init file, adding entries (if needed) ..."
+
+if ! fgrep -qs -m1 "[XML::SAX::PurePerl]" "$sax"
+then
+    echo "$sax ..."
+    printf "%s\n" \
+     "[XML::SAX::PurePerl]" \
+     "http://xml.org/sax/features/namespaces = 1" \
+     "" >> $sax
+fi
+unset sax
+
