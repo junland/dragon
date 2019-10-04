@@ -1,7 +1,7 @@
 # Build recipe for GTK+2.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (C) 2018-2019, Matias Fonzo <selk@dragora.org>.
+# Copyright (C) 2018-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 program=gtk+
 version=2.24.32
-release=3
+release=4
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/x-libs"
@@ -51,6 +51,16 @@ build()
 
     cd "$srcdir"
 
+    # Apply patch series from Debian
+    while read -r line
+    do
+        line="$(echo $line)"
+        echo "Patching with ${worktree}/patches/gtk2/$line ..."
+        patch -Np1 -i "${worktree}/patches/gtk2/$line"
+    done < "${worktree}"/patches/gtk2/series
+
+    autoreconf -vif
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
@@ -64,6 +74,7 @@ build()
      --enable-introspection=yes \
      --enable-xkb=yes \
      --with-xinput=yes \
+     --disable-glibtest \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1 \
