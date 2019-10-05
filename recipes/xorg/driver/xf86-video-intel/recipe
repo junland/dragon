@@ -56,23 +56,19 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    mkdir -p build
-    cd build
+    ./autogen.sh CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -Wl,-z,lazy" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-static=no \
+     --enable-shared=yes \
+     --enable-kms-only \
+     --enable-uxa \
+     --build="$(cc -dumpmachine)"
 
-    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -Wl,-z,lazy" \
-    meson setup $configure_args \
-     --libdir /usr/lib${libSuffix} \
-     --buildtype=release \
-     --strip \
-     -Dvalgrind=false \
-     -Ddefault-dri=3 \
-     -Ddefault-accel=uxa \
-     ..
-
-    ninja
-    DESTDIR="$destdir" ninja install
-
-    cd ..
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
 
     # Compress and link man pages (if needed)
     (
