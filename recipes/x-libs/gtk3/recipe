@@ -55,32 +55,28 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -Wl,--no-keep-memory" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
+    mkdir -p build
+    cd build
+
+    # TODO: cups: -Dprint_backends="file,lpr,cups"
+
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir=lib${libSuffix} \
      --mandir=$mandir \
-     --enable-static=no \
-     --enable-shared=yes \
-     --enable-debug=no \
-     --enable-introspection=yes \
-     --enable-xkb=yes \
-     --enable-xinerama=yes \
-     --enable-xrandr=yes \
-     --enable-xfixes=yes \
-     --enable-xcomposite=yes \
-     --enable-xdamage=yes \
-     --enable-explicit-deps=yes \
-     --enable-broadway-backend \
-     --disable-schemas-compile \
-     --disable-glibtest \
-     --build="$(cc -dumpmachine)"
+     --buildtype=release \
+     --strip \
+     -Dcolord=no \
+     -Dgtk_doc=false \
+     -Dman=true \
+     -Dbroadway_backend=true \
+     -Dwayland_backend=false \
+     ..
 
-    make -j${jobs} V=1 \
-     RUN_QUERY_IMMODULES_TEST=false RUN_QUERY_LOADER_TEST=false
+    ninja
+    DESTDIR="$destdir" ninja install
 
-    make -j${jobs} \
-     RUN_QUERY_IMMODULES_TEST=false RUN_QUERY_LOADER_TEST=false \
-     DESTDIR="$destdir" install-strip
+    cd ..
 
     # Add a basic configuration
 cat << EOF > "${destdir}/etc/gtk-3.0/gtkrc"
