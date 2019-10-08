@@ -62,15 +62,15 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Optimize to level -02
-    ./configure CXXFLAGS+="$(echo $QICXXFLAGS | tr '\-Os' '\-O2')" \
+    # Remove default opt level (-Os) to leave the default -O2
+    ./configure CXXFLAGS+="$(echo $QICXXFLAGS | sed 's/\-Os//')" \
     LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --infodir=$infodir \
      --mandir=$mandir \
      --build="$(cc -dumpmachine)"
 
-    make -j${jobs}
+    make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
     # Compress info documents and manual page
