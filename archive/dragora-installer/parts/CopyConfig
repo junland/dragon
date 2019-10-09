@@ -1,0 +1,30 @@
+# This file is part of the 'dragora-installer'.
+#
+# Purpose: Copy local set up such as keyboard map, mouse.
+
+if test -e /etc/rc.conf
+then
+    # Assume that the local config (from livecd) has been changed
+    if ! fgrep -m 1 -q 'RC_KEYMAP=qwerty/us' /etc/rc.conf
+    then
+        # Make backup of existent rc.conf at /media/dragora-root/etc
+        if test -e /media/dragora-root/etc/rc.conf
+        then
+            cp -p /media/dragora-root/etc/rc.conf /media/dragora-root/etc/rc.conf.bak || true
+        fi
+        cp -f /etc/rc.conf /media/dragora-root/etc/ || true
+    fi
+fi
+
+if test ! -e /media/dragora-root/etc/rc.d/rc.gpm
+then
+    if test -e /etc/rc.d/rc.gpm-sample
+    then
+        cp -f /etc/rc.d/rc.gpm-sample /media/dragora-root/etc/rc.d/rc.gpm || true
+    elif test -e /etc/rc.d/rc.gpm
+    then
+        cp -f /etc/rc.d/rc.gpm /media/dragora-root/etc/rc.d/rc.gpm || true
+    fi
+    chmod 755 /media/dragora-root/etc/rc.d/rc.gpm 2> /dev/null || true
+fi
+
