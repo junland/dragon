@@ -10,8 +10,8 @@ makeMenu()
     do
         test -n "$line" || continue
 
-        device="${line%% *}"				# Device name.
-        size="$(echo $line | awk '{ print $5 }')"	# Size field.
+        device="${line%% *}"						# Device name.
+        size="$(echo "$line" | tr -d '[*+]' | awk '{ print $5 }')"	# Size field.
 
         # Get device mount point and file system type
         devpoint="$(awk -v patr=$device '$1 == patr { print $2 }' ${SUBTMPDIR}/fstab 2> /dev/null)"
@@ -136,28 +136,18 @@ formatMenu()
     dialog --colors \
      --backtitle "\Zb${1}: Setting a file system" \
      --title "FILE SYSTEM SELECTION" \
-     --help-button --default-item "ext3" \
-     --cr-wrap --menu \
-"File systems to choose from.  If you don't know which\n\
-one to choose, please go to the \"Help\" button.\n\n\
-Choose a file system for '${1}':" 15 58 5 \
-         "ext2" "Second extended filesystem"       \
-         "ext3" "Third  extended filesystem"       \
-         "ext4" "Fourth extended filesystem"       \
-         "jfs"  "A Journaled file system"          \
-         "xfs"  "A 64-bit journaling file system"  \
+     --default-item "ext3" \
+     --item-help --cr-wrap --menu \
+"Choose a file system for '${1}':" 13 58 6 \
+"ext2" "Second extended filesystem"       "ext2 remains the preferred file system for flash-based storage media due to its lack of a journal"  \
+"ext3" "Third  extended filesystem"       "ext3 is suitable for both 32-bit and 64-bit systems"                                                \
+"ext4" "Fourth extended filesystem"       "We suggest using it more for a 64-bit system than for a 32-bit system"                              \
+"jfs"  "A Journaled file system"          "Actual usage of jfs in GNU/Linux is uncommon, as ext4 typically offers better performance"          \
+"xfs"  "A 64-bit journaling file system"  "xfs is a high-performance 64-bit journaling file system suitable for real-time applications"        \
     2> ${SUBTMPDIR}/return-MakeFS_formatMenu || _status=$?
 
     if test -n "$_status" && test $_status -ne 0
     then
-        if test $_status -eq 2
-        then
-            dialog --colors \
-             --backtitle "\ZbSetting a file system (help)" \
-             --title "ABOUT FILE SYSTEMS" \
-             --textbox "@PARTS@HELP_FS" 27 75
-            continue;
-        fi
         return $_status;
     fi
     unset _status
@@ -209,7 +199,7 @@ EOF
              --backtitle "\ZbPartitions and mount points" \
              --title "$partition" \
              --no-cancel --menu \
-"* Selected device already contains a file system [${formatfs}] *\n\n\
+"* Selected device already contains a file system *\n\n\
 You can assign a mount point for system startup, you also\n\
 have the ability to re-format the partition.  If you choose\n\
 the latter, you will lose all your data and will be asked\n\

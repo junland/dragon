@@ -1,6 +1,6 @@
 #! /bin/sh -
 #
-# The installer of Dragora GNU/Linux-Libre (for the version 3.0)
+# The installer of Dragora GNU/Linux-Libre
 #
 # Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
 #
@@ -127,21 +127,34 @@ export SUBTMPDIR LINES COLUMNS
 
 dialog --colors \
  --backtitle "\ZbDragora 3.0 Installer" \
- --hfile "@PARTS@HELP_F1" \
  --title "INSTALLER INFORMATION" \
- --msgbox \
+ --cr-wrap --msgbox \
 "Welcome to \Z3${PROGRAM}\Zn.\n\n\
 This program prepares Dragora 3.0 to run on your computer.\n\n\
-    - To set up Dragora now, press \Zb\Z7ENTER\Zn.\n\n\
-    - To quit, press \Zb\Z7ESC\Zn.\n\n\
-Please read the installer's help before proceeding (\Zb\Z7F1\Zn)." 14 63
+    - To set up Dragora now, press \ZuENTER\Zn.\n\n\
+    - To quit, press \ZuEsc\Zn.\n\n\
+
+Use the arrow keys to move between options and selections, also \ZuTAB\Zn to
+jump from one option to another.  \ZuENTER\Zn to continue, \ZuEsc\Zn to cancel
+or return to a previous menu, and \ZuCtrl+C\Zn to abort the installation at
+any time.
+
+* Here is a representation of the most commonly used keys in a QWERTY layout:
+
+\Z3[Esc]\Zn  \Z3[F1]\Zn
+                                           \Z3[<- ]\Zn  \Z3[Ins][Home][PageUp]\Zn
+\Z3[TAB]\Zn                                             \Z3[Del][End ][PageDown]\Zn
+                                       \Z3[-ENTER-]\Zn
+           \Z3[c]\Zn                                         \Z3[^]\Zn
+\Z3[Ctrl]\Zn    \Z3[          SPACE          ]\Zn               \Z3[<][V][>]\Zn
+\Zn" $((LINES - 8)) $((COLUMNS - 8))
 
 # Try to detect and mount the hybrid ISO image, there may be a USB memory
 # stick already inserted.  If not, the media menu will be displayed.
 
 mkdir -p -- /media/dragora-medium
 
-if ! blkid -t LABEL="Dragora Packages" 2> /dev/null
+if ! blkid -t LABEL="Dragora Packages" > /dev/null
 then
     dialog --colors \
      --backtitle "\ZbInstallation Medium" \
@@ -150,18 +163,30 @@ then
 "Please insert the media labeled as \"Dragora Packages\" and\n\
 press \Zb\Z7ENTER\Zn to continue.  Otherwise a media selection menu\n\
 will be displayed." 7 63
-    if blkid -t LABEL="Dragora Packages" 2> /dev/null
+    if blkid -t LABEL="Dragora Packages" > /dev/null
     then
-        mount -t iso9660 LABEL="Dragora Packages" /media/dragora-medium 2> /dev/null
-        echo "/media/dragora-medium/packages" > ${SUBTMPDIR}/MediumFound
+        if ! mountpoint -q /media/dragora-medium
+        then
+            mount -v -t iso9660 LABEL="Dragora Packages" /media/dragora-medium && \
+             echo "/media/dragora-medium/packages" > ${SUBTMPDIR}/MediumFound
+            sleep 2
+        fi
     else
         . @PARTS@MenuMedia
     fi
+else
+    if ! mountpoint -q /media/dragora-medium
+    then
+        mount -v -t iso9660 LABEL="Dragora Packages" /media/dragora-medium
+        sleep 2
+    fi
+    echo "/media/dragora-medium/packages" > ${SUBTMPDIR}/MediumFound
 fi
 
 # Attempt to unmount possible pre-mounted filesystem(s)
-mountpoint -q /media/dragora-root/dev && umount /media/dragora-root/dev
+mountpoint -q /media/dragora-root/sys && umount /media/dragora-root/sys
 mountpoint -q /media/dragora-root/proc && umount /media/dragora-root/proc
+mountpoint -q /media/dragora-root/dev && umount /media/dragora-root/dev
 
 # Clean up possible empty mount-directories
 rmdir -- \
