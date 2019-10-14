@@ -16,7 +16,7 @@
 
 program=plzip
 version=1.8
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/compressors"
@@ -64,7 +64,9 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CXXFLAGS+="$QICXXFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    # Remove default opt level (-Os) to leave the default -O2
+    ./configure CXXFLAGS+="$(echo $QICXXFLAGS | sed 's/\-Os//')" \
+    LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --infodir=$infodir \
      --mandir=$mandir \

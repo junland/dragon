@@ -16,7 +16,7 @@
 
 program=lzlib
 version=1.11
-release=2
+release=3
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
@@ -55,7 +55,9 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS+="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    # Remove default opt level (-Os) to leave the default -O2
+    ./configure CFLAGS+="$(echo $QICFLAGS | sed 's/\-Os//')" \
+    LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
