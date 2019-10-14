@@ -1,6 +1,6 @@
 # Build script for the single-purpose initramfs (Live CD).
 #
-# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ cat << "EOF" > init
 /bin/busybox mkdir /.UP/cdrom /.UP/squash /.UP/rw /.UP/work /.UP/union
 
 # Mount ISO and system image
-/bin/busybox mount -n -t iso9660 LABEL=DragoraLiveCD /.UP/cdrom
+/bin/busybox mount -n -t iso9660 LABEL="Dragora Live (@ARCH@)" /.UP/cdrom
 /bin/busybox mount -n -o loop -t squashfs /.UP/cdrom/dragora.sfs /.UP/squash
 
 # Merge Squashfs with OverlayFS
@@ -51,6 +51,7 @@ exec /bin/busybox switch_root /.UP/union /sbin/init
 
 EOF
 
+sed -i "s/@ARCH@/${arch}/" init
 chmod 750 ./init
 
 # Make initramfs
