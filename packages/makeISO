@@ -1,0 +1,47 @@
+#! /bin/sh -
+#
+# Creates packages ISO (from current directory)
+#
+# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+MKISOFS="${MKISOFS:-mkisofs}"
+
+case $1 in
+i586)
+    include_directory=i586
+    exclude_path=x86_64
+    ;;
+x86_64)
+    include_directory=x86_64
+    exclude_path=i586
+    ;;
+*)
+    echo "${0##*/}: it requires an argument 'i586' or 'x86_64' for the ISO" 1>&2
+    exit 1;
+esac
+
+ISONAME="${ISONAME:-dragora-3.0_$(date +%Y%m%d)-${include_directory}-packages}"
+
+rm -f -v $ISONAME
+
+$MKISOFS -v -o ${ISONAME}.iso                         \
+         -A 'Dragora Packages' -V 'Dragora Packages'  \
+         -m '.keep' -m "${0##*/}" -m 'makeTags'       \
+         -x "dragora-*.iso*" -x $exclude_path      \
+         -R -J -U -hide-rr-moved .
+
+echo "Making .sha256 sum ..."
+sha256sum ${ISONAME}.iso > ${ISONAME}.iso.sha256
+
