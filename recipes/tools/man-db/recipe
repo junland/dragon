@@ -16,7 +16,7 @@
 
 program=man-db
 version=2.8.7
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
@@ -47,6 +47,9 @@ build()
 
     cd "$srcdir"
 
+    # Apply a patch from "Adelie Linux" to fix iconv issues
+    patch -Np1 -i "${worktree}/patches/man-db/man-db-2.8.5-iconv.patch"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
@@ -60,7 +63,7 @@ build()
      --disable-cache-owner \
      --enable-static=yes \
      --enable-shared=no \
-     --enable-automatic-create \
+     --with-sections="1 1p 8 2 3 3p 4 5 6 7 9 0p tcl n l p o 1x 2x 3x 4x 5x 6x 7x 8x" \
      --with-db=gdbm \
      --with-systemdtmpfilesdir="" \
      --build="$(cc -dumpmachine)"
@@ -71,7 +74,12 @@ build()
     # Remove generated charset.alias
     rm -f "${destdir}/usr/lib${libSuffix}/charset.alias"
 
-    # To handle config file(s)
+    # Insert our man_db config
+    cp -p "${worktree}/archive/man-db/etc/man_db.conf" \
+          "${destdir}/etc/"
+    chmod 644 "${destdir}/etc/man_db.conf"
+
+    # To handle .new config file(s)
     touch "${destdir}/etc/.graft-config"
 
     # Include cron job
