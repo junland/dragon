@@ -16,15 +16,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-MKISOFS="${MKISOFS:-mkisofs}"
+set -e
+
+GENISOIMAGE="${GENISOIMAGE:-genisoimage}"
 
 case $1 in
 i586)
-    include_directory=i586
+    reflect_arch=i586
     exclude_path=x86_64
     ;;
 x86_64)
-    include_directory=x86_64
+    reflect_arch=x86_64
     exclude_path=i586
     ;;
 *)
@@ -32,16 +34,17 @@ x86_64)
     exit 1;
 esac
 
-ISONAME="${ISONAME:-dragora-3.0_$(date +%Y%m%d)-${include_directory}-packages}"
+ISONAME="${ISONAME:-dragora-3.0_$(date +%Y%m%d)-${reflect_arch}-packages}"
 
 rm -f -v $ISONAME
 
-$MKISOFS -v -o ${ISONAME}.iso                         \
+$GENISOIMAGE -v -o ${ISONAME}.iso                     \
          -A 'Dragora Packages' -V 'Dragora Packages'  \
          -m '.keep' -m "${0##*/}" -m 'makeTags'       \
-         -x "dragora-*.iso*" -x $exclude_path      \
-         -R -J -U -hide-rr-moved .
+         -x "dragora-*.iso*" -x $exclude_path         \
+         -R -J -U -hide-rr-moved -uid 0 -gid 0        \
+         -root packages .
 
-echo "Making .sha256 sum ..."
+echo "Making .sha256 sum for ${ISONAME}.iso ..."
 sha256sum ${ISONAME}.iso > ${ISONAME}.iso.sha256
 
