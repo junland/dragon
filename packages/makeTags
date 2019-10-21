@@ -17,9 +17,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# USAGE: makeTags [directory]
+#   e.g: makeTags i586/tools
+
+set -e
+
 getSize()
 {
-    lzip_output="$(plzip -tvvv $1 2>&1)"
+    lzip_output="$(plzip -tvvv "$1" 2>&1)"
 
     # To obtain the uncompressed, compressed size
     echo $lzip_output | awk '{ print $8 $10 }' | \
@@ -31,14 +36,16 @@ getSize()
     unset lzip_output
 }
 
-echo "Deleting any previous (.tmp) tagfile ..."
-find . -type f -name 'tagfile*' -exec rm -f '{}' +
+searchpath="$1"
+searchpath="${searchpath:-.}"
 
-set -e
+echo "Deleting any previous (.tmp) tagfile ..."
+find $searchpath -type f -name 'tagfile*' -exec rm -f '{}' +
+
 umask 022
 
 # Search all .tlz packages
-for meta in $(find . -type f -name '*.tlz')
+for meta in $(find $searchpath -type f -name '*.tlz')
 do
     # Ignore some package names
     case $meta in
