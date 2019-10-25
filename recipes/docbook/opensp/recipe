@@ -35,11 +35,11 @@ SGML and XML documents.
 "
 
 homepage=http://openjade.sourceforge.net
-license=BSD
+license=MIT
 
 # Source documentation
 docs="AUTHORS BUGS COPYING ChangeLog NEWS README"
-docsdir="${docdir}/${program}-${version}"
+docsdir="${docdir}/${pkgname}-${version}"
 
 build()
 {
@@ -92,6 +92,13 @@ build()
     ln -sf ospent     "${destdir}"/usr/bin/spent
     ln -sf osx        "${destdir}"/usr/bin/sx
     ln -sf osx        "${destdir}"/usr/bin/sgml2xml
+
+    # Make symlinks for manpages
+    for file in nsgmls sgmlnorm spam spcat spent sx sgml2xml
+    do
+        ln -sf o${file}.1 "${destdir}/${mandir}/man1/${file}.1"
+    done
+    unset file
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
