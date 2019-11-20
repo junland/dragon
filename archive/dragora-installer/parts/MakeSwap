@@ -2,9 +2,20 @@
 #
 # Purpose: Swap formatter.
 
-# Check for at least one swap partition
+add_fstabEntry()
+{
+    # Produce fstab entry for physical swap partition
 
-if ! fdisk -l 2> /dev/null | grep -q -m 1 swap
+    printf "%-43s %-14s %-12s %-16s %-3s %s\n" \
+     "$device" "swap" "swap" "defaults" "0" "0" > ${SUBTMPDIR}/fstab
+}
+
+list="$(fdisk -l 2> /dev/null | grep -m 1 "Linux swap")" || true
+device="${list%% *}"
+
+# Check swap partition
+
+if test ! -b "$device"
 then
     dialog --colors \
      --backtitle "\ZbMaking Swap partition" \
@@ -19,10 +30,22 @@ Would you like to proceed without a swap partition?.\n" 9 58 || \
          "Then re-run the installer to give the proper format (if needed)."
         exit 99;
     }
-else # Offer format possibility
+    return 0
+fi
 
-    list="$(fdisk -l 2> /dev/null | grep -m 1 swap)"
-    device="${list%% *}"
+if grep -q "^${device}" /proc/swaps
+then
+    dialog --colors \
+     --backtitle "\ZbActive swap partition: $device" \
+     --title "SWAP PARTITION $device IS ACTIVE" \
+     --msgbox \
+"A swap partition has been identified and already enabled,\n\
+it will be added to the file system representation table\n\
+(fstab) during installation." 7 63 || return $?
+    add_fstabEntry
+else
+    # Offer format possibility
+
     size="$(echo $list | awk '{ print $5 }')"
     unset list
 
@@ -40,8 +63,29 @@ Device name: $device [${size}]" 14 52 1 \
 "$device"    "Check for bad blocks (slow)" off \
     2> ${SUBTMPDIR}/return-MakeSwap || \
     {
-        unset device size
-        return 0
+        dialog --colors \
+         --backtitle "\ZbPartitions: Swap partition activation" \
+         --title "SWAP PARTITION $device" --ok-label "Continue" \
+         --prgbox "Activating swap partition..." "swapon -v -f $device" $(( $LINES / 2 )) $COLUMNS
+
+        if swapon -s | grep -q "$device"
+        then
+            add_fstabEntry
+        else
+            dialog --colors \
+             --backtitle "\ZbPartitions: Swap partition activation" \
+             --title "SWAP PARTITION $device" \
+             --msgbox \
+"An error occurred when trying to activate the swap partition.
+This may require manual intervention of the problem.\n\n\
+
+It is safe to continue with the installation if you consider \
+the swap partition non-crucial.  Otherwise press \Zb\Z7ESC\Zn to abort \
+and review the problem.  Once resolved, re-run the installer." 11 66 || return $?
+        fi
+
+        unset add_fstabEntry device size
+        return 0;
     }
     unset size	# Next, we're not using it.
 
@@ -62,14 +106,25 @@ Device name: $device [${size}]" 14 52 1 \
 
     dialog --colors \
      --backtitle "\ZbPartitions: Swap partition activation" \
-     --title "SWAP PARTITION $device" \
+     --title "SWAP PARTITION $device" --ok-label "Continue" \
      --prgbox "Activating swap partition..." "swapon -v -f $device" $(( $LINES / 2 )) $COLUMNS
 
-    # Produce fstab entry for physical swap partition
+    if swapon -s | grep -q "$device"
+    then
+        add_fstabEntry
+    else
+        dialog --colors \
+         --backtitle "\ZbPartitions: Swap partition activation" \
+         --title "SWAP PARTITION $device" \
+         --msgbox \
+"An error occurred when trying to activate the swap partition.
+This may require manual intervention of the problem.\n\n\
 
-    printf "%-43s %-14s %-12s %-16s %-3s %s\n" \
-     "$device" "swap" "swap" "defaults" "0" "0" > ${SUBTMPDIR}/fstab
-
-    unset device
+It is safe to continue with the installation if you consider \
+the swap partition non-crucial.  Otherwise press \Zb\Z7ESC\Zn to abort \
+and review the problem.  Once resolved, re-run the installer." 11 66
+    fi
 fi
+
+unset add_fstabEntry list device size
 
