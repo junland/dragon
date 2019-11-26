@@ -1,0 +1,55 @@
+# This file is part of the 'dragora-installer'.
+#
+# Purpose: Steps after installing Dragora.
+
+echo ""
+echo "*** Running post-install instructions from the installer ..."
+echo ""
+
+# Copy local config files (keymap, mouse)
+
+if test -e /etc/rc.conf
+then
+    # Assume the local config (from the livecd) has been changed
+    if ! fgrep -m 1 -q 'RC_KEYMAP=qwerty/us' /etc/rc.conf
+    then
+        # Make backup of existent rc.conf at /media/dragora-root/etc
+        if test -e /media/dragora-root/etc/rc.conf
+        then
+            cp -p /media/dragora-root/etc/rc.conf /media/dragora-root/etc/rc.conf.bak || true
+        fi
+        cp -f /etc/rc.conf /media/dragora-root/etc/ || true
+    fi
+fi
+if test ! -e /media/dragora-root/etc/rc.d/rc.gpm
+then
+    if test -e /etc/rc.d/rc.gpm
+    then
+        cp -f /etc/rc.d/rc.gpm /media/dragora-root/etc/rc.d/rc.gpm || true
+    fi
+    chmod 755 /media/dragora-root/etc/rc.d/rc.gpm 2> /dev/null || true
+fi
+
+# Create index of scalable font files for X
+
+if test -d /media/dragora-root/usr/share/fonts/X11
+then
+    for directory in /media/dragora-root/usr/share/fonts/X11/*
+    do
+        test -d "$directory" || continue
+
+        directory="$(echo "$directory" | sed -e 's|^/media/dragora-root||')"
+
+        chroot /media/dragora-root /usr/bin/mkfontscale -b -s -l $directory && \
+         chroot /media/dragora-root /usr/bin/mkfontscale $directory || true
+    done
+    unset directory
+fi
+
+# Build font information cache files
+
+if test -d /media/dragora-root/usr/share/fonts
+then
+    chroot /media/dragora-root /usr/bin/fc-cache -r --system-only || true
+fi
+
