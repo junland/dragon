@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=make
-version=4.2.1
-release=3
+version=4.2.92
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/devel"
@@ -24,7 +24,8 @@ outdir="${outdir}/${arch}/devel"
 tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch=ftp://ftp.gnu.org/gnu/make/$tarname
+#fetch=ftp://ftp.gnu.org/gnu/make/$tarname
+fetch=http://alpha.gnu.org/gnu/make/$tarname
 
 description="
 The weighted make.
@@ -56,18 +57,6 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
-
-    # Update for hosts based on musl
-    cp -f "${worktree}/archive/common/config.guess" config/config.guess
-    cp -f "${worktree}/archive/common/config.sub" config/config.sub
-
-    # Apply patches from upstream.
-    #
-    # Detect Guile 2.2
-    # http://git.savannah.nongnu.org/cgit/make.git/commit/?id=fbf71ec25a5986d9003ac16ee9e23675feac9053
-    patch -p1 < "${worktree}/patches/make/fbf71ec25a5986d9003ac16ee9e23675feac9053"
-
-    autoreconf -vif
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
