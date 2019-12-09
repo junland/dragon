@@ -1,0 +1,94 @@
+# Build recipe for libical.
+#
+# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=libical
+version=3.0.6
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/x-libs"
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://github.com/libical/libical/releases/download/v${version}/$tarname
+
+description="
+Libical is an implementation of the iCalendar protocols.
+
+The libical package contains an implementation of the iCalendar
+protocols and data formats.
+"
+
+homepage=http://github.com/libical/libical
+license="MPLv2.0, LGPLv2.1"
+
+# Source documentation
+docs="AUTHORS COPYING LICENSE* ReadMe.txt ReleaseNotes.txt TEST THANKS TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    mkdir BUILD
+    cd BUILD
+
+    cmake \
+     -DCMAKE_C_FLAGS:STRING="$QICFLAGS"               \
+     -DCMAKE_EXE_LINKER_FLAGS:STRING="$QILDFLAGS"     \
+     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$QILDFLAGS"  \
+     -DCMAKE_INSTALL_PREFIX=/usr                      \
+     -DCMAKE_INSTALL_MANDIR=$mandir                   \
+     -DCMAKE_INSTALL_DOCDIR=$docsdir                  \
+     -DCMAKE_BUILD_TYPE=Release                       \
+     -DSHARED_ONLY=yes                                \
+     -DICAL_BUILD_DOCS=false                          \
+     -DGOBJECT_INTROSPECTION=true                     \
+     -DICAL_GLIB_VAPI=true                            \
+     ..
+
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    cd ..
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
