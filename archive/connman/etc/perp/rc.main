@@ -9,11 +9,18 @@
 exec 2>&1
 
 TARGET="$1"
-SVNAME="${2:-connman}"
+SVNAME="${2:-connmand}"
 
 start()
 {
-    echo "*** ${SVNAME}: Starting connman ..."
+    echo "*** ${SVNAME}: Starting connman (only if 'dhcpd' is not running)..."
+
+    # Only run connmand if the daemon for DHCP is not running (preferable)
+    if perpok dhcpd
+    then
+        echo "${SVNAME}: 'dhcpd' is already running.  '${SVNAME}' will not be executed." 1>&2
+        exit 1
+    fi
 
     mkdir -p /var/run/connman
     exec /usr/sbin/connmand --nodaemon
