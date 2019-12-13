@@ -1,0 +1,424 @@
+diff --git a/lasagna/cdb/cdb_dynread.c b/lasagna/cdb/cdb_dynread.c
+index b7135c5..f5e7ab8 100644
+--- a/lasagna/cdb/cdb_dynread.c
++++ b/lasagna/cdb/cdb_dynread.c
+@@ -23,7 +23,7 @@ cdb_dynread(struct cdb *C, struct dynbuf *B, size_t len, uint32_t offset)
+   if(dynbuf_grow(B, len) == -1)
+       return -1;
+ 
+-  if(cdb_read(C, dynbuf_BUF(B) + dynbuf_LEN(B), len, offset) == -1)
++  if(cdb_read(C, (uchar_t *)dynbuf_BUF(B) + dynbuf_LEN(B), len, offset) == -1)
+       return -1;
+ 
+   dynbuf_LEN(B) += len;
+diff --git a/lasagna/dynbuf/dynbuf_pack.c b/lasagna/dynbuf/dynbuf_pack.c
+index 84727cb..4543a0a 100644
+--- a/lasagna/dynbuf/dynbuf_pack.c
++++ b/lasagna/dynbuf/dynbuf_pack.c
+@@ -46,7 +46,7 @@ dynbuf_pack(struct dynbuf *D, const char *fmt, ...)
+   }
+ 
+   /* with need satisfied, append directly into buf: */
+-  b = (D->buf + D->p);
++  b = (uchar_t *)D->buf + D->p;
+ 
+   va_start(args, fmt);
+   w = upak_vpack(b, fmt, args);
+diff --git a/lasagna/dynbuf/dynbuf_put.c b/lasagna/dynbuf/dynbuf_put.c
+index 6ff7bdb..46989c4 100644
+--- a/lasagna/dynbuf/dynbuf_put.c
++++ b/lasagna/dynbuf/dynbuf_put.c
+@@ -19,10 +19,11 @@ dynbuf_putbuf(struct dynbuf *d, const void *buf, size_t len)
+     if(dynbuf_grow(d, (len + 1)) != 0)
+         return -1;  /* error! */
+ 
+-    buf_copy((d->buf + d->p), buf, len);
++    b = d->buf;
++    buf_copy(b + d->p, buf, len);
+ 
+     d->p += len;
+-    b = d->buf; b[d->p] = 'Q'; /* "offensive programming" */
++    b[d->p] = 'Q'; /* "offensive programming" */
+ 
+     return 0; /* no error */
+ }
+diff --git a/lasagna/hdb/hdb_dynread.c b/lasagna/hdb/hdb_dynread.c
+index cd818bc..82d20d2 100644
+--- a/lasagna/hdb/hdb_dynread.c
++++ b/lasagna/hdb/hdb_dynread.c
+@@ -23,7 +23,7 @@ hdb_dynread(struct hdb *H, struct dynbuf *B, size_t len, uint32_t offset)
+   if(dynbuf_grow(B, len) == -1)
+       return -1;
+ 
+-  if(hdb_read(H, dynbuf_BUF(B) + dynbuf_LEN(B), len, offset) == -1)
++  if(hdb_read(H, (uchar_t *)dynbuf_BUF(B) + dynbuf_LEN(B), len, offset) == -1)
+       return -1;
+ 
+   dynbuf_LEN(B) += len;
+diff --git a/lasagna/ioq/iobuf_getnets.c b/lasagna/ioq/iobuf_getnets.c
+deleted file mode 100644
+index 55447ee..0000000
+--- a/lasagna/ioq/iobuf_getnets.c
++++ /dev/null
+@@ -1,104 +0,0 @@
+-/*
+-** iobuf_getnets.c
+-** wcm, 2004.04.28 - 2004.04.29
+-** ===
+-*/
+-#include "iobuf.h"
+-
+-#include "buf.h"
+-#include "dynbuf.h"
+-
+-
+-static
+-int
+-get_netslen(iobuf *ibuf, size_t *len, size_t max)
+-{
+-    char    c;
+-    size_t  n = 0;
+-    int     digits = 0;
+-
+-/*
+-** returns length in len and:
+-**   -3, netstring format error
+-**   -1, io error
+-**    0, EOF
+-**    1, ok
+-*/
+-
+-  for(;;){
+-      switch(iobuf_GETC(ibuf, &c)){
+-          case -1: return -1;  /* io error */
+-          case  0: return 0;   /* EOF */
+-          default: break;      /* ok */
+-      }
+-      if(c == ':'){
+-          if(digits){
+-              *len = n;
+-              return 1;
+-          }
+-          else break;
+-      }
+-      if((c < '0') || (c > '9')) break;
+-      n = 10 * n + (c - '0');
+-      if((digits && (n == 0)) || (n > max)) break;
+-      ++digits;
+-  }
+-
+-  /* netstring format error: */
+-  return -3;
+-}
+-
+-
+-int iobuf_getnets(iobuf *ibuf, dynbuf *b, size_t max)
+-{
+-  int     r;
+-  size_t  len = 0; 
+-  char   *buf;
+-  char    c;
+-
+-/*
+-** returns netstring in dynbuf:
+-**  -3, netstring format error
+-**  -1, error (io or malloc)
+-**   0, EOF
+-**   1, ok
+-*/
+-
+-  switch(get_netslen(ibuf, &len, max)){
+-      case -3: return -3;
+-      case -1: return -1;
+-      case  0: return 0;
+-      default: break;
+-  }
+-
+-  if(dynbuf_grow(b, len) != 0)
+-      return -1; /* malloc error */
+-
+-  buf = dynbuf_BUF(b);
+-  while(len){
+-      r = iobuf_get(ibuf, buf, len);
+-      switch(r){
+-          case -1: return -1; /* io error */
+-          case  0: return -3; /* eof before complete */
+-          default: break;
+-      }
+-      dynbuf_LEN(b) += r;
+-      if(r == len) break;
+-      /* else: */
+-      buf += r;
+-      len -= r;
+-  }
+-
+-  /* so far, so good; now comma? */
+-  switch(iobuf_GETC(ibuf, &c)){
+-      case -1: return -1;  /* io error */
+-      case  0: return -3;  /* eof before comma */
+-      default: break;
+-  }
+-  if(c != ',') return -3;
+-
+-  /* success: */
+-  return 1;
+-}
+-
+-/* that's all, folks! */
+diff --git a/lasagna/ioq/iobuf_getrec.c b/lasagna/ioq/iobuf_getrec.c
+deleted file mode 100644
+index 6462452..0000000
+--- a/lasagna/ioq/iobuf_getrec.c
++++ /dev/null
+@@ -1,50 +0,0 @@
+-/*
+-** iobuf_getrec.c
+-** wcm, 2004.04.28 - 2004.04.29
+-** ===
+-*/
+-#include "iobuf.h"
+-
+-#include "buf.h"
+-#include "dynbuf.h"
+-
+-int iobuf_getrec(iobuf *ibuf, dynbuf *b, int sep)
+-{
+-  int    r;
+-  int    n;
+-  char  *x;
+-
+-/*
+-** returns:
+-**  -1, error (io or malloc)
+-**   0, EOF
+-**   1, ok
+-*/
+-
+-  for(;;){
+-      r = iobuf_feed(ibuf);
+-      if(r <= 0) return r;   /* EOF (0) or io error (-1) */
+-
+-      x = (char *)iobuf_PEEK(ibuf);
+-      n = buf_ndx(x, r, sep);
+-      if(n < r){ /* sep found */
+-          if(dynbuf_putbuf(b, x, n) == 0) { /* ok */
+-              /* strip contents out of ibuf */
+-              iobuf_SEEK(ibuf, (n+1));
+-              /* success: */
+-              return 1;
+-          }
+-          else /* dynbuf malloc failure: */
+-              return -1;
+-      }
+-      /* else: */
+-      if(dynbuf_grow(b, r) != 0)
+-          return -1;
+-      dynbuf_LEN(b) += iobuf_get(ibuf, dynbuf_BUF(b)+dynbuf_LEN(b), r);
+-  }
+-
+-  /* not here: */
+-  return -1;
+-}
+-
+-/* that's all, folks! */
+diff --git a/lasagna/ioq/ioq_put.c b/lasagna/ioq/ioq_put.c
+index 47f4897..20737a6 100644
+--- a/lasagna/ioq/ioq_put.c
++++ b/lasagna/ioq/ioq_put.c
+@@ -44,7 +44,7 @@
+ 
+ 
+ /* internal declarations: */
+-static int write_all(int fd, void *buf, size_t to_write, ssize_t (*op)());
++static int write_all(int fd, uchar_t *buf, size_t to_write, ssize_t (*op)());
+ 
+ 
+ /*
+@@ -63,13 +63,13 @@ static int write_all(int fd, void *buf, size_t to_write, ssize_t (*op)());
+ */      
+ static
+ int
+-write_all(int fd, void *buf, size_t to_write, ssize_t (*op)())
++write_all(int fd, uchar_t *buf, size_t to_write, ssize_t (*op)())
+ {
+   ssize_t  w = 0;
+ 
+   while(to_write){
+       do{
+-          w =  op(fd, buf, to_write);
++          w =  op(fd, (void *)buf, to_write);
+       }while((w == -1) && (errno == EINTR));
+ 
+       if(w == -1)  return -1;  /* error! */
+@@ -137,7 +137,7 @@ ioq_put(ioq_t *ioq, const uchar_t *data, size_t len)
+       while(len > ioq->n){
+           /* don't write more than len! */
+           if(len < n) n = len;
+-          if(write_all(ioq->fd, (void *)data, n, ioq->op) == -1){
++          if(write_all(ioq->fd, (uchar_t *)data, n, ioq->op) == -1){
+               /* write() error: */
+               return -1;
+           }
+@@ -178,7 +178,7 @@ ioq_putflush(ioq_t *ioq, const uchar_t *data, size_t len)
+   if(ioq_flush(ioq) == -1) return -1;
+ 
+   /* write() the rest */
+-  return write_all(ioq->fd, (void *)data, len, ioq->op);
++  return write_all(ioq->fd, (uchar_t *)data, len, ioq->op);
+ }
+ 
+ 
+diff --git a/lasagna/packet/packet_write.c b/lasagna/packet/packet_write.c
+index 66c5f8c..6af6a94 100644
+--- a/lasagna/packet/packet_write.c
++++ b/lasagna/packet/packet_write.c
+@@ -50,11 +50,12 @@ packet_write(int fd, const void *packet, size_t n)
+ {
+    ssize_t  w = 0;
+    size_t   to_write = n;
++   const char *b = packet;
+ 
+    while(to_write > 0){
+ 
+        do{
+-           w = write(fd, packet, to_write);
++           w = write(fd, b, to_write);
+        }while((w == -1) && (errno == EINTR));
+ 
+        if(w == -1)
+@@ -63,7 +64,7 @@ packet_write(int fd, const void *packet, size_t n)
+        if(w == 0)
+            continue;
+ 
+-       packet += w;
++       b += w;
+        to_write -= w;
+    }
+ 
+diff --git a/lasagna/tain/tain_now.c b/lasagna/tain/tain_now.c
+index 3c790be..ba53864 100644
+--- a/lasagna/tain/tain_now.c
++++ b/lasagna/tain/tain_now.c
+@@ -6,18 +6,17 @@
+ 
+ #include <stdlib.h>
+ #include <time.h>
+-#include <sys/time.h>
+ 
+ #include "tain.h"
+ 
+ struct tain *
+ tain_now(struct tain *t)
+ {
+-  struct timeval now;
++  struct timespec now;
+ 
+-  gettimeofday(&now, NULL);
++  clock_gettime(CLOCK_REALTIME, &now);
+   tain_load_utc(t, now.tv_sec);
+-  t->nsec = (1000 * now.tv_usec) + 500;
++  t->nsec = now.tv_nsec;
+ 
+   return t;
+ }
+diff --git a/perp/perpd.c b/perp/perpd.c
+index 2bf5553..1b29577 100644
+--- a/perp/perpd.c
++++ b/perp/perpd.c
+@@ -217,8 +217,9 @@ static
+ void
+ perpd_control_init(void)
+ {
+-  int  fdbase;  
+-  int  fd = -1;
++  int     fdbase;
++  int     fd = -1;
++  mode_t  umask_orig;
+ 
+   /* setup for return to base directory: */
+   if((fdbase = open(".", O_RDONLY)) == -1){
+@@ -226,7 +227,7 @@ perpd_control_init(void)
+   }
+ 
+   /* setup umask for intentional mode on file creation: */
+-  umask(0);
++  umask_orig = umask(0);
+ 
+   /* initialize .control directory: */
+   if(mkdir(PERP_CONTROL, 0700) == -1){
+@@ -286,6 +287,9 @@ perpd_control_init(void)
+   }
+   close(fdbase);
+ 
++  /* restore umask: */
++  umask(umask_orig);
++
+   return;
+ }
+ 
+diff --git a/perp/perpd_svdef.c b/perp/perpd_svdef.c
+index 82fb0a0..7b5e87f 100644
+--- a/perp/perpd_svdef.c
++++ b/perp/perpd_svdef.c
+@@ -186,7 +186,7 @@ void
+ perpd_svdef_checkfail(struct svdef *svdef)
+ {
+   struct subsv  *subsv;
+-  int            target, r = 0;
++  int            target;
+ 
+   /* insanity? */
+   if(!(svdef->bitflags & SVDEF_FLAG_ACTIVE))
+@@ -201,7 +201,7 @@ perpd_svdef_checkfail(struct svdef *svdef)
+   subsv = (svdef->bitflags & SVDEF_FLAG_HASLOG) ? &svdef->svpair[SUBSV_LOG] : NULL;
+   if((subsv != NULL) && (subsv->bitflags & SUBSV_FLAG_FAILING)){
+       target = (subsv->bitflags & SUBSV_FLAG_ISRESET) ? SVRUN_RESET : SVRUN_START;
+-      r = perpd_svdef_run(svdef, SUBSV_LOG, target);
++      perpd_svdef_run(svdef, SUBSV_LOG, target);
+   }
+ 
+   /* XXX, bail here if log is failing? */
+diff --git a/perp/tinylog.c b/perp/tinylog.c
+index 8df6283..a593a66 100644
+--- a/perp/tinylog.c
++++ b/perp/tinylog.c
+@@ -124,7 +124,7 @@ const char *gzip_path = NULL;
+ /*
+ ** declarations in scope:
+ */
+-static void  write_all(int fd, void *buf, size_t len);
++static void  write_all(int fd, char *buf, size_t len);
+ static void stamp8601_make(char *stamp_buf);
+ static void init_logdir(struct tinylog *tinylog);
+ static void init_current(struct tinylog *tinylog, int resume);
+@@ -182,7 +182,7 @@ ssize_t read_op(int fd, void *buf, size_t len)
+ */
+ static
+ void
+-write_all(int fd, void *buf, size_t len)
++write_all(int fd, char *buf, size_t len)
+ {
+   ssize_t w = 0;
+   tain_t  epause = tain_INIT(0, EPAUSE);
+diff --git a/runtools/runchoom.c b/runtools/runchoom.c
+index e318e2a..0682ad3 100644
+--- a/runtools/runchoom.c
++++ b/runtools/runchoom.c
+@@ -59,7 +59,7 @@ static char  setbuf[256];
+ static char  pidfmt[NFMT_SIZE];
+ 
+ /* functions in scope: */
+-static int write_all(int fd, void *buf, size_t to_write);
++static int write_all(int fd, char *buf, size_t to_write);
+ static void do_choom(void);
+ 
+ /* syserr_warn() macro: */
+@@ -77,7 +77,7 @@ static void do_choom(void);
+ 
+ static
+ int
+-write_all(int fd, void *buf, size_t to_write)
++write_all(int fd, char *buf, size_t to_write)
+ {
+   ssize_t  w = 0;
+ 

@@ -16,7 +16,7 @@
 
 program=perp
 version=2.07
-release=6
+release=7
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/boot"
@@ -68,14 +68,11 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    patch -p1 < "${worktree}/patches/perp/perp-2.07-oom_score_adj-runchoom.diff"
-    patch -p0 < "${worktree}/patches/perp/flags-conf.mk.diff"
+    # Apply patches in order to refresh perp-2.07
+    # See: http://github.com/michaelforney/perp/commits/master
+    patch -Np1 -i "${worktree}/patches/perp/perp-patches"
 
-    # Apply patches from Michael Forney, approved by Wayne Marshall
-    # http://github.com/michaelforney/perp
-
-    patch -p0 < "${worktree}/patches/perp/clock_gettime.patch"
-    patch -p0 < "${worktree}/patches/perp/perpd-restore_umask.patch"
+    patch -Np0 -i "${worktree}/patches/perp/flags-conf.mk.diff"
 
     make -j${jobs} CC="cc -static" QICFLAGS="$QICFLAGS"
     make strip
@@ -84,8 +81,9 @@ build()
     # Automatic installation setup
     DESTDIR="$destdir" ./perp/perp-setup /etc/perp
 
-    # Create the blessed /var/run/perp directory
+    # Create "the blessed" /var/run/perp directory
     mkdir -p "${destdir}/var/run/perp"
+    chmod 700 "${destdir}/var/run/perp"
 
     # Include our config file for tinylog(8)
     cp -p "${worktree}/archive/perp/etc/tinylog.conf" \
