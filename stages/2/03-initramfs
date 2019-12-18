@@ -22,13 +22,14 @@ cd -- "${rootdir}/initrd"
 mkdir -p -m 755 dev proc sys .UP
 
 cat << "EOF" > init
-#! /bin/busybox ash
+#! /bin/busybox hush
+
+set -x
+set -e
 
 /bin/busybox mount -n -o nosuid,noexec,nodev -t proc proc /proc
 /bin/busybox mount -n -o nosuid,noexec,nodev -t sysfs sysfs /sys
 /bin/busybox mount -n -t devtmpfs devtmpfs /dev
-
-/bin/busybox sleep 2
 
 /bin/busybox mount -n -o rw,size=100% -t tmpfs tmpfs /.UP
 /bin/busybox mkdir /.UP/cdrom /.UP/squash /.UP/rw /.UP/work /.UP/union
@@ -46,6 +47,8 @@ cat << "EOF" > init
 /bin/busybox mount --move /dev   /.UP/union/dev
 /bin/busybox mount --move /proc  /.UP/union/proc
 /bin/busybox mount --move /sys   /.UP/union/sys
+
+wait
 
 exec /bin/busybox switch_root /.UP/union /sbin/init
 
