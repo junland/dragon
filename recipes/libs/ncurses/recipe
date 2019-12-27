@@ -15,9 +15,9 @@
 # limitations under the License.
 
 program=ncurses
-version=6.1-20191130
+version=6.1-20191221
 pkgversion=$(echo $version | tr - _)
-release=2
+release=1
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
@@ -69,12 +69,15 @@ build()
      --enable-pc-files \
      --enable-hard-tabs \
      --enable-xmc-glitch \
+     --enable-colorfgbg \
      --disable-termcap \
      --disable-rpath-hack \
+     --disable-stripping \
      --with-pkg-config-libdir=/usr/lib${libSuffix}/pkgconfig \
+     --with-termlib \
      --with-shared \
-     --with-normal \
      --with-gpm \
+     --without-tests \
      --without-debug \
      --without-ada \
      --build="$(cc -dumpmachine)"
@@ -87,7 +90,7 @@ build()
 
     # Provide non-widec compatibility
 
-    for name in ncurses form panel menu
+    for name in ncurses form panel menu tinfo
     do
         echo "INPUT(-l${name}w)" > \
          "${destdir}/usr/lib${libSuffix}/lib${name}.so"
