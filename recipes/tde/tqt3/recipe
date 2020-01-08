@@ -1,0 +1,142 @@
+# Build recipe for tqt3 (trinity).
+#
+# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=tqt3-trinity
+pkgname=tqt3
+version=14.0.7
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/tde"
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=http://mirror.ppa.trinitydesktop.org/trinity/releases/R${version}/main/dependencies/$tarname
+
+description="
+Qt is a multiplatform C++ GUI application framework.
+
+Qt 3.3 introduces new features and many improvements over the 3.2.x
+series. See the changes file for details.
+
+The Qt version 3.3 series is binary compatible with the 3.2.x series -
+applications compiled for 3.2 will continue to run with 3.3.
+"
+
+homepage=http://www.trinitydesktop.org/
+license="GPLv2+, GPLv3+ | The Q Public License"
+
+# Source documentation
+docs="FAQ LICENSE* README*"
+docsdir="${docdir}/${pkgname}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Remove unneeded specs for other targets
+    ( cd mkspecs && find . -maxdepth 1 \( -type d -a ! -name 'linux-g++*' \) -exec rm -rf -- '{}' \; )
+
+    # Do not link with -rpath
+    sed -i '/QMAKE_RPATH/d' mkspecs/linux*/qmake.conf
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    QTDIR="$PWD"
+    LD_LIBRARY_PATH="${PWD}/lib:${LD_LIBRARY_PATH}"
+    SAVED_PATH="$PATH"
+    PATH="${PWD}/bin:${PATH}"
+
+    echo ""
+    echo "QTDIR: $QTDIR"
+    echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+    echo "PATH: $PATH"
+    echo ""
+
+    export QTDIR LD_LIBRARY_PATH PATH
+
+    echo 'yes' | ./configure \
+     -prefix /opt/tqt3 \
+     -sysconfdir /etc/tqt3 \
+     -docdir $docsdir \
+     -no-exceptions \
+     -stl \
+     -largefile \
+     -qt-gif \
+     -system-zlib \
+     -system-libpng \
+     -system-libjpeg \
+     -system-libmng \
+     -plugin-imgfmt-png \
+     -plugin-imgfmt-jpeg \
+     -plugin-imgfmt-mng \
+     -thread \
+     -xinerama \
+     -xcursor \
+     -xrandr \
+     -xrender \
+     -xft \
+     -tablet \
+     -xkb \
+     -plugin-style-cde \
+     -plugin-style-compact \
+     -plugin-style-motif \
+     -plugin-style-motifplus \
+     -plugin-style-platinum \
+     -plugin-style-sgi \
+     -plugin-style-windows \
+     -release
+
+    make -i -j${jobs} sub-tools
+    make -j${jobs} INSTALL_ROOT="$destdir" install
+
+    unset QTDIR LD_LIBRARY_PATH
+    PATH=$SAVED_PATH
+    export PATH
+
+    # Do not ship the HTML documentation in order to save disk space
+    rm -rf "${destdir}${docsdir}/html"
+
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f | xargs file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
