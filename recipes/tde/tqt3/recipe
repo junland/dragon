@@ -52,11 +52,16 @@ build()
 
     cd "$srcdir"
 
-    # Remove unneeded specs for other targets
-    ( cd mkspecs && find . -maxdepth 1 \( -type d -a ! -name 'linux-g++*' \) -exec rm -rf -- '{}' \; )
+    # Remove unneeded specs for targets other than GNU/Linux
+    ( cd mkspecs && find . -maxdepth 1 \( -type d -a ! -name 'linux-g++' \) -exec rm -rf -- '{}' \; )
 
-    # Do not link with -rpath
-    sed -i '/QMAKE_RPATH/d' mkspecs/linux*/qmake.conf
+    # Do not build the HTML documentation in order to save disk space
+    sed -i '/htmldocs/d' src/qt_install.pri
+
+    # Set custom compilation flags from Qi
+    sed -i \
+     -e "s:QMAKE_CFLAGS_RELEASE.*=:QMAKE_CFLAGS_RELEASE=${QICXXFLAGS} :" \
+      mkspecs/linux*/qmake.conf
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -74,9 +79,10 @@ build()
 
     export QTDIR LD_LIBRARY_PATH PATH
 
-    echo 'yes' | ./configure \
-     -prefix /opt/tqt3 \
-     -sysconfdir /etc/tqt3 \
+    echo yes | ./configure -L/usr/lib${libSuffix} \
+     -prefix /opt/trinity/lib${libSuffix}/${pkgname}-${version} \
+     -sysconfdir /etc/trinity \
+     -sysshare /usr/share \
      -docdir $docsdir \
      -no-exceptions \
      -stl \
@@ -112,9 +118,6 @@ build()
     unset QTDIR LD_LIBRARY_PATH
     PATH=$SAVED_PATH
     export PATH
-
-    # Do not ship the HTML documentation in order to save disk space
-    rm -rf "${destdir}${docsdir}/html"
 
     # Strip remaining binaries and libraries
     find "$destdir" -type f | xargs file | \
