@@ -81,7 +81,7 @@ build()
 
     echo yes | ./configure -L/usr/lib${libSuffix} \
      -prefix /opt/trinity/lib${libSuffix}/${pkgname}-${version} \
-     -sysconfdir /etc/trinity \
+     -sysconfdir /opt/etc \
      -sysshare /usr/share \
      -docdir $docsdir \
      -no-exceptions \
@@ -123,6 +123,27 @@ build()
     find "$destdir" -type f | xargs file | \
      awk '/ELF/ && /executable/ || /shared object/' | \
       cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
+
+    # Make symlinks in order to have a common path
+
+    cd "${destdir}/opt/trinity" || exit 1
+
+    if test -n "$libSuffix"
+    then
+        ln -sf lib${libSuffix} lib
+    fi
+    cd lib${libSuffix} && ln -sf ${pkgname}-${version} $pkgname
+
+    # Link tqt3's pkg-config files at /opt/trinity/lib/pkgconfig
+
+    mkdir -p "${destdir}/opt/trinity/lib${libSuffix}/pkgconfig"
+    cd "${destdir}/opt/trinity/lib${libSuffix}/${pkgname}-${version}"/lib/pkgconfig/
+    for file in *.pc
+    do
+        ln -sf $file ../../../pkgconfig/${file}
+    done
+
+    cd -- "${TMPDIR}/$srcdir"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
