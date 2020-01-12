@@ -126,7 +126,7 @@ build()
      awk '/ELF/ && /executable/ || /shared object/' | \
       cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
 
-    # Make symlinks in order to have a common path
+    # Make symlinks in order to have canonical paths
 
     cd "${destdir}/opt/trinity" || exit 1
 
@@ -143,6 +143,15 @@ build()
     for file in *.pc
     do
         ln -sf $file ../../../pkgconfig/${file}
+    done
+
+    # Link tqt3's programs at /opt/trinity/bin
+
+    mkdir -p "${destdir}/opt/trinity/bin"
+    cd "${destdir}/opt/trinity/lib${libSuffix}/${pkgname}-${version}"/bin/
+    for file in *
+    do
+        test -x "$file" && ln -sf $file ../../../bin/${file}
     done
 
     cd -- "${TMPDIR}/$srcdir"
