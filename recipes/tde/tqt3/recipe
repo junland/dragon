@@ -66,15 +66,16 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    SAVED_QTDIR="$QTDIR"
     QTDIR="$PWD"
     LD_LIBRARY_PATH="${PWD}/lib:${LD_LIBRARY_PATH}"
     SAVED_PATH="$PATH"
     PATH="${PWD}/bin:${PATH}"
 
     echo ""
-    echo "QTDIR: $QTDIR"
-    echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
-    echo "PATH: $PATH"
+    echo "New QTDIR: $QTDIR"
+    echo "New LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+    echo "New PATH: $PATH"
     echo ""
 
     export QTDIR LD_LIBRARY_PATH PATH
@@ -115,9 +116,10 @@ build()
     make -i -j${jobs} sub-tools
     make -j${jobs} INSTALL_ROOT="$destdir" install
 
-    unset QTDIR LD_LIBRARY_PATH
     PATH=$SAVED_PATH
-    export PATH
+    QTDIR=$SAVED_QTDIR
+    unset SAVED_QTDIR SAVED_PATH LD_LIBRARY_PATH
+    export PATH QTDIR
 
     # Strip remaining binaries and libraries
     find "$destdir" -type f | xargs file | \
@@ -144,6 +146,15 @@ build()
     done
 
     cd -- "${TMPDIR}/$srcdir"
+
+    # Include profile file
+    mkdir -p "${destdir}/etc/profile.d"
+    cp -p "${worktree}/archive/tqt3/etc/profile.d/tqt3.sh" \
+           "${destdir}/etc/profile.d/"
+    chmod 644 "${destdir}/etc/profile.d/tqt3.sh"
+
+    # To handle config file(s)
+    touch "${destdir}/etc/profile.d/.graft-config"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
