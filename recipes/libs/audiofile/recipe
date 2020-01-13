@@ -1,0 +1,104 @@
+# Build recipe for audiofile.
+#
+# Copyright (c) 2020 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=audiofile
+version=0.3.6
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/libs"
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://audiofile.68k.org/$tarname
+
+description="
+Audio file library.
+
+The Audio File Library is a C-based library for reading and writing
+audio files in many common formats.
+
+The Audio File Library provides a uniform API which abstracts away
+details of file formats and data formats. The same calls for opening
+a file, accessing and manipulating audio metadata (e.g. sample rate,
+sample format, textual information, MIDI parameters), and reading and
+writing sample data will work with any supported audio file format.
+
+The Audio File Library lets you work with audio data in whatever
+format is most convenient for you.
+"
+
+homepage=http://audiofile.68k.org
+license="LGPLv2.1, GPLv2+"
+
+# Source documentation
+docs="ACKNOWLEDGEMENTS AUTHORS COPYING* ChangeLog NEWS NOTES README TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Update for hosts based on musl
+    cp -f "${worktree}/archive/common/config.guess" config.guess
+    cp -f "${worktree}/archive/common/config.sub" config.sub
+
+    # Apply patches from Debian to refresh this old source
+    while read -r line
+    do
+        patch -Np1 -i "${worktree}/patches/audiofile/${line}"
+    done < "${worktree}/patches/audiofile/series"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" \
+    LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-shared=yes \
+     --enable-static=yes \
+     --build="$(cc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
