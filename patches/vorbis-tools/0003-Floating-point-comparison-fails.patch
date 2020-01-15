@@ -1,0 +1,40 @@
+From: Mats Erik Andersson <debian@gisladisker.se>
+Date: Wed, 20 Jul 2011 17:24:43 +0200
+Subject: Floating point comparison fails.
+
+Last-Update: 2011-07-20
+Applied-Upstream: https://git.xiph.org/?p=vorbis-tools.git;a=commitdiff;h=3d014b1921d946bdca53d9434b8158c24dfdad8c
+Bug-Debian: https://bugs.debian.org/328266
+Bug-Debian: https://bugs.debian.org/634855
+
+In checking the quality setting, the program `oggenc'
+performs a floating point comparison after down scaling
+the given value to a tenth. This causes the inexact
+internal representation to complain unnecessarily.
+*
+It is better to compare first, and normalize later,
+since quality 10 is top notch!
+---
+ oggenc/oggenc.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/oggenc/oggenc.c b/oggenc/oggenc.c
+index 9c3e9cd..5c36fea 100644
+--- a/oggenc/oggenc.c
++++ b/oggenc/oggenc.c
+@@ -858,12 +858,12 @@ static void parse_options(int argc, char **argv, oe_options *opt)
+                     break;
+                 }
+                 opt->quality_set=1;
+-                opt->quality *= 0.1;
+-                if(opt->quality > 1.0f)
++                if(opt->quality > 10.0f)
+                 {
+-                    opt->quality = 1.0f;
++                    opt->quality = 10.0f;
+                     fprintf(stderr, _("WARNING: quality setting too high, setting to maximum quality.\n"));
+                 }
++                opt->quality *= 0.1;
+                 break;
+             case 'n':
+                 if(opt->namefmt)

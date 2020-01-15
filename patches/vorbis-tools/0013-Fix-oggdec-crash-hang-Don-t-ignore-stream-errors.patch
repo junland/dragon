@@ -1,0 +1,52 @@
+From: =?utf-8?q?Martin_Stegh=C3=B6fer?= <martin@steghoefer.eu>
+Date: Fri, 12 Dec 2014 18:21:08 +0100
+Subject: Fix oggdec crash/hang: Don't ignore stream errors
+
+oggdec treats all negative return values coming from ov_read
+as OV_HOLE errors and therefore as recoverable. So even in the
+case of fatal errors it keeps on calling ov_read, which may
+either crash (libvorbis' data structures may be uninitialized)
+or simply not progress and therefore trap oggdec in an
+infinite loop.
+
+Fix this by distinguishing between recoverable and
+non-recoverable errors. In the case of fatal errors, exit
+gracefully with an error message. The error string is
+"borrowed" from ogg123 and therefore already translated into
+several languages.
+
+Bug-Debian: https://bugs.debian.org/772978
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/vorbis-tools/+bug/629135
+Forwarded: https://trac.xiph.org/ticket/2148
+---
+ oggdec/oggdec.c | 15 +++++++++++----
+ 1 file changed, 11 insertions(+), 4 deletions(-)
+
+diff --git a/oggdec/oggdec.c b/oggdec/oggdec.c
+index a99f95d..16f87ac 100644
+--- a/oggdec/oggdec.c
++++ b/oggdec/oggdec.c
+@@ -310,12 +310,19 @@ static int decode_file(FILE *in, FILE *out, char *infile, char *outfile)
+             }
+         }
+ 
+-        if(ret < 0 ) {
+-           if( !quiet ) {
+-               fprintf(stderr, _("WARNING: hole in data (%d)\n"), ret);
+-           }
++        if(ret == OV_HOLE) {
++            if(!quiet) {
++                fprintf(stderr, _("WARNING: hole in data (%d)\n"), ret);
++            }
+             continue;
+         }
++        else if(ret < 0) {
++            if(!quiet) {
++                fprintf(stderr, _("=== Vorbis library reported a stream error.\n"));
++            }
++            ov_clear(&vf);
++            return 1;
++        }
+ 
+         if(channels > 2 && !raw) {
+           /* Then permute! */

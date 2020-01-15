@@ -1,0 +1,77 @@
+From: =?utf-8?q?Martin_Stegh=C3=B6fer?= <martin@steghoefer.eu>
+Date: Tue, 28 Oct 2014 23:04:19 +0100
+Subject: Fix ogg123 freeze when interrupting at End-Of-Stream.
+
+Bug-Debian: https://bugs.debian.org/307325
+Forwarded: https://trac.xiph.org/ticket/1956#comment:3
+
+When arriving at the end of the input file, the main thread waits for
+the output thread to finish up the current buffer. If a cancellation
+signal arrives at that stage, this signal of an empty buffer never
+arrives because the output thread bails out before actually emptying
+the buffer.
+
+Fix:
+1.) Make sure the output thread wakes up the main thread when bailing
+out, so the main thread can go on, too.
+2.) When the main thread wakes up while waiting for an empty buffer,
+make sure it understands the situation (that there won't be an empty
+buffer because the replay has been cancelled) and doesn't go back to
+sleep.
+---
+ ogg123/buffer.c | 26 +++++++++++++++++++++++---
+ 1 file changed, 23 insertions(+), 3 deletions(-)
+
+diff --git a/ogg123/buffer.c b/ogg123/buffer.c
+index b09c9c9..c7111d2 100644
+--- a/ogg123/buffer.c
++++ b/ogg123/buffer.c
+@@ -209,8 +209,18 @@ void *buffer_thread_func (void *arg)
+      never be unset. */
+   while ( !(buf->eos && buf->curfill == 0) && !buf->abort_write) {
+ 
+-    if (buf->cancel_flag || sig_request.cancel)
++    if (buf->cancel_flag || sig_request.cancel) {
++      /* signal empty buffer space, so the main
++         thread can wake up to die in peace */
++
++      DEBUG("Abort: Wake up the writer thread");
++      LOCK_MUTEX(buf->mutex);
++      COND_SIGNAL(buf->write_cond);
++      UNLOCK_MUTEX(buf->mutex);
++
++      /* abort this thread, too */
+       break;
++    }
+ 
+     DEBUG("Check for something to play");
+     /* Block until we can play something */
+@@ -227,8 +237,18 @@ void *buffer_thread_func (void *arg)
+ 
+     UNLOCK_MUTEX(buf->mutex);
+ 
+-    if (buf->cancel_flag || sig_request.cancel)
++    if (buf->cancel_flag || sig_request.cancel) {
++      /* signal empty buffer space, so the main
++         thread can wake up to die in peace */
++
++      DEBUG("Abort: Wake up the writer thread");
++      LOCK_MUTEX(buf->mutex);
++      COND_SIGNAL(buf->write_cond);
++      UNLOCK_MUTEX(buf->mutex);
++
++      /* abort this thread, too */
+       break;
++    }
+ 
+     /* Don't need to lock buffer while running actions since position
+        won't change.  We clear out any actions before we compute the
+@@ -756,7 +776,7 @@ void buffer_wait_for_empty (buf_t *buf)
+   pthread_cleanup_push(buffer_mutex_unlock, buf);
+ 
+   LOCK_MUTEX(buf->mutex);
+-  while (!empty && !buf->abort_write) {
++  while (!empty && !buf->abort_write && !buf->cancel_flag && !sig_request.cancel) {
+ 
+     if (buf->curfill > 0) {
+       DEBUG1("Buffer curfill = %ld, going back to sleep.", buf->curfill);
