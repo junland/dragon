@@ -1,0 +1,90 @@
+# Build recipe for tqca-tls.
+#
+# Copyright (c) 2020 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=tqca-tls-trinity
+pkgname=tqca_tls
+version=14.0.7
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/tde"
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=http://mirror.ppa.trinitydesktop.org/trinity/releases/R${version}/main/dependencies/$tarname
+
+description="
+TQCA TLS plugin.
+
+This is a plugin to provide SSL/TLS capability to programs that
+utilize the TQt Cryptographic Architecture (TQCA).
+"
+
+homepage=http://www.trinitydesktop.org/
+license=LGPLv2.1
+
+# Source documentation
+docs="COPYING README"
+docsdir="${docdir}/${pkgname}-${version}"
+
+build()
+{
+    set -e
+
+    if test -z "$QTDIR"
+    then
+        echo "WARNING: QTDIR variable is empty." 1>&2
+        exit 1;
+    fi
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    patch -Np1 -i "${worktree}/patches/tqca_tls/qca-tls_libressl.patch"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure --tqtdir=$QTDIR
+
+    make -j${jobs}
+    #make -j${jobs} DESTDIR="$destdir" install -- not supported!
+
+    # Install manually
+    install -m 755 libtqca-tls.so \
+     -D "${destdir}${QTDIR}/plugins/crypto/libtqca-tls.so"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+

@@ -1,0 +1,38 @@
+--- tqca-tls-trinity-14.0.7/qca-tls.cpp.orig	2018-05-20 15:05:33.000000000 -0300
++++ tqca-tls-trinity-14.0.7/qca-tls.cpp	2020-01-17 11:45:41.181705425 -0300
+@@ -57,7 +57,7 @@
+ 	TQByteArray k, i;
+ 	unsigned char *kp = 0;
+ 	unsigned char *ip = 0;
+-#if OPENSSL_VERSION_NUMBER < 0x10100000L
++#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+ 	EVP_CIPHER type = *_type;
+ 	EVP_CIPHER *loctype = &type;
+ 	if(keysize != -1)
+@@ -75,7 +75,7 @@
+ 		ip = (unsigned char *)i.data();
+ 	}
+ 	int res = EVP_BytesToKey(loctype, EVP_sha1(), (unsigned char *)salt.data(), (unsigned char *)data.data(), data.size(), 1, kp, ip);
+-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
++#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+ 	EVP_CIPHER_meth_free(loctype);
+ #endif
+ 	if (!res)
+@@ -187,7 +187,7 @@
+ 	virtual ~EVPCipherContext()
+ 	{
+ 		if(type) {
+-#if OPENSSL_VERSION_NUMBER < 0x10100000L
++#if OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+ 			EVP_CIPHER_CTX_cleanup(c);
+ 			OPENSSL_free(c);
+ #else
+@@ -234,7 +234,7 @@
+ 		pad = _pad;
+ 		type = getType(mode);
+ 		r.resize(0);
+-#if OPENSSL_VERSION_NUMBER < 0x10100000L
++#if OPENSSL_VERSION_NUMBER < 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+ 		c = (EVP_CIPHER_CTX*)OPENSSL_malloc(sizeof(EVP_CIPHER_CTX));
+ 		EVP_CIPHER_CTX_init(c);
+ #else
