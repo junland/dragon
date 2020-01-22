@@ -1,0 +1,33 @@
+--- a/CMakeLists.txt	2019-12-18 18:04:55.000000000 -0300
++++ b/CMakeLists.txt	2020-01-20 11:18:59.767322652 -0300
+@@ -17,6 +17,7 @@
+ include( CheckCXXSourceCompiles )
+ include( CheckFunctionExists )
+ include( CheckSymbolExists )
++include( CheckPrototypeDefinition )
+ include( CheckIncludeFile )
+ include( CheckLibraryExists )
+ include( FindPkgConfig )
+@@ -114,6 +115,9 @@
+ check_function_exists( bcopy HAVE_BCOPY )
+ set( CMAKE_REQUIRED_LIBRARIES ${bak_CMAKE_REQUIRED_LIBRARIES} )
+ unset( bak_CMAKE_REQUIRED_LIBRARIES )
++check_prototype_definition( ioctl "int ioctl(int d, int request, ...)" "-1" "unistd.h;sys/ioctl.h" HAVE_IOCTL_INT_INT_DOTS )
++check_prototype_definition( ioctl "int ioctl(int d, unsigned long request, ...)" "-1" "unistd.h;sys/ioctl.h" HAVE_IOCTL_INT_ULONG_DOTS )
++check_prototype_definition( ioctl "int ioctl(int d, unsigned long int request, ...)" "-1" "unistd.h;sys/ioctl.h" HAVE_IOCTL_INT_ULONGINT_DOTS )
+ 
+ 
+ ##### check for audiofile #######################
+--- a/config.h.cmake	2018-05-20 15:04:51.000000000 -0300
++++ b/config.h.cmake	2020-01-20 11:18:59.767322652 -0300
+@@ -40,7 +40,9 @@
+ 
+ #cmakedefine HAVE_SYS_SOUNDCARD_H 1
+ #cmakedefine HAVE_LIBPTHREAD 1
+-#define HAVE_IOCTL_INT_ULONGINT_DOTS 3
++#cmakedefine HAVE_IOCTL_INT_INT_DOTS 1
++#cmakedefine HAVE_IOCTL_INT_ULONG_DOTS 2
++#cmakedefine HAVE_IOCTL_INT_ULONGINT_DOTS 3
+ 
+ #cmakedefine HAVE_LIBJACK 1
+ #cmakedefine HAVE_LIBSNDIO 1
