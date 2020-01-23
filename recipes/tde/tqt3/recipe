@@ -126,15 +126,25 @@ build()
      awk '/ELF/ && /executable/ || /shared object/' | \
       cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
 
-    # Make symlinks in order to have canonical paths
+    # Make symlinks in order to have canonical path(s)
+
+    mkdir -p "${destdir}/var/lib/qi"
+    cat << EOF > "${destdir}/var/lib/qi/${full_pkgname}.sh"
+
+# Make symlink for canonical path at /opt/trinity/lib
+
+# Link using \$libSuffix if it was present (recipe)
+test -n "$libSuffix" && ( cd opt/trinity && ln -sf lib${libSuffix} lib );
+
+# Link package name
+cd opt/trinity/lib && ln -s ${pkgname}-${version} $pkgname
+
+echo "Updating desktop database: update-desktop-database -q usr/share/applications"
+update-desktop-database -q usr/share/applications
+
+EOF
 
     cd "${destdir}/opt/trinity" || exit 1
-
-    if test -n "$libSuffix"
-    then
-        ln -sf lib${libSuffix} lib
-    fi
-    cd lib${libSuffix} && ln -sf ${pkgname}-${version} $pkgname
 
     # Link tqt3's pkg-config files at /opt/trinity/lib/pkgconfig
 
