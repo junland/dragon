@@ -82,6 +82,14 @@ build()
     rmdir "${destdir}/etc/dbus-1" || touch "${destdir}/etc/dbus-1/.graft-config"
     rmdir "${destdir}/etc" || true
 
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f -print0 | xargs -0 file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
+
+    find "$destdir" -type f -print0 | xargs -0 file | awk '/current ar archive/' | \
+     cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
+
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
     then
