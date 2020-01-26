@@ -1,0 +1,129 @@
+# Build recipe for tdebase.
+#
+# Copyright (c) 2020 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=tdebase-trinity
+pkgname=tdebase
+version=14.0.7
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/tde"
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=http://mirror.ppa.trinitydesktop.org/trinity/releases/R${version}/main/$tarname
+
+description="
+TDE base libraries and programs.
+
+tdebase is the second mandatory package (besides tdelibs) for the
+Trinity Desktop Environment.  Here we have various applications
+and infrastructure files and libraries.
+"
+
+homepage=http://www.trinitydesktop.org/
+license="GPLv2+, GFDLv1.2"
+
+# Source documentation
+docs="AUTHORS COPYING* README*"
+docsdir="${docdir}/${pkgname}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    patch -Np1 -i "${worktree}/patches/tdebase/missing-header.patch"
+    patch -Np1 -i "${worktree}/patches/tdebase/header-redirections.patch"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    mkdir BUILD
+    cd BUILD
+
+    cmake \
+     -DCMAKE_C_FLAGS:STRING="$QICFLAGS"                     \
+     -DCMAKE_CXX_FLAGS:STRING="$QICXXFLAGS"                 \
+     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$QILDFLAGS"        \
+     -DCMAKE_INSTALL_PREFIX=/opt/trinity                    \
+     -DCONFIG_INSTALL_DIR=/etc/trinity                      \
+     -DSYSCONF_INSTALL_DIR=/etc/trinity                     \
+     -DXDG_MENU_INSTALL_DIR=/etc/xdg/menus                  \
+     -DLIB_SUFFIX=${libSuffix}                              \
+     -DCMAKE_BUILD_TYPE=Release                             \
+     -DCMAKE_SKIP_INSTALL_RPATH=YES                         \
+     -DBUILD_ALL=ON                                         \
+     -DWITH_ALL_OPTIONS=ON                                  \
+     -DWITH_SUDO_KONSOLE_SUPER_USER_COMMAND=OFF             \
+     -DWITH_USBIDS=/usr/share/hwdata/usb.ids                \
+     -DHTDIG_SEARCH_BINARY=/usr/bin/hlsearch                \
+     -DWITH_PAM=OFF                                         \
+     -DWITH_LIBCONFIG=OFF                                   \
+     -DWITH_XSCREENSAVER=OFF                                \
+     -DWITH_ELFICON=OFF                                     \
+     -DWITH_LIBUSB=OFF                                      \
+     -DWITH_LIBRAW1394=OFF                                  \
+     -DWITH_SASL=OFF                                        \
+     -DWITH_HAL=OFF                                         \
+     -DWITH_UPOWER=OFF                                      \
+     -DBUILD_TDEIOSLAVES=OFF \
+     ..
+
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install
+
+    # To handle (dot) .new files via graft(1)
+
+    find "${destdir}/etc" -type d -print | while read -r directory
+    do
+        ( cd -- "$directory" && touch .graft-config )
+    done
+
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f -print0 | xargs -0 file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
+
+    find "$destdir" -type f -print0 | xargs -0 file | \
+     awk '/current ar archive/' | \
+      cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    cd ..
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
