@@ -1,0 +1,97 @@
+# Build recipe for libtirpc.
+#
+# Copyright (C) 2020 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=libtirpc
+version=1.2.5
+release=4
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/libs"
+
+tarname=${program}-${version}.tar.bz2
+
+# Remote source(s)
+fetch=http://downloads.sourceforge.net/project/libtirpc/libtirpc/${version}/$tarname
+
+description="
+Transport-Independent RPC library. 
+
+This package contains SunLib's implementation of transport-independent
+RPC (TI-RPC) documentation.  This library forms a piece of the base of
+Open Network Computing (ONC), and is derived directly from the Solaris
+2.3 source.
+
+TI-RPC is an enhanced version of TS-RPC that requires the UNIX System V
+Transport Layer Interface (TLI) or an equivalent X/Open Transport Interface
+(XTI).  TI-RPC is on-the-wire compatible with the TS-RPC, which is supported
+by almost 70 vendors on all major operating systems.  TS-RPC source code
+(RPCSRC 4.0) remains available from several internet sites.
+
+This release was a native source release, compatible for building on
+Solaris 2.3.  It had been ported from FreeBSD 5.2.1 to GNU/Linux in 2004.
+"
+
+homepage=http://sourceforge.net/projects/libtirpc/
+license="BSD 3-clause"
+
+docs="AUTHORS COPYING ChangeLog NEWS README THANKS TODO VERSION"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --disable-gssapi \
+     --disable-symvers \
+     --build="$(cc -dumpmachine)"
+     
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # To manage .new files via graft(1)
+    touch "${destdir}/etc/.graft-config"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+     
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
