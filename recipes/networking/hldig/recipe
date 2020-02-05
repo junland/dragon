@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=hldig
-version=20191130_c3845010
+version=20200127_277e64a3
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -68,14 +68,11 @@ build()
 
     cd "$srcdir"
 
-    patch -Np1 -i "${worktree}/patches/hldig/standard_types.diff"
-    patch -Np1 -i "${worktree}/patches/hldig/hldig-musl.patch"
-
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    autoreconf -v
-    rm -f libhtdigphp/config.log libhtdigphp/config.status
+    #autoreconf -v
+    #rm -f libhtdigphp/config.log libhtdigphp/config.status
 
     ./configure CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" \
     LDFLAGS="$QILDFLAGS" \
@@ -98,6 +95,16 @@ build()
     (
         cd "${destdir}/usr/bin"
         ln -sf /usr/lib${libSuffix}/cgi-bin/hlsearch .
+    )
+
+    # Make symlinks for compatibility with htdig commands
+    (
+        cd "${destdir}/usr/bin"
+        for name in hl*
+        do
+            name="${name#hl}"
+            ln -sf hl${name} ht${name}
+        done
     )
 
     # To handle config files (.new) via graft(1)
