@@ -60,8 +60,8 @@ build()
     cd BUILD
 
     cmake \
-     -DCMAKE_C_FLAGS:STRING="$QICFLAGS"                     \
-     -DCMAKE_CXX_FLAGS:STRING="$QICXXFLAGS"                 \
+     -DCMAKE_C_FLAGS_RELEASE:STRING="$QICFLAGS"             \
+     -DCMAKE_CXX_FLAGS_RELEASE:STRING="$QICXXFLAGS"         \
      -DCMAKE_SHARED_LINKER_FLAGS:STRING="$QILDFLAGS"        \
      -DCMAKE_INSTALL_PREFIX=/opt/trinity                    \
      -DCONFIG_INSTALL_DIR=/etc/trinity                      \
@@ -69,7 +69,7 @@ build()
      -DXDG_MENU_INSTALL_DIR=/etc/xdg/menus                  \
      -DLIB_SUFFIX=${libSuffix}                              \
      -DCMAKE_VERBOSE_MAKEFILE=ON                            \
-     -DCMAKE_BUILD_TYPE=RelWithDebInfo                      \
+     -DCMAKE_BUILD_TYPE=Release                             \
      -DCMAKE_SKIP_INSTALL_RPATH=YES                         \
      -DBUILD_ALL=ON                                         \
      -DWITH_ALL_OPTIONS=ON                                  \
@@ -93,6 +93,15 @@ build()
     make -j${jobs}
     make -j${jobs} DESTDIR="$destdir" install
 
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f -print0 | xargs -0 file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
+
+    find "$destdir" -type f -print0 | xargs -0 file | \
+     awk '/current ar archive/' | \
+      cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
+
     # To handle (dot) .new files via graft(1)
 
     find "${destdir}/etc" -type d -print | while read -r directory
@@ -108,15 +117,6 @@ build()
     chmod 644 "${destdir}/etc/X11/xinit/xinitrc-tde"
 
     touch "${destdir}/etc/X11/xinit/.graft-config"
-
-    # Strip remaining binaries and libraries
-    find "$destdir" -type f -print0 | xargs -0 file | \
-     awk '/ELF/ && /executable/ || /shared object/' | \
-      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
-
-    find "$destdir" -type f -print0 | xargs -0 file | \
-     awk '/current ar archive/' | \
-      cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
