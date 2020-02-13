@@ -17,15 +17,19 @@
 program=ncurses
 version=6.1-20200118
 pkgversion=$(echo $version | tr - _)
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
 
 tarname=${program}-${version}.tgz
+termcap_file=termcap-20190609.src.gz
 
 # Remote source(s)
-fetch=http://invisible-mirror.net/archives/ncurses/current/$tarname
+fetch="
+  http://invisible-mirror.net/archives/ncurses/current/$tarname
+  http://invisible-mirror.net/archives/ncurses/current/$termcap_file
+"
 
 description="
 Emulation library of Curses.
@@ -66,11 +70,11 @@ build()
      --mandir=$mandir \
      --enable-widec \
      --enable-symlinks \
-     --enable-pc-files \
      --enable-hard-tabs \
      --enable-xmc-glitch \
      --enable-colorfgbg \
-     --disable-termcap \
+     --enable-termcap \
+     --enable-pc-files \
      --disable-rpath-hack \
      --disable-stripping \
      --with-pkg-config-libdir=/usr/lib${libSuffix}/pkgconfig \
@@ -82,24 +86,46 @@ build()
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
-
     mkdir -p "${destdir}/usr/lib${libSuffix}/pkgconfig"
-
     make -j${jobs} DESTDIR="$destdir" install
+
+    # Insert termcap file provided by Thomas E. Dickey
+    mkdir -p "${destdir}/etc"
+    zcat "${tardir}/$termcap_file" > "${destdir}/etc/termcap"
+    chmod 644 "${destdir}/etc/termcap"
+    unset termcap_file
+
+    touch "${destdir}/etc/.graft-config"
 
     # Provide non-widec compatibility
 
-    for name in ncurses form panel menu tinfo
+    for name in ncurses form panel menu
     do
+        rm -f "${destdir}/usr/lib${libSuffix}/lib${name}.so"
+
         echo "INPUT(-l${name}w)" > \
          "${destdir}/usr/lib${libSuffix}/lib${name}.so"
+
         echo "INPUT(-l${name}w)" > \
          "${destdir}/usr/lib${libSuffix}/lib${name}.a"
+
         (
             cd "${destdir}/usr/lib${libSuffix}/pkgconfig" && \
              ln -sf ${name}w.pc ${name}.pc
         )
     done
+
+    major_version=$(echo $version | cut -f 1 -d .)
+    for name in tic tinfo
+    do
+        echo "INPUT(libncursesw.so.${major_version})" > \
+         "${destdir}/usr/lib${libSuffix}/lib${name}.so"
+
+        ln -sf libncursesw.so.${major_version} \
+         "${destdir}/usr/lib${libSuffix}/lib${name}.so.${major_version}"
+    done
+    unset major_version
+
     # Backward compatibility
     (
         cd "${destdir}/usr/lib${libSuffix}" || exit 2
