@@ -92,7 +92,7 @@ version()
 {
     printf "%s\n" \
      "$PROGRAM @VERSION@" \
-     "Copyright (C) 2016-2019 Matias Andres Fonzo." \
+     "Copyright (C) 2016-2020 Matias Andres Fonzo." \
      "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>" \
      "This is free software: you are free to change and redistribute it." \
      "There is NO WARRANTY, to the extent permitted by law."
@@ -227,10 +227,9 @@ build_mode()
 
     # Start preparations to import the recipe
 
-    # Separate the directory name from the file name,
-    # getting its absolute path and base name
+    # Get working directory and base name of the recipe
 
-    CWD=$(CDPATH= cd -P -- $(dirname -- "$recipe") && printf "$PWD")
+    CWD=$(dirname -- "$recipe")
     recipe=$(basename -- "$recipe")
 
     # Check readability for load the recipe on success
@@ -240,7 +239,7 @@ build_mode()
     # Find target architecture if 'arch' is not set
     if test -z "$arch"
     then
-        arch=$(${CC:-cc} -dumpmachine 2> /dev/null) || arch=unknown
+        arch="$( ${CC:-cc} -dumpmachine 2> /dev/null )" || arch=unknown
         arch="${arch%%-*}"	# Get the rid of target triplet.
     fi
 
