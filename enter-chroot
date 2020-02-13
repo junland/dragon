@@ -23,8 +23,8 @@ set -e
 LC_ALL=C
 export LC_ALL
 
-# Get physical working directory, absolute path name
-CWD=$(CDPATH= cd -P -- $(dirname -- "$0") && printf "$PWD")
+# Get current working directory
+CWD=$(dirname -- "$0")
 
 # Functions
 unmountSeries()
@@ -48,6 +48,7 @@ unmountSeries()
             fi
         fi
     done
+    unset node
 }
 
 # Autodetermine the path of /tools
@@ -66,7 +67,7 @@ fi
 # Set canonical name to compose the root directory, removing
 # the last component from the path name "/tools"
 
-rootdir=$(CDPATH= cd -P -- /tools && printf "$PWD")
+rootdir="$(CDPATH= cd -P -- /tools && pwd -P)"
 rootdir="${rootdir%/*}"
 
 # Unmount directories and file systems before the next mounting
