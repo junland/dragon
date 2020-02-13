@@ -30,6 +30,26 @@ LC_ALL=C
 LANGUAGE=C
 export LC_ALL LANGUAGE
 
+unmountFilesystems()
+{
+    for filesystem in /media/dragora-root/sys   \
+                      /media/dragora-root/proc  \
+                      /media/dragora-root/dev   \
+                      /media/dragora-root ;     \
+    do
+        if mountpoint -q "$filesystem"
+        then
+            echo "Unmounting ${filesystem} ..."
+            if ! umount -v "$filesystem"
+            then
+                echo "Doing a lazy unmount for $filesystem ..."
+                umount -v -l "$filesystem"
+            fi
+        fi
+    done
+    unset filesystem
+}
+
 chkstatus_or_exit()
 {
     status=$?
@@ -37,11 +57,11 @@ chkstatus_or_exit()
     # Clean up temporary files
     rm -f -- "$TMPFILE" "$LOCKFILE"
 
-    # Clean up temporary subdirectory related to the installer
-    if test -z "$PRESERVE"
-    then
-        rm -rf -- "$SUBTMPDIR"
-    fi
+    # Clean up temporary subdirectory if 'PRESERVE' is unset or null
+    test -z "$PRESERVE" && rm -rf -- "$SUBTMPDIR"
+
+    # Unmount possible (previously) mounted file systems
+    unmountFilesystems
 
     if test $status -ne 0
     then
@@ -217,8 +237,6 @@ fi
 . @PARTS@MenuBootloader;	# Boot loader installation.
 . @PARTS@ConfServices;		# Running services.
 
-umount /media/dragora-root/dev   > /dev/null 2>&1 || true
-umount /media/dragora-root/proc  > /dev/null 2>&1 || true
 
 if test -e /media/dragora-root/etc/fstab
 then
@@ -263,10 +281,12 @@ case $_status in
 0)
     unset _status
     dialog --clear
+    unmountFilesystems
     exec reboot -d -f
     ;;
 *)
     unset _status
+    unmountFilesystems
     echo ""
     echo ""
     echo ""
