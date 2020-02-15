@@ -1,6 +1,6 @@
 # Build recipe for udevil.
 #
-# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019-2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 program=udevil
 version=20150504_ce9f1c5
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/tools"
@@ -78,6 +78,22 @@ build()
     # Restrict execution of udevil to the 'plugdev' group
     chown root:plugdev "${destdir}/usr/bin/udevil"
     chmod u+s,go-s,o-x "${destdir}/usr/bin/udevil"
+
+    # Install devmon (udevil) perp service
+
+    mkdir -p "${destdir}/etc/perp/devmon"
+
+    cp -p "${worktree}/archive/udevil/rc.log" \
+          "${worktree}/archive/udevil/rc.main" \
+          "${destdir}/etc/perp/devmon/"
+
+    chmod 755 "${destdir}"/etc/perp/devmon/rc.*
+
+    # Be an active service by default
+    chmod +t "${destdir}/etc/perp/devmon"
+
+    # To handle config file(s)
+    touch "${destdir}/etc/perp/devmon/.graft-config"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
