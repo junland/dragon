@@ -18,15 +18,27 @@ if test ! -b "$device"
 then
     dialog --colors \
      --backtitle "\ZbMaking Swap partition" \
-     --title "SWAP PARTITION NOT DETECTED" \
+     --title "NO SWAP PARTITION DETECTED" \
      --yesno \
-"No swap partitions detected.  This could be important\n\
-to reduce the use of RAM memory...\n\n\
-Would you like to proceed without a swap partition?.\n" 9 58 || \
+"No swap partition has been detected.\n\n\
+
+Setting up a swap partition is recommended because it\n\
+will enable the system to use available physical\n\
+memory (RAM) more efficiently and also provide a\n\
+safeguard in situations where RAM is exhausted.\n\n\
+
+If you want to make use of hibernation (suspend to\n\
+disk), a swap partition of sufficient size is\n\
+required.\n\n\
+
+Would you like to proceed without a swap partition?\n" 13 58 || \
     {
         printf "%s\n" "" \
-         "Please, try to create a swap partition using fdisk(8) or cfdisk(8)." \
-         "Then re-run the installer to give the proper format (if needed)."
+         "Please create a swap partition using fdisk(8) or cfdisk(8)." \
+         "Then re-run the installer to give it the proper formatting." \
+         "" \
+         "You can also use mkswap(8) and swapon(8) to format and activate the" \
+         "partition in advance."
         exit 99;
     }
     return 0
@@ -38,9 +50,9 @@ then
      --backtitle "\ZbActive swap partition: $device" \
      --title "SWAP PARTITION $device IS ACTIVE" \
      --msgbox \
-"A swap partition has been identified and already enabled,\n\
-it will be added to the file system representation table\n\
-(fstab) during installation." 7 63 || return $?
+"An active swap partition has been detected.\n\
+It will be added to the file system representation table\n\
+(/etc/fstab) during installation." 7 63 || return $?
     add_fstabEntry
 else
     # Offer format possibility
