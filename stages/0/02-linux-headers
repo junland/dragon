@@ -1,6 +1,6 @@
 # Build script for linux-libre (headers).
 #
-# Copyright (c) 2014-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2014-2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version=4.19.79
+version=5.4.23
 
 cd -- "$TMPDIR"
 rm -rf linux-${version}
@@ -24,16 +24,13 @@ unpack "${worktree}/sources/linux-libre-${version}-gnu.tar.lz"
 cd linux-${version}
 
 make -j1 mrproper
-make -j1 headers_check ARCH="$kernel_arch"
-make -j${jobs} headers_install ARCH="$kernel_arch" INSTALL_HDR_PATH=dest
-
-# Copy headers
+make -j1 headers ARCH="$kernel_arch"
 mkdir -p -- "${crossdir}/${target}/include"
-cp -r dest/include/* "${crossdir}/${target}/include"
+cp -Rp usr/include/* "${crossdir}/${target}/include/"
 
 # Remove cruft
-find "${crossdir}/${target}/include" \
- -type f \( -name .install -o -name ..install.cmd \) -exec rm -f {} +
+find "${crossdir}/${target}/include" -name '.*' -exec rm -rf {} +
+rm -f "${crossdir}/${target}/include/Makefile"
 
 cleanup()
 {

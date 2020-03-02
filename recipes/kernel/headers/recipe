@@ -1,6 +1,6 @@
 # Build recipe for linux (libre) headers.
 #
-# Copyright (c) 2015-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2015-2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=linux
-version=4.19.79
+version=5.4.23
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -49,15 +49,16 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     make mrproper
+    make headers
 
-    make V=1 HOSTCFLAGS+="-fno-stack-protector" headers_check
+    # Holy molly... the 'headers_install' target cannot be used,
+    # because it requires rsync(1) - which is not available early.
 
-    make HOSTCFLAGS+="-fno-stack-protector" \
-     INSTALL_HDR_PATH="${destdir}/usr" \
-     headers_install
+    mkdir -p "${destdir}/usr/include"
+    cp -Rp usr/include/* "${destdir}/usr/include/"
 
     # Remove cruft
-    find "${destdir}/usr/include" \
-      -type f \( -name .install -o -name ..install.cmd \) -exec rm -f {} +
+    find "${destdir}/usr/include" -name '.*' -exec rm -rf {} +
+    rm -f "${destdir}/usr/include/Makefile"
 }
 
