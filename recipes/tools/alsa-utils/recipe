@@ -1,6 +1,6 @@
 # Build recipe for alsa-utils.
 #
-# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 program=alsa-utils
-version=1.1.9
+version=1.2.2
 release=1
 
 # Set 'outdir' for a nice and well-organized output directory
@@ -51,18 +51,15 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Update for hosts based on musl
-    cp -f "${worktree}/archive/common/config.guess" config.guess
-    cp -f "${worktree}/archive/common/config.sub" config.sub
-
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --enable-nls \
-     --disable-alsatest \
+     --disable-bat \
      --disable-xmlto \
      --disable-rst2man \
+     --with-curses=ncursesw \
      --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
