@@ -19,39 +19,42 @@ cd -- "${rootdir}/initrd"
 
 # Create essential directories for the image
 
-mkdir -p -m 755 dev proc sys .UP
+mkdir -p -m 755 dev proc UP
 
 cat << "EOF" > init
 #! /bin/busybox hush
 
 set -x
-set -e
 
 /bin/busybox mount -n -o nosuid,noexec,nodev -t proc proc /proc
 /bin/busybox mount -n -o nosuid,noexec,nodev -t sysfs sysfs /sys
 /bin/busybox mount -n -t devtmpfs devtmpfs /dev
+/bin/busybox sleep 7
 
-/bin/busybox mount -n -o rw,size=100% -t tmpfs tmpfs /.UP
-/bin/busybox mkdir -p /.UP/cdrom /.UP/squash /.UP/rw /.UP/work /.UP/union
-/bin/busybox mkdir -p /.UP/union/dev /.UP/union/proc /.UP/union/sys
+# Mount tmpfs plus create directories
+/bin/busybox mount -n -w -o size=100% -t tmpfs tmpfs /UP
+/bin/busybox mkdir -p \
+ /UP/cdrom /UP/squashfs /UP/rw /UP/workdir /UP/union
 
 # Mount ISO and system image
-/bin/busybox mount -n -t iso9660 LABEL="Dragora-@ARCH@" /.UP/cdrom
-/bin/busybox mount -n -o loop -t squashfs /.UP/cdrom/dragora.sfs /.UP/squash
+/bin/busybox mount -n -r -t iso9660 LABEL="Dragora-@ARCH@" /UP/cdrom || \
+{
+    /bin/busybox sleep 3
+    /bin/busybox mount -n -r /dev/disk/by-label/Dragora-@ARCH@ /UP/cdrom
+}
+/bin/busybox mount -n -r -o loop -t squashfs /UP/cdrom/dragora.sfs /UP/squashfs
 
 # Merge Squashfs with OverlayFS
 /bin/busybox mount -n \
- -o lowerdir=/.UP/squash,upperdir=/.UP/rw,workdir=/.UP/work \
- -t overlay overlay /.UP/union
+ -o lowerdir=/UP/squashfs,upperdir=/UP/rw,workdir=/UP/workdir \
+ -t overlay overlay /UP/union
 
 # Move virtual file systems prior to switch_root
-/bin/busybox mount --move /dev   /.UP/union/dev
-/bin/busybox mount --move /proc  /.UP/union/proc
-/bin/busybox mount --move /sys   /.UP/union/sys
+/bin/busybox mount -n --move /dev   /UP/union/dev
+/bin/busybox mount -n --move /proc  /UP/union/proc
+/bin/busybox mount -n --move /sys   /UP/union/sys
 
-wait
-
-exec /bin/busybox switch_root /.UP/union /sbin/init
+exec /bin/busybox switch_root /UP/union /sbin/init
 
 EOF
 
