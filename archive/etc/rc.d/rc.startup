@@ -2,7 +2,7 @@
 #
 # Boot-time system initialization script
 #
-# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,13 +26,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
 echo "(Startup): Mounting kernel based file systems"
 mount -v -n -o nosuid,noexec,nodev -t proc proc /proc
 mount -v -n -o nosuid,noexec,nodev -t sysfs sysfs /sys
-if ! mountpoint -q /dev
-then
-    mount -v -n -t devtmpfs devtmpfs /dev
-else
-    # Re-mount devtmpfs if necessary due to an initramfs
-    mount -v -n -o remount -t devtmpfs devtmpfs /dev
-fi
+mount -v -n -t devtmpfs devtmpfs /dev
 
 mkdir -p /dev/pts /dev/shm /run
 mount -v -n -o mode=0620,gid=5 -t devpts devpts /dev/pts
@@ -40,6 +34,11 @@ mount -v -n -o defaults -t tmpfs none /dev/shm
 mount -v -n -o defaults -t tmpfs tmpfs /run
 
 # Start the dynamic device management
+
+# Udev handles the uevents itself, so we don't need to have
+# the kernel call out to any binary in response to them
+echo "" > /sys/kernel/uevent_helper
+echo "" > /proc/sys/kernel/hotplug
 
 echo "(Startup) Starting event managing daemon"
 udevd --daemon
@@ -145,8 +144,8 @@ fi
 
 # Parse config file.
 #
-# Values given on /proc/cmdline have priority over
-# those present at "/etc/rc.conf"
+# Values given on /proc/cmdline have priority
+# over those present at "/etc/rc.conf"
 
 if grep -q -m 1 RC_ /proc/cmdline
 then
@@ -176,7 +175,7 @@ then
     done < /etc/rc.conf
 fi
 
-# Use default values if variables are not defined
+# Use default values if the following variables are not defined
 RC_HWCLOCK="${RC_HWCLOCK:-utc}"
 RC_HOSTNAME="${RC_HOSTNAME:-dragora}"
 RC_DOMAINNAME="${RC_DOMAINNAME:-example.net}"
