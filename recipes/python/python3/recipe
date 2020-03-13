@@ -62,7 +62,7 @@ build()
     # Use system libraries instead of the bundle ones
     rm -rf Modules/expat Modules/zlib Modules/_ctypes/libffi*
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" OPT="" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
@@ -80,6 +80,9 @@ build()
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
+    # Make default symlink to invoke it as "python"
+    ( cd "${destdir}/usr/bin" && ln -sf python3 python )
+
     # Include the Python tools under site-packages
     TOOL_DIR=/usr/lib/python${short_version}
     (
@@ -95,9 +98,9 @@ build()
     (
         cd "${destdir}/usr/bin" || exit 2
 
-        ln -sf "${TOOL_DIR}/i18n/msgfmt.py" msgfmt${short_version}.py
-        ln -sf "${TOOL_DIR}/i18n/pygettext.py" pygettext${short_version}.py
-        ln -sf "${TOOL_DIR}/pynche/pynche" pynche${short_version}
+        ln -sf "${TOOL_DIR}/i18n/msgfmt.py" msgfmt.py
+        ln -sf "${TOOL_DIR}/i18n/pygettext.py" pygettext.py
+        ln -sf "${TOOL_DIR}/pynche/pynche" pynche
     )
     unset short_version TOOL_DIR
 
@@ -117,13 +120,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
