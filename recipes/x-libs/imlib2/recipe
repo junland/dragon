@@ -1,7 +1,7 @@
 # Build recipe for imlib2.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
-# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 program=imlib2
 version=1.5.1
-release=3
+release=4
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/x-libs"
@@ -52,17 +52,24 @@ build()
 
     cd "$srcdir"
 
+    case $arch in
+    i?86)
+        assembly_opts=--enable-mmx
+        ;;
+    x86_64)
+        assembly_opts=--enable-amd64
+        ;;
+    esac
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
-     --enable-mmx=auto \
-     --enable-amd64=auto \
      --with-id3 \
      --with-x \
      --build="$(cc -dumpmachine)" \
-     $extra_options
+     $assembly_opts
 
-    unset extra_options
+    unset assembly_opts
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
