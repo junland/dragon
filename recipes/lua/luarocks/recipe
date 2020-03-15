@@ -1,0 +1,77 @@
+# Build recipe for luarocks.
+#
+# Copyright (C) 2020 Kevin "The Nuclear" Bloom, <kevin.bloom@posteo.net>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Based on recipes written by Mateus P. Rodrigues, <mprodrigues@dragora.org>
+# and Matias Fonzo, <selk@dragora.org>.
+
+program=luarocks
+version=3.3.0
+release=3
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=https://luarocks.org/releases/${tarname}
+
+description="
+luarocks - the package manager for Lua modules
+
+Luarocks allows you to create and install Lua modules as self-contained packages
+called rocks.
+"
+
+homepage=https://luarocks.org/
+license="MIT License"
+
+# Source documentation
+docs="CHANGELOG.md COPYING CODE_OF_CONDUCT.md README.md"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    ./configure --prefix=/usr 
+
+    make ./build/luarocks ./build/luarocks-admin ./build/config-5.3.lua
+    make LUA_VERSION=5.1 LUA_INTERPRETER=lua5.1 LUA_INCDIR=/usr/include/lua5.1 ./build/config-5.1.lua
+    make LUA_VERSION=5.2 LUA_INTERPRETER=lua5.2 LUA_INCDIR=/usr/include/lua5.2 ./build/config-5.2.lua
+    make DESTDIR="$destdir" install
+    make DESTDIR="$destdir" LUA_VERSION=5.1 install-config
+    make DESTDIR="$destdir" LUA_VERSION=5.2 install-config
+    
+
+    # Delete index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        if test -e $file
+        then
+            cp -p $file "${destdir}${docsdir}"
+        fi
+    done
+}
