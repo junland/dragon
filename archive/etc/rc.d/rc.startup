@@ -232,10 +232,17 @@ fi
 mkdir -p -m 1777 -- /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
 chmod 1777 -- /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
 
+# Re-create file records for logins and logouts
+touch /var/log/btmp /var/log/lastlog /var/log/faillog /var/log/wtmp \
+      /var/run/utmp
+
+chgrp utmp  /var/log/lastlog /var/run/utmp
+chmod 664   /var/log/lastlog /var/run/utmp
+chmod 600   /var/log/btmp
+
 # Seek and destroy temporary files
 
 rm -f /etc/nologin /fastboot /forcefsck
-find /var/lock /var/run \( ! -type d -a ! -name utmp \) -delete
 
 # Set kernel parameters at runtime
 

@@ -6,9 +6,16 @@ chown root:mail   var/mail
 chown root:lp     var/spool/lpd
 chown root:news   var/spool/news
 
-chmod 775         var/log var/run
+chmod 775         var/log
 chmod 2775        var/mail
-chmod 1777        var/lock var/tmp
+chmod 1777        var/tmp
+# Force the symbolic link to make /var/run and /var/lock point to /run
+(
+    cd var || exit 1
+    rm -rf run lock
+    ln -sf /run .
+    ln -sf /run/lock .
+)
 
 chmod 555         proc sys
 chmod 750         root
