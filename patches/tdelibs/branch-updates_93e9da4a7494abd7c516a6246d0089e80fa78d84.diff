@@ -1,0 +1,4997 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f0a87509..5b95cfa6 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -394,10 +394,6 @@ check_function_exists( setgroups HAVE_SETGROUPS )
+ check_function_exists( setlocale HAVE_SETLOCALE )
+ check_function_exists( setmntent HAVE_SETMNTENT )
+ check_function_exists( setpriority HAVE_SETPRIORITY )
+-check_function_exists( isnan HAVE_FUNC_ISNAN )
+-check_function_exists( _finite HAVE_FUNC__FINITE )
+-check_function_exists( finite HAVE_FUNC_FINITE )
+-check_function_exists( isinf HAVE_FUNC_ISINF )
+ check_function_exists( freeaddrinfo HAVE_FREEADDRINFO )
+ check_function_exists( strtoll HAVE_STRTOLL )
+ check_function_exists( socket HAVE_SOCKET )
+@@ -1015,16 +1011,15 @@ endif( WITH_LUA )
+ ##### check for avahi ###########################
+ 
+ if( WITH_AVAHI )
+-  if( WITH_QT4 )
+-  endif( WITH_QT4 )
+-
+-  if( WITH_QT3 )
+-    pkg_search_module( AVAHI avahi-tqt )
+-    if( NOT AVAHI_FOUND )
+-        message(FATAL_ERROR "\navahi support are requested, but not found on your system" )
+-    endif( NOT AVAHI_FOUND )
+-    set( AVAHI_API_0_6 1 )
+-  endif( WITH_QT3 )
++    pkg_search_module( AVAHI_TQT avahi-tqt )
++    pkg_search_module( AVAHI_CLIENT avahi-client )
++    if( NOT AVAHI_TQT_FOUND OR NOT AVAHI_CLIENT_FOUND )
++        tde_message_fatal( "avahi support is requested, but not found on your system" )
++    endif( NOT AVAHI_TQT_FOUND OR NOT AVAHI_CLIENT_FOUND )
++    if( NOT AVAHI_CLIENT_VERSION VERSION_LESS "0.6" )
++      set( AVAHI_API_0_6 1 )
++    endif( )
++    set( HAVE_DNSSD 1 )
+ endif( )
+ 
+ 
+diff --git a/README b/README
+index 7eb7702e..fce8c305 100644
+--- a/README
++++ b/README
+@@ -10,7 +10,7 @@ In this file:
+ 
+ About tdelibs
+ -------------
+-This is version R14.0.7 of the Trinity Desktop Environment (TDE) libraries.
++This is version R14.0.8 [DEVELOPMENT] of the Trinity Desktop Environment (TDE) libraries.
+ 
+ This package includes libraries that are central to the development and 
+ execution of a KDE program, as well as internationalization files for these 
+diff --git a/config.h.cmake b/config.h.cmake
+index e0153f50..c7c9e116 100644
+--- a/config.h.cmake
++++ b/config.h.cmake
+@@ -4,6 +4,7 @@
+ #define ASPELL_DATADIR "@ASPELL_DATADIR@"
+ 
+ /* Avahi API 0.6 */
++#cmakedefine HAVE_DNSSD 1
+ #cmakedefine AVAHI_API_0_6 1
+ 
+ /* Define to one of `_getb67', `GETB67', `getb67' for Cray-2 and Cray-YMP
+@@ -202,18 +203,6 @@
+ /* Define to 1 if you have the <fstab.h> header file. */
+ #cmakedefine HAVE_FSTAB_H 1
+ 
+-/* Define if you have finite */
+-#cmakedefine HAVE_FUNC_FINITE 1
+-
+-/* Define if you have isinf */
+-#cmakedefine HAVE_FUNC_ISINF 1
+-
+-/* Define if you have isnan */
+-#cmakedefine HAVE_FUNC_ISNAN 1
+-
+-/* Define if you have _finite */
+-#cmakedefine HAVE_FUNC__FINITE 1
+-
+ /* Define to 1 if you have the `gai_strerror' function. */
+ #cmakedefine HAVE_GAI_STRERROR 1
+ 
+diff --git a/dcop/KDE-ICE/Xtrans.c b/dcop/KDE-ICE/Xtrans.c
+index b954d4b3..e3457424 100644
+--- a/dcop/KDE-ICE/Xtrans.c
++++ b/dcop/KDE-ICE/Xtrans.c
+@@ -1261,7 +1261,7 @@ static int TRANS(ReadV) (XtransConnInfo ciptr, struct iovec *iov, int iovcnt)
+ 	len = iov->iov_len;
+ 	base = iov->iov_base;
+ 	while (len > 0) {
+-	    register int nbytes;
++	    int nbytes;
+ 	    nbytes = TRANS(Read) (ciptr, base, len);
+ 	    if (nbytes < 0 && total == 0)  return -1;
+ 	    if (nbytes <= 0)  return total;
+@@ -1293,7 +1293,7 @@ static int TRANS(WriteV) (XtransConnInfo ciptr, struct iovec *iov, int iovcnt)
+ 	len = iov->iov_len;
+ 	base = iov->iov_base;
+ 	while (len > 0) {
+-	    register int nbytes;
++	    int nbytes;
+ 	    nbytes = TRANS(Write) (ciptr, base, len);
+ 	    if (nbytes < 0 && total == 0)  return -1;
+ 	    if (nbytes <= 0)  return total;
+diff --git a/dcop/KDE-ICE/iceauth.c b/dcop/KDE-ICE/iceauth.c
+index 72297ceb..60961564 100644
+--- a/dcop/KDE-ICE/iceauth.c
++++ b/dcop/KDE-ICE/iceauth.c
+@@ -45,7 +45,7 @@ extern Time_t time ();
+ #define Time_t time_t
+ #endif
+ 
+-static int binaryEqual (register const char *a, register const char *b, register unsigned len);
++static int binaryEqual (const char *a, const char *b, unsigned len);
+ 
+ static int was_called_state;
+ 
+@@ -264,7 +264,7 @@ char    	**errorStringRet;
+  * local routines
+  */
+ 
+-static int binaryEqual (register const char *a, register const char *b, register unsigned len)
++static int binaryEqual (const char *a, const char *b, unsigned len)
+ {
+     while (len--)
+ 	if (*a++ != *b++)
+diff --git a/dcop/KDE-ICE/misc.c b/dcop/KDE-ICE/misc.c
+index 0dbbf24b..4658b8d1 100644
+--- a/dcop/KDE-ICE/misc.c
++++ b/dcop/KDE-ICE/misc.c
+@@ -233,12 +233,12 @@ IceConn iceConn;
+ Status
+ _IceRead (iceConn, nbytes, ptr)
+ 
+-register IceConn iceConn;
++IceConn iceConn;
+ unsigned long	 nbytes;
+-register char	 *ptr;
++char	 *ptr;
+ 
+ {
+-    register unsigned long nleft;
++    unsigned long nleft;
+ 
+     nleft = nbytes;
+     while (nleft > 0)
+@@ -335,8 +335,8 @@ register char	 *ptr;
+ void
+ _IceReadSkip (iceConn, nbytes)
+ 
+-register IceConn	iceConn;
+-register unsigned long	nbytes;
++IceConn	iceConn;
++unsigned long	nbytes;
+ 
+ {
+     char temp[512];
+@@ -359,12 +359,12 @@ register unsigned long	nbytes;
+ void
+ _IceWrite (iceConn, nbytes, ptr)
+ 
+-register IceConn iceConn;
++IceConn iceConn;
+ unsigned long	 nbytes;
+-register char	 *ptr;
++char	 *ptr;
+ 
+ {
+-    register unsigned long nleft;
++    unsigned long nleft;
+ 
+     nleft = nbytes;
+     while (nleft > 0)
+diff --git a/dcop/dcopidl/scanner.cc b/dcop/dcopidl/scanner.cc
+index da3481c0..55a20aba 100644
+--- a/dcop/dcopidl/scanner.cc
++++ b/dcop/dcopidl/scanner.cc
+@@ -1209,9 +1209,9 @@ extern int yylex (void);
+  */
+ YY_DECL
+ {
+-	register yy_state_type yy_current_state;
+-	register char *yy_cp, *yy_bp;
+-	register int yy_act;
++	yy_state_type yy_current_state;
++	char *yy_cp, *yy_bp;
++	int yy_act;
+     
+ #line 148 "scanner.ll"
+ 
+@@ -1270,7 +1270,7 @@ YY_DECL
+ yy_match:
+ 		do
+ 			{
+-			register YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
++			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
+ 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
+ 				{
+ 				yy_current_state = (int) yy_def[yy_current_state];
+@@ -1909,9 +1909,9 @@ ECHO;
+  */
+ static int yy_get_next_buffer (void)
+ {
+-    	register char *dest = YY_CURRENT_BUFFER_LVALUE->yy_ch_buf;
+-	register char *source = (yytext_ptr);
+-	register int number_to_move, i;
++    	char *dest = YY_CURRENT_BUFFER_LVALUE->yy_ch_buf;
++	char *source = (yytext_ptr);
++	int number_to_move, i;
+ 	int ret_val;
+ 
+ 	if ( (yy_c_buf_p) > &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[(yy_n_chars) + 1] )
+@@ -2014,8 +2014,8 @@ static int yy_get_next_buffer (void)
+ 
+     static yy_state_type yy_get_previous_state (void)
+ {
+-	register yy_state_type yy_current_state;
+-	register char *yy_cp;
++	yy_state_type yy_current_state;
++	char *yy_cp;
+     
+ 	yy_current_state = (yy_start);
+ 
+@@ -2024,7 +2024,7 @@ static int yy_get_next_buffer (void)
+ 
+ 	for ( yy_cp = (yytext_ptr) + YY_MORE_ADJ; yy_cp < (yy_c_buf_p); ++yy_cp )
+ 		{
+-		register YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
++		YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
+ 		while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
+ 			{
+ 			yy_current_state = (int) yy_def[yy_current_state];
+@@ -2045,9 +2045,9 @@ static int yy_get_next_buffer (void)
+  */
+     static yy_state_type yy_try_NUL_trans  (yy_state_type yy_current_state )
+ {
+-	register int yy_is_jam;
++	int yy_is_jam;
+     
+-	register YY_CHAR yy_c = 1;
++	YY_CHAR yy_c = 1;
+ 	while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
+ 		{
+ 		yy_current_state = (int) yy_def[yy_current_state];
+@@ -2062,9 +2062,9 @@ static int yy_get_next_buffer (void)
+ 	return yy_is_jam ? 0 : yy_current_state;
+ }
+ 
+-    static void yyunput (int c, register char * yy_bp )
++    static void yyunput (int c, char * yy_bp )
+ {
+-	register char *yy_cp;
++	char *yy_cp;
+     
+     yy_cp = (yy_c_buf_p);
+ 
+@@ -2074,10 +2074,10 @@ static int yy_get_next_buffer (void)
+ 	if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
+ 		{ /* need to shift things up to make room */
+ 		/* +2 for EOB chars. */
+-		register int number_to_move = (yy_n_chars) + 2;
+-		register char *dest = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[
++		int number_to_move = (yy_n_chars) + 2;
++		char *dest = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[
+ 					YY_CURRENT_BUFFER_LVALUE->yy_buf_size + 2];
+-		register char *source =
++		char *source =
+ 				&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[number_to_move];
+ 
+ 		while ( source > YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
+@@ -2694,7 +2694,7 @@ int yylex_destroy  (void)
+ #ifndef yytext_ptr
+ static void yy_flex_strncpy (char* s1, yyconst char * s2, int n )
+ {
+-	register int i;
++	int i;
+ 	for ( i = 0; i < n; ++i )
+ 		s1[i] = s2[i];
+ }
+@@ -2703,7 +2703,7 @@ static void yy_flex_strncpy (char* s1, yyconst char * s2, int n )
+ #ifdef YY_NEED_STRLEN
+ static int yy_flex_strlen (yyconst char * s )
+ {
+-	register int n;
++	int n;
+ 	for ( n = 0; s[n]; ++n )
+ 		;
+ 
+diff --git a/dcop/dcopserver.cpp b/dcop/dcopserver.cpp
+index 15066047..60866484 100644
+--- a/dcop/dcopserver.cpp
++++ b/dcop/dcopserver.cpp
+@@ -118,7 +118,7 @@ static Bool HostBasedAuthProc ( char* /*hostname*/)
+ extern "C" {
+ extern IceWriteHandler _kde_IceWriteHandler;
+ extern IceIOErrorHandler _kde_IceIOErrorHandler;
+-void DCOPIceWriteChar(register IceConn iceConn, unsigned long nbytes, char *ptr);
++void DCOPIceWriteChar(IceConn iceConn, unsigned long nbytes, char *ptr);
+ }
+ 
+ static TQCString readQCString(TQDataStream &ds)
+@@ -237,7 +237,7 @@ static unsigned long writeIceData(IceConn iceConn, unsigned long nbytes, char *p
+     return 0;
+ }
+ 
+-void DCOPIceWriteChar(register IceConn iceConn, unsigned long nbytes, char *ptr)
++void DCOPIceWriteChar(IceConn iceConn, unsigned long nbytes, char *ptr)
+ {
+     DCOPConnection* conn = the_server->findConn( iceConn );
+ #ifdef DCOP_DEBUG
+@@ -384,7 +384,7 @@ tqWarning("[dcopserver] slotOutputRead() more data to send.");
+    }
+ }
+ 
+-static void DCOPIceSendData(register IceConn _iceConn,
++static void DCOPIceSendData(IceConn _iceConn,
+                             const TQByteArray &_data)
+ {
+    if (_iceConn->outbufptr > _iceConn->outbuf)
+diff --git a/dnssd/CMakeLists.txt b/dnssd/CMakeLists.txt
+index 01359672..844ee16f 100644
+--- a/dnssd/CMakeLists.txt
++++ b/dnssd/CMakeLists.txt
+@@ -44,7 +44,7 @@ set( ${target}_SRCS
+ tde_add_library( ${target} SHARED AUTOMOC
+   SOURCES ${${target}_SRCS}
+   VERSION 1.0.0
+-  LINK tdecore-shared
++  LINK tdecore-shared ${AVAHI_TQT_LIBRARIES} ${AVAHI_CLIENT_LIBRARIES}
+   DEPENDENCIES tdeconfig_compiler
+   DESTINATION ${LIB_INSTALL_DIR}
+ )
+diff --git a/dnssd/publicservice.cpp b/dnssd/publicservice.cpp
+index 0313fd17..05b89125 100644
+--- a/dnssd/publicservice.cpp
++++ b/dnssd/publicservice.cpp
+@@ -56,7 +56,7 @@ class PublicServicePrivate
+ public:
+ 	PublicServicePrivate() : m_published(false), m_running(false), m_collision(false)
+ #ifdef HAVE_DNSSD
+-	, m_group(false)
++	, m_group(0)
+ #endif
+ 	{}
+ 	bool m_published;
+diff --git a/kab/addressbook.cc b/kab/addressbook.cc
+index 852f56d5..85a99125 100644
+--- a/kab/addressbook.cc
++++ b/kab/addressbook.cc
+@@ -407,7 +407,7 @@ AddressBook::AddressBook(TQWidget* parent, const char* name, bool loadit)
+     entries(new StringKabKeyMap),
+     state(NoFile)
+ {
+-  register bool GUARD; GUARD=true;
++  bool GUARD; GUARD=true;
+   // ###########################################################################
+   TQString dir, filename;
+   bool createBackup=true;
+@@ -647,7 +647,7 @@ AddressBook::ErrorCode AddressBook::load(const TQString& filename)
+ AddressBook::ErrorCode
+ AddressBook::getListOfNames(TQStringList* strings, bool reverse, bool initials)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) << "AddressBook::getListOfNames: called.\n";
+   StringKabKeyMap::iterator pos;
+@@ -702,7 +702,7 @@ AddressBook::literalName(const KabKey& key, TQString& text, bool rev, bool init)
+ AddressBook::ErrorCode
+ AddressBook::literalName(const Entry& entry, TQString& text, bool rev, bool init)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) << "AddressBook::literalName: called.\n";
+   TQString firstname, middlename, lastname, nameprefix;
+@@ -817,7 +817,7 @@ AddressBook::dataFileChanged()
+ void
+ AddressBook::configFileChanged()
+ {
+-  register bool GUARD; GUARD=true;
++  bool GUARD; GUARD=true;
+   // ###########################################################################
+   if(!config->load())
+     {
+@@ -835,7 +835,7 @@ AddressBook::configFileChanged()
+ void
+ AddressBook::reloaded(QConfigDB* db)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   if(db==data)
+       {
+@@ -924,7 +924,7 @@ AddressBook::getEntry(const KabKey& key, Entry& entry)
+ AddressBook::ErrorCode
+ AddressBook::getEntry(const KabKey& key, Section*& section)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) << "AddressBook::getEntry: searching entry "
+       "with key " << key.getKey().data() << endl;
+@@ -1004,7 +1004,7 @@ AddressBook::getKey(int index, KabKey& key)
+ AddressBook::ErrorCode
+ AddressBook::getIndex(const KabKey& key, int& index)
+ {
+-  register bool GUARD; GUARD=true;
++  bool GUARD; GUARD=true;
+   // ###########################################################################
+   StringKabKeyMap::iterator pos;
+   // -----
+@@ -1283,7 +1283,7 @@ AddressBook::nextAvailEntryKey()
+ AddressBook::ErrorCode
+ AddressBook::updateMirrorMap()
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) 
+     << "AddressBook::updateMirrorMap: updating mirror map.\n";
+diff --git a/kab/qconfigDB.cc b/kab/qconfigDB.cc
+index 283dfdde..dc77a1e1 100644
+--- a/kab/qconfigDB.cc
++++ b/kab/qconfigDB.cc
+@@ -55,7 +55,7 @@ static bool isComment(TQCString line)
+ 
+ static void tokenize(list<TQCString>& res, const TQCString& text, char tr, bool strict=false)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "tokenize: called." << endl;
+   int eins=0, zwei=0;
+@@ -99,7 +99,7 @@ static void tokenize(list<TQCString>& res, const TQCString& text, char tr, bool
+ 
+ static TQCString ReadLineFromStream(TQTextStream& stream)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "ReadLineFromStream:: reading line." << endl;
+   TQCString line;
+@@ -174,7 +174,7 @@ KeyValueMap::size() const
+ void
+ KeyValueMap::clear()
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<
+ 	     "KeyValueMap::clear: erasing map contents ... " << endl;
+@@ -191,7 +191,7 @@ KeyValueMap::clear()
+ bool
+ KeyValueMap::fill(const TQString& filename, bool force, bool relax)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   TQFile file(filename);
+   TQCString line;
+@@ -231,7 +231,7 @@ KeyValueMap::fill(const TQString& filename, bool force, bool relax)
+ bool
+ KeyValueMap::save(const TQString& filename, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<
+       "KeyValueMap::save: saving data to -->" <<
+@@ -271,7 +271,7 @@ KeyValueMap::save(const TQString& filename, bool force)
+ bool
+ KeyValueMap::save(TQTextStream& file, int count)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<
+ 	     "KeyValueMap::save: saving data to given output stream." << endl;
+@@ -318,7 +318,7 @@ KeyValueMap::parseComplexString
+  int& noOfChars) // no of chars that represented the
+  const           // complex string in the original
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   int first;
+   TQCString temp(2*orig.length());
+@@ -415,7 +415,7 @@ KeyValueMap::parseComplexString
+ TQCString
+ KeyValueMap::makeComplexString(const TQCString& orig)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<
+       "KeyValueMap::makeComplexString: coding the string\n           -->"
+@@ -468,7 +468,7 @@ KeyValueMap::makeComplexString(const TQCString& orig)
+ bool
+ KeyValueMap::getRaw(const TQCString& key, TQCString& value) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<
+       "KeyValueMap::getRaw: trying to get raw value for key \"" << key << "\" ...\n";
+@@ -490,7 +490,7 @@ KeyValueMap::getRaw(const TQCString& key, TQCString& value) const
+ bool
+ KeyValueMap::insertRaw(const TQCString& key, const TQCString& value, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<
+       "KeyValueMap::insertRaw: inserting uncoded value "
+@@ -535,7 +535,7 @@ KeyValueMap::insertRaw(const TQCString& key, const TQCString& value, bool force)
+ bool
+ KeyValueMap::insert(const TQCString& key, const TQCString& value, bool force)
+ {
+-    register bool GUARD; GUARD=false;
++    bool GUARD; GUARD=false;
+     // ###########################################################################
+     kdDebug(GUARD, KAB_KDEBUG_AREA) <<
+ 	"KeyValueMap::insert: inserting value\n           -->"
+@@ -556,7 +556,7 @@ KeyValueMap::insert(const TQCString& key, const TQCString& value, bool force)
+ bool
+ KeyValueMap::insertLine(TQCString line, bool force, bool relax, bool encode)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<
+       "KeyValueMap::insertLine: inserting line -->"<<line<<"<--.\n";
+@@ -611,7 +611,7 @@ KeyValueMap::insertLine(TQCString line, bool force, bool relax, bool encode)
+ bool
+ KeyValueMap::get(const TQCString& key, TQCString& value) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::get[string]: "
+       "trying to get value for key \"" << key << "\" ... " << endl;
+@@ -651,7 +651,7 @@ KeyValueMap::get(const TQCString& key, TQCString& value) const
+ bool
+ KeyValueMap::insert(const TQCString& key, const TQString& value, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   TQCString v;
+   // -----
+@@ -668,7 +668,7 @@ KeyValueMap::insert(const TQCString& key, const TQString& value, bool force)
+ bool
+ KeyValueMap::get(const TQCString& key, TQString& value) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::get[QString]: trying to get "
+       "a TQString value for key " << key << endl;
+@@ -694,7 +694,7 @@ KeyValueMap::get(const TQCString& key, TQString& value) const
+ bool
+ KeyValueMap::insert(const TQCString& key, const bool& value, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::insert[bool]: trying to "
+       "insert \""
+@@ -709,7 +709,7 @@ KeyValueMap::insert(const TQCString& key, const bool& value, bool force)
+ bool
+ KeyValueMap::get(const TQCString& key, bool& value) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::get[bool]: trying to get "
+       "BOOL value for key " << key << endl;
+@@ -750,7 +750,7 @@ KeyValueMap::get(const TQCString& key, bool& value) const
+ bool
+ KeyValueMap::insert(const TQCString& key, const long& value, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::insert[int]: trying to "
+       "insert value \""<<value << "\" for key\n           -->"<<key<<"<--.\n";
+@@ -764,7 +764,7 @@ KeyValueMap::insert(const TQCString& key, const long& value, bool force)
+ bool
+ KeyValueMap::get(const TQCString& key, long& value) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::get[int]: trying to get "
+       "INTEGER value for key " << key << endl;
+@@ -796,7 +796,7 @@ KeyValueMap::get(const TQCString& key, long& value) const
+ bool
+ KeyValueMap::insert(const TQCString& key, const list<long>& values, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::insert[long int list]: "
+ 	     "trying to insert long int list into map." << endl;
+@@ -823,7 +823,7 @@ KeyValueMap::insert(const TQCString& key, const list<long>& values, bool force)
+ bool
+ KeyValueMap::get(const TQCString& key, list<long>& values) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::get[long int list]: trying "
+       "to decode int list for key " << key << endl;
+@@ -871,7 +871,7 @@ KeyValueMap::get(const TQCString& key, list<long>& values) const
+ bool
+ KeyValueMap::insert(const TQCString& key, const list<int>& values, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::insert[int list]: trying to "
+ 	     "insert int list into map." << endl;
+@@ -898,7 +898,7 @@ KeyValueMap::insert(const TQCString& key, const list<int>& values, bool force)
+ bool
+ KeyValueMap::get(const TQCString& key, list<int>& values) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::get[int list]: trying to "
+       "decode int list for key " << key << endl;
+@@ -946,7 +946,7 @@ KeyValueMap::get(const TQCString& key, list<int>& values) const
+ bool
+ KeyValueMap::insert(const TQCString& key, const double& value, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA).form("KeyValueMap::insert[double]: trying to "
+ 				       "insert value \"%f\" for key\n           -->", value) << key << "<--.\n";
+@@ -960,7 +960,7 @@ KeyValueMap::insert(const TQCString& key, const double& value, bool force)
+ bool
+ KeyValueMap::get(const TQCString& key, double& value) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::get[double]: trying to get "
+       "FLOAT value for key " << key << endl;
+@@ -993,7 +993,7 @@ KeyValueMap::get(const TQCString& key, double& value) const
+ bool
+ KeyValueMap::get(const TQCString& key, list<TQCString>& values) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   kdDebug(!values.empty(), KAB_KDEBUG_AREA) << "KeyValueMap::get[string list]: "
+       "attention!\n             \"values\" list reference is not "
+       "empty!" << endl;
+@@ -1070,7 +1070,7 @@ KeyValueMap::get(const TQCString& key, list<TQCString>& values) const
+ bool
+ KeyValueMap::insert(const TQCString& key, const list<TQCString>& values, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::insert[string list]: "
+ 	     "coding string list." << endl;
+@@ -1102,7 +1102,7 @@ KeyValueMap::insert(const TQCString& key, const list<TQCString>& values, bool fo
+ bool
+ KeyValueMap::get(const TQCString& key, TQStrList& values) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   kdDebug(!values.isEmpty(), KAB_KDEBUG_AREA) << "KeyValueMap::get[QStrList]: "
+       "attention!\n             \"values\" list reference is not "
+       "empty!" << endl;
+@@ -1178,7 +1178,7 @@ KeyValueMap::get(const TQCString& key, TQStrList& values) const
+ bool
+ KeyValueMap::insert(const TQCString& key, const TQStrList& values, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<
+ 	     "KeyValueMap::insert[QStrList]: coding string list." << endl;
+@@ -1209,7 +1209,7 @@ KeyValueMap::insert(const TQCString& key, const TQStrList& values, bool force)
+ bool
+ KeyValueMap::get(const TQCString& key, TQStringList& values) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   kdDebug(!values.isEmpty(), KAB_KDEBUG_AREA) << "KeyValueMap::get"
+       "[QStringList]: attention!\n             \"values\" list reference"
+       " is not empty!" << endl;
+@@ -1242,7 +1242,7 @@ KeyValueMap::get(const TQCString& key, TQStringList& values) const
+ bool
+ KeyValueMap::insert(const TQCString& key, const TQStringList& values, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<
+ 	     "KeyValueMap::insert[QStringList]: coding TQStringList." << endl;
+@@ -1265,7 +1265,7 @@ KeyValueMap::insert(const TQCString& key, const TQStringList& values, bool force
+ bool
+ KeyValueMap::insert(const TQCString& key, const list<double>& values, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::insert[double list]: trying "
+ 	     "to insert double list into map." << endl;
+@@ -1293,7 +1293,7 @@ KeyValueMap::insert(const TQCString& key, const list<double>& values, bool force
+ bool
+ KeyValueMap::get(const TQCString& key, list<double>& values) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::get[double list]: trying to "
+       "decode double list for key " << key << endl;
+@@ -1336,7 +1336,7 @@ KeyValueMap::get(const TQCString& key, list<double>& values) const
+ bool
+ KeyValueMap::insert(const TQCString& key, const TQDate& value, bool force)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::insert[QDate]: trying to "
+ 	     "insert TQDate into map." << endl;
+@@ -1360,7 +1360,7 @@ KeyValueMap::insert(const TQCString& key, const TQDate& value, bool force)
+ bool
+ KeyValueMap::get(const TQCString& key, TQDate& date) const
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "KeyValueMap::get[QDate]: trying to decode"
+       " TQDate for key " << key << endl;
+@@ -1420,7 +1420,7 @@ Section::Section(const KeyValueMap& contents)
+ bool
+ Section::add(const TQCString& name)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "Section::add: adding section \""
+ 				  <<name<<"\" to "
+@@ -1455,7 +1455,7 @@ Section::add(const TQCString& name)
+ bool
+ Section::add(const TQCString& name, Section* section)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   if(sections.insert(StringSectionMap::value_type(name, section)).second)
+     {
+@@ -1473,7 +1473,7 @@ Section::add(const TQCString& name, Section* section)
+ bool
+ Section::find(const TQCString& name, StringSectionMap::iterator& result)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "Section::find: trying to get section "
+       "\""<<name<<"\" ... \n";
+@@ -1549,7 +1549,7 @@ Section::insertIndentSpace(TQTextStream& file, int level)
+ bool
+ Section::save(TQTextStream& stream, int level)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   StringSectionMap::iterator pos;
+   // -----
+@@ -1592,7 +1592,7 @@ Section::save(TQTextStream& stream, int level)
+ bool
+ Section::readSection(TQTextStream& file, bool finish)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "Section::readSection: reading section." << endl;
+   TQCString line;
+@@ -1661,7 +1661,7 @@ Section::readSection(TQTextStream& file, bool finish)
+ bool
+ Section::isBeginOfSection(TQCString line)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   line=line.simplifyWhiteSpace();
+   if(line.isEmpty() || line.length()<2)
+@@ -1687,7 +1687,7 @@ Section::isBeginOfSection(TQCString line)
+ bool
+ Section::isEndOfSection(TQCString line)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "Section::isEndOfSection: is "
+ 				  << line <<" the end of"
+@@ -1728,7 +1728,7 @@ Section::isEndOfSection(TQCString line)
+ TQCString
+ Section::nameOfSection(const TQCString& line)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ###########################################################################
+   int first=1, second;
+   TQCString temp;
+@@ -1849,7 +1849,7 @@ bool QConfigDB::invariant()
+ bool
+ QConfigDB::get(const list<TQCString>& key, KeyValueMap*& map)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "QConfigDB::get: trying to get keys ... " << endl;
+   Section* section=&top;
+@@ -1960,7 +1960,7 @@ QConfigDB::get(const TQCString& key, KeyValueMap*& map)
+ list<TQCString>
+ QConfigDB::stringToKeylist(const TQCString& desc)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "QConfigDB::stringToKeylist: parsing path " << desc << endl;
+   // ############################################################################
+   list<TQCString> key;
+@@ -2012,7 +2012,7 @@ QConfigDB::get(const TQCString& key, Section*& section)
+ bool
+ QConfigDB::get(const list<TQCString>& key, Section*& section)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "QConfigDB::get: searching section ... " << endl;
+   Section* temp=&top;
+@@ -2044,7 +2044,7 @@ QConfigDB::isRO()
+ int
+ QConfigDB::IsLocked(const TQString& file)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   TQString lockfile=file+".lock";
+   int pid=-1;
+@@ -2087,7 +2087,7 @@ QConfigDB::IsLocked(const TQString& file)
+ bool
+ QConfigDB::lock()
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   if(locked)
+     {
+@@ -2108,7 +2108,7 @@ QConfigDB::lock()
+ bool
+ QConfigDB::lock(const TQString& file)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "QConfigDB::lock: locking the file "
+ 				  << file << endl;
+@@ -2143,7 +2143,7 @@ QConfigDB::lock(const TQString& file)
+ bool
+ QConfigDB::unlock()
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "QConfigDB::unlock: unlocking the file "
+ 				  << filename << endl;
+@@ -2190,7 +2190,7 @@ QConfigDB::unlock()
+ void
+ QConfigDB::CleanLockFiles(int)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   list<TQString>::iterator pos;
+   // -----
+@@ -2236,7 +2236,7 @@ QConfigDB::watch(bool state)
+ bool
+ QConfigDB::CheckLockFile(const TQString& file)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "QConfigDB::CheckLockFile: called." << endl;
+   int pid;
+@@ -2270,7 +2270,7 @@ QConfigDB::CheckLockFile(const TQString& file)
+ bool
+ QConfigDB::checkFileChanged()
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   // kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "QConfigDB::checkFileChanged: called." << endl;
+   if(filename.isEmpty())
+@@ -2308,7 +2308,7 @@ QConfigDB::checkFileChanged()
+ bool
+ QConfigDB::storeFileAge()
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "QConfigDB::storeFileAge: called." << endl;
+   TQFileInfo file(filename);
+@@ -2329,7 +2329,7 @@ QConfigDB::storeFileAge()
+ bool
+ QConfigDB::setFileName(const TQString& filename_, bool mustexist, bool readonly_)
+ {
+-  register bool GUARD; GUARD=false;
++  bool GUARD; GUARD=false;
+   // ############################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<  "QConfigDB::setFileName: setting filename "
+       "to \""
+@@ -2443,7 +2443,7 @@ QConfigDB::fileName()
+ bool
+ QConfigDB::save(const char* header, bool force)
+ {
+-  register bool GUARD; GUARD=true;
++  bool GUARD; GUARD=true;
+   // ############################################################################
+   kdDebug(GUARD, KAB_KDEBUG_AREA) <<
+       "QConfigDB::save: saving database -->" << filename << "<--.\n";
+@@ -2522,7 +2522,7 @@ QConfigDB::save(const char* header, bool force)
+ bool
+ QConfigDB::load()
+ {
+-  register bool GUARD; GUARD=false ;
++  bool GUARD; GUARD=false ;
+   // ############################################################################
+   TQFile file(filename);
+   // -----
+diff --git a/kded/tde-applications.menu b/kded/tde-applications.menu
+index afd80225..e73a6fcf 100644
+--- a/kded/tde-applications.menu
++++ b/kded/tde-applications.menu
+@@ -359,6 +359,17 @@
+         </And>
+       </Include>
+     </Menu>
++    <Menu>
++      <Name>Logic Games</Name>
++      <Directory>tde-games-logic.directory</Directory>
++      <Include>
++        <And>
++          <Category>Game</Category>
++          <Category>LogicGame</Category>
++          <Not><Category>KDE</Category></Not>
++        </And>
++      </Include>
++    </Menu>
+     <Include>
+       <And>
+         <Category>Game</Category>
+@@ -369,6 +380,7 @@
+           <Category>X-TDE-KidsGame</Category>
+           <Category>KidsGame</Category>
+           <Category>StrategyGame</Category>
++          <Category>LogicGame</Category>
+           <Category>KDE</Category>
+         </Not>
+       </And>
+diff --git a/kdoctools/customization/entities/general.entities b/kdoctools/customization/entities/general.entities
+index eda9ac3f..fd9b0e65 100644
+--- a/kdoctools/customization/entities/general.entities
++++ b/kdoctools/customization/entities/general.entities
+@@ -425,6 +425,6 @@
+ 
+ <!ENTITY tde-team "The &tde; Team">
+ 
+-<!ENTITY tde-release-version "R14.0.7">
+-<!ENTITY tde-release-date "December 18, 2019">
+-<!ENTITY tde-copyright-date "2010-2019">
++<!ENTITY tde-release-version "R14.0.8 [DEVELOPMENT]">
++<!ENTITY tde-release-date "January 02, 2020">
++<!ENTITY tde-copyright-date "2010-2020">
+diff --git a/kjs/configure.in.in b/kjs/configure.in.in
+index fd23612e..1c4d3ac5 100644
+--- a/kjs/configure.in.in
++++ b/kjs/configure.in.in
+@@ -1,46 +1,6 @@
+ dnl KDE JavaScript specific configure tests
+ 
+ AC_CHECK_HEADERS(ieeefp.h float.h)
+-AC_CHECK_LIB(m, finite, [
+-  AC_DEFINE_UNQUOTED(HAVE_FUNC_FINITE, 1, [Define if you have finite])
+-])
+-AC_CHECK_LIB(m, _finite, [
+-  AC_DEFINE_UNQUOTED(HAVE_FUNC__FINITE, 1, [Define if you have _finite])
+-])
+-
+-dnl The C99 standard says that isinf and isnan are macros, but they might
+-dnl be functions on some platforms.
+-AC_DEFUN([AC_CHECK_ISNAN],
+-[
+-    ac_save_libs="$LIBS"
+-    LIBS="-lm"
+-    AC_MSG_CHECKING([for isnan with <math.h>])
+-    AC_TRY_LINK(
+-	[#include <math.h>
+-         float f;], [return isnan(f)],
+-	[AC_MSG_RESULT(yes)
+-	    AC_DEFINE([HAVE_FUNC_ISNAN], [1], [Define if you have isnan])],
+-	AC_MSG_RESULT(no)
+-    )
+-    LIBS="$ac_save_libs"
+-])
+-AC_DEFUN([AC_CHECK_ISINF],
+-[
+-    ac_save_libs="$LIBS"
+-    LIBS="-lm"
+-    AC_MSG_CHECKING([for isinf with <math.h>])
+-    AC_TRY_LINK(
+-	[#include <math.h>
+-         float f;], [return isinf(f)],
+-	[AC_MSG_RESULT(yes)
+-	    AC_DEFINE([HAVE_FUNC_ISINF], [1], [Define if you have isinf])],
+-	AC_MSG_RESULT(no)
+-    )
+-    LIBS="$ac_save_libs"
+-])
+-
+-AC_CHECK_ISNAN
+-AC_CHECK_ISINF
+ 
+ AC_DEFUN([AC_CHECK_PCREPOSIX],
+ [
+diff --git a/kjs/dtoa.cpp b/kjs/dtoa.cpp
+index 054450f1..c39fa5bc 100644
+--- a/kjs/dtoa.cpp
++++ b/kjs/dtoa.cpp
+@@ -610,9 +610,9 @@ s2b
+ 
+  static int
+ hi0bits
+-	(register ULong x)
++	(ULong x)
+ {
+-	register int k = 0;
++	int k = 0;
+ 
+ 	if (!(x & 0xffff0000)) {
+ 		k = 16;
+@@ -642,8 +642,8 @@ hi0bits
+ lo0bits
+ 	(ULong *y)
+ {
+-	register int k;
+-	register ULong x = *y;
++	int k;
++	ULong x = *y;
+ 
+ 	if (x & 7) {
+ 		if (x & 1)
+@@ -1035,7 +1035,7 @@ diff
+ ulp
+ 	(double dx)
+ {
+-	register Long L;
++	Long L;
+ 	U x, a;
+ 
+ 	dval(x) = dx;
+diff --git a/kjs/operations.cpp b/kjs/operations.cpp
+index 63c1e669..b9314ecc 100644
+--- a/kjs/operations.cpp
++++ b/kjs/operations.cpp
+@@ -25,7 +25,6 @@
+ #endif
+ #ifndef HAVE_FLOAT_H   /* just for !Windows */
+ #define HAVE_FLOAT_H 0
+-#define HAVE_FUNC__FINITE 0
+ #endif
+ 
+ #include <stdio.h>
+@@ -38,11 +37,9 @@
+ #include <sunmath.h>
+ #endif
+ 
+-#ifndef HAVE_FUNC_ISINF
+ #ifdef HAVE_IEEEFP_H
+ #include <ieeefp.h>
+ #endif
+-#endif /* HAVE_FUNC_ISINF */
+ 
+ #if HAVE_FLOAT_H
+ #include <float.h>
+@@ -55,52 +52,22 @@ using namespace KJS;
+ 
+ bool KJS::isNaN(double d)
+ {
+-#ifdef HAVE_FUNC_ISNAN
+   return isnan(d);
+-#elif defined HAVE_FLOAT_H
+-  return _isnan(d) != 0;
+-#else
+-  return !(d == d);
+-#endif
+ }
+ 
+ bool KJS::isInf(double d)
+ {
+-#if defined(HAVE_FUNC_ISINF)
+   return isinf(d);
+-#elif HAVE_FUNC_FINITE
+-  return finite(d) == 0 && d == d;
+-#elif HAVE_FUNC__FINITE
+-  return _finite(d) == 0 && d == d;
+-#else
+-  return false;
+-#endif
+ }
+ 
+ bool KJS::isPosInf(double d)
+ {
+-#if defined(HAVE_FUNC_ISINF)
+-  return (isinf(d) == 1);
+-#elif HAVE_FUNC_FINITE
+-  return finite(d) == 0 && d == d; // ### can we distinguish between + and - ?
+-#elif HAVE_FUNC__FINITE
+-  return _finite(d) == 0 && d == d; // ###
+-#else
+-  return false;
+-#endif
++  return ( isinf(d) && d > 0 );
+ }
+ 
+ bool KJS::isNegInf(double d)
+ {
+-#if defined(HAVE_FUNC_ISINF)
+-  return (isinf(d) == -1);
+-#elif HAVE_FUNC_FINITE
+-  return finite(d) == 0 && d == d; // ###
+-#elif HAVE_FUNC__FINITE
+-  return _finite(d) == 0 && d == d; // ###
+-#else
+-  return false;
+-#endif
++  return ( isinf(d) && d < 0 );
+ }
+ 
+ // ECMA 11.9.3
+diff --git a/mimetypes/application/pgp-keys.desktop b/mimetypes/application/pgp-keys.desktop
+index e08c5758..f80f390e 100644
+--- a/mimetypes/application/pgp-keys.desktop
++++ b/mimetypes/application/pgp-keys.desktop
+@@ -1,7 +1,7 @@
+ [Desktop Entry]
+ Type=MimeType
+ MimeType=application/pgp-keys
+-Icon=certificate
++Icon=encrypted
+ Patterns=*.pgp;*.gpg;*.asc
+ Comment=OpenPGP Key Bundle
+ Comment[af]=OpenPGP Sleutel Bundel
+diff --git a/mimetypes/application/pgp-signature.desktop b/mimetypes/application/pgp-signature.desktop
+index df787440..fea4187e 100644
+--- a/mimetypes/application/pgp-signature.desktop
++++ b/mimetypes/application/pgp-signature.desktop
+@@ -15,7 +15,7 @@ Comment[cs]=Samostatný podpis OpenPGP
+ Comment[csb]=Osóbny pòdpisënk OpenPGP
+ Comment[cy]=Llofnod OpenPGP wedi'i Ddatglymu
+ Comment[da]=Løsreven OpenPGP-underskrift
+-Comment[de]=Abgetrennte OpenPGP-Signatur
++Comment[de]=Abgetrennte OpenPGP-Unterschrift
+ Comment[el]=Αποσπασμένη υπογραφή OpenPGP
+ Comment[eo]=Deligita OpenPGP-subskribo
+ Comment[es]=Firma suelta OpenPGP
+diff --git a/mimetypes/application/pkcs10.desktop b/mimetypes/application/pkcs10.desktop
+index 66fb6f35..6d079948 100644
+--- a/mimetypes/application/pkcs10.desktop
++++ b/mimetypes/application/pkcs10.desktop
+@@ -1,7 +1,7 @@
+ [Desktop Entry]
+ Type=MimeType
+ MimeType=application/pkcs10
+-Icon=certificate
++Icon=encrypted
+ Patterns=*.p10;*.P10
+ Comment=S/MIME Certification Request
+ Comment[af]=S/MIME Sertifikaat Aanvraag
+diff --git a/mimetypes/application/pkcs7-signature.desktop b/mimetypes/application/pkcs7-signature.desktop
+index 613d03db..3a6380c5 100644
+--- a/mimetypes/application/pkcs7-signature.desktop
++++ b/mimetypes/application/pkcs7-signature.desktop
+@@ -1,7 +1,7 @@
+ [Desktop Entry]
+ Type=MimeType
+ MimeType=application/pkcs7-signature
+-Icon=certificate
++Icon=encrypted
+ Patterns=*.p7s;*.P7S
+ Comment=Detached S/MIME Signature
+ Comment[af]=Ontkoppel S/Mime Handtekening
+@@ -16,7 +16,7 @@ Comment[cs]=Samostatný podpis S/MIME
+ Comment[csb]=Osóbny pòdpisënk S/MIME
+ Comment[cy]=Llofnod S/MIME wedi'i Ddatglymu 
+ Comment[da]=Løsreven S/MIME-underskrift
+-Comment[de]=Abgetrennte S/MIME-Signatur
++Comment[de]=Abgetrennte S/MIME-Unterschrift
+ Comment[el]=Αποσπασμένη υπογραφή S/MIME
+ Comment[eo]=Deligita S/MIME-subskribo
+ Comment[es]=Firma suelta S/MIME
+diff --git a/mimetypes/application/x-font-bdf.desktop b/mimetypes/application/x-font-bdf.desktop
+index dde21706..6f283053 100644
+--- a/mimetypes/application/x-font-bdf.desktop
++++ b/mimetypes/application/x-font-bdf.desktop
+@@ -1,7 +1,7 @@
+ [Desktop Entry]
+ Type=MimeType
+ MimeType=application/x-font-bdf
+-Icon=font-x-generic_bitmap
++Icon=font-x-generic
+ Patterns=*.bdf;*.bdf.Z;*.bdf.gz;*.BDF;*.BDF.Z;*.BDF.gz
+ Comment=BDF Bitmap Font
+ Comment[af]=Bdf Biskaart Skrif tipe
+diff --git a/mimetypes/application/x-font-otf.desktop b/mimetypes/application/x-font-otf.desktop
+index 3d187f48..800a54fd 100644
+--- a/mimetypes/application/x-font-otf.desktop
++++ b/mimetypes/application/x-font-otf.desktop
+@@ -76,7 +76,7 @@ Comment[wa]=Fonte OpenType
+ Comment[zh_CN]=OpenType 字体
+ Comment[zh_HK]=OpenType 字型
+ Comment[zh_TW]=OpenType 字型
+-Icon=font-x-generic_truetype
++Icon=application-x-font-ttf
+ Type=MimeType
+ MimeType=application/x-font-otf
+ Patterns=*.otf;*.OTF
+diff --git a/mimetypes/application/x-font-pcf.desktop b/mimetypes/application/x-font-pcf.desktop
+index ced562ca..2d9b62d1 100644
+--- a/mimetypes/application/x-font-pcf.desktop
++++ b/mimetypes/application/x-font-pcf.desktop
+@@ -1,7 +1,7 @@
+ [Desktop Entry]
+ Type=MimeType
+ MimeType=application/x-font-pcf
+-Icon=font-x-generic_bitmap
++Icon=font-x-generic
+ Patterns=*.pcf;*.pcf.Z;*.pcf.gz;*.PCF;*.PCF.Z;*.PCF.gz
+ Comment=PCF Bitmap Font
+ Comment[af]=Pcf Biskaart Skrif tipe
+diff --git a/mimetypes/application/x-font-snf.desktop b/mimetypes/application/x-font-snf.desktop
+index 78bb4689..4ea6d2cc 100644
+--- a/mimetypes/application/x-font-snf.desktop
++++ b/mimetypes/application/x-font-snf.desktop
+@@ -1,7 +1,7 @@
+ [Desktop Entry]
+ Type=MimeType
+ MimeType=application/x-font-snf
+-Icon=font-x-generic_bitmap
++Icon=font-x-generic
+ Patterns=*.snf;*.snf.Z;*.snf.gz;*.SNF;*.SNF.Z;*.SNF.gz
+ Comment=SNF Bitmap Font
+ Comment[af]=Snf Biskaart Skrif tipe
+diff --git a/mimetypes/application/x-font-ttc.desktop b/mimetypes/application/x-font-ttc.desktop
+index 848b4028..a35cdd0d 100644
+--- a/mimetypes/application/x-font-ttc.desktop
++++ b/mimetypes/application/x-font-ttc.desktop
+@@ -75,7 +75,7 @@ Comment[wa]=Ramexhnêye di fontes TrueType
+ Comment[zh_CN]=Truetype 字体集合
+ Comment[zh_HK]=TrueType 字型集
+ Comment[zh_TW]=Truetype 字型集合
+-Icon=font-x-generic_truetype
++Icon=application-x-font-ttf
+ Type=MimeType
+ MimeType=application/x-font-ttc
+ Patterns=*.ttc;*.TTC
+diff --git a/mimetypes/application/x-font-ttf.desktop b/mimetypes/application/x-font-ttf.desktop
+index 12820c48..b10ee3b4 100644
+--- a/mimetypes/application/x-font-ttf.desktop
++++ b/mimetypes/application/x-font-ttf.desktop
+@@ -76,7 +76,7 @@ Comment[wa]=Fonte TrueType
+ Comment[zh_CN]=TrueType 字体
+ Comment[zh_HK]=TrueType 字型
+ Comment[zh_TW]=Truetype 字型
+-Icon=font-x-generic_truetype
++Icon=application-x-font-ttf
+ Type=MimeType
+ MimeType=application/x-font-ttf
+ Patterns=*.ttf;*.TTF
+diff --git a/mimetypes/application/x-font-type1.desktop b/mimetypes/application/x-font-type1.desktop
+index 5ba1335a..53eb8aee 100644
+--- a/mimetypes/application/x-font-type1.desktop
++++ b/mimetypes/application/x-font-type1.desktop
+@@ -1,7 +1,7 @@
+ [Desktop Entry]
+ Type=MimeType
+ MimeType=application/x-font-type1
+-Icon=font-x-generic_type1
++Icon=application-x-font-type1
+ Patterns=*.pfa;*.PFA;*.pfb;*.PFB
+ Comment=PostScript Type1 Font
+ Comment[af]=Postscript Tipe1 Skrif tipe
+diff --git a/mimetypes/application/x-java-applet.desktop b/mimetypes/application/x-java-applet.desktop
+index c6784aa9..7b2dc8ca 100644
+--- a/mimetypes/application/x-java-applet.desktop
++++ b/mimetypes/application/x-java-applet.desktop
+@@ -71,5 +71,5 @@ Comment[vi]=Tiểu dụng Java
+ Comment[wa]=Aplikete Java
+ Comment[zh_CN]=Java 小程序
+ MimeType=application/x-java-applet
+-Icon=java_jar
++Icon=text-x-java
+ X-TDE-AutoEmbed=true
+diff --git a/mimetypes/application/x-java-jnlp-file.desktop b/mimetypes/application/x-java-jnlp-file.desktop
+index 4a60276b..e87893e9 100644
+--- a/mimetypes/application/x-java-jnlp-file.desktop
++++ b/mimetypes/application/x-java-jnlp-file.desktop
+@@ -1,4 +1,5 @@
+ [Desktop Entry]
++Icon=text-x-java
+ Type=MimeType
+ Comment=Java Web Start application
+ Comment[af]=Java Web Begin program
+diff --git a/mimetypes/application/x-javascript.desktop b/mimetypes/application/x-javascript.desktop
+index 845ddb49..b06129a1 100644
+--- a/mimetypes/application/x-javascript.desktop
++++ b/mimetypes/application/x-javascript.desktop
+@@ -1,7 +1,7 @@
+ [Desktop Entry]
+ Type=MimeType
+ MimeType=application/x-javascript
+-Icon=javascript
++Icon=text-x-jsrc
+ Patterns=*.js;
+ Comment=JavaScript File
+ Comment[af]=JavaScript Lêer
+diff --git a/mimetypes/application/x-pkcs12.desktop b/mimetypes/application/x-pkcs12.desktop
+index 42e4c16d..e6bee676 100644
+--- a/mimetypes/application/x-pkcs12.desktop
++++ b/mimetypes/application/x-pkcs12.desktop
+@@ -1,7 +1,7 @@
+ [Desktop Entry]
+ Type=MimeType
+ MimeType=application/x-pkcs12
+-Icon=certificate
++Icon=encrypted
+ Patterns=*.p12;*.P12;*.pfx
+ Comment=PKCS#12 Certificate Bundle
+ Comment[af]=Pkcs#12 Sertifikaat Bundel
+diff --git a/mimetypes/application/x-python.desktop b/mimetypes/application/x-python.desktop
+index 02761c1c..79e9bb00 100644
+--- a/mimetypes/application/x-python.desktop
++++ b/mimetypes/application/x-python.desktop
+@@ -83,7 +83,7 @@ Comment[zh_TW]=Python 程式
+ Comment[zu]=Uhlelo lwamafayela lwe-Python
+ Type=MimeType
+ MimeType=application/x-python
+-Icon=text-x-src_py
++Icon=text-x-python
+ Patterns=*.py;
+ X-TDE-IsAlso=application/x-executable-script
+ 
+diff --git a/mimetypes/image/x-djvu-2.desktop b/mimetypes/image/x-djvu-2.desktop
+index 9ac9e6e2..e4f6f413 100644
+--- a/mimetypes/image/x-djvu-2.desktop
++++ b/mimetypes/image/x-djvu-2.desktop
+@@ -1,7 +1,7 @@
+ [Desktop Entry]
+ Type=MimeType
+ MimeType=image/x.djvu
+-Icon=djvu
++Icon=image-x-generic
+ Patterns=*.djvu;*.DJVU;*.djv;*.DJV;
+ Comment=DjVu Document
+ Comment[af]=DjVu Dokument
+diff --git a/mimetypes/image/x-djvu.desktop b/mimetypes/image/x-djvu.desktop
+index fac481bb..fd107979 100644
+--- a/mimetypes/image/x-djvu.desktop
++++ b/mimetypes/image/x-djvu.desktop
+@@ -1,7 +1,7 @@
+ [Desktop Entry]
+ Type=MimeType
+ MimeType=image/x-djvu
+-Icon=djvu
++Icon=image-x-generic
+ Patterns=*.djvu;*.DJVU;*.djv;*.DJV;
+ Comment=DjVu Document
+ Comment[af]=DjVu Dokument
+diff --git a/mimetypes/text/x-python.desktop b/mimetypes/text/x-python.desktop
+index 2055bd2e..ed528c73 100644
+--- a/mimetypes/text/x-python.desktop
++++ b/mimetypes/text/x-python.desktop
+@@ -83,7 +83,7 @@ Comment[zh_TW]=Python 程式
+ Comment[zu]=Uhlelo lwamafayela lwe-Python
+ Type=MimeType
+ MimeType=text/x-python
+-Icon=text-x-src_py
++Icon=text-x-python
+ # alias of application/x-python
+ X-TDE-IsAlso=application/x-python
+ 
+diff --git a/pics/crystalsvg/cr16-device-camera-photo.png b/pics/crystalsvg/cr16-device-camera-photo.png
+new file mode 100644
+index 00000000..c81e4875
+Binary files /dev/null and b/pics/crystalsvg/cr16-device-camera-photo.png differ
+diff --git a/pics/crystalsvg/cr22-device-camera-photo.png b/pics/crystalsvg/cr22-device-camera-photo.png
+new file mode 100644
+index 00000000..b35632bd
+Binary files /dev/null and b/pics/crystalsvg/cr22-device-camera-photo.png differ
+diff --git a/pics/crystalsvg/cr32-device-camera-photo.png b/pics/crystalsvg/cr32-device-camera-photo.png
+new file mode 100644
+index 00000000..ff8ed2d8
+Binary files /dev/null and b/pics/crystalsvg/cr32-device-camera-photo.png differ
+diff --git a/tdeabc/vcard/Enum.cpp b/tdeabc/vcard/Enum.cpp
+index bcb48f98..4811a095 100644
+--- a/tdeabc/vcard/Enum.cpp
++++ b/tdeabc/vcard/Enum.cpp
+@@ -433,12 +433,12 @@ static signed char b64dec[] = {
+ 	char *
+ VCARD::decodeBase64(const char * s, unsigned long srcl, unsigned long & len)
+ {
+-	register unsigned char c;
+-	register unsigned long e(0);
++	unsigned char c;
++	unsigned long e(0);
+ 	len = 0;
+ 	unsigned const char * src = (unsigned const char *)s;
+ 	char * ret = new char[srcl + (srcl / 4 + 1)];
+-	register char *d = ret;
++	char *d = ret;
+ 	while (srcl--) { // Critical loop
+ 		c = *src++;
+ 		int dec = b64dec[c];
+@@ -468,12 +468,12 @@ VCARD::decodeBase64(const char * s, unsigned long srcl, unsigned long & len)
+ 	char *
+ VCARD::encodeBase64(const char * src, unsigned long srcl, unsigned long & destl)
+ {
+-	register const unsigned char *s = (unsigned char *)src;
+-	register unsigned long i = ((srcl + 2) / 3) * 4;
++	const unsigned char *s = (unsigned char *)src;
++	unsigned long i = ((srcl + 2) / 3) * 4;
+ 	destl = i += 2 * ((i / 60) + 1);
+ 	i = 0;
+ 	char * ret = new char[destl];
+-	register unsigned char *d((unsigned char *)ret);
++	unsigned char *d((unsigned char *)ret);
+ 	while (srcl != 0) { // Critical loop
+ 		*d++ = B64[s[0] >> 2];
+ 		*d++ = B64[((s[0] << 4) + (--srcl == 0 ? 0 : s[1] >> 4)) & 0x3f];
+diff --git a/tdeabc/vcard/RToken.cpp b/tdeabc/vcard/RToken.cpp
+index 582a9e1c..0f791068 100644
+--- a/tdeabc/vcard/RToken.cpp
++++ b/tdeabc/vcard/RToken.cpp
+@@ -40,11 +40,11 @@ RTokenise(const char * str, const char * delim, TQStrList & l)
+ 	
+ 	char * len = (char *)(str + strlen(str));	// End of string.
+ 	
+-	register char * rstart = new char[strlen(str) + 1];
+-	register char * r = rstart;
++	char * rstart = new char[strlen(str) + 1];
++	char * r = rstart;
+ 	
+ 	
+-	register const char * i = str;	// Cursor.
++	const char * i = str;	// Cursor.
+ 	
+ 	while (i <= len) {
+ 
+diff --git a/tdecert/tdecertpart.desktop b/tdecert/tdecertpart.desktop
+index eeedd2de..223221a7 100644
+--- a/tdecert/tdecertpart.desktop
++++ b/tdecert/tdecertpart.desktop
+@@ -83,7 +83,7 @@ Comment[zh_HK]=可嵌入的個人證書管理工具
+ Comment[zh_TW]=可嵌入的個人認證管理工具
+ Comment[zu]=Imeneja Yesitifiketi Sobunini Oshuthekiwe
+ MimeType=application/x-pkcs12;application/x-x509-ca-cert;application/binary-certificate;
+-Icon=system-lock-screen
++Icon=encrypted
+ Name=KCertPart
+ Name[af]=Kcertpart
+ Name[bn]=কে-সার্ট-পার্ট
+diff --git a/tdecore/kbufferedio.cpp b/tdecore/kbufferedio.cpp
+index 2424c95e..7a080ec6 100644
+--- a/tdecore/kbufferedio.cpp
++++ b/tdecore/kbufferedio.cpp
+@@ -174,7 +174,7 @@ int TDEBufferedIO::unreadBlock(const char *data, uint len)
+ unsigned TDEBufferedIO::consumeReadBuffer(unsigned nbytes, char *destbuffer, bool discard)
+ {
+   {
+-    register unsigned u = readBufferSize();
++    unsigned u = readBufferSize();
+     if (nbytes > u)
+       nbytes = u;		// we can't consume more than there is
+   }
+diff --git a/tdecore/kentities.c b/tdecore/kentities.c
+index 141ed9db..8610b49e 100644
+--- a/tdecore/kentities.c
++++ b/tdecore/kentities.c
+@@ -73,7 +73,7 @@ inline
+ #endif
+ #endif
+ static unsigned int
+-hash_Entity (register const char *str, register unsigned int len)
++hash_Entity (const char *str, unsigned int len)
+ {
+   static const unsigned short asso_values[] =
+     {
+@@ -104,7 +104,7 @@ hash_Entity (register const char *str, register unsigned int len)
+       932, 932, 932, 932, 932, 932, 932, 932, 932, 932,
+       932, 932, 932, 932, 932, 932, 932
+     };
+-  register int hval = len;
++  int hval = len;
+ 
+   switch (hval)
+     {
+@@ -140,7 +140,7 @@ hash_Entity (register const char *str, register unsigned int len)
+ __inline
+ #endif
+ const struct entity *
+-kde_findEntity (register const char *str, register unsigned int len)
++kde_findEntity (const char *str, unsigned int len)
+ {
+   enum
+     {
+@@ -815,15 +815,15 @@ kde_findEntity (register const char *str, register unsigned int len)
+ 
+   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
+     {
+-      register int key = hash_Entity (str, len);
++      int key = hash_Entity (str, len);
+ 
+       if (key <= MAX_HASH_VALUE && key >= 0)
+         {
+-          register int index = lookup[key];
++          int index = lookup[key];
+ 
+           if (index >= 0)
+             {
+-              register const char *s = wordlist_Entity[index].name;
++              const char *s = wordlist_Entity[index].name;
+ 
+               if (*str == *s && !strncmp (str + 1, s + 1, len - 1) && s[len] == '\0')
+                 return &wordlist_Entity[index];
+diff --git a/tdecore/kextsock.cpp b/tdecore/kextsock.cpp
+index de173538..b9a6efb1 100644
+--- a/tdecore/kextsock.cpp
++++ b/tdecore/kextsock.cpp
+@@ -1509,7 +1509,7 @@ TQT_TQIO_LONG KExtendedSocket::tqwriteBlock(const char *data, TQT_TQIO_ULONG len
+ 
+       // LOCK BUFFER MUTEX
+ 
+-      register unsigned wsize = writeBufferSize();
++      unsigned wsize = writeBufferSize();
+       if (d->outMaxSize == (int)wsize) // (int) to get rid of annoying warning
+ 	{
+ 	  // buffer is full!
+diff --git a/tdecore/kmdcodec.cpp b/tdecore/kmdcodec.cpp
+index 48afddb0..b5d540f5 100644
+--- a/tdecore/kmdcodec.cpp
++++ b/tdecore/kmdcodec.cpp
+@@ -137,9 +137,9 @@ const unsigned int KCodecs::maxQPLineLength = 70;
+ 
+ /******************************** KCodecs ********************************/
+ // strchr(3) for broken systems.
+-static int rikFindChar(register const char * _s, const char c)
++static int rikFindChar(const char * _s, const char c)
+ {
+-  register const char * s = _s;
++  const char * s = _s;
+ 
+   while (true)
+   {
+diff --git a/tdecore/kstringhandler.cpp b/tdecore/kstringhandler.cpp
+index b19c5b87..5f73c6f7 100644
+--- a/tdecore/kstringhandler.cpp
++++ b/tdecore/kstringhandler.cpp
+@@ -567,7 +567,7 @@ TQString KStringHandler::obscure( const TQString &str )
+ bool KStringHandler::isUtf8(const char *buf)
+ {
+   int i, n;
+-  register unsigned char c;
++  unsigned char c;
+   bool gotone = false;
+   
+   if (!buf)
+diff --git a/tdecore/network/tdesocketdevice.cpp b/tdecore/network/tdesocketdevice.cpp
+index e4802bb7..b97ad0ba 100644
+--- a/tdecore/network/tdesocketdevice.cpp
++++ b/tdecore/network/tdesocketdevice.cpp
+@@ -39,7 +39,7 @@
+ #include <unistd.h>
+ 
+ #ifdef HAVE_POLL
+-# include <sys/poll.h>
++# include <poll.h>
+ #else
+ # ifdef HAVE_SYS_SELECT
+ #  include <sys/select.h>
+diff --git a/tdecore/svgicons/ksvgiconengine.h b/tdecore/svgicons/ksvgiconengine.h
+index 033064c0..9ed82519 100644
+--- a/tdecore/svgicons/ksvgiconengine.h
++++ b/tdecore/svgicons/ksvgiconengine.h
+@@ -23,8 +23,6 @@
+ 
+ #include <tdelibs_export.h>
+ 
+-/** \internal DO NOT USE! */
+-
+ class KSVGIconPainter;
+ 
+ class TDECORE_EXPORT KSVGIconEngine
+diff --git a/tdecore/tdeconfigbackend.cpp b/tdecore/tdeconfigbackend.cpp
+index 06939551..3dd45006 100644
+--- a/tdecore/tdeconfigbackend.cpp
++++ b/tdecore/tdeconfigbackend.cpp
+@@ -114,8 +114,8 @@ static TQCString printableToString(const char *str, int l)
+ 
+ static TQCString stringToPrintable(const TQCString& str){
+   TQCString result(str.length()*2); // Maximum 2x as long as source string
+-  register char *r = const_cast<TQCString&>(result).data();
+-  register char *s = const_cast<TQCString&>(str).data();
++  char *r = const_cast<TQCString&>(result).data();
++  char *s = const_cast<TQCString&>(str).data();
+ 
+   if (!s) return TQCString("");
+ 
+@@ -166,7 +166,7 @@ static TQCString stringToPrintable(const TQCString& str){
+ static TQCString decodeGroup(const char*s, int l)
+ {
+   TQCString result(l);
+-  register char *r = result.data();
++  char *r = result.data();
+ 
+   l--; // Correct for trailing \0
+   while(l)
+@@ -198,8 +198,8 @@ static TQCString encodeGroup(const TQCString &str)
+ {
+   int l = str.length();
+   TQCString result(l*2+1);
+-  register char *r = const_cast<TQCString&>(result).data();
+-  register char *s = const_cast<TQCString&>(str).data();
++  char *r = const_cast<TQCString&>(result).data();
++  char *s = const_cast<TQCString&>(str).data();
+   while(l)
+   {
+     if ((*s == '[') || (*s == ']'))
+diff --git a/tdecore/tdeconfigbase.cpp b/tdecore/tdeconfigbase.cpp
+index 944ca646..fc372841 100644
+--- a/tdecore/tdeconfigbase.cpp
++++ b/tdecore/tdeconfigbase.cpp
+@@ -28,6 +28,7 @@
+ #include <tqtextstream.h>
+ 
+ #include <tdeapplication.h>
++#include <tdeglobalsettings.h>
+ #include <tdeglobal.h>
+ #include <tdelocale.h>
+ #include <kcharsets.h>
+@@ -274,9 +275,9 @@ TQString TDEConfigBase::readEntry( const char *pKey,
+       // check for environment variables and make necessary translations
+       int nDollarPos = aValue.find( '$' );
+ 
+-      while( nDollarPos != -1 && nDollarPos+1 < static_cast<int>(aValue.length())) {
++      while( nDollarPos != -1 && (nDollarPos + 1) < static_cast<int>(aValue.length())) {
+         // there is at least one $
+-        if( (aValue)[nDollarPos+1] != '$' ) {
++        if( aValue[nDollarPos+1] != '$' ) {
+           uint nEndPos = nDollarPos+1;
+           // the next character is no $
+           TQString aVarName;
+@@ -294,17 +295,48 @@ TQString TDEConfigBase::readEntry( const char *pKey,
+                 nEndPos++;
+             aVarName = aValue.mid( nDollarPos+1, nEndPos-nDollarPos-1 );
+           }
+-          const char* pEnv = 0;
++          const char *pEnv = 0;
+           if (!aVarName.isEmpty())
+                pEnv = getenv( aVarName.ascii() );
+-          if( pEnv ) {
++          if (pEnv) {
+ 	    // !!! Sergey A. Sukiyazov <corwin@micom.don.ru> !!!
+ 	    // A environment variables may contain values in 8bit
+ 	    // locale cpecified encoding or in UTF8 encoding.
+ 	    aValue.replace( nDollarPos, nEndPos-nDollarPos, KStringHandler::from8Bit( pEnv ) );
+-          } else
++          }
++          else if (aVarName.length() > 8 && aVarName.startsWith("XDG_") && aVarName.endsWith("_DIR")) {
++            TQString result;
++            if (aVarName == "XDG_DESKTOP_DIR") {
++              result = TDEGlobalSettings::desktopPath();
++            }
++            else if (aVarName == "XDG_DOCUMENTS_DIR") {
++              result = TDEGlobalSettings::documentPath();
++            }
++            else if (aVarName == "XDG_DOWNLOAD_DIR") {
++              result = TDEGlobalSettings::downloadPath();
++            }
++            else if (aVarName == "XDG_MUSIC_DIR") {
++              result = TDEGlobalSettings::musicPath();
++            }
++            else if (aVarName == "XDG_PICTURES_DIR") {
++              result = TDEGlobalSettings::picturesPath();
++            }
++            else if (aVarName == "XDG_PUBLICSHARE_DIR") {
++              result = TDEGlobalSettings::publicSharePath();
++            }
++            else if (aVarName == "XDG_TEMPLATES_DIR") {
++              result = TDEGlobalSettings::templatesPath();
++            }
++            else if (aVarName == "XDG_VIDEOS_DIR") {
++              result = TDEGlobalSettings::videosPath();
++            }
++            aValue.replace( nDollarPos, nEndPos-nDollarPos, result );
++          }
++          else {
+             aValue.remove( nDollarPos, nEndPos-nDollarPos );
+-        } else {
++          }
++        }
++        else {
+           // remove one of the dollar signs
+           aValue.remove( nDollarPos, 1 );
+           nDollarPos++;
+diff --git a/tdecore/tdeglobalsettings.cpp b/tdecore/tdeglobalsettings.cpp
+index 3411fd1b..4941a9ed 100644
+--- a/tdecore/tdeglobalsettings.cpp
++++ b/tdecore/tdeglobalsettings.cpp
+@@ -66,6 +66,8 @@ TQString* TDEGlobalSettings::s_videosPath = 0;
+ TQString* TDEGlobalSettings::s_musicPath = 0;
+ TQString* TDEGlobalSettings::s_downloadPath = 0;
+ TQString* TDEGlobalSettings::s_picturesPath = 0;
++TQString* TDEGlobalSettings::s_templatesPath = 0;
++TQString* TDEGlobalSettings::s_publicSharePath = 0;
+ TQFont *TDEGlobalSettings::_generalFont = 0;
+ TQFont *TDEGlobalSettings::_fixedFont = 0;
+ TQFont *TDEGlobalSettings::_toolBarFont = 0;
+@@ -85,36 +87,106 @@ TQColor *TDEGlobalSettings::alternateColor = 0;
+ 
+ TDEGlobalSettings::KMouseSettings *TDEGlobalSettings::s_mouseSettings = 0;
+ 
+-// helper function for reading xdg user dirs: it is required in order to take 
+-// care of locale stuff
+-void readXdgUserDirs(TQString *desktop, TQString *documents, TQString *videos, TQString *music, TQString *download, TQString *pictures)
++// Helper function for reading xdg user dirs.
++// Returns sane values in case the user dir file can't be read
++static void readXdgUserDirs(TQString *desktop, TQString *documents, TQString *download, TQString *music,
++                     TQString *pictures, TQString *publicShare, TQString *templates, TQString *videos)
+ {
+-	TQFile f( TQDir::homeDirPath() + "/.config/user-dirs.dirs" );
++	TQFile dirsFile(TQDir::homeDirPath() + "/.config/user-dirs.dirs");
++	if (dirsFile.open(IO_ReadOnly))
++	{
++		// set the codec for the current locale
++		TQTextStream stream(&dirsFile);
++		stream.setCodec(TQTextCodec::codecForLocale());
++
++		while (!stream.atEnd())
++		{
++			TQString line = stream.readLine();
++			if (line.startsWith("XDG_DESKTOP_DIR="))
++			{
++				*desktop = line.remove("XDG_DESKTOP_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
++			}
++			else if (line.startsWith("XDG_DOCUMENTS_DIR="))
++			{
++				*documents = line.remove("XDG_DOCUMENTS_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
++			}
++			else if (line.startsWith("XDG_DOWNLOAD_DIR="))
++			{
++				*download = line.remove("XDG_DOWNLOAD_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
++			}
++			else if (line.startsWith("XDG_MUSIC_DIR="))
++			{
++				*music = line.remove("XDG_MUSIC_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
++			}
++			else if (line.startsWith("XDG_PICTURES_DIR="))
++			{
++				*pictures = line.remove("XDG_PICTURES_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
++			}
++			else if (line.startsWith("XDG_PUBLICSHARE_DIR="))
++			{
++				*publicShare = line.remove("XDG_PUBLICSHARE_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
++			}
++			else if (line.startsWith("XDG_TEMPLATES_DIR="))
++			{
++				*templates = line.remove("XDG_TEMPLATES_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
++			}
++			else if (line.startsWith("XDG_VIDEOS_DIR="))
++			{
++				*videos = line.remove("XDG_VIDEOS_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
++			}
++		}
++		dirsFile.close();
++	}
+ 
+-	if (!f.open(IO_ReadOnly))
+-		return;
++	// Use sane values in case some paths are missing
++	if (desktop->isEmpty())
++	{
++    *desktop = TQDir::homeDirPath() + "/" + i18n("Desktop") + "/";
++  }
++	if (documents->isEmpty())
++	{
++    *documents = TQDir::homeDirPath() + "/" + i18n("Documents") + "/";
++  }
++	if (download->isEmpty())
++	{
++    *download = TQDir::homeDirPath() + "/" + i18n("Downloads") + "/";
++  }
++	if (music->isEmpty())
++	{
++    *music = TQDir::homeDirPath() + "/" + i18n("Music") + "/";
++  }
++	if (pictures->isEmpty())
++	{
++    *pictures = TQDir::homeDirPath() + "/" + i18n("Pictures") + "/";
++  }
++	if (publicShare->isEmpty())
++	{
++    *publicShare = TQDir::homeDirPath() + "/" + i18n("Public") + "/";
++  }
++	if (templates->isEmpty())
++	{
++    *templates = TQDir::homeDirPath() + "/" + i18n("Templates") + "/";
++  }
++	if (videos->isEmpty())
++	{
++    *videos = TQDir::homeDirPath() + "/" + i18n("Videos") + "/";
++  }
++}
+ 
+-	// set the codec for the current locale
+-	TQTextStream s(&f);
+-	s.setCodec( TQTextCodec::codecForLocale() );
++static void checkAndCreateXdgFolder(const TQString &folder, const TQString &path, TDEConfig *config)
++{
++	bool pathOk = true;
++	if (!TQDir(path).exists())
++	{
++		if (!TDEStandardDirs::makeDir(path))
++		{
++			pathOk = false;
++		}
++	}
+ 
+-	TQString line = s.readLine();
+-	while (!line.isNull())
++	if (pathOk)
+ 	{
+-		if (line.startsWith("XDG_DESKTOP_DIR="))
+-			*desktop = line.remove("XDG_DESKTOP_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
+-		else if (line.startsWith("XDG_DOCUMENTS_DIR="))
+-			*documents = line.remove("XDG_DOCUMENTS_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
+-		else if (line.startsWith("XDG_MUSIC_DIR="))
+-			*videos = line.remove("XDG_MUSIC_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
+-		else if (line.startsWith("XDG_DOWNLOAD_DIR="))
+-			*download = line.remove("XDG_DOWNLOAD_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
+-		else if (line.startsWith("XDG_VIDEOS_DIR="))
+-			*music = line.remove("XDG_VIDEOS_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
+-		else if (line.startsWith("XDG_PICTURES_DIR="))
+-			*pictures = line.remove("XDG_PICTURES_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
+-
+-		line = s.readLine();
++		config->writePathEntry(folder, '"' + path + '"', true, false, false, false );
+ 	}
+ }
+ 
+@@ -518,53 +590,68 @@ TQFont TDEGlobalSettings::largeFont(const TQString &text)
+     return *_largeFont;
+ }
+ 
+-void TDEGlobalSettings::initStatic() // should be called initPaths(). Don't put anything else here.
++void TDEGlobalSettings::initStatic()
+ {
+-    if ( s_desktopPath != 0 )
+-        return;
++    // The method is primarily to ensure backward compatibility of the API.
++    // Don't put anything else here.
++    initPaths();
++}
++
++void TDEGlobalSettings::initPaths()
++{
++    if (s_desktopPath)
++    {
++      return;
++    }
+ 
+-    s_desktopPath = new TQString();
+     s_autostartPath = new TQString();
+     s_trashPath = new TQString();
++    s_desktopPath = new TQString();
+     s_documentPath = new TQString();
+-    s_videosPath = new TQString();
+-    s_musicPath = new TQString();
+     s_downloadPath = new TQString();
++    s_musicPath = new TQString();
+     s_picturesPath = new TQString();
+-
++    s_publicSharePath = new TQString();
++    s_templatesPath = new TQString();
++    s_videosPath = new TQString();
+ 
+     TDEConfigGroup g( TDEGlobal::config(), "Paths" );
+ 
+-    // Read desktop and documents path using XDG_USER_DIRS
+-    readXdgUserDirs(s_desktopPath, s_documentPath, s_musicPath, s_videosPath, s_downloadPath, s_picturesPath);
+-	
+-    if (s_desktopPath->isEmpty() == true) {
+-      *s_desktopPath = TQDir::homeDirPath() + "/Desktop/";
+-    }
++    // Read xdg folder paths
++    readXdgUserDirs(s_desktopPath, s_documentPath, s_downloadPath, s_musicPath,
++                    s_picturesPath, s_publicSharePath, s_templatesPath, s_videosPath);
+ 
+-    *s_desktopPath = TQDir::cleanDirPath( *s_desktopPath );
+-    if ( !s_desktopPath->endsWith("/") )
++    *s_desktopPath = TQDir::cleanDirPath(*s_desktopPath);
++    if (!s_desktopPath->endsWith("/"))
+       s_desktopPath->append('/');
+ 
+-    *s_documentPath = TQDir::cleanDirPath( *s_documentPath );
+-    if ( !s_documentPath->endsWith("/"))
++    *s_documentPath = TQDir::cleanDirPath(*s_documentPath);
++    if (!s_documentPath->endsWith("/"))
+       s_documentPath->append('/');
+ 
+-    *s_musicPath = TQDir::cleanDirPath( *s_musicPath );
+-    if ( !s_musicPath->endsWith("/"))
++    *s_downloadPath = TQDir::cleanDirPath(*s_downloadPath);
++    if (!s_downloadPath->endsWith("/"))
++      s_downloadPath->append('/');
++
++    *s_musicPath = TQDir::cleanDirPath(*s_musicPath);
++    if (!s_musicPath->endsWith("/"))
+       s_musicPath->append('/');
+ 
+-    *s_videosPath = TQDir::cleanDirPath( *s_videosPath );
+-    if ( !s_videosPath->endsWith("/"))
+-      s_videosPath->append('/');
++    *s_picturesPath = TQDir::cleanDirPath(*s_picturesPath);
++    if (!s_picturesPath->endsWith("/"))
++      s_picturesPath->append('/');
+ 
+-    *s_downloadPath = TQDir::cleanDirPath( *s_downloadPath );
+-    if ( !s_downloadPath->endsWith("/"))
+-      s_downloadPath->append('/');
++    *s_publicSharePath = TQDir::cleanDirPath(*s_publicSharePath);
++    if (!s_publicSharePath->endsWith("/"))
++      s_publicSharePath->append('/');
+ 
+-    *s_picturesPath = TQDir::cleanDirPath( *s_picturesPath );
+-    if ( !s_picturesPath->endsWith("/"))
+-      s_picturesPath->append('/');
++    *s_templatesPath = TQDir::cleanDirPath(*s_templatesPath);
++    if (!s_templatesPath->endsWith("/"))
++      s_templatesPath->append('/');
++
++    *s_videosPath = TQDir::cleanDirPath(*s_videosPath);
++    if (!s_videosPath->endsWith("/"))
++      s_videosPath->append('/');
+ 
+     // Trash Path - TODO remove in KDE4 (tdeio_trash can't use it for interoperability reasons)
+     *s_trashPath = *s_desktopPath + i18n("Trash") + "/";
+@@ -579,12 +666,30 @@ void TDEGlobalSettings::initStatic() // should be called initPaths(). Don't put
+       g.sync();
+     }
+ 
++    // Create folders if they do not exists.
++    TDEConfig *xdgconfig = new TDEConfig(TQDir::homeDirPath()+"/.config/user-dirs.dirs");
++    checkAndCreateXdgFolder("XDG_DESKTOP_DIR", *s_desktopPath, xdgconfig);
++    checkAndCreateXdgFolder("XDG_DOCUMENTS_DIR", *s_documentPath, xdgconfig);
++    checkAndCreateXdgFolder("XDG_DOWNLOAD_DIR", *s_downloadPath, xdgconfig);
++    checkAndCreateXdgFolder("XDG_MUSIC_DIR", *s_musicPath, xdgconfig);
++    checkAndCreateXdgFolder("XDG_PICTURES_DIR", *s_picturesPath, xdgconfig);
++    checkAndCreateXdgFolder("XDG_PUBLICSHARE_DIR", *s_publicSharePath, xdgconfig);
++    checkAndCreateXdgFolder("XDG_TEMPLATES_DIR", *s_templatesPath, xdgconfig);
++    checkAndCreateXdgFolder("XDG_VIDEOS_DIR", *s_videosPath, xdgconfig);
++    xdgconfig->sync();
++
+     // Autostart Path
+     *s_autostartPath = TDEGlobal::dirs()->localtdedir() + "Autostart/";
+     *s_autostartPath = g.readPathEntry( "Autostart" , *s_autostartPath);
+     *s_autostartPath = TQDir::cleanDirPath( *s_autostartPath );
+-    if ( !s_autostartPath->endsWith("/") )
++    if (!s_autostartPath->endsWith("/"))
++    {
+       s_autostartPath->append('/');
++    }
++    if (!TQDir(*s_autostartPath).exists())
++    {
++      TDEStandardDirs::makeDir(*s_autostartPath);
++    }
+ 
+     // Make sure this app gets the notifications about those paths
+     if (kapp)
+@@ -630,14 +735,18 @@ void TDEGlobalSettings::rereadPathSettings()
+     s_desktopPath = 0L;
+     delete s_documentPath;
+     s_documentPath = 0L;
+-    delete s_videosPath;
+-    s_videosPath = 0L;
+-    delete s_picturesPath;
+-    s_picturesPath = 0L;
+     delete s_downloadPath;
+     s_downloadPath = 0L;
+     delete s_musicPath;
+     s_musicPath = 0L;
++    delete s_picturesPath;
++    s_picturesPath = 0L;
++    delete s_publicSharePath;
++    s_publicSharePath = 0L;
++    delete s_templatesPath;
++    s_templatesPath = 0L;
++    delete s_videosPath;
++    s_videosPath = 0L;
+ }
+ 
+ TDEGlobalSettings::KMouseSettings & TDEGlobalSettings::mouseSettings()
+diff --git a/tdecore/tdeglobalsettings.h b/tdecore/tdeglobalsettings.h
+index 1570dc5a..74b0d77a 100644
+--- a/tdecore/tdeglobalsettings.h
++++ b/tdecore/tdeglobalsettings.h
+@@ -226,56 +226,68 @@ class TDECORE_EXPORT TDEGlobalSettings
+      */
+     static KMouseSettings & mouseSettings();
+ 
+-    /**
+-     * The path to the desktop directory of the current user.
+-     * @return the user's desktop directory
+-     */
+-    static TQString desktopPath() { initStatic(); return *s_desktopPath; }
+-
+     /**
+      * The path to the autostart directory of the current user.
+      * @return the path of the autostart directory
+      */
+-    static TQString autostartPath() { initStatic(); return *s_autostartPath; }
++    static TQString autostartPath() { initPaths(); return *s_autostartPath; }
+ 
+     /**
+      * DEPRECATED (starting from kde-3.4).
+      * This isn't where the trash contents is, anymore.
+      * Use TDEIO::trash() to trash files, "trash:/" to list the trash contents.
+      */
+-    static TQString trashPath() { initStatic(); return *s_trashPath; }
++    static TQString trashPath() { initPaths(); return *s_trashPath; }
+     // KDE4: if you want to remove the above, move it to kdesktop/init.cc, which needs
+     // to know the old location of the trash
+ 
++    /**
++     * The path to the desktop directory of the current user.
++     * @return the user's desktop directory
++     */
++    static TQString desktopPath() { initPaths(); return *s_desktopPath; }
++
+     /**
+      * The path where documents are stored of the current user.
+      * @return the path of the document directory
+      */
+-    static TQString documentPath() { initStatic(); return *s_documentPath; }
++    static TQString documentPath() { initPaths(); return *s_documentPath; }
+ 
+     /**
+      * The path where documents are stored of the current user.
+-     * @return the path of the videos directory
++     * @return the path of the downloads directory
+      */
+-    static TQString videosPath() { initStatic(); return *s_videosPath; }
++    static TQString downloadPath() { initPaths(); return *s_downloadPath; }
+ 
+     /**
+      * The path where documents are stored of the current user.
+      * @return the path of the music directory
+      */
+-    static TQString musicPath() { initStatic(); return *s_musicPath; }
++    static TQString musicPath() { initPaths(); return *s_musicPath; }
+ 
+     /**
+      * The path where documents are stored of the current user.
+-     * @return the path of the downloads directory
++     * @return the path of the pictures directory
+      */
+-    static TQString downloadPath() { initStatic(); return *s_downloadPath; }
++    static TQString picturesPath() { initPaths(); return *s_picturesPath; }
++
++    /**
++     * The path of the public share of the current user.
++     * @return the path of the public share directory
++     */
++    static TQString publicSharePath() { initPaths(); return *s_publicSharePath; }
++
++    /**
++     * The path where templates are stored of the current user.
++     * @return the path of the templates directory
++     */
++    static TQString templatesPath() { initPaths(); return *s_templatesPath; }
+ 
+     /**
+      * The path where documents are stored of the current user.
+-     * @return the path of the pictures directory
++     * @return the path of the videos directory
+      */
+-    static TQString picturesPath() { initStatic(); return *s_picturesPath; }
++    static TQString videosPath() { initPaths(); return *s_videosPath; }
+ 
+     /**
+      * The default color to use when highlighting toolbar buttons.
+@@ -558,9 +570,15 @@ class TDECORE_EXPORT TDEGlobalSettings
+ 
+ private:
+     /**
+-     * reads in all paths from kdeglobals
++     * global initialization - should only include paths initialization
++     *
++     * The method is primarily to ensure backward compatibility of the API.
+      */
+     static void initStatic();
++    /**
++     * reads in all paths from kdeglobals
++     */
++    static void initPaths();
+     /**
+      * initialize colors
+      */
+@@ -579,14 +597,16 @@ private:
+     static void rereadMouseSettings();
+ 
+ 
+-    static TQString* s_desktopPath;
+-    static TQString* s_autostartPath;
+-    static TQString* s_trashPath;
+-    static TQString* s_documentPath;
+-    static TQString* s_picturesPath;
+-    static TQString* s_downloadPath;
+-    static TQString* s_musicPath;
+-    static TQString* s_videosPath;
++    static TQString *s_desktopPath;
++    static TQString *s_autostartPath;
++    static TQString *s_trashPath;
++    static TQString *s_documentPath;
++    static TQString *s_picturesPath;
++    static TQString *s_templatesPath;
++    static TQString *s_publicSharePath;
++    static TQString *s_downloadPath;
++    static TQString *s_musicPath;
++    static TQString *s_videosPath;
+     static TQFont *_generalFont;
+     static TQFont *_fixedFont;
+     static TQFont *_toolBarFont;
+@@ -594,15 +614,15 @@ private:
+     static TQFont *_windowTitleFont;
+     static TQFont *_taskbarFont;
+     static TQFont *_largeFont;
+-    static TQColor * _trinity4Blue;
+-    static TQColor * _inactiveBackground;
+-    static TQColor * _inactiveForeground;
+-    static TQColor * _activeBackground;
+-    static TQColor * _buttonBackground;
+-    static TQColor * _selectBackground;
+-    static TQColor * _linkColor;
+-    static TQColor * _visitedLinkColor;
+-    static TQColor * alternateColor;
++    static TQColor *_trinity4Blue;
++    static TQColor *_inactiveBackground;
++    static TQColor *_inactiveForeground;
++    static TQColor *_activeBackground;
++    static TQColor *_buttonBackground;
++    static TQColor *_selectBackground;
++    static TQColor *_linkColor;
++    static TQColor *_visitedLinkColor;
++    static TQColor *alternateColor;
+     static KMouseSettings *s_mouseSettings;
+ 
+     friend class TDEApplication;
+diff --git a/tdecore/tdehw/hwlibdaemons/dbus/org.trinitydesktop.hardwarecontrol.conf b/tdecore/tdehw/hwlibdaemons/dbus/org.trinitydesktop.hardwarecontrol.conf
+index b897da36..c50a5144 100644
+--- a/tdecore/tdehw/hwlibdaemons/dbus/org.trinitydesktop.hardwarecontrol.conf
++++ b/tdecore/tdehw/hwlibdaemons/dbus/org.trinitydesktop.hardwarecontrol.conf
+@@ -37,6 +37,34 @@
+            send_interface="org.trinitydesktop.hardwarecontrol.Power"/>
+   </policy>
+ 
++  <policy group="plugdev">
++  <!-- Users who are members of the plugdev group are allowed access -->
++    <allow send_destination="org.trinitydesktop.hardwarecontrol"
++           send_interface="org.freedesktop.DBus.Introspectable"/>
++
++    <allow send_destination="org.trinitydesktop.hardwarecontrol"
++           send_interface="org.freedesktop.DBus.Properties"/>
++    <allow send_destination="org.trinitydesktop.hardwarecontrol.Brightness"
++           send_interface="org.freedesktop.DBus.Properties"/>
++    <allow send_destination="org.trinitydesktop.hardwarecontrol.CPUGovernor"
++           send_interface="org.freedesktop.DBus.Properties"/>
++    <allow send_destination="org.trinitydesktop.hardwarecontrol.InputEvents"
++           send_interface="org.freedesktop.DBus.Properties"/>
++    <allow send_destination="org.trinitydesktop.hardwarecontrol.Power"
++           send_interface="org.freedesktop.DBus.Properties"/>
++
++    <allow send_destination="org.trinitydesktop.hardwarecontrol"
++           send_interface="org.trinitydesktop.hardwarecontrol"/>
++    <allow send_destination="org.trinitydesktop.hardwarecontrol"
++           send_interface="org.trinitydesktop.hardwarecontrol.Brightness"/>
++    <allow send_destination="org.trinitydesktop.hardwarecontrol"
++           send_interface="org.trinitydesktop.hardwarecontrol.CPUGovernor"/>
++    <allow send_destination="org.trinitydesktop.hardwarecontrol"
++           send_interface="org.trinitydesktop.hardwarecontrol.InputEvents"/>
++    <allow send_destination="org.trinitydesktop.hardwarecontrol"
++           send_interface="org.trinitydesktop.hardwarecontrol.Power"/>
++  </policy>
++
+   <policy context="default">
+     <!-- Everyone else is denied access -->
+     <deny own="org.trinitydesktop.hardwarecontrol"/>
+diff --git a/tdecore/tdehw/networkbackends/network-manager/network-manager.cpp b/tdecore/tdehw/networkbackends/network-manager/network-manager.cpp
+index 2f11dd59..d15db3dc 100644
+--- a/tdecore/tdehw/networkbackends/network-manager/network-manager.cpp
++++ b/tdecore/tdehw/networkbackends/network-manager/network-manager.cpp
+@@ -1158,16 +1158,16 @@ TQString TDENetworkConnectionManager_BackendNM::deviceInterfaceString(TQString d
+ 					return (*it);
+ 				}
+ 			}
+-			return "";
++			return TQString::null;
+ 		}
+ 		else {
+ 			// Error!
+ 			PRINT_ERROR((error.name() + ": " + error.message()))
+-			return "";
++			return TQString::null;
+ 		}
+ 	}
+ 	else {
+-		return "";
++		return TQString::null;
+ 	}
+ }
+ 
+@@ -1251,7 +1251,7 @@ TDENetworkConnectionManager_BackendNM::TDENetworkConnectionManager_BackendNM(TDE
+ 	d->m_vpnProxy->setConnection(TQT_DBusConnection::systemBus());
+ 
+ 	d->m_dbusDeviceString = deviceInterfaceString(deviceNode());
+-	if (d->m_dbusDeviceString != "") {
++	if (!d->m_dbusDeviceString.isEmpty()) {
+ 		d->m_networkDeviceProxy = new DBus::DeviceProxy(NM_DBUS_SERVICE, d->m_dbusDeviceString);
+ 		d->m_networkDeviceProxy->setConnection(TQT_DBusConnection::systemBus());
+ 		if (deviceType() == TDENetworkDeviceType::WiFi) {
+@@ -1569,28 +1569,27 @@ TDENetworkDeviceType::TDENetworkDeviceType TDENetworkConnectionManager_BackendNM
+ 	if (!m_networkDevice) {
+ 		return TDENetworkDeviceType::BackendOnly;
+ 	}
+-	else {
+-		if (d->m_dbusDeviceString != "") {
+-			// Query NM for the device type
+-			TQT_DBusError error;
+-			d->m_dbusDeviceString = deviceInterfaceString(deviceNode());
+-			DBus::DeviceProxy genericDevice(NM_DBUS_SERVICE, d->m_dbusDeviceString);
+-			genericDevice.setConnection(TQT_DBusConnection::systemBus());
+-			TDENetworkDeviceType::TDENetworkDeviceType ret = nmDeviceTypeToTDEDeviceType(genericDevice.getDeviceType(error));
+-			if (error.isValid()) {
+-				// Error!
+-				PRINT_ERROR((error.name() + ": " + error.message()))
+-				return TDENetworkDeviceType::Other;
+-			}
+-			else {
+-				return ret;
+-			}
+-		}
+-		else {
++
++	// Query NM for the device type
++	TQT_DBusError error;
++	d->m_dbusDeviceString = deviceInterfaceString(deviceNode());
++	if (!d->m_dbusDeviceString.isEmpty()) {
++		DBus::DeviceProxy genericDevice(NM_DBUS_SERVICE, d->m_dbusDeviceString);
++		genericDevice.setConnection(TQT_DBusConnection::systemBus());
++		TDENetworkDeviceType::TDENetworkDeviceType ret = nmDeviceTypeToTDEDeviceType(genericDevice.getDeviceType(error));
++		if (error.isValid()) {
+ 			// Error!
+-			PRINT_ERROR(TQString("Invalid DBUS device string '%1'").arg(d->m_dbusDeviceString))
++			PRINT_ERROR((error.name() + ": " + error.message()))
+ 			return TDENetworkDeviceType::Other;
+ 		}
++		else {
++			return ret;
++		}
++	}
++	else {
++		// Error!
++		PRINT_ERROR(TQString("Invalid empty DBUS device string"))
++		return TDENetworkDeviceType::Other;
+ 	}
+ }
+ 
+@@ -4843,6 +4842,10 @@ TDENetworkConnectionStatus::TDENetworkConnectionStatus TDENetworkConnectionManag
+ 			else {
+ 				d->m_dbusDeviceString = deviceInterfaceString(deviceNode());
+ 			}
++			if (d->m_dbusDeviceString.isEmpty()) {
++				PRINT_ERROR(TQString("Invalid empty DBUS device string"))
++				return TDENetworkConnectionStatus::Invalid;
++			}
+ #ifndef USE_ASYNC_DBUS_CONNECTION_COMMAND_CALLS
+ 			TQT_DBusObjectPath active_connection;
+ 			ret = d->m_networkManagerProxy->ActivateConnection(existingConnection, TQT_DBusObjectPath(d->m_dbusDeviceString.ascii()), TQT_DBusObjectPath("/"), active_connection, error);
+@@ -5036,6 +5039,10 @@ TDENetworkConnectionStatus::TDENetworkConnectionStatus TDENetworkConnectionManag
+ 			else {
+ 				d->m_dbusDeviceString = deviceInterfaceString(deviceNode());
+ 			}
++			if (d->m_dbusDeviceString.isEmpty()) {
++				PRINT_ERROR(TQString("Invalid empty DBUS device string"))
++				return TDENetworkConnectionStatus::Invalid;
++			}
+ #ifndef USE_ASYNC_DBUS_CONNECTION_COMMAND_CALLS
+ 			ret = d->m_networkManagerProxy->DeactivateConnection(existingConnection, error);
+ 			if (ret && error.isValid()) {
+@@ -5322,20 +5329,22 @@ TDENetworkHWNeighborList* TDENetworkConnectionManager_BackendNM::siteSurvey() {
+ 	clearTDENetworkHWNeighborList();
+ 
+ 	if (myDeviceType == TDENetworkDeviceType::WiFi) {
+-		DBus::WiFiDeviceProxy wiFiDevice(NM_DBUS_SERVICE, d->m_dbusDeviceString);
+-		wiFiDevice.setConnection(TQT_DBusConnection::systemBus());
+-		// FIXME
+-		// Should call wiFiDevice.RequestScanAsync first to rescan all access points
+-		TQT_DBusObjectPathList accessPoints;
+-		ret = wiFiDevice.GetAccessPoints(accessPoints, error);
+-		if (ret) {
+-			TQT_DBusObjectPathList::iterator it;
+-			for (it = accessPoints.begin(); it != accessPoints.end(); ++it) {
+-				TDENetworkWiFiAPInfo* apInfo = getAccessPointDetails(TQString(*it));
+-				if (apInfo) {
+-					m_hwNeighborList->append(apInfo);
+-					// Ensure that this AP is monitored for changes
+-					d->internalProcessWiFiAccessPointAdded(*it);
++		if (!d->m_dbusDeviceString.isEmpty()) {
++			DBus::WiFiDeviceProxy wiFiDevice(NM_DBUS_SERVICE, d->m_dbusDeviceString);
++			wiFiDevice.setConnection(TQT_DBusConnection::systemBus());
++			// FIXME
++			// Should call wiFiDevice.RequestScanAsync first to rescan all access points
++			TQT_DBusObjectPathList accessPoints;
++			ret = wiFiDevice.GetAccessPoints(accessPoints, error);
++			if (ret) {
++				TQT_DBusObjectPathList::iterator it;
++				for (it = accessPoints.begin(); it != accessPoints.end(); ++it) {
++					TDENetworkWiFiAPInfo* apInfo = getAccessPointDetails(TQString(*it));
++					if (apInfo) {
++						m_hwNeighborList->append(apInfo);
++						// Ensure that this AP is monitored for changes
++						d->internalProcessWiFiAccessPointAdded(*it);
++					}
+ 				}
+ 			}
+ 		}
+diff --git a/tdecore/tdehw/tdebatterydevice.cpp b/tdecore/tdehw/tdebatterydevice.cpp
+index 781fb994..e220fa5a 100644
+--- a/tdecore/tdehw/tdebatterydevice.cpp
++++ b/tdecore/tdehw/tdebatterydevice.cpp
+@@ -21,7 +21,14 @@
+ 
+ #include "config.h"
+ 
+-TDEBatteryDevice::TDEBatteryDevice(TDEGenericDeviceType::TDEGenericDeviceType dt, TQString dn) : TDEGenericDevice(dt, dn) {
++TDEBatteryDevice::TDEBatteryDevice(TDEGenericDeviceType::TDEGenericDeviceType dt, TQString dn) :
++ m_currentVoltage(0), m_minimumVoltage(0), m_maximumVoltage(0), m_maximumDesignVoltage(0),
++ m_alarmEnergy(0), m_currentEnergy(0), m_maximumEnergy(0), m_maximumDesignEnergy(0),
++ m_dischargeRate(0), m_timeRemaining(0),
++ m_technology(TQString::null),
++ m_status(TDEBatteryStatus::Unknown),
++ m_installed(0),
++ TDEGenericDevice(dt, dn) {
+ }
+ 
+ TDEBatteryDevice::~TDEBatteryDevice() {
+diff --git a/tdecore/tdehw/tdeeventdevice.cpp b/tdecore/tdehw/tdeeventdevice.cpp
+index d8627d9b..88509b3a 100644
+--- a/tdecore/tdehw/tdeeventdevice.cpp
++++ b/tdecore/tdehw/tdeeventdevice.cpp
+@@ -367,6 +367,7 @@ void TDEEventDevice::eventReceived() {
+ 			emit keyPressed(ev.code, this);
+ 		}
+ 		if (ev.type == EV_SW) {
++			internalReadActiveSwitches();
+ 			emit switchChanged();
+ 		}
+ 	}
+diff --git a/tdecore/tdehw/tdehardwaredevices.cpp b/tdecore/tdehw/tdehardwaredevices.cpp
+index 8eafe96e..8ee62ca8 100644
+--- a/tdecore/tdehw/tdehardwaredevices.cpp
++++ b/tdecore/tdehw/tdehardwaredevices.cpp
+@@ -106,7 +106,7 @@ timespec diff(timespec start, timespec end)
+ 
+ // This routine is courtsey of an answer on "Stack Overflow"
+ // It takes an LSB-first int and makes it an MSB-first int (or vice versa)
+-unsigned int reverse_bits(register unsigned int x)
++unsigned int reverse_bits(unsigned int x)
+ {
+ 	x = (((x & 0xaaaaaaaa) >> 1) | ((x & 0x55555555) << 1));
+ 	x = (((x & 0xcccccccc) >> 2) | ((x & 0x33333333) << 2));
+@@ -669,8 +669,6 @@ void TDEHardwareDevices::processModifiedCPUs() {
+ 	time1 = time2;
+ #endif
+ 
+-	TDECPUDevice* firstCPU = NULL;
+-
+ 	// Read in other information from cpufreq, if available
+ 	for (processorNumber=0; processorNumber<processorCount; processorNumber++) {
+ 		cdevice = dynamic_cast<TDECPUDevice*>(findCPUBySystemPath(TQString("/sys/devices/system/cpu/cpu%1").arg(processorNumber)));
+@@ -685,79 +683,62 @@ void TDEHardwareDevices::processModifiedCPUs() {
+ 		TQStringList governorlist;
+ 		if (cpufreq_dir.exists()) {
+ 			TQString nodename;
+-			if ((processorNumber == 0) || (!firstCPU)) {
+-				// Remember the first CPU options so that we can reuse it later.
+-				firstCPU = cdevice;
+-
+-				nodename = cpufreq_dir.path();
+-				nodename.append("/scaling_governor");
+-				TQFile scalinggovernorfile(nodename);
+-				if (scalinggovernorfile.open(IO_ReadOnly)) {
+-					TQTextStream stream( &scalinggovernorfile );
+-					scalinggovernor = stream.readLine();
+-					scalinggovernorfile.close();
+-				}
+-				nodename = cpufreq_dir.path();
+-				nodename.append("/scaling_driver");
+-				TQFile scalingdriverfile(nodename);
+-				if (scalingdriverfile.open(IO_ReadOnly)) {
+-					TQTextStream stream( &scalingdriverfile );
+-					scalingdriver = stream.readLine();
+-					scalingdriverfile.close();
+-				}
+-				nodename = cpufreq_dir.path();
+-				nodename.append("/cpuinfo_min_freq");
+-				TQFile minfrequencyfile(nodename);
+-				if (minfrequencyfile.open(IO_ReadOnly)) {
+-					TQTextStream stream( &minfrequencyfile );
+-					minfrequency = stream.readLine().toDouble()/1000.0;
+-					minfrequencyfile.close();
+-				}
+-				nodename = cpufreq_dir.path();
+-				nodename.append("/cpuinfo_max_freq");
+-				TQFile maxfrequencyfile(nodename);
+-				if (maxfrequencyfile.open(IO_ReadOnly)) {
+-					TQTextStream stream( &maxfrequencyfile );
+-					maxfrequency = stream.readLine().toDouble()/1000.0;
+-					maxfrequencyfile.close();
+-				}
+-				nodename = cpufreq_dir.path();
+-				nodename.append("/cpuinfo_transition_latency");
+-				TQFile trlatencyfile(nodename);
+-				if (trlatencyfile.open(IO_ReadOnly)) {
+-					TQTextStream stream( &trlatencyfile );
+-					trlatency = stream.readLine().toDouble()/1000.0;
+-					trlatencyfile.close();
+-				}
+-				nodename = cpufreq_dir.path();
+-				nodename.append("/scaling_available_frequencies");
+-				TQFile availfreqsfile(nodename);
+-				if (availfreqsfile.open(IO_ReadOnly)) {
+-					TQTextStream stream( &availfreqsfile );
+-					frequencylist = TQStringList::split(" ", stream.readLine());
+-					availfreqsfile.close();
+-				}
+-				nodename = cpufreq_dir.path();
+-				nodename.append("/scaling_available_governors");
+-				TQFile availgvrnsfile(nodename);
+-				if (availgvrnsfile.open(IO_ReadOnly)) {
+-					TQTextStream stream( &availgvrnsfile );
+-					governorlist = TQStringList::split(" ", stream.readLine());
+-					availgvrnsfile.close();
+-				}
++			nodename = cpufreq_dir.path();
++			nodename.append("/scaling_governor");
++			TQFile scalinggovernorfile(nodename);
++			if (scalinggovernorfile.open(IO_ReadOnly)) {
++				TQTextStream stream( &scalinggovernorfile );
++				scalinggovernor = stream.readLine();
++				scalinggovernorfile.close();
+ 			}
+-			// Other CPU should have the same values as the first one. Simply copy them.
+-			else {
+-				scalinggovernor = firstCPU->governor();
+-				scalingdriver = firstCPU->scalingDriver();
+-				minfrequency = firstCPU->minFrequency();
+-				maxfrequency = firstCPU->maxFrequency();
+-				trlatency = firstCPU->transitionLatency();
+-				frequencylist = firstCPU->availableFrequencies();
+-				governorlist = firstCPU->availableGovernors();
++			nodename = cpufreq_dir.path();
++			nodename.append("/scaling_driver");
++			TQFile scalingdriverfile(nodename);
++			if (scalingdriverfile.open(IO_ReadOnly)) {
++				TQTextStream stream( &scalingdriverfile );
++				scalingdriver = stream.readLine();
++				scalingdriverfile.close();
++			}
++			nodename = cpufreq_dir.path();
++			nodename.append("/cpuinfo_min_freq");
++			TQFile minfrequencyfile(nodename);
++			if (minfrequencyfile.open(IO_ReadOnly)) {
++				TQTextStream stream( &minfrequencyfile );
++				minfrequency = stream.readLine().toDouble()/1000.0;
++				minfrequencyfile.close();
++			}
++			nodename = cpufreq_dir.path();
++			nodename.append("/cpuinfo_max_freq");
++			TQFile maxfrequencyfile(nodename);
++			if (maxfrequencyfile.open(IO_ReadOnly)) {
++				TQTextStream stream( &maxfrequencyfile );
++				maxfrequency = stream.readLine().toDouble()/1000.0;
++				maxfrequencyfile.close();
++			}
++			nodename = cpufreq_dir.path();
++			nodename.append("/cpuinfo_transition_latency");
++			TQFile trlatencyfile(nodename);
++			if (trlatencyfile.open(IO_ReadOnly)) {
++				TQTextStream stream( &trlatencyfile );
++				trlatency = stream.readLine().toDouble()/1000.0;
++				trlatencyfile.close();
++			}
++			nodename = cpufreq_dir.path();
++			nodename.append("/scaling_available_frequencies");
++			TQFile availfreqsfile(nodename);
++			if (availfreqsfile.open(IO_ReadOnly)) {
++				TQTextStream stream( &availfreqsfile );
++				frequencylist = TQStringList::split(" ", stream.readLine());
++				availfreqsfile.close();
++			}
++			nodename = cpufreq_dir.path();
++			nodename.append("/scaling_available_governors");
++			TQFile availgvrnsfile(nodename);
++			if (availgvrnsfile.open(IO_ReadOnly)) {
++				TQTextStream stream( &availgvrnsfile );
++				governorlist = TQStringList::split(" ", stream.readLine());
++				availgvrnsfile.close();
+ 			}
+-
+-			// The following data are different on each CPU
+ 			nodename = cpufreq_dir.path();
+ 			nodename.append("/affected_cpus");
+ 			TQFile tiedcpusfile(nodename);
+@@ -769,16 +750,29 @@ void TDEHardwareDevices::processModifiedCPUs() {
+ 
+ 			// We may already have the CPU Mhz information in '/proc/cpuinfo'
+ 			if (!have_frequency) {
++				bool cpufreq_have_frequency = false;
+ 				nodename = cpufreq_dir.path();
+-				nodename.append("/cpuinfo_cur_freq");
++				nodename.append("/scaling_cur_freq");
+ 				TQFile cpufreqfile(nodename);
+ 				if (cpufreqfile.open(IO_ReadOnly)) {
++					cpufreq_have_frequency = true;
++				}
++				else {
++					nodename = cpufreq_dir.path();
++					nodename.append("/cpuinfo_cur_freq");
++					cpufreqfile.setName(nodename);
++					if (cpufreqfile.open(IO_ReadOnly)) {
++						cpufreq_have_frequency = true;
++					}
++				}
++				if (cpufreq_have_frequency) {
+ 					TQTextStream stream( &cpufreqfile );
+-					if (cdevice) {
+-						cdevice->internalSetFrequency(stream.readLine().toDouble()/1000.0);
++					double cpuinfo_cur_freq = stream.readLine().toDouble()/1000.0;
++					if (cdevice && cdevice->frequency() != cpuinfo_cur_freq) {
++						modified = true;
++						cdevice->internalSetFrequency(cpuinfo_cur_freq);
+ 					}
+ 					cpufreqfile.close();
+-					have_frequency = true;
+ 				}
+ 			}
+ 
+@@ -2236,6 +2230,7 @@ TDEGenericDevice* TDEHardwareDevices::classifyUnknownDevice(udev_device* dev, TD
+ 		if (devicesubsystem == "power_supply") {
+ 			TQString powersupplyname(udev_device_get_property_value(dev, "POWER_SUPPLY_NAME"));
+ 			if ((devicedriver == "ac")
++				|| (devicedriver.contains("charger"))
+ 				|| (powersupplyname.upper().startsWith("AC"))) {
+ 				if (!device) device = new TDEMainsPowerDevice(TDEGenericDeviceType::PowerSupply);
+ 			}
+@@ -3028,13 +3023,31 @@ void TDEHardwareDevices::updateExistingDeviceInformation(TDEGenericDevice* exist
+ 		TQDir valuesdir(valuesnodename);
+ 		valuesdir.setFilter(TQDir::All);
+ 		TQString nodename;
++		double bdevice_capacity = 0;
++		double bdevice_voltage = 0;
++		int bdevice_time_to_empty = 0;
++		int bdevice_time_to_full = 0;
++		bool bdevice_has_energy = false;
++		bool bdevice_has_time_to_empty = false;
++		bool bdevice_has_time_to_full = false;
+ 		const TQFileInfoList *dirlist = valuesdir.entryInfoList();
+ 		if (dirlist) {
+ 			TQFileInfoListIterator valuesdirit(*dirlist);
+ 			TQFileInfo *dirfi;
++			// Get the voltage as first...
++			TQFile file( valuesnodename + "voltage_now" );
++			if ( file.open( IO_ReadOnly ) ) {
++				TQTextStream stream( &file );
++				TQString line;
++				line = stream.readLine();
++				bdevice_voltage = line.toDouble()/1000000.0;
++				bdevice->internalSetVoltage(bdevice_voltage);
++				file.close();
++			}
++			// ...and then the other values
+ 			while ( (dirfi = valuesdirit.current()) != 0 ) {
+ 				nodename = dirfi->fileName();
+-				TQFile file( valuesnodename + nodename );
++				file.setName( valuesnodename + nodename );
+ 				if ( file.open( IO_ReadOnly ) ) {
+ 					TQTextStream stream( &file );
+ 					TQString line;
+@@ -3042,14 +3055,37 @@ void TDEHardwareDevices::updateExistingDeviceInformation(TDEGenericDevice* exist
+ 					if (nodename == "alarm") {
+ 						bdevice->internalSetAlarmEnergy(line.toDouble()/1000000.0);
+ 					}
+-					else if (nodename == "charge_full" || nodename == "energy_full") {
++					else if (nodename == "capacity") {
++						bdevice_capacity = line.toDouble();
++					}
++					else if (nodename == "charge_full") {
+ 						bdevice->internalSetMaximumEnergy(line.toDouble()/1000000.0);
+ 					}
+-					else if (nodename == "charge_full_design" || nodename == "energy_full_design") {
++					else if (nodename == "energy_full") {
++						if (bdevice_voltage > 0) {
++							// Convert from mWh do Ah
++							bdevice->internalSetMaximumEnergy(line.toDouble()/1000000.0/bdevice_voltage);
++						}
++					}
++					else if (nodename == "charge_full_design") {
+ 						bdevice->internalSetMaximumDesignEnergy(line.toDouble()/1000000.0);
+ 					}
+-					else if (nodename == "charge_now" || nodename == "energy_now") {
++					else if (nodename == "energy_full_design") {
++						if (bdevice_voltage > 0) {
++							// Convert from mWh do Ah
++							bdevice->internalSetMaximumDesignEnergy(line.toDouble()/1000000.0/bdevice_voltage);
++						}
++					}
++					else if (nodename == "charge_now") {
+ 						bdevice->internalSetEnergy(line.toDouble()/1000000.0);
++						bdevice_has_energy = true;
++					}
++					else if (nodename == "energy_now") {
++						if (bdevice_voltage > 0) {
++							// Convert from mWh do Ah
++							bdevice->internalSetEnergy(line.toDouble()/1000000.0/bdevice_voltage);
++							bdevice_has_energy = true;
++						}
+ 					}
+ 					else if (nodename == "manufacturer") {
+ 						bdevice->internalSetVendorName(line.stripWhiteSpace());
+@@ -3057,9 +3093,15 @@ void TDEHardwareDevices::updateExistingDeviceInformation(TDEGenericDevice* exist
+ 					else if (nodename == "model_name") {
+ 						bdevice->internalSetVendorModel(line.stripWhiteSpace());
+ 					}
+-					else if (nodename == "power_now" || nodename == "current_now") {
++					else if (nodename == "current_now") {
+ 						bdevice->internalSetDischargeRate(line.toDouble()/1000000.0);
+ 					}
++					else if (nodename == "power_now") {
++						if (bdevice_voltage > 0) {
++							// Convert from mW do A
++							bdevice->internalSetDischargeRate(line.toDouble()/1000000.0/bdevice_voltage);
++						}
++					}
+ 					else if (nodename == "present") {
+ 						bdevice->internalSetInstalled(line.toInt());
+ 					}
+@@ -3072,28 +3114,50 @@ void TDEHardwareDevices::updateExistingDeviceInformation(TDEGenericDevice* exist
+ 					else if (nodename == "technology") {
+ 						bdevice->internalSetTechnology(line);
+ 					}
++					else if (nodename == "time_to_empty_now") {
++						// Convert from minutes to seconds
++						bdevice_time_to_empty = line.toDouble()*60;
++						bdevice_has_time_to_empty = true;
++					}
++					else if (nodename == "time_to_full_now") {
++						// Convert from minutes to seconds
++						bdevice_time_to_full = line.toDouble()*60;
++						bdevice_has_time_to_full = true;
++					}
+ 					else if (nodename == "voltage_min_design") {
+ 						bdevice->internalSetMinimumVoltage(line.toDouble()/1000000.0);
+ 					}
+-					else if (nodename == "voltage_now") {
+-						bdevice->internalSetVoltage(line.toDouble()/1000000.0);
+-					}
+ 					file.close();
+ 				}
+ 				++valuesdirit;
+ 			}
+ 		}
+ 
++		// Calculate current energy if missing
++		if (!bdevice_has_energy) {
++			bdevice->internalSetEnergy(bdevice_capacity*bdevice->maximumEnergy()/100);
++		}
++
+ 		// Calculate time remaining
+-		// Discharge/charge rate is in watt-hours
+-		// Energy is in watt-hours
++		// Discharge/charge rate is in amper
++		// Energy is in amper-hours
+ 		// Therefore, energy/rate = time in hours
+ 		// Convert to seconds...
+ 		if (bdevice->status() == TDEBatteryStatus::Charging) {
+-			bdevice->internalSetTimeRemaining(((bdevice->maximumEnergy()-bdevice->energy())/bdevice->dischargeRate())*60*60);
++			if (!bdevice_has_time_to_full && bdevice->dischargeRate() > 0) {
++				bdevice->internalSetTimeRemaining(((bdevice->maximumEnergy()-bdevice->energy())/bdevice->dischargeRate())*60*60);
++			}
++			else {
++				bdevice->internalSetTimeRemaining(bdevice_time_to_full);
++			}
+ 		}
+ 		else {
+-			bdevice->internalSetTimeRemaining((bdevice->energy()/bdevice->dischargeRate())*60*60);
++			if (!bdevice_has_time_to_empty && bdevice->dischargeRate() > 0) {
++				bdevice->internalSetTimeRemaining((bdevice->energy()/bdevice->dischargeRate())*60*60);
++			}
++			else {
++				bdevice->internalSetTimeRemaining(bdevice_time_to_empty);
++			}
+ 		}
+ 	}
+ 
+@@ -3368,13 +3432,19 @@ void TDEHardwareDevices::updateExistingDeviceInformation(TDEGenericDevice* exist
+ 	if (device->type() == TDEGenericDeviceType::Event) {
+ 		// Try to obtain as much type information about this event device as possible
+ 		TDEEventDevice* edevice = dynamic_cast<TDEEventDevice*>(device);
+-		if (edevice->systemPath().contains("PNP0C0D")) {
++		TDESwitchType::TDESwitchType edevice_switches = edevice->providedSwitches();
++		if (edevice->systemPath().contains("PNP0C0D")
++		    || (edevice_switches & TDESwitchType::Lid)) {
+ 			edevice->internalSetEventType(TDEEventDeviceType::ACPILidSwitch);
+ 		}
+-		else if (edevice->systemPath().contains("PNP0C0E") || edevice->systemPath().contains("/LNXSLPBN")) {
++		else if (edevice->systemPath().contains("PNP0C0E")
++			 || edevice->systemPath().contains("/LNXSLPBN")
++			 || (edevice_switches & TDESwitchType::SleepButton)) {
+ 			edevice->internalSetEventType(TDEEventDeviceType::ACPISleepButton);
+ 		}
+-		else if (edevice->systemPath().contains("PNP0C0C") || edevice->systemPath().contains("/LNXPWRBN")) {
++		else if (edevice->systemPath().contains("PNP0C0C")
++			 || edevice->systemPath().contains("/LNXPWRBN")
++			 || (edevice_switches & TDESwitchType::PowerButton)) {
+ 			edevice->internalSetEventType(TDEEventDeviceType::ACPIPowerButton);
+ 		}
+ 		else if (edevice->systemPath().contains("_acpi")) {
+diff --git a/tdecore/tdelocale.cpp b/tdecore/tdelocale.cpp
+index f841d737..2229418a 100644
+--- a/tdecore/tdelocale.cpp
++++ b/tdecore/tdelocale.cpp
+@@ -1976,7 +1976,7 @@ TQString TDELocale::formatDateTime(const TQDateTime &pDateTime,
+ 
+ TQString i18n(const char* text)
+ {
+-  register TDELocale *instance = TDEGlobal::locale();
++  TDELocale *instance = TDEGlobal::locale();
+   if (instance)
+     return instance->translate(text);
+   return TQString::fromUtf8(text);
+@@ -1984,7 +1984,7 @@ TQString i18n(const char* text)
+ 
+ TQString i18n(const char* index, const char *text)
+ {
+-  register TDELocale *instance = TDEGlobal::locale();
++  TDELocale *instance = TDEGlobal::locale();
+   if (instance)
+     return instance->translate(index, text);
+   return TQString::fromUtf8(text);
+@@ -1992,7 +1992,7 @@ TQString i18n(const char* index, const char *text)
+ 
+ TQString i18n(const char* singular, const char* plural, unsigned long n)
+ {
+-  register TDELocale *instance = TDEGlobal::locale();
++  TDELocale *instance = TDEGlobal::locale();
+   if (instance)
+     return instance->translate(singular, plural, n);
+   if (n == 1)
+diff --git a/tdecore/tdesycocadict.cpp b/tdecore/tdesycocadict.cpp
+index 702c163a..908ce817 100644
+--- a/tdecore/tdesycocadict.cpp
++++ b/tdecore/tdesycocadict.cpp
+@@ -182,7 +182,7 @@ uint
+ KSycocaDict::hashKey( const TQString &key)
+ {
+    int l = key.length();
+-   register uint h = 0;
++   uint h = 0;
+   
+    for(uint i = 0; i < mHashList.count(); i++)
+    {
+@@ -217,10 +217,10 @@ calcDiversity(KSycocaDictStringList *d, int pos, int sz)
+       pos = -pos-1;
+       for(string_entry *entry=d->first(); entry; entry = d->next())
+       {
+-	register int l = entry->length;
++	int l = entry->length;
+          if (pos < l && pos != 0)
+          {
+-           register uint hash = ((entry->hash * 13) + (entry->key[l-pos].cell() % 29)) & 0x3ffffff;
++           uint hash = ((entry->hash * 13) + (entry->key[l-pos].cell() % 29)) & 0x3ffffff;
+ 	   matrix[ hash % usz ] = true;
+          }
+       }
+@@ -232,7 +232,7 @@ calcDiversity(KSycocaDictStringList *d, int pos, int sz)
+       {
+          if (pos < entry->length)
+          {
+-            register uint hash = ((entry->hash * 13) + (entry->key[pos].cell() % 29)) & 0x3ffffff;
++            uint hash = ((entry->hash * 13) + (entry->key[pos].cell() % 29)) & 0x3ffffff;
+             matrix[ hash % usz ] = true;
+          }
+       }
+@@ -257,7 +257,7 @@ addDiversity(KSycocaDictStringList *d, int pos)
+       pos = -pos-1;
+       for(string_entry *entry=d->first(); entry; entry = d->next())
+       {
+-         register int l = entry->length;
++         int l = entry->length;
+          if (pos < l)
+             entry->hash = ((entry->hash * 13) + (entry->key[l-pos].cell() % 29)) & 0x3fffffff;
+       }
+@@ -306,7 +306,7 @@ KSycocaDict::save(TQDataStream &str)
+    // use "almost prime" number for sz (to calculate diversity) and later
+    // for the table size of big tables
+    // int sz = d->count()*5-1;
+-   register unsigned int sz = count()*4 + 1;
++   unsigned int sz = count()*4 + 1;
+    while(!(((sz % 3) && (sz % 5) && (sz % 7) && (sz % 11) && (sz % 13)))) sz+=2;
+ 
+    int maxDiv = 0;
+diff --git a/tdecore/tdeversion.h b/tdecore/tdeversion.h
+index c09fb67b..6d7716ef 100644
+--- a/tdecore/tdeversion.h
++++ b/tdecore/tdeversion.h
+@@ -32,10 +32,10 @@
+     A new FEATURE REVISION level always resets the BUG AND SECURITY PATCHLEVEL.
+     A new ABI version resets both the FEATURE REVISION and BUG AND SECURITY PATCH LEVEL.
+ */
+-#define TDE_VERSION_STRING "R14.0.7"
++#define TDE_VERSION_STRING "R14.0.8 [DEVELOPMENT]"
+ #define TDE_VERSION_MAJOR 14
+ #define TDE_VERSION_MINOR 0
+-#define TDE_VERSION_RELEASE 7
++#define TDE_VERSION_RELEASE 8
+ #define TDE_MAKE_VERSION( a,b,c ) (((a) << 16) | ((b) << 8) | (c))
+ 
+ #define TDE_VERSION \
+diff --git a/tdefx/kimageeffect.cpp b/tdefx/kimageeffect.cpp
+index 41bfd6d7..277e1cc7 100644
+--- a/tdefx/kimageeffect.cpp
++++ b/tdefx/kimageeffect.cpp
+@@ -136,7 +136,7 @@ TQImage KImageEffect::gradient(const TQSize &size, const TQColor &ca,
+       return image;
+     }
+ 
+-    register int x, y;
++    int x, y;
+ 
+     rDiff = (rcb = cb.red())   - (rca = ca.red());
+     gDiff = (gcb = cb.green()) - (gca = ca.green());
+@@ -147,9 +147,9 @@ TQImage KImageEffect::gradient(const TQSize &size, const TQColor &ca,
+         uint *p;
+         uint rgb;
+ 
+-        register int rl = rca << 16;
+-        register int gl = gca << 16;
+-        register int bl = bca << 16;
++        int rl = rca << 16;
++        int gl = gca << 16;
++        int bl = bca << 16;
+ 
+         if( eff == VerticalGradient ) {
+ 
+@@ -424,7 +424,7 @@ TQImage KImageEffect::unbalancedGradient(const TQSize &size, const TQColor &ca,
+       return image;
+     }
+ 
+-    register int x, y;
++    int x, y;
+     unsigned int *scanline;
+ 
+     rDiff = (rcb = cb.red())   - (rca = ca.red());
+@@ -949,7 +949,7 @@ TQImage& KImageEffect::modulate(TQImage &image, TQImage &modImage, bool reverse,
+     TQColor clr;
+     int mod=0;
+     unsigned int x1, x2, y1, y2;
+-    register int x, y;
++    int x, y;
+ 
+     // for image, we handle only depth 32
+     if (image.depth()<32) image = image.convertDepth(32);
+@@ -1280,12 +1280,12 @@ TQImage& KImageEffect::blend(const TQColor& clr, TQImage& dst, float opacity)
+         clr.rgb(&rcol, &gcol, &bcol);
+ 
+ #ifdef WORDS_BIGENDIAN   // ARGB (skip alpha)
+-        register unsigned char *data = (unsigned char *)dst.bits() + 1;
++        unsigned char *data = (unsigned char *)dst.bits() + 1;
+ #else                    // BGRA
+-        register unsigned char *data = (unsigned char *)dst.bits();
++        unsigned char *data = (unsigned char *)dst.bits();
+ #endif
+ 
+-        for (register int i=0; i<pixels; i++)
++        for (int i=0; i<pixels; i++)
+         {
+ #ifdef WORDS_BIGENDIAN
+             *data += (unsigned char)((rcol - *data) * opacity);
+@@ -1513,14 +1513,14 @@ TQImage& KImageEffect::blend(TQImage& src, TQImage& dst, float opacity)
+ 
+     {
+ #ifdef WORDS_BIGENDIAN   // ARGB (skip alpha)
+-        register unsigned char *data1 = (unsigned char *)dst.bits() + 1;
+-        register unsigned char *data2 = (unsigned char *)src.bits() + 1;
++        unsigned char *data1 = (unsigned char *)dst.bits() + 1;
++        unsigned char *data2 = (unsigned char *)src.bits() + 1;
+ #else                    // BGRA
+-        register unsigned char *data1 = (unsigned char *)dst.bits();
+-        register unsigned char *data2 = (unsigned char *)src.bits();
++        unsigned char *data1 = (unsigned char *)dst.bits();
++        unsigned char *data2 = (unsigned char *)src.bits();
+ #endif
+ 
+-        for (register int i=0; i<pixels; i++)
++        for (int i=0; i<pixels; i++)
+         {
+ #ifdef WORDS_BIGENDIAN
+             *data1 += (unsigned char)((*(data2++) - *data1) * opacity);
+@@ -1582,7 +1582,7 @@ TQImage& KImageEffect::blend(TQImage &image, float initial_intensity,
+         var = -var;
+     }
+ 
+-    register int x, y;
++    int x, y;
+ 
+     unsigned int *data =  (unsigned int *)image.bits();
+ 
+@@ -1790,7 +1790,7 @@ TQImage& KImageEffect::blend(TQImage &image1, TQImage &image2,
+     unsigned int x1, x2, x3, y1, y2, y3;
+     unsigned int a;
+ 
+-    register int x, y;
++    int x, y;
+ 
+     // for image1 and image2, we only handle depth 32
+     if (image1.depth()<32) image1 = image1.convertDepth(32);
+@@ -1884,7 +1884,7 @@ TQImage& KImageEffect::hash(TQImage &image, Lighting lite, unsigned int spacing)
+       return image;
+     }
+ 
+-    register int x, y;
++    int x, y;
+     unsigned int *data =  (unsigned int *)image.bits();
+     unsigned int ind;
+ 
+@@ -2142,9 +2142,9 @@ TQImage& KImageEffect::toGray(TQImage &img, bool fast)
+ 
+     if(fast){
+         if (img.depth() == 32) {
+-            register uchar * r(img.bits());
+-            register uchar * g(img.bits() + 1);
+-            register uchar * b(img.bits() + 2);
++            uchar * r(img.bits());
++            uchar * g(img.bits() + 1);
++            uchar * b(img.bits() + 2);
+ 
+             uchar * end(img.bits() + img.numBytes());
+ 
+@@ -2161,11 +2161,11 @@ TQImage& KImageEffect::toGray(TQImage &img, bool fast)
+         {
+             for (int i = 0; i < img.numColors(); i++)
+             {
+-                register uint r = tqRed(img.color(i));
+-                register uint g = tqGreen(img.color(i));
+-                register uint b = tqBlue(img.color(i));
++                uint r = tqRed(img.color(i));
++                uint g = tqGreen(img.color(i));
++                uint b = tqBlue(img.color(i));
+ 
+-                register uint gray = (((r + g) >> 1) + b) >> 1;
++                uint gray = (((r + g) >> 1) + b) >> 1;
+                 img.setColor(i, tqRgba(gray, gray, gray, tqAlpha(img.color(i))));
+             }
+         }
+@@ -2408,10 +2408,10 @@ bool KImageEffect::blend(
+ 
+   output = lower.copy();
+ 
+-  register uchar *i, *o;
+-  register int a;
+-  register int col;
+-  register int w = upper.width();
++  uchar *i, *o;
++  int a;
++  int col;
++  int w = upper.width();
+   int row(upper.height() - 1);
+ 
+   do {
+@@ -2490,10 +2490,10 @@ bool KImageEffect::blend(
+ //  output.setAlphaBuffer(true); // I should do some benchmarks to see if
+ 	// this is worth the effort
+ 
+-  register TQRgb *i, *o, *b;
++  TQRgb *i, *o, *b;
+ 
+-  register int a;
+-  register int j,k;
++  int a;
++  int j,k;
+   for (j=0; j<ch; j++)
+   {
+     b=reinterpret_cast<TQRgb *>(&const_cast<TQImage&>(lower).scanLine(y+j) [ (x+cw) << 2 ]);
+@@ -2549,9 +2549,9 @@ bool KImageEffect::blendOnLower(
+     if ( cw <= 0 || ch <= 0 ) return true;
+   }
+ 
+-  register uchar *i, *b;
+-  register int a;
+-  register int k;
++  uchar *i, *b;
++  int a;
++  int k;
+ 
+   for (int j=0; j<ch; j++)
+   {
+@@ -3102,7 +3102,7 @@ unsigned int KImageEffect::generateNoise(unsigned int pixel,
+         }
+     case PoissonNoise:
+         {
+-            register int
++            int
+                 i;
+ 
+             for (i=0; alpha > exp(-SigmaPoisson*pixel); i++)
+@@ -3709,7 +3709,7 @@ void KImageEffect::normalize(TQImage &image)
+     TQ_INT64 number_pixels;
+     int x, y;
+     unsigned int *p, *q;
+-    register long i;
++    long i;
+     unsigned long threshold_intensity;
+     unsigned char r, g, b, a;
+ 
+@@ -4016,7 +4016,7 @@ TQImage KImageEffect::edge(TQImage &image, double radius)
+ {
+     double *kernel;
+     int width;
+-    register long i;
++    long i;
+     TQImage dest;
+ 
+     if(radius == 50.0){
+@@ -4054,7 +4054,7 @@ TQImage KImageEffect::emboss(TQImage &image, double radius, double sigma)
+ {
+     double alpha, *kernel;
+     int j, width;
+-    register long i, u, v;
++    long i, u, v;
+     TQImage dest;
+ 
+     if(sigma == 0.0){
+@@ -4099,10 +4099,10 @@ void KImageEffect::blurScanLine(double *kernel, int width,
+                                 unsigned int *src, unsigned int *dest,
+                                 int columns)
+ {
+-    register double *p;
++    double *p;
+     unsigned int *q;
+-    register int x;
+-    register long i;
++    int x;
++    long i;
+     double red, green, blue, alpha;
+     double scale = 0.0;
+ 
+@@ -4239,7 +4239,7 @@ int KImageEffect::getBlurKernel(int width, double sigma, double **kernel)
+ {
+ #define KernelRank 3
+     double alpha, normalize;
+-    register long i;
++    long i;
+     int bias;
+ 
+     assert(sigma != 0.0);
+@@ -4352,8 +4352,8 @@ bool KImageEffect::convolveImage(TQImage *image, TQImage *dest,
+     long width;
+     double red, green, blue, alpha;
+     double normalize, *normal_kernel;
+-    register const double *k;
+-    register unsigned int *q;
++    const double *k;
++    unsigned int *q;
+     int x, y, mx, my, sx, sy;
+     long i;
+     int mcx, mcy;
+@@ -4425,7 +4425,7 @@ int KImageEffect::getOptimalKernelWidth(double radius, double sigma)
+ {
+     double normalize, value;
+     long width;
+-    register long u;
++    long u;
+ 
+     assert(sigma != 0.0);
+     if(radius > 0.0)
+@@ -4453,7 +4453,7 @@ TQImage KImageEffect::sharpen(TQImage &image, double radius, double sigma)
+ {
+     double alpha, normalize, *kernel;
+     int width;
+-    register long i, u, v;
++    long i, u, v;
+     TQImage dest;
+ 
+     if(sigma == 0.0){
+@@ -4957,12 +4957,12 @@ TQImage KImageEffect::convertToPremultipliedAlpha(TQImage input) {
+ 	int w = alphaImage.width();
+ 	int h = alphaImage.height();
+ 
+-	register int r;
+-	register int g;
+-	register int b;
+-	register int a;
+-	register float alpha_adjust;
+-	register TQRgb l;
++	int r;
++	int g;
++	int b;
++	int a;
++	float alpha_adjust;
++	TQRgb l;
+ 	TQRgb *ls;
+ 	for (int y = 0; y < h; ++y) {
+ 		ls = (TQRgb *)alphaImage.scanLine( y );
+diff --git a/tdefx/kpixmap.cpp b/tdefx/kpixmap.cpp
+index 75ae8656..8cc9e384 100644
+--- a/tdefx/kpixmap.cpp
++++ b/tdefx/kpixmap.cpp
+@@ -34,7 +34,7 @@
+ // Based on Qt's image conversion functions
+ static bool kdither_32_to_8( const TQImage *src, TQImage *dst )
+ {
+-    // register QRgb *p;
++    // TQRgb *p;
+     uchar  *b;
+     int	    y;
+ 	
+diff --git a/tdefx/kpixmapeffect.cpp b/tdefx/kpixmapeffect.cpp
+index c4bf04da..6e09c715 100644
+--- a/tdefx/kpixmapeffect.cpp
++++ b/tdefx/kpixmapeffect.cpp
+@@ -30,15 +30,15 @@ KPixmap& KPixmapEffect::gradient(KPixmap &pixmap, const TQColor &ca,
+         int rDiff, gDiff, bDiff;
+         int rca, gca, bca /*, rcb, gcb, bcb*/;
+ 
+-        register int x, y;
++        int x, y;
+ 
+         rDiff = (/*rcb = */ cb.red())   - (rca = ca.red());
+         gDiff = (/*gcb = */ cb.green()) - (gca = ca.green());
+         bDiff = (/*bcb = */ cb.blue())  - (bca = ca.blue());
+ 
+-        register int rl = rca << 16;
+-        register int gl = gca << 16;
+-        register int bl = bca << 16;
++        int rl = rca << 16;
++        int gl = gca << 16;
++        int bl = bca << 16;
+ 
+         int rcdelta = ((1<<16) / (eff == VerticalGradient ? pixmap.height() : pixmap.width())) * rDiff;
+         int gcdelta = ((1<<16) / (eff == VerticalGradient ? pixmap.height() : pixmap.width())) * gDiff;
+diff --git a/tdefx/tdestyle.cpp b/tdefx/tdestyle.cpp
+index 8e9fe40f..ded6a237 100644
+--- a/tdefx/tdestyle.cpp
++++ b/tdefx/tdestyle.cpp
+@@ -2031,11 +2031,11 @@ void TransparencyHandler::rightShadow(TQImage& dst)
+ 	// blend top-right corner.
+ 	int pixels = dst.width() * dst.height();
+ #ifdef WORDS_BIGENDIAN
+-	register unsigned char* data = dst.bits() + 1;	// Skip alpha
++	unsigned char* data = dst.bits() + 1;	// Skip alpha
+ #else
+-	register unsigned char* data = dst.bits();		// Skip alpha
++	unsigned char* data = dst.bits();		// Skip alpha
+ #endif
+-	for(register int i = 0; i < 16; i++) {
++	for(int i = 0; i < 16; i++) {
+ 		if (have_composite) {
+ 			data++;
+ 			data++;
+@@ -2051,8 +2051,8 @@ void TransparencyHandler::rightShadow(TQImage& dst)
+ 	}
+ 
+ 	pixels -= 32;	// tint right strip without rounded edges.
+-	register int c = 0;
+-	for(register int i = 0; i < pixels; i++) {
++	int c = 0;
++	for(int i = 0; i < pixels; i++) {
+ 		if (have_composite) {
+ 			data++;
+ 			data++;
+@@ -2070,7 +2070,7 @@ void TransparencyHandler::rightShadow(TQImage& dst)
+ 	}
+ 
+ 	// tint bottom edge
+-	for(register int i = 0; i < 16; i++) {
++	for(int i = 0; i < 16; i++) {
+ 		if (have_composite) {
+ 			data++;
+ 			data++;
+@@ -2099,15 +2099,15 @@ void TransparencyHandler::bottomShadow(TQImage& dst)
+ 	double* corner = const_cast<double*>(bottom_left_corner);
+ 
+ #ifdef WORDS_BIGENDIAN
+-	register unsigned char* data = dst.bits() + 1;	// Skip alpha
++	unsigned char* data = dst.bits() + 1;	// Skip alpha
+ #else
+-	register unsigned char* data = dst.bits();	// Skip alpha
++	unsigned char* data = dst.bits();	// Skip alpha
+ #endif
+ 
+ 	for(int y = 0; y < 4; y++)
+ 	{
+ 		// Bottom-left Corner
+-		for(register int x = 0; x < 4; x++) {
++		for(int x = 0; x < 4; x++) {
+ 			if (have_composite) {
+ 				data++;
+ 				data++;
+@@ -2124,7 +2124,7 @@ void TransparencyHandler::bottomShadow(TQImage& dst)
+ 		}
+ 
+ 		// Scanline
+-		for(register int x = 0; x < width; x++) {
++		for(int x = 0; x < width; x++) {
+ 			if (have_composite) {
+ 				data++;
+ 				data++;
+diff --git a/tdehtml/css/cssproperties.c b/tdehtml/css/cssproperties.c
+index bbaeb0d0..3e6341ab 100644
+--- a/tdehtml/css/cssproperties.c
++++ b/tdehtml/css/cssproperties.c
+@@ -39,7 +39,7 @@ struct props {
+     int id;
+ };
+ 
+-static const struct props * findProp (register const char *str, register unsigned int len);
++static const struct props * findProp (const char *str, unsigned int len);
+ /* maximum key range = 469, duplicates = 0 */
+ 
+ #ifdef __GNUC__
+@@ -50,7 +50,7 @@ inline
+ #endif
+ #endif
+ static unsigned int
+-hash_prop (register const char *str, register unsigned int len)
++hash_prop (const char *str, unsigned int len)
+ {
+   static const unsigned short asso_values[] =
+     {
+@@ -81,7 +81,7 @@ hash_prop (register const char *str, register unsigned int len)
+       472, 472, 472, 472, 472, 472, 472, 472, 472, 472,
+       472, 472, 472, 472, 472, 472
+     };
+-  register int hval = len;
++  int hval = len;
+ 
+   switch (hval)
+     {
+@@ -189,7 +189,7 @@ hash_prop (register const char *str, register unsigned int len)
+ __inline
+ #endif
+ const struct props *
+-findProp (register const char *str, register unsigned int len)
++findProp (const char *str, unsigned int len)
+ {
+   enum
+     {
+@@ -516,15 +516,15 @@ findProp (register const char *str, register unsigned int len)
+ 
+   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
+     {
+-      register int key = hash_prop (str, len);
++      int key = hash_prop (str, len);
+ 
+       if (key <= MAX_HASH_VALUE && key >= 0)
+         {
+-          register int index = lookup[key];
++          int index = lookup[key];
+ 
+           if (index >= 0)
+             {
+-              register const char *s = wordlist_prop[index].name;
++              const char *s = wordlist_prop[index].name;
+ 
+               if (*str == *s && !strncmp (str + 1, s + 1, len - 1) && s[len] == '\0')
+                 return &wordlist_prop[index];
+diff --git a/tdehtml/css/cssvalues.c b/tdehtml/css/cssvalues.c
+index 2bd3746e..af175349 100644
+--- a/tdehtml/css/cssvalues.c
++++ b/tdehtml/css/cssvalues.c
+@@ -39,7 +39,7 @@ struct css_value {
+     int id;
+ };
+ 
+-static const css_value* findValue (register const char *str, register unsigned int len);
++static const css_value* findValue (const char *str, unsigned int len);
+ /* maximum key range = 2876, duplicates = 0 */
+ 
+ #ifdef __GNUC__
+@@ -50,7 +50,7 @@ inline
+ #endif
+ #endif
+ static unsigned int
+-hash_val (register const char *str, register unsigned int len)
++hash_val (const char *str, unsigned int len)
+ {
+   static const unsigned short asso_values[] =
+     {
+@@ -81,7 +81,7 @@ hash_val (register const char *str, register unsigned int len)
+       2876, 2876, 2876, 2876, 2876, 2876, 2876, 2876, 2876, 2876,
+       2876, 2876, 2876, 2876, 2876, 2876, 2876
+     };
+-  register int hval = 0;
++  int hval = 0;
+ 
+   switch (len)
+     {
+@@ -177,7 +177,7 @@ hash_val (register const char *str, register unsigned int len)
+ __inline
+ #endif
+ const struct css_value *
+-findValue (register const char *str, register unsigned int len)
++findValue (const char *str, unsigned int len)
+ {
+   enum
+     {
+@@ -1036,15 +1036,15 @@ findValue (register const char *str, register unsigned int len)
+ 
+   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
+     {
+-      register int key = hash_val (str, len);
++      int key = hash_val (str, len);
+ 
+       if (key <= MAX_HASH_VALUE && key >= 0)
+         {
+-          register int index = lookup[key];
++          int index = lookup[key];
+ 
+           if (index >= 0)
+             {
+-              register const char *s = wordlist_value[index].name;
++              const char *s = wordlist_value[index].name;
+ 
+               if (*str == *s && !strncmp (str + 1, s + 1, len - 1) && s[len] == '\0')
+                 return &wordlist_value[index];
+diff --git a/tdehtml/css/makeprop b/tdehtml/css/makeprop
+index a1a30ac9..b01ed731 100644
+--- a/tdehtml/css/makeprop
++++ b/tdehtml/css/makeprop
+@@ -23,7 +23,7 @@
+ #
+ grep "^[^\#]" cssproperties.in > cssproperties.strip
+ 
+-echo -e '%{\n/* This file is automatically generated from cssproperties.in by makeprop, do not edit */\n/* Copyright 1999 W. Bastian */\n#include "cssproperties.h"\n%}\nstruct props {\n    const char *name;\n    int id;\n};\n\nstatic const struct props * findProp (register const char *str, register unsigned int len);\n\n%%' > cssproperties.gperf
++echo -e '%{\n/* This file is automatically generated from cssproperties.in by makeprop, do not edit */\n/* Copyright 1999 W. Bastian */\n#include "cssproperties.h"\n%}\nstruct props {\n    const char *name;\n    int id;\n};\n\nstatic const struct props * findProp (const char *str, unsigned int len);\n\n%%' > cssproperties.gperf
+ cat cssproperties.strip | awk '{ do { prop = $0; gsub("-", "_"); print prop ", CSS_PROP_" toupper($0) } while (getline) }' >> cssproperties.gperf
+ echo '%%' >> cssproperties.gperf
+ echo -e '/* This file is automatically generated from cssproperties.in by makeprop, do not edit */\n/* Copyright 1998 W. Bastian */\n\n#ifndef CSSPROPERTIES_H\n#define CSSPROPERTIES_H\n\nDOM::DOMString getPropertyName(unsigned short id) KDE_NO_EXPORT;\n' > cssproperties.h
+diff --git a/tdehtml/css/makevalues b/tdehtml/css/makevalues
+index 0f81f161..3ca0a82e 100755
+--- a/tdehtml/css/makevalues
++++ b/tdehtml/css/makevalues
+@@ -24,7 +24,7 @@
+ #
+ grep "^[^\#]" cssvalues.in > cssvalues.strip
+ 
+-echo -e '%{\n/* This file is automatically generated from cssvalues.in by makevalues, do not edit */\n/* Copyright 1999 W. Bastian */\n#include "cssvalues.h"\n%}\nstruct css_value {\n    const char *name;\n    int id;\n};\n\nstatic const css_value* findValue (register const char *str, register unsigned int len);\n\n%%' > cssvalues.gperf
++echo -e '%{\n/* This file is automatically generated from cssvalues.in by makevalues, do not edit */\n/* Copyright 1999 W. Bastian */\n#include "cssvalues.h"\n%}\nstruct css_value {\n    const char *name;\n    int id;\n};\n\nstatic const css_value* findValue (const char *str, unsigned int len);\n\n%%' > cssvalues.gperf
+ cat cssvalues.strip | awk '{ do { prop = $0; gsub("-", "_"); print prop ", CSS_VAL_" toupper($0) } while (getline) }' >> cssvalues.gperf
+ echo '%%' >> cssvalues.gperf
+ echo -e '/* This file is automatically generated from cssvalues.in by
+diff --git a/tdehtml/css/parser.cpp b/tdehtml/css/parser.cpp
+index 3e8ee89f..6fa18f17 100644
+--- a/tdehtml/css/parser.cpp
++++ b/tdehtml/css/parser.cpp
+@@ -385,7 +385,7 @@ union yyalloc
+ #   define YYCOPY(To, From, Count)		\
+       do					\
+ 	{					\
+-	  register YYSIZE_T yyi;		\
++	  YYSIZE_T yyi;		\
+ 	  for (yyi = 0; yyi < (Count); yyi++)	\
+ 	    (To)[yyi] = (From)[yyi];		\
+ 	}					\
+@@ -1122,7 +1122,7 @@ yystrlen (yystr)
+      const char *yystr;
+ #   endif
+ {
+-  register const char *yys = yystr;
++  const char *yys = yystr;
+ 
+   while (*yys++ != '\0')
+     continue;
+@@ -1147,8 +1147,8 @@ yystpcpy (yydest, yysrc)
+      const char *yysrc;
+ #   endif
+ {
+-  register char *yyd = yydest;
+-  register const char *yys = yysrc;
++  char *yyd = yydest;
++  const char *yys = yysrc;
+ 
+   while ((*yyd++ = *yys++) != '\0')
+     continue;
+@@ -1338,8 +1338,8 @@ YYSTYPE yylval;
+ /* Number of syntax errors so far.  */
+ int yynerrs;
+ 
+-  register int yystate;
+-  register int yyn;
++  int yystate;
++  int yyn;
+   int yyresult;
+   /* Number of tokens to shift before error messages enabled.  */
+   int yyerrstatus;
+@@ -1357,12 +1357,12 @@ int yynerrs;
+   /* The state stack.  */
+   short int yyssa[YYINITDEPTH];
+   short int *yyss = yyssa;
+-  register short int *yyssp;
++  short int *yyssp;
+ 
+   /* The semantic value stack.  */
+   YYSTYPE yyvsa[YYINITDEPTH];
+   YYSTYPE *yyvs = yyvsa;
+-  register YYSTYPE *yyvsp;
++  YYSTYPE *yyvsp;
+ 
+ 
+ 
+diff --git a/tdehtml/css/tokenizer.cpp b/tdehtml/css/tokenizer.cpp
+index 48fd174d..687cd4ba 100644
+--- a/tdehtml/css/tokenizer.cpp
++++ b/tdehtml/css/tokenizer.cpp
+@@ -592,9 +592,9 @@ static yyconst short int yy_chk[1695] =
+ 
+ YY_DECL
+ 	{
+-	register yy_state_type yy_current_state;
+-	register unsigned short *yy_cp, *yy_bp;
+-	register int yy_act;
++	yy_state_type yy_current_state;
++	unsigned short *yy_cp, *yy_bp;
++	int yy_act;
+ 
+ #line 25 "tokenizer.flex"
+ 
+@@ -617,7 +617,7 @@ YY_DECL
+ yy_match:
+ 		do
+ 			{
+-			register YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
++			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
+ 			if ( yy_accept[yy_current_state] )
+ 				{
+ 				yy_last_accepting_state = yy_current_state;
+diff --git a/tdehtml/html/doctypes.cpp b/tdehtml/html/doctypes.cpp
+index 332ad18f..adbefab8 100644
+--- a/tdehtml/html/doctypes.cpp
++++ b/tdehtml/html/doctypes.cpp
+@@ -51,7 +51,7 @@ inline
+ #endif
+ #endif
+ static unsigned int
+-hash (register const char *str, register unsigned int len)
++hash (const char *str, unsigned int len)
+ {
+   static const unsigned short asso_values[] =
+     {
+@@ -82,7 +82,7 @@ hash (register const char *str, register unsigned int len)
+       731, 731, 731, 731, 731, 731, 731, 731, 731, 731,
+       731, 731, 731, 731, 731, 731
+     };
+-  register int hval = len;
++  int hval = len;
+ 
+   switch (hval)
+     {
+@@ -334,7 +334,7 @@ hash (register const char *str, register unsigned int len)
+ __inline
+ #endif
+ const struct PubIDInfo *
+-findDoctypeEntry (register const char *str, register unsigned int len)
++findDoctypeEntry (const char *str, unsigned int len)
+ {
+   enum
+     {
+@@ -1160,11 +1160,11 @@ findDoctypeEntry (register const char *str, register unsigned int len)
+ 
+   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
+     {
+-      register int key = hash (str, len);
++      int key = hash (str, len);
+ 
+       if (key <= MAX_HASH_VALUE && key >= 0)
+         {
+-          register const char *s = wordlist[key].name;
++          const char *s = wordlist[key].name;
+ 
+           if (*str == *s && !strcmp (str + 1, s + 1))
+             return &wordlist[key];
+diff --git a/tdehtml/misc/htmlattrs.c b/tdehtml/misc/htmlattrs.c
+index 5ceaf351..e37f4c5c 100644
+--- a/tdehtml/misc/htmlattrs.c
++++ b/tdehtml/misc/htmlattrs.c
+@@ -57,7 +57,7 @@ inline
+ #endif
+ #endif
+ static unsigned int
+-hash_attr (register const char *str, register unsigned int len)
++hash_attr (const char *str, unsigned int len)
+ {
+   static const unsigned short asso_values[] =
+     {
+@@ -88,7 +88,7 @@ hash_attr (register const char *str, register unsigned int len)
+       577, 577, 577, 577, 577, 577, 577, 577, 577, 577,
+       577, 577, 577, 577, 577, 577, 577
+     };
+-  register int hval = len;
++  int hval = len;
+ 
+   switch (hval)
+     {
+@@ -831,19 +831,19 @@ inline
+ #endif
+ #endif
+ const struct attrs *
+-findAttr (register const char *str, register unsigned int len)
++findAttr (const char *str, unsigned int len)
+ {
+   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
+     {
+-      register int key = hash_attr (str, len);
++      int key = hash_attr (str, len);
+ 
+       if (key <= MAX_HASH_VALUE && key >= 0)
+         {
+-          register int index = lookup[key];
++          int index = lookup[key];
+ 
+           if (index >= 0)
+             {
+-              register const char *s = wordlist_attr[index].name + spool_attr;
++              const char *s = wordlist_attr[index].name + spool_attr;
+ 
+               if (*str == *s && !strncmp (str + 1, s + 1, len - 1) && s[len] == '\0')
+                 return &wordlist_attr[index];
+diff --git a/tdehtml/misc/htmltags.c b/tdehtml/misc/htmltags.c
+index 1342e62b..fa701fe6 100644
+--- a/tdehtml/misc/htmltags.c
++++ b/tdehtml/misc/htmltags.c
+@@ -48,7 +48,7 @@ inline
+ #endif
+ #endif
+ static unsigned int
+-hash_tag (register const char *str, register unsigned int len)
++hash_tag (const char *str, unsigned int len)
+ {
+   static const unsigned short asso_values[] =
+     {
+@@ -79,7 +79,7 @@ hash_tag (register const char *str, register unsigned int len)
+       346, 346, 346, 346, 346, 346, 346, 346, 346, 346,
+       346, 346, 346, 346, 346, 346, 346
+     };
+-  register int hval = len;
++  int hval = len;
+ 
+   switch (hval)
+     {
+@@ -338,7 +338,7 @@ static const struct spool_Tag_t spool_Tag_contents =
+ __inline
+ #endif
+ const struct tags *
+-findTag (register const char *str, register unsigned int len)
++findTag (const char *str, unsigned int len)
+ {
+   enum
+     {
+@@ -615,17 +615,17 @@ findTag (register const char *str, register unsigned int len)
+ 
+   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
+     {
+-      register int key = hash_tag (str, len);
++      int key = hash_tag (str, len);
+ 
+       if (key <= MAX_HASH_VALUE && key >= 0)
+         {
+-          register int index = lookup[key];
++          int index = lookup[key];
+ 
+           if (index >= 0)
+             {
+               if (len == lengthtable[index])
+                 {
+-                  register const char *s = wordlist_tag[index].name + spool_Tag;
++                  const char *s = wordlist_tag[index].name + spool_Tag;
+ 
+                   if (*str == *s && !memcmp (str + 1, s + 1, len - 1))
+                     return &wordlist_tag[index];
+diff --git a/tdeinit/setproctitle.cpp b/tdeinit/setproctitle.cpp
+index e6c85561..5d2570b3 100644
+--- a/tdeinit/setproctitle.cpp
++++ b/tdeinit/setproctitle.cpp
+@@ -136,7 +136,7 @@ char		*LastArgv = NULL;	/* end of argv */
+ void
+ tdeinit_initsetproctitle(int argc, char **argv, char **envp)
+ {
+-	register int i, envpsize = 0;
++	int i, envpsize = 0;
+ #if !defined(HAVE_NSGETENVIRON) || !defined(HAVE_CRT_EXTERNS_H)
+ 	extern char **environ;
+ #endif
+@@ -199,8 +199,8 @@ static void
+ setproctitle(const char *fmt, ...)
+ {
+ # if SPT_TYPE != SPT_NONE
+-	register char *p;
+-	register int i;
++	char *p;
++	int i;
+ 	SETPROC_STATIC char buf[SPT_BUFSIZE];
+ 	va_list ap;
+ #  if SPT_TYPE == SPT_PSTAT
+diff --git a/tdeinit/start_tdeinit.c b/tdeinit/start_tdeinit.c
+index e46aaa49..c4062ddb 100644
+--- a/tdeinit/start_tdeinit.c
++++ b/tdeinit/start_tdeinit.c
+@@ -19,6 +19,9 @@
+ 
+ #include <config.h>
+ 
++#include <sys/types.h>
++#include <sys/stat.h>
++
+ #include <errno.h>
+ #include <fcntl.h>
+ #include <signal.h>
+diff --git a/tdeio/kssl/kopenssl.cc b/tdeio/kssl/kopenssl.cc
+index 47f5ee3c..a009bd7e 100644
+--- a/tdeio/kssl/kopenssl.cc
++++ b/tdeio/kssl/kopenssl.cc
+@@ -2048,7 +2048,7 @@ X509_LOOKUP_TYPE KOpenSSLProxy::X509_OBJECT_get_type(const X509_OBJECT *a) {
+   return a->type;
+ #endif
+   kdWarning() << "X509_OBJECT_get_type not defined!" << endl;
+-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
++#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+   return X509_LU_NONE;
+ #else
+   return 0;
+@@ -2057,7 +2057,7 @@ X509_LOOKUP_TYPE KOpenSSLProxy::X509_OBJECT_get_type(const X509_OBJECT *a) {
+ 
+ X509* KOpenSSLProxy::X509_OBJECT_get0_X509(const X509_OBJECT *a) {
+   if (K_X509_OBJECT_get0_X509) return (K_X509_OBJECT_get0_X509)(a);
+-#if OPENSSL_VERSION_NUMBER < 0x10100000L
++#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+   return a->data.x509;
+ #endif
+   kdWarning() << "X509_OBJECT_get0_X509 not defined!" << endl;
+@@ -2067,7 +2067,7 @@ X509* KOpenSSLProxy::X509_OBJECT_get0_X509(const X509_OBJECT *a) {
+ 
+ ASN1_TIME* KOpenSSLProxy::X509_getm_notAfter(const X509 *x) {
+   if (K_X509_getm_notAfter) return (K_X509_getm_notAfter)(x);
+-#if OPENSSL_VERSION_NUMBER < 0x10100000L
++#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+   return X509_get_notAfter(x);
+ #endif
+   kdWarning() << "X509_get_notAfter not defined!" << endl;
+@@ -2076,7 +2076,7 @@ ASN1_TIME* KOpenSSLProxy::X509_getm_notAfter(const X509 *x) {
+ 
+ ASN1_TIME* KOpenSSLProxy::X509_getm_notBefore(const X509 *x) {
+   if (K_X509_getm_notBefore) return (K_X509_getm_notBefore)(x);
+-#if OPENSSL_VERSION_NUMBER < 0x10100000L
++#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+   return X509_get_notBefore(x);
+ #endif
+   kdWarning() << "X509_get_notBefore not defined!" << endl;
+diff --git a/tdeio/tdefile/kpropertiesdialog.cpp b/tdeio/tdefile/kpropertiesdialog.cpp
+index 0aaf2f40..ae8aae85 100644
+--- a/tdeio/tdefile/kpropertiesdialog.cpp
++++ b/tdeio/tdefile/kpropertiesdialog.cpp
+@@ -2630,13 +2630,7 @@ KURLPropsPlugin::KURLPropsPlugin( KPropertiesDialog *_props )
+ 
+   KFileItem * item = properties->item();
+ 
+-  if (item && item->mimetype() == "media/builtin-mydocuments") {
+-    URLStr = TQString::null;
+-    TDEConfig xdguserconfig( TQDir::homeDirPath()+"/.config/user-dirs.dirs" );
+-    URLEdit->setMode(KFile::Directory);
+-    URLEdit->setURL( xdguserconfig.readPathEntry( "XDG_DOCUMENTS_DIR", TQDir::homeDirPath() + "/Documents").remove(  "\"" ));
+-  }
+-  else if (item && item->mimetype().startsWith("media/builtin-")) {
++  if (item && item->mimetype().startsWith("media/builtin-")) {
+     URLEdit->setEnabled(false);
+   }
+ 
+@@ -2679,20 +2673,7 @@ void KURLPropsPlugin::applyChanges()
+   TQString path = properties->kurl().path();
+   KFileItem * item = properties->item();
+ 
+-  if (item && item->mimetype() == "media/builtin-mydocuments") {
+-    TDEConfig xdgconfig(TQDir::homeDirPath()+"/.config/user-dirs.dirs" );
+-    if (xdgconfig.isReadOnly()) {
+-      KMessageBox::sorry( 0, i18n("<qt>Could not save properties. You do not have "
+-				"sufficient access to write to <b>%1</b>.</qt>").arg(path));
+-      return;
+-    }
+-    else {
+-      xdgconfig.writePathEntry( "XDG_DOCUMENTS_DIR", '"'+ URLEdit->url() + '"', true, false, false, false );
+-      xdgconfig.sync();
+-      return;
+-    }
+-  }
+-  else if (item && item->mimetype().startsWith("media/builtin-")) {
++  if (item && item->mimetype().startsWith("media/builtin-")) {
+     return;
+   }
+ 
+diff --git a/tdeio/tdefile/kurlbar.cpp b/tdeio/tdefile/kurlbar.cpp
+index 64f5f4fb..3912aced 100644
+--- a/tdeio/tdefile/kurlbar.cpp
++++ b/tdeio/tdefile/kurlbar.cpp
+@@ -611,15 +611,6 @@ void KURLBar::readItem( int i, TDEConfig *config, bool applicationLocal )
+ 
+     TQString description = config->readEntry( TQString("Description_") + number ); 
+ 
+-    if (description.isEmpty() && url.protocol()=="beagle") {
+-        TDEIO::UDSEntry uds;
+-        const KURL kurl("beagle:?beagled-status");
+-        if (!TDEIO::NetAccess::stat(kurl, uds))
+-            return;
+-
+-        description = i18n("Desktop Search");
+-    }
+-
+     insertItem( url,
+                 description,
+                 applicationLocal,
+diff --git a/tdeio/tdefile/tdefiledialog.cpp b/tdeio/tdefile/tdefiledialog.cpp
+index 714d24ab..0f3f6994 100644
+--- a/tdeio/tdefile/tdefiledialog.cpp
++++ b/tdeio/tdefile/tdefiledialog.cpp
+@@ -1173,12 +1173,6 @@ void KFileDialog::urlEntered(const KURL& url)
+         d->pathCombo->setURL( url );
+     }
+ 
+-    if (url.protocol()=="beagle" && url.path()=="/") {
+-       d->pathCombo->setEditText("beagle:/<"+i18n("search term")+">");
+-       d->pathCombo->lineEdit()->setSelection(8,255);
+-       d->pathCombo->setFocus();
+-    }
+-
+     locationEdit->blockSignals( true );
+     locationEdit->setCurrentItem( 0 );
+     if ( d->keepLocation )
+diff --git a/tdeio/tdefile/tdefilespeedbar.cpp b/tdeio/tdefile/tdefilespeedbar.cpp
+index 3f84bbbc..066953f3 100644
+--- a/tdeio/tdefile/tdefilespeedbar.cpp
++++ b/tdeio/tdefile/tdefilespeedbar.cpp
+@@ -44,76 +44,27 @@ KFileSpeedBar::KFileSpeedBar( TQWidget *parent, const char *name )
+ 
+     if ( m_initializeSpeedbar )
+     {
+-        KURL u;
+-        u.setPath( TDEGlobalSettings::desktopPath() );
+-        insertItem( u, i18n("Desktop"), false );
+-
+-//TODO: win32
+-        if ((TDEGlobalSettings::documentPath() != (TQDir::homeDirPath()+"/")) &&
+-            TQDir(TDEGlobalSettings::documentPath()).exists())
++        insertItem(TQDir::homeDirPath(), i18n("Home Folder"), false, "folder_home");
++		insertItem(TDEGlobalSettings::desktopPath(), i18n("Desktop"), false, "desktop");
++		insertItem(TDEGlobalSettings::documentPath(), i18n("Documents"), false, "folder_wordprocessing");
++		insertItem(TDEGlobalSettings::downloadPath(), i18n( "Downloads" ), false, "folder_html");
++		insertItem(TDEGlobalSettings::musicPath(), i18n( "Music" ), false, "folder_sound");
++		insertItem(TDEGlobalSettings::picturesPath(), i18n( "Pictures" ), false, "folder_image");
++		insertItem(TDEGlobalSettings::publicSharePath(), i18n( "Public" ), false, "folder_open");
++		insertItem(TDEGlobalSettings::templatesPath(), i18n( "Templates" ), false, "folder_grey");
++		insertItem(TDEGlobalSettings::videosPath(), i18n( "Videos" ), false, "folder_video");
++
++        KURL u = "media:/";
++        if (KProtocolInfo::isKnownProtocol(u))
+         {
+-            u.setPath( TDEGlobalSettings::documentPath() );
+-            insertItem( u, i18n("Documents"), false, "folder_txt" );
++            insertItem(u, i18n("Storage Media"), false, KProtocolInfo::icon("media"));
+         }
+ 
+-        u.setPath( TQDir::homeDirPath() );
+-        insertItem( u, i18n("Home Folder"), false,
+-                               "folder_home" );
+-
+-        u = "media:/";
+-        if ( KProtocolInfo::isKnownProtocol( u ) )
+-            insertItem( u, i18n("Storage Media"), false,
+-                                   KProtocolInfo::icon( "media" ) );
+-
+-        if (  TQFile::exists(  TQDir::homeDirPath()+"/.config/user-dirs.dirs" ) )
++        u = "remote:/";
++        if (KProtocolInfo::isKnownProtocol(u))
+         {
+-			TQString download, music, pictures, videos, templates, publicShares;
+-
+-            TQFile f(  TQDir::homeDirPath()+"/.config/user-dirs.dirs" );
+-			if (!f.open(IO_ReadOnly))
+-				return;
+-
+-			TQTextStream s( &f );
+-			s.setCodec( TQTextCodec::codecForLocale() );
+-
+-			// read the xdg user dirs
+-			TQString line = s.readLine();
+-			while (!line.isNull())
+-			{
+-				if (line.startsWith("XDG_DOWNLOAD_DIR="))
+-					download = line.remove("XDG_DOWNLOAD_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
+-				else if (line.startsWith("XDG_MUSIC_DIR="))
+-					music = line.remove("XDG_MUSIC_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
+-				else if (line.startsWith("XDG_PICTURES_DIR="))
+-					pictures = line.remove("XDG_PICTURES_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
+-				else if (line.startsWith("XDG_VIDEOS_DIR="))
+-					videos = line.remove("XDG_VIDEOS_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
+-				else if (line.startsWith("XDG_TEMPLATES_DIR="))
+-					templates = line.remove("XDG_TEMPLATES_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
+-				else if (line.startsWith("XDG_PUBLICSHARES_DIR="))
+-					publicShares = line.remove("XDG_PUBLICSHARES_DIR=").remove("\"").replace("$HOME", TQDir::homeDirPath());
+-
+-				line = s.readLine();
+-			}
+-			// now add in the speedbar
+-			if (!download.isEmpty())
+-                insertItem( download, i18n( "Downloads" ), false, "folder_html" );
+-			if (!music.isEmpty())
+-                insertItem( music, i18n( "Music" ), false, "folder_sound" );
+-			if (!pictures.isEmpty())
+-                insertItem( pictures, i18n( "Pictures" ), false, "folder_image" );
+-			if (!videos.isEmpty())
+-                insertItem( videos, i18n( "Videos" ), false, "folder_video" );
+-			if (!templates.isEmpty())
+-                insertItem( templates, i18n( "Templates" ), false, "folder_video" );
+-			if (!publicShares.isEmpty())
+-                insertItem( publicShares, i18n( "Public" ), false, "folder_video" );
++            insertItem(u, i18n("Network Folders"), false, KProtocolInfo::icon("remote"));
+         }
+-        
+-        u = "remote:/";
+-        if ( KProtocolInfo::isKnownProtocol( u ) )
+-            insertItem( u, i18n("Network Folders"), false,
+-                                   KProtocolInfo::icon( "remote" ) );
+     }
+ }
+ 
+diff --git a/tdeio/tdeio/connection.cpp b/tdeio/tdeio/connection.cpp
+index fa316f56..9577ad53 100644
+--- a/tdeio/tdeio/connection.cpp
++++ b/tdeio/tdeio/connection.cpp
+@@ -27,7 +27,6 @@
+ #include <tqtimer.h>
+ 
+ #include <sys/types.h>
+-#include <sys/signal.h>
+ #include <sys/time.h>
+ 
+ #include <errno.h>
+diff --git a/tdeio/tdeio/krun.cpp b/tdeio/tdeio/krun.cpp
+index ccb63828..89c84952 100644
+--- a/tdeio/tdeio/krun.cpp
++++ b/tdeio/tdeio/krun.cpp
+@@ -931,26 +931,7 @@ void KRun::init()
+ 
+       while( nDollarPos != -1 && nDollarPos+1 < static_cast<int>(aValue.length())) {
+         // there is at least one $
+-        if( (aValue)[nDollarPos+1] == '(' ) {
+-          uint nEndPos = nDollarPos+1;
+-          // the next character is no $
+-          while ( (nEndPos <= aValue.length()) && (aValue[nEndPos]!=')') )
+-              nEndPos++;
+-          nEndPos++;
+-          TQString cmd = aValue.mid( nDollarPos+2, nEndPos-nDollarPos-3 );
+-
+-          TQString result;
+-          FILE *fs = popen(TQFile::encodeName(cmd).data(), "r");
+-          if (fs)
+-          {
+-             {
+-             TQTextStream ts(fs, IO_ReadOnly);
+-             result = ts.read().stripWhiteSpace();
+-             }
+-             pclose(fs);
+-          }
+-          aValue.replace( nDollarPos, nEndPos-nDollarPos, result );
+-        } else if( (aValue)[nDollarPos+1] != '$' ) {
++        if( (aValue)[nDollarPos+1] != '$' ) {
+           uint nEndPos = nDollarPos+1;
+           // the next character is no $
+           TQString aVarName;
+diff --git a/tdeio/tdeio/lex.c b/tdeio/tdeio/lex.c
+index 8e4ea0ea..f8d8c2bf 100644
+--- a/tdeio/tdeio/lex.c
++++ b/tdeio/tdeio/lex.c
+@@ -590,9 +590,9 @@ YY_MALLOC_DECL
+ 
+ YY_DECL
+ 	{
+-	register yy_state_type yy_current_state;
+-	register char *yy_cp, *yy_bp;
+-	register int yy_act;
++	yy_state_type yy_current_state;
++	char *yy_cp, *yy_bp;
++	int yy_act;
+ 
+ #line 21 "lex.l"
+ 
+@@ -639,7 +639,7 @@ YY_DECL
+ yy_match:
+ 		do
+ 			{
+-			register YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
++			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
+ 			if ( yy_accept[yy_current_state] )
+ 				{
+ 				yy_last_accepting_state = yy_current_state;
+@@ -949,9 +949,9 @@ case YY_STATE_EOF(INITIAL):
+ 
+ static int yy_get_next_buffer()
+ 	{
+-	register char *dest = yy_current_buffer->yy_ch_buf;
+-	register char *source = yytext_ptr;
+-	register int number_to_move, i;
++	char *dest = yy_current_buffer->yy_ch_buf;
++	char *source = yytext_ptr;
++	int number_to_move, i;
+ 	int ret_val;
+ 
+ 	if ( yy_c_buf_p > &yy_current_buffer->yy_ch_buf[yy_n_chars + 1] )
+@@ -1081,14 +1081,14 @@ static int yy_get_next_buffer()
+ 
+ static yy_state_type yy_get_previous_state()
+ 	{
+-	register yy_state_type yy_current_state;
+-	register char *yy_cp;
++	yy_state_type yy_current_state;
++	char *yy_cp;
+ 
+ 	yy_current_state = yy_start;
+ 
+ 	for ( yy_cp = yytext_ptr + YY_MORE_ADJ; yy_cp < yy_c_buf_p; ++yy_cp )
+ 		{
+-		register YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
++		YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
+ 		if ( yy_accept[yy_current_state] )
+ 			{
+ 			yy_last_accepting_state = yy_current_state;
+@@ -1120,10 +1120,10 @@ static yy_state_type yy_try_NUL_trans( yy_current_state )
+ yy_state_type yy_current_state;
+ #endif
+ 	{
+-	register int yy_is_jam;
+-	register char *yy_cp = yy_c_buf_p;
++	int yy_is_jam;
++	char *yy_cp = yy_c_buf_p;
+ 
+-	register YY_CHAR yy_c = 1;
++	YY_CHAR yy_c = 1;
+ 	if ( yy_accept[yy_current_state] )
+ 		{
+ 		yy_last_accepting_state = yy_current_state;
+@@ -1144,14 +1144,14 @@ yy_state_type yy_current_state;
+ 
+ #ifndef YY_NO_UNPUT
+ #ifdef YY_USE_PROTOS
+-static void yyunput( int c, register char *yy_bp )
++static void yyunput( int c, char *yy_bp )
+ #else
+ static void yyunput( c, yy_bp )
+ int c;
+-register char *yy_bp;
++char *yy_bp;
+ #endif
+ 	{
+-	register char *yy_cp = yy_c_buf_p;
++	char *yy_cp = yy_c_buf_p;
+ 
+ 	/* undo effects of setting up yytext */
+ 	*yy_cp = yy_hold_char;
+@@ -1159,10 +1159,10 @@ register char *yy_bp;
+ 	if ( yy_cp < yy_current_buffer->yy_ch_buf + 2 )
+ 		{ /* need to shift things up to make room */
+ 		/* +2 for EOB chars. */
+-		register int number_to_move = yy_n_chars + 2;
+-		register char *dest = &yy_current_buffer->yy_ch_buf[
++		int number_to_move = yy_n_chars + 2;
++		char *dest = &yy_current_buffer->yy_ch_buf[
+ 					yy_current_buffer->yy_buf_size + 2];
+-		register char *source =
++		char *source =
+ 				&yy_current_buffer->yy_ch_buf[number_to_move];
+ 
+ 		while ( source > yy_current_buffer->yy_ch_buf )
+@@ -1618,7 +1618,7 @@ yyconst char *s2;
+ int n;
+ #endif
+ 	{
+-	register int i;
++	int i;
+ 	for ( i = 0; i < n; ++i )
+ 		s1[i] = s2[i];
+ 	}
+@@ -1632,7 +1632,7 @@ static int yy_flex_strlen( s )
+ yyconst char *s;
+ #endif
+ 	{
+-	register int n;
++	int n;
+ 	for ( n = 0; s[n]; ++n )
+ 		;
+ 
+diff --git a/tdeio/tdeio/netaccess.cpp b/tdeio/tdeio/netaccess.cpp
+index 2867c3cf..132c87a5 100644
+--- a/tdeio/tdeio/netaccess.cpp
++++ b/tdeio/tdeio/netaccess.cpp
+@@ -343,7 +343,7 @@ bool NetAccess::statInternal( const KURL & url, int details, bool source,
+                               TQWidget* window )
+ {
+   bJobOK = true; // success unless further error occurs
+-  TDEIO::StatJob * job = TDEIO::stat( url, !url.isLocalFile() && !url.url().startsWith("beagle:?") );
++  TDEIO::StatJob * job = TDEIO::stat( url, !url.isLocalFile() );
+   job->setWindow (window);
+   job->setDetails( details );
+   job->setSide( source );
+diff --git a/tdeio/tdeio/yacc.c b/tdeio/tdeio/yacc.c
+index f69aa981..a4f61876 100644
+--- a/tdeio/tdeio/yacc.c
++++ b/tdeio/tdeio/yacc.c
+@@ -219,7 +219,7 @@ union yyalloc
+ #   define YYCOPY(To, From, Count)		\
+       do					\
+ 	{					\
+-	  register YYSIZE_T yyi;		\
++	  YYSIZE_T yyi;		\
+ 	  for (yyi = 0; yyi < (Count); yyi++)	\
+ 	    (To)[yyi] = (From)[yyi];		\
+ 	}					\
+@@ -694,7 +694,7 @@ yystrlen (yystr)
+      const char *yystr;
+ #   endif
+ {
+-  register const char *yys = yystr;
++  const char *yys = yystr;
+ 
+   while (*yys++ != '\0')
+     continue;
+@@ -719,8 +719,8 @@ yystpcpy (yydest, yysrc)
+      const char *yysrc;
+ #   endif
+ {
+-  register char *yyd = yydest;
+-  register const char *yys = yysrc;
++  char *yyd = yydest;
++  const char *yys = yysrc;
+ 
+   while ((*yyd++ = *yys++) != '\0')
+     continue;
+@@ -855,8 +855,8 @@ yyparse ()
+ #endif
+ {
+ 
+-  register int yystate;
+-  register int yyn;
++  int yystate;
++  int yyn;
+   int yyresult;
+   /* Number of tokens to shift before error messages enabled.  */
+   int yyerrstatus;
+@@ -874,12 +874,12 @@ yyparse ()
+   /* The state stack.  */
+   short int yyssa[YYINITDEPTH];
+   short int *yyss = yyssa;
+-  register short int *yyssp;
++  short int *yyssp;
+ 
+   /* The semantic value stack.  */
+   YYSTYPE yyvsa[YYINITDEPTH];
+   YYSTYPE *yyvs = yyvsa;
+-  register YYSTYPE *yyvsp;
++  YYSTYPE *yyvsp;
+ 
+ 
+ 
+diff --git a/tdeioslave/iso/libisofs/bswap.h b/tdeioslave/iso/libisofs/bswap.h
+index 95520c6e..bda19c09 100644
+--- a/tdeioslave/iso/libisofs/bswap.h
++++ b/tdeioslave/iso/libisofs/bswap.h
+@@ -39,7 +39,7 @@ inline static unsigned int ByteSwap32(unsigned int x)
+ 
+ inline static unsigned long long int ByteSwap64(unsigned long long int x)
+ {
+-  register union { __extension__ unsigned long long int __ll;
++  union { __extension__ unsigned long long int __ll;
+           unsigned int __l[2]; } __x;
+   asm("xchgl	%0,%1":
+       "=r"(__x.__l[0]),"=r"(__x.__l[1]):
+diff --git a/tdeioslave/iso/libisofs/isofs.c b/tdeioslave/iso/libisofs/isofs.c
+index f1db4427..58d23eba 100644
+--- a/tdeioslave/iso/libisofs/isofs.c
++++ b/tdeioslave/iso/libisofs/isofs.c
+@@ -164,7 +164,7 @@ int ReadBootTable(readfunc *read,long long sector, boot_head *head, void *udata)
+ 	int i,end=0;
+ 	unsigned short sum;
+ 	boot_entry *defcur=NULL,*deflast=NULL;
+-	register struct validation_entry *ventry=NULL;
++	struct validation_entry *ventry=NULL;
+ 	
+ 	head->sections=NULL;
+ 	head->defentry=NULL;
+@@ -538,7 +538,7 @@ int ProcessDir(readfunc *read,int extent,int size,dircallback *callback,void *ud
+  */
+ int JolietLevel(struct iso_volume_descriptor *ivd) {
+ 	int ret=0;
+-	register struct iso_supplementary_descriptor *isd;
++	struct iso_supplementary_descriptor *isd;
+ 	
+ 	isd = (struct iso_supplementary_descriptor *) ivd;
+ 	
+diff --git a/tdeprint/fooparser.cpp b/tdeprint/fooparser.cpp
+index e919616a..5686f155 100644
+--- a/tdeprint/fooparser.cpp
++++ b/tdeprint/fooparser.cpp
+@@ -369,9 +369,9 @@ __yy_memcpy (to, from, count)
+      char *from;
+      unsigned int count;
+ {
+-  register char *f = from;
+-  register char *t = to;
+-  register int i = count;
++  char *f = from;
++  char *t = to;
++  int i = count;
+ 
+   while (i-- > 0)
+     *t++ = *f++;
+@@ -384,9 +384,9 @@ __yy_memcpy (to, from, count)
+ static void
+ __yy_memcpy (char *to, char *from, unsigned int count)
+ {
+-  register char *t = to;
+-  register char *f = from;
+-  register int i = count;
++  char *t = to;
++  char *f = from;
++  int i = count;
+ 
+   while (i-- > 0)
+     *t++ = *f++;
+@@ -429,10 +429,10 @@ int
+ yyparse(YYPARSE_PARAM_ARG)
+      YYPARSE_PARAM_DECL
+ {
+-  register int yystate;
+-  register int yyn;
+-  register short *yyssp;
+-  register YYSTYPE *yyvsp;
++  int yystate;
++  int yyn;
++  short *yyssp;
++  YYSTYPE *yyvsp;
+   int yyerrstatus;	/*  number of tokens to shift before error messages enabled */
+   int yychar1 = 0;		/*  lookahead token as an internal (translated) token number */
+ 
+diff --git a/tdeprint/fooscanner.cpp b/tdeprint/fooscanner.cpp
+index f4d554a0..58edc063 100644
+--- a/tdeprint/fooscanner.cpp
++++ b/tdeprint/fooscanner.cpp
+@@ -614,9 +614,9 @@ YY_MALLOC_DECL
+ 
+ YY_DECL
+ 	{
+-	register yy_state_type yy_current_state;
+-	register char *yy_cp, *yy_bp;
+-	register int yy_act;
++	yy_state_type yy_current_state;
++	char *yy_cp, *yy_bp;
++	int yy_act;
+ 
+ #line 47 "./fooscanner.l"
+ 
+@@ -664,7 +664,7 @@ YY_DECL
+ yy_match:
+ 		do
+ 			{
+-			register YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
++			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
+ 			if ( yy_accept[yy_current_state] )
+ 				{
+ 				yy_last_accepting_state = yy_current_state;
+@@ -954,9 +954,9 @@ case YY_STATE_EOF(INITIAL):
+ 
+ static int yy_get_next_buffer()
+ 	{
+-	register char *dest = yy_current_buffer->yy_ch_buf;
+-	register char *source = yytext_ptr;
+-	register int number_to_move, i;
++	char *dest = yy_current_buffer->yy_ch_buf;
++	char *source = yytext_ptr;
++	int number_to_move, i;
+ 	int ret_val;
+ 
+ 	if ( yy_c_buf_p > &yy_current_buffer->yy_ch_buf[yy_n_chars + 1] )
+@@ -1086,15 +1086,15 @@ static int yy_get_next_buffer()
+ 
+ static yy_state_type yy_get_previous_state()
+ 	{
+-	register yy_state_type yy_current_state;
+-	register char *yy_cp;
++	yy_state_type yy_current_state;
++	char *yy_cp;
+ 
+ 	yy_current_state = yy_start;
+ 	yy_current_state += YY_AT_BOL();
+ 
+ 	for ( yy_cp = yytext_ptr + YY_MORE_ADJ; yy_cp < yy_c_buf_p; ++yy_cp )
+ 		{
+-		register YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
++		YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
+ 		if ( yy_accept[yy_current_state] )
+ 			{
+ 			yy_last_accepting_state = yy_current_state;
+@@ -1126,10 +1126,10 @@ static yy_state_type yy_try_NUL_trans( yy_current_state )
+ yy_state_type yy_current_state;
+ #endif
+ 	{
+-	register int yy_is_jam;
+-	register char *yy_cp = yy_c_buf_p;
++	int yy_is_jam;
++	char *yy_cp = yy_c_buf_p;
+ 
+-	register YY_CHAR yy_c = 1;
++	YY_CHAR yy_c = 1;
+ 	if ( yy_accept[yy_current_state] )
+ 		{
+ 		yy_last_accepting_state = yy_current_state;
+@@ -1150,14 +1150,14 @@ yy_state_type yy_current_state;
+ 
+ #ifndef YY_NO_UNPUT
+ #ifdef YY_USE_PROTOS
+-static void yyunput( int c, register char *yy_bp )
++static void yyunput( int c, char *yy_bp )
+ #else
+ static void yyunput( c, yy_bp )
+ int c;
+-register char *yy_bp;
++char *yy_bp;
+ #endif
+ 	{
+-	register char *yy_cp = yy_c_buf_p;
++	char *yy_cp = yy_c_buf_p;
+ 
+ 	/* undo effects of setting up yytext */
+ 	*yy_cp = yy_hold_char;
+@@ -1165,10 +1165,10 @@ register char *yy_bp;
+ 	if ( yy_cp < yy_current_buffer->yy_ch_buf + 2 )
+ 		{ /* need to shift things up to make room */
+ 		/* +2 for EOB chars. */
+-		register int number_to_move = yy_n_chars + 2;
+-		register char *dest = &yy_current_buffer->yy_ch_buf[
++		int number_to_move = yy_n_chars + 2;
++		char *dest = &yy_current_buffer->yy_ch_buf[
+ 					yy_current_buffer->yy_buf_size + 2];
+-		register char *source =
++		char *source =
+ 				&yy_current_buffer->yy_ch_buf[number_to_move];
+ 
+ 		while ( source > yy_current_buffer->yy_ch_buf )
+@@ -1625,7 +1625,7 @@ yyconst char *s2;
+ int n;
+ #endif
+ 	{
+-	register int i;
++	int i;
+ 	for ( i = 0; i < n; ++i )
+ 		s1[i] = s2[i];
+ 	}
+@@ -1639,7 +1639,7 @@ static int yy_flex_strlen( s )
+ yyconst char *s;
+ #endif
+ 	{
+-	register int n;
++	int n;
+ 	for ( n = 0; s[n]; ++n )
+ 		;
+ 
+diff --git a/tdeprint/management/kmjobviewer.cpp b/tdeprint/management/kmjobviewer.cpp
+index b0f95069..7e149ed4 100644
+--- a/tdeprint/management/kmjobviewer.cpp
++++ b/tdeprint/management/kmjobviewer.cpp
+@@ -332,6 +332,11 @@ void KMJobViewer::initActions()
+ 		// create status bar
+ 		KStatusBar	*statusbar = statusBar();
+ 		m_stickybox = new TQCheckBox( i18n( "Keep window permanent" ), statusbar );
++
++		TDEConfig *conf = KMFactory::self()->printConfig();
++		conf->setGroup("Jobs");
++		m_stickybox->setChecked(conf->readBoolEntry("KeepWindow",true));
++		connect(m_stickybox, TQT_SIGNAL(toggled(bool)), TQT_SLOT(slotKeepWindowChange(bool)));
+ 		statusbar->addWidget( m_stickybox, 1, false );
+ 		statusbar->insertItem(" " + i18n("Max.: %1").arg(i18n("Unlimited"))+ " ", 0, 0, true);
+ 		statusbar->setItemFixed(0);
+@@ -365,6 +370,13 @@ void KMJobViewer::buildPrinterMenu(TQPopupMenu *menu, bool use_all, bool use_spe
+ 	}
+ }
+ 
++void KMJobViewer::slotKeepWindowChange( bool val )
++{
++    TDEConfig *conf = KMFactory::self()->printConfig();
++    conf->setGroup("Jobs");
++    conf->writeEntry("KeepWindow",val);
++}
++
+ void KMJobViewer::slotShowMoveMenu()
+ {
+ 	TQPopupMenu	*menu = static_cast<TDEActionMenu*>(actionCollection()->action("job_move"))->popupMenu();
+diff --git a/tdeprint/management/kmjobviewer.h b/tdeprint/management/kmjobviewer.h
+index 7a4530f3..5bfda846 100644
+--- a/tdeprint/management/kmjobviewer.h
++++ b/tdeprint/management/kmjobviewer.h
+@@ -86,6 +86,7 @@ protected slots:
+ 	void slotUserChanged();
+ 	void slotConfigure();
+ 	void slotDropped( TQDropEvent*, TQListViewItem* );
++	void slotKeepWindowChange(bool);
+ 
+ protected:
+ 	void init();
+diff --git a/tdeprint/ppdparser.cpp b/tdeprint/ppdparser.cpp
+index 21f3fb77..30df9195 100644
+--- a/tdeprint/ppdparser.cpp
++++ b/tdeprint/ppdparser.cpp
+@@ -225,7 +225,7 @@ union yyalloc
+ #   define YYCOPY(To, From, Count)		\
+       do					\
+ 	{					\
+-	  register YYSIZE_T yyi;		\
++	  YYSIZE_T yyi;		\
+ 	  for (yyi = 0; yyi < (Count); yyi++)	\
+ 	    (To)[yyi] = (From)[yyi];		\
+ 	}					\
+@@ -704,7 +704,7 @@ yystrlen (yystr)
+      const char *yystr;
+ #   endif
+ {
+-  register const char *yys = yystr;
++  const char *yys = yystr;
+ 
+   while (*yys++ != '\0')
+     continue;
+@@ -729,8 +729,8 @@ yystpcpy (yydest, yysrc)
+      const char *yysrc;
+ #   endif
+ {
+-  register char *yyd = yydest;
+-  register const char *yys = yysrc;
++  char *yyd = yydest;
++  const char *yys = yysrc;
+ 
+   while ((*yyd++ = *yys++) != '\0')
+     continue;
+@@ -860,8 +860,8 @@ yyparse ()
+ #endif
+ {
+   
+-  register int yystate;
+-  register int yyn;
++  int yystate;
++  int yyn;
+   int yyresult;
+   /* Number of tokens to shift before error messages enabled.  */
+   int yyerrstatus;
+@@ -879,12 +879,12 @@ yyparse ()
+   /* The state stack.  */
+   short	yyssa[YYINITDEPTH];
+   short *yyss = yyssa;
+-  register short *yyssp;
++  short *yyssp;
+ 
+   /* The semantic value stack.  */
+   YYSTYPE yyvsa[YYINITDEPTH];
+   YYSTYPE *yyvs = yyvsa;
+-  register YYSTYPE *yyvsp;
++  YYSTYPE *yyvsp;
+ 
+ 
+ 
+diff --git a/tdeprint/ppdscanner.cpp b/tdeprint/ppdscanner.cpp
+index 3ae2235c..ebfea8d5 100644
+--- a/tdeprint/ppdscanner.cpp
++++ b/tdeprint/ppdscanner.cpp
+@@ -719,9 +719,9 @@ YY_MALLOC_DECL
+ 
+ YY_DECL
+ 	{
+-	register yy_state_type yy_current_state;
+-	register char *yy_cp, *yy_bp;
+-	register int yy_act;
++	yy_state_type yy_current_state;
++	char *yy_cp, *yy_bp;
++	int yy_act;
+ 
+ #line 59 "./ppdscanner.l"
+ 
+@@ -771,7 +771,7 @@ YY_DECL
+ yy_match:
+ 		do
+ 			{
+-			register YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
++			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
+ 			if ( yy_accept[yy_current_state] )
+ 				{
+ 				yy_last_accepting_state = yy_current_state;
+@@ -1155,9 +1155,9 @@ case YY_STATE_EOF(constr):
+ 
+ static int yy_get_next_buffer()
+ 	{
+-	register char *dest = yy_current_buffer->yy_ch_buf;
+-	register char *source = yytext_ptr;
+-	register int number_to_move, i;
++	char *dest = yy_current_buffer->yy_ch_buf;
++	char *source = yytext_ptr;
++	int number_to_move, i;
+ 	int ret_val;
+ 
+ 	if ( yy_c_buf_p > &yy_current_buffer->yy_ch_buf[yy_n_chars + 1] )
+@@ -1287,14 +1287,14 @@ static int yy_get_next_buffer()
+ 
+ static yy_state_type yy_get_previous_state()
+ 	{
+-	register yy_state_type yy_current_state;
+-	register char *yy_cp;
++	yy_state_type yy_current_state;
++	char *yy_cp;
+ 
+ 	yy_current_state = yy_start;
+ 
+ 	for ( yy_cp = yytext_ptr + YY_MORE_ADJ; yy_cp < yy_c_buf_p; ++yy_cp )
+ 		{
+-		register YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
++		YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
+ 		if ( yy_accept[yy_current_state] )
+ 			{
+ 			yy_last_accepting_state = yy_current_state;
+@@ -1326,10 +1326,10 @@ static yy_state_type yy_try_NUL_trans( yy_current_state )
+ yy_state_type yy_current_state;
+ #endif
+ 	{
+-	register int yy_is_jam;
+-	register char *yy_cp = yy_c_buf_p;
++	int yy_is_jam;
++	char *yy_cp = yy_c_buf_p;
+ 
+-	register YY_CHAR yy_c = 1;
++	YY_CHAR yy_c = 1;
+ 	if ( yy_accept[yy_current_state] )
+ 		{
+ 		yy_last_accepting_state = yy_current_state;
+@@ -1350,14 +1350,14 @@ yy_state_type yy_current_state;
+ 
+ #ifndef YY_NO_UNPUT
+ #ifdef YY_USE_PROTOS
+-static void yyunput( int c, register char *yy_bp )
++static void yyunput( int c, char *yy_bp )
+ #else
+ static void yyunput( c, yy_bp )
+ int c;
+-register char *yy_bp;
++char *yy_bp;
+ #endif
+ 	{
+-	register char *yy_cp = yy_c_buf_p;
++	char *yy_cp = yy_c_buf_p;
+ 
+ 	/* undo effects of setting up yytext */
+ 	*yy_cp = yy_hold_char;
+@@ -1365,10 +1365,10 @@ register char *yy_bp;
+ 	if ( yy_cp < yy_current_buffer->yy_ch_buf + 2 )
+ 		{ /* need to shift things up to make room */
+ 		/* +2 for EOB chars. */
+-		register int number_to_move = yy_n_chars + 2;
+-		register char *dest = &yy_current_buffer->yy_ch_buf[
++		int number_to_move = yy_n_chars + 2;
++		char *dest = &yy_current_buffer->yy_ch_buf[
+ 					yy_current_buffer->yy_buf_size + 2];
+-		register char *source =
++		char *source =
+ 				&yy_current_buffer->yy_ch_buf[number_to_move];
+ 
+ 		while ( source > yy_current_buffer->yy_ch_buf )
+@@ -1824,7 +1824,7 @@ yyconst char *s2;
+ int n;
+ #endif
+ 	{
+-	register int i;
++	int i;
+ 	for ( i = 0; i < n; ++i )
+ 		s1[i] = s2[i];
+ 	}
+@@ -1838,7 +1838,7 @@ static int yy_flex_strlen( s )
+ yyconst char *s;
+ #endif
+ 	{
+-	register int n;
++	int n;
+ 	for ( n = 0; s[n]; ++n )
+ 		;
+ 
+diff --git a/tderandr/libtderandr.cc b/tderandr/libtderandr.cc
+index c61a6efd..eb7e96f9 100644
+--- a/tderandr/libtderandr.cc
++++ b/tderandr/libtderandr.cc
+@@ -45,7 +45,7 @@
+ 
+ // This routine is courtsey of an answer on "Stack Overflow"
+ // It takes an LSB-first int and makes it an MSB-first int (or vice versa)
+-unsigned int reverse_bits(register unsigned int x)
++unsigned int reverse_bits(unsigned int x)
+ {
+     x = (((x & 0xaaaaaaaa) >> 1) | ((x & 0x55555555) << 1));
+     x = (((x & 0xcccccccc) >> 2) | ((x & 0x33333333) << 2));
+diff --git a/tdespell2/plugins/ispell/correct.cpp b/tdespell2/plugins/ispell/correct.cpp
+index 65e98fa6..a417ee77 100644
+--- a/tdespell2/plugins/ispell/correct.cpp
++++ b/tdespell2/plugins/ispell/correct.cpp
+@@ -244,8 +244,8 @@ int compoundflag = COMPOUND_CONTROLLED;
+ int
+ ISpellChecker::casecmp (char *a, char *b, int canonical)
+ {
+-    register ichar_t *	ap;
+-    register ichar_t *	bp;
++    ichar_t *	ap;
++    ichar_t *	bp;
+     ichar_t		inta[INPUTWORDLEN + 4 * MAXAFFIXLEN + 4];
+     ichar_t		intb[INPUTWORDLEN + 4 * MAXAFFIXLEN + 4];
+ 
+@@ -290,7 +290,7 @@ ISpellChecker::casecmp (char *a, char *b, int canonical)
+ void
+ ISpellChecker::makepossibilities (ichar_t *word)
+ {
+-    register int	i;
++    int	i;
+ 
+     for (i = 0; i < MAXPOSSIBLE; i++)
+ 	m_possibilities[i][0] = 0;
+@@ -332,8 +332,8 @@ ISpellChecker::makepossibilities (ichar_t *word)
+ int
+ ISpellChecker::insert (ichar_t *word)
+ {
+-    register int	i;
+-    register char *	realword;
++    int	i;
++    char *	realword;
+ 
+     realword = ichartosstr (word, 0);
+     for (i = 0; i < m_pcount; i++)
+@@ -381,9 +381,9 @@ ISpellChecker::wrongcapital (ichar_t *word)
+ void
+ ISpellChecker::wrongletter (ichar_t *word)
+ {
+-    register int	i;
+-    register int	j;
+-    register int	n;
++    int	i;
++    int	j;
++    int	n;
+     ichar_t		savechar;
+     ichar_t		newword[INPUTWORDLEN + MAXAFFIXLEN];
+ 
+@@ -420,8 +420,8 @@ void
+ ISpellChecker::extraletter (ichar_t *word)
+ {
+     ichar_t		newword[INPUTWORDLEN + MAXAFFIXLEN];
+-    register ichar_t *	p;
+-    register ichar_t *	r;
++    ichar_t *	p;
++    ichar_t *	r;
+ 
+     if (icharlen (word) < 2)
+ 		return;
+@@ -445,9 +445,9 @@ void
+ ISpellChecker::missingletter (ichar_t *word)
+ {
+     ichar_t		newword[INPUTWORDLEN + MAXAFFIXLEN + 1];
+-    register ichar_t *	p;
+-    register ichar_t *	r;
+-    register int	i;
++    ichar_t *	p;
++    ichar_t *	r;
++    int	i;
+ 
+     icharcpy (newword + 1, word);
+     for (p = word, r = newword;  *p != 0;  )
+@@ -489,7 +489,7 @@ void ISpellChecker::missingspace (ichar_t *word)
+     ichar_t		newword[INPUTWORDLEN + MAXAFFIXLEN + 1];
+     int			nfirsthalf;	/* No. words saved in 1st half */
+     int			nsecondhalf;	/* No. words saved in 2nd half */
+-    register ichar_t *	p;
++    ichar_t *	p;
+     ichar_t		secondhalf[MAX_CAPS][INPUTWORDLEN + MAXAFFIXLEN];
+     int			secondno;	/* Index into second */
+ 
+@@ -547,8 +547,8 @@ int
+ ISpellChecker::compoundgood (ichar_t *word, int pfxopts)
+ {
+     ichar_t		newword[INPUTWORDLEN + MAXAFFIXLEN];
+-    register ichar_t *	p;
+-    register ichar_t	savech;
++    ichar_t *	p;
++    ichar_t	savech;
+     long		secondcap;	/* Capitalization of 2nd half */
+ 
+     /*
+@@ -606,8 +606,8 @@ void
+ ISpellChecker::transposedletter (ichar_t *word)
+ {
+     ichar_t		newword[INPUTWORDLEN + MAXAFFIXLEN];
+-    register ichar_t *	p;
+-    register ichar_t	temp;
++    ichar_t *	p;
++    ichar_t	temp;
+ 
+     icharcpy (newword, word);
+     for (p = newword;  p[1] != 0;  p++)
+@@ -752,12 +752,12 @@ ISpellChecker::save_root_cap (ichar_t *word, ichar_t *pattern,
+ 					      int * nsaved)
+ {
+ #ifndef NO_CAPITALIZATION_SUPPORT
+-    register struct dent * dent;
++    struct dent * dent;
+ #endif /* NO_CAPITALIZATION_SUPPORT */
+     int			firstisupper;
+     ichar_t		newword[INPUTWORDLEN + 4 * MAXAFFIXLEN + 4];
+ #ifndef NO_CAPITALIZATION_SUPPORT
+-    register ichar_t *	p;
++    ichar_t *	p;
+     int			len;
+     int			i;
+     int			limit;
+diff --git a/tdespell2/plugins/ispell/good.cpp b/tdespell2/plugins/ispell/good.cpp
+index 351106d9..42ba7951 100644
+--- a/tdespell2/plugins/ispell/good.cpp
++++ b/tdespell2/plugins/ispell/good.cpp
+@@ -247,9 +247,9 @@ static int entryhasaffixes (struct dent *dent, struct success *hit)
+  */
+ int ISpellChecker::cap_ok (ichar_t *word, struct success *hit, int len)
+ {
+-    register ichar_t *		dword;
+-    register ichar_t *		w;
+-    register struct dent *	dent;
++    ichar_t *		dword;
++    ichar_t *		w;
++    struct dent *	dent;
+     ichar_t			dentword[INPUTWORDLEN + MAXAFFIXLEN];
+     int				preadd;
+     int				prestrip;
+@@ -388,10 +388,10 @@ int ISpellChecker::good (ichar_t *w, int ignoreflagbits, int dummy, int pfxopts,
+ #endif
+ {
+     ichar_t		nword[INPUTWORDLEN + MAXAFFIXLEN];
+-    register ichar_t *	p;
+-    register ichar_t *	q;
+-    register int	n;
+-    register struct dent * dp;
++    ichar_t *	p;
++    ichar_t *	q;
++    int	n;
++    struct dent * dp;
+ 
+     /*
+     ** Make an uppercase copy of the word we are checking.
+diff --git a/tdespell2/plugins/ispell/hash.cpp b/tdespell2/plugins/ispell/hash.cpp
+index 03bd880b..07693c14 100644
+--- a/tdespell2/plugins/ispell/hash.cpp
++++ b/tdespell2/plugins/ispell/hash.cpp
+@@ -180,8 +180,8 @@
+  */
+ int ISpellChecker::hash (ichar_t *s, int hashtblsize)
+ {
+-    register long	h = 0;
+-    register int	i;
++    long	h = 0;
++    int	i;
+ 
+ #ifdef ICHAR_IS_CHAR
+     for (i = 4;  i--  &&  *s != 0;  )
+diff --git a/tdespell2/plugins/ispell/lookup.cpp b/tdespell2/plugins/ispell/lookup.cpp
+index b815ebd9..773cd88c 100644
+--- a/tdespell2/plugins/ispell/lookup.cpp
++++ b/tdespell2/plugins/ispell/lookup.cpp
+@@ -266,13 +266,13 @@ int ISpellChecker::linit (char *hashname)
+ {
+ 	FILE*	fpHash;
+ 		
+-    register int	i;
+-    register struct dent * dp;
++    int	i;
++    struct dent * dp;
+     struct flagent *	entry;
+     struct flagptr *	ind;
+     int			nextchar, x;
+     int			viazero;
+-    register ichar_t *	cp;
++    ichar_t *	cp;
+ 
+     if ((fpHash = fopen (hashname, "rb")) == NULL)
+ 	{
+@@ -571,7 +571,7 @@ int ISpellChecker::linit (char *hashname)
+  */
+ void ISpellChecker::initckch (char *wchars)
+ {
+-	register ichar_t    c;
++	ichar_t    c;
+ 	char                num[4];
+ 
+ 	for (c = 0; c < static_cast<ichar_t>(SET_SIZE+ m_hashheader.nstrchars); ++c)
+@@ -656,7 +656,7 @@ void ISpellChecker::initckch (char *wchars)
+  */
+ void ISpellChecker::clearindex (struct flagptr *indexp)
+ {
+-    register int		i;
++    int		i;
+     for (i = 0;  i < SET_SIZE + m_hashheader.nstrchars;  i++, indexp++)
+ 	{
+ 		if (indexp->numents == 0 && indexp->pu.fp != NULL)
+@@ -669,10 +669,10 @@ void ISpellChecker::clearindex (struct flagptr *indexp)
+ 	
+ #ifdef INDEXDUMP
+ static void dumpindex (indexp, depth)
+-    register struct flagptr *	indexp;
+-    register int		depth;
++    struct flagptr *	indexp;
++    int		depth;
+ {
+-    register int		i;
++    int		i;
+     int				j;
+     int				k;
+     char			stripbuf[INPUTWORDLEN + 4 * MAXAFFIXLEN + 4];
+@@ -733,8 +733,8 @@ static void dumpindex (indexp, depth)
+  */
+ struct dent * ISpellChecker::ispell_lookup (ichar_t *s, int dotree)
+ {
+-    register struct dent *	dp;
+-    register char *		s1;
++    struct dent *	dp;
++    char *		s1;
+     char			schar[INPUTWORDLEN + MAXAFFIXLEN];
+ 
+     dp = &m_hashtbl[hash (s, m_hashsize)];
+diff --git a/tdespell2/plugins/ispell/makedent.cpp b/tdespell2/plugins/ispell/makedent.cpp
+index 9c168dc1..ebe128dd 100644
+--- a/tdespell2/plugins/ispell/makedent.cpp
++++ b/tdespell2/plugins/ispell/makedent.cpp
+@@ -259,7 +259,7 @@ other abi documents
+ long
+ ISpellChecker::whatcap (ichar_t *word)
+ {
+-    register ichar_t *	p;
++    ichar_t *	p;
+ 
+     for (p = word;  *p;  p++)
+ 	{
+@@ -311,7 +311,7 @@ ISpellChecker::whatcap (ichar_t *word)
+ */
+ int ISpellChecker::addvheader ( struct dent *dp)
+ {
+-    register struct dent *	tdent; /* Copy of entry */
++    struct dent *	tdent; /* Copy of entry */
+ 
+     /*
+     ** Add a second entry with the correct capitalization, and then make
+@@ -502,11 +502,11 @@ ISpellChecker::stringcharlen (char *bufp, int canonical)
+     static char *	sp[MAXSTRINGCHARS];
+     static int		inited = 0;
+ #endif /* SLOWMULTIPLY */
+-    register char *	bufcur;
+-    register char *	stringcur;
+-    register int	stringno;
+-    register int	lowstringno;
+-    register int	highstringno;
++    char *	bufcur;
++    char *	stringcur;
++    int	stringno;
++    int	lowstringno;
++    int	highstringno;
+     int			dupwanted;
+ 
+ #ifdef SLOWMULTIPLY
+@@ -641,7 +641,7 @@ int l1_isstringch(char *ptr, int len, int canon) {
+ int
+ ISpellChecker::strtoichar (ichar_t *out, char *in, int outlen, int canonical)
+ {
+-	register int len = 1;		/* Length of next character */
++	int len = 1;		/* Length of next character */
+ 
+ 	outlen /= sizeof (ichar_t);		/* Convert to an ichar_t count */
+ 	for (  ;  --outlen > 0  &&  *in != '\0';  in += len)
+@@ -674,9 +674,9 @@ ISpellChecker::strtoichar (ichar_t *out, char *in, int outlen, int canonical)
+ int
+ ISpellChecker::ichartostr ( char *out, ichar_t *in, int outlen, int canonical)
+ {
+-    register int	ch;		/* Next character to store */
+-    register int	i;		/* Index into duplicates list */
+-    register char *	scharp;		/* Pointer into a string char */
++    int	ch;		/* Next character to store */
++    int	i;		/* Index into duplicates list */
++    char *	scharp;		/* Pointer into a string char */
+ 
+     while (--outlen > 0  &&  (ch = *in++) != 0)
+ 	{
+@@ -796,7 +796,7 @@ icharcpy (ichar_t *out, ichar_t *in)
+ int
+ icharlen (ichar_t * in)
+ {
+-    register int	len;		/* Length so far */
++    int	len;		/* Length so far */
+ 
+     for (len = 0;  *in++ != 0;  len++)
+ 		;
+@@ -862,7 +862,7 @@ ISpellChecker::findfiletype (const char *name, int searchnames, int *deformatter
+ {
+     char *		cp;		/* Pointer into suffix list */
+     int			cplen;		/* Length of current suffix */
+-    register int	i;		/* Index into type table */
++    int	i;		/* Index into type table */
+     int			len;		/* Length of the name */
+ 
+     /*
+diff --git a/tdespell2/plugins/ispell/tgood.cpp b/tdespell2/plugins/ispell/tgood.cpp
+index 06fbc99e..859eee62 100644
+--- a/tdespell2/plugins/ispell/tgood.cpp
++++ b/tdespell2/plugins/ispell/tgood.cpp
+@@ -243,7 +243,7 @@
+ void ISpellChecker::chk_aff (ichar_t *word, ichar_t *ucword, 
+ 			  int len, int ignoreflagbits, int allhits, int pfxopts, int sfxopts)
+ {
+-    register ichar_t *	cp;		/* Pointer to char to index on */
++    ichar_t *	cp;		/* Pointer to char to index on */
+     struct flagptr *	ind;		/* Flag index table to test */
+ 
+     pfx_list_chk (word, ucword, len, pfxopts, sfxopts, &m_pflagindex[0],
+@@ -293,13 +293,13 @@ void ISpellChecker::pfx_list_chk (ichar_t *word, ichar_t *ucword, int len, int o
+ 					int sfxopts, struct flagptr * ind, int ignoreflagbits, int allhits)
+ {
+     int			cond;		/* Condition number */
+-    register ichar_t *	cp;		/* Pointer into end of ucword */
++    ichar_t *	cp;		/* Pointer into end of ucword */
+     struct dent *	dent;		/* Dictionary entry we found */
+     int			entcount;	/* Number of entries to process */
+-    register struct flagent *
++    struct flagent *
+ 			flent;		/* Current table entry */
+     int			preadd;		/* Length added to tword2 as prefix */
+-    register int	tlen;		/* Length of tword */
++    int	tlen;		/* Length of tword */
+     ichar_t		tword[INPUTWORDLEN + 4 * MAXAFFIXLEN + 4]; /* Tmp cpy */
+     ichar_t		tword2[sizeof tword]; /* 2nd copy for ins_root_cap */
+ 
+@@ -414,7 +414,7 @@ ISpellChecker::chk_suf (ichar_t *word, ichar_t *ucword,
+ 					int len, int optflags, struct flagent *pfxent, 
+ 					int ignoreflagbits, int allhits)
+ {
+-    register ichar_t *	cp;		/* Pointer to char to index on */
++    ichar_t *	cp;		/* Pointer to char to index on */
+     struct flagptr *	ind;		/* Flag index table to test */
+ 
+     suf_list_chk (word, ucword, len, &m_sflagindex[0], optflags, pfxent,
+@@ -458,14 +458,14 @@ void ISpellChecker::suf_list_chk (ichar_t *word, ichar_t *ucword,
+ 						  int len, struct flagptr *ind, int optflags, 
+ 						  struct flagent *pfxent, int ignoreflagbits, int allhits)
+ {
+-    register ichar_t *	cp;		/* Pointer into end of ucword */
++    ichar_t *	cp;		/* Pointer into end of ucword */
+     int			cond;		/* Condition number */
+     struct dent *	dent;		/* Dictionary entry we found */
+     int			entcount;	/* Number of entries to process */
+-    register struct flagent *
++    struct flagent *
+ 			flent;		/* Current table entry */
+     int			preadd;		/* Length added to tword2 as prefix */
+-    register int	tlen;		/* Length of tword */
++    int	tlen;		/* Length of tword */
+     ichar_t		tword[INPUTWORDLEN + 4 * MAXAFFIXLEN + 4]; /* Tmp cpy */
+     ichar_t		tword2[sizeof tword]; /* 2nd copy for ins_root_cap */
+ 
+@@ -599,7 +599,7 @@ int ISpellChecker::expand_pre (char *croot, ichar_t *rootword, MASKTYPE mask[],
+ {
+     int				entcount;	/* No. of entries to process */
+     int				explength;	/* Length of expansions */
+-    register struct flagent *
++    struct flagent *
+ 				flent;		/* Current table entry */
+ 
+     for (flent = m_pflaglist, entcount = m_numpflags, explength = 0;
+@@ -630,7 +630,7 @@ int ISpellChecker::pr_pre_expansion ( char *croot, ichar_t *rootword,
+ 							char *extra)
+ {
+     int				cond;		/* Current condition number */
+-    register ichar_t *		nextc;		/* Next case choice */
++    ichar_t *		nextc;		/* Next case choice */
+     int				tlen;		/* Length of tword */
+     ichar_t			tword[INPUTWORDLEN + MAXAFFIXLEN]; /* Temp */
+ 
+@@ -728,7 +728,7 @@ int ISpellChecker::expand_suf (char *croot, ichar_t *rootword, MASKTYPE mask[],
+ {
+     int				entcount;	/* No. of entries to process */
+     int				explength;	/* Length of expansions */
+-    register struct flagent *
++    struct flagent *
+ 				flent;		/* Current table entry */
+ 
+     for (flent = m_sflaglist, entcount = m_numsflags, explength = 0;
+@@ -761,7 +761,7 @@ int ISpellChecker::pr_suf_expansion (char *croot, ichar_t *rootword,
+ 							struct flagent *flent, int option, char *extra)
+ {
+     int				cond;		/* Current condition number */
+-    register ichar_t *		nextc;		/* Next case choice */
++    ichar_t *		nextc;		/* Next case choice */
+     int				tlen;		/* Length of tword */
+     ichar_t			tword[INPUTWORDLEN + MAXAFFIXLEN]; /* Temp */
+ 
+diff --git a/tdestyles/plastik/plastik.cpp b/tdestyles/plastik/plastik.cpp
+index b2801efc..0db70b8a 100644
+--- a/tdestyles/plastik/plastik.cpp
++++ b/tdestyles/plastik/plastik.cpp
+@@ -832,15 +832,15 @@ void PlastikStyle::renderGradient(TQPainter *painter,
+     int rDiff, gDiff, bDiff;
+     int rc, gc, bc;
+ 
+-    register int x, y;
++    int x, y;
+ 
+     rDiff = ( c2.red())   - (rc = c1.red());
+     gDiff = ( c2.green()) - (gc = c1.green());
+     bDiff = ( c2.blue())  - (bc = c1.blue());
+ 
+-    register int rl = rc << 16;
+-    register int gl = gc << 16;
+-    register int bl = bc << 16;
++    int rl = rc << 16;
++    int gl = gc << 16;
++    int bl = bc << 16;
+ 
+     int rdelta = ((1<<16) / (horizontal ? r_h : r_w)) * rDiff;
+     int gdelta = ((1<<16) / (horizontal ? r_h : r_w)) * gDiff;
+diff --git a/tdeui/kdepackages.h b/tdeui/kdepackages.h
+index f7ef1466..f4f21594 100644
+--- a/tdeui/kdepackages.h
++++ b/tdeui/kdepackages.h
+@@ -559,7 +559,6 @@ const char * const packages[] = {
+ "keep",
+ "kenolaba",
+ "kepas",
+-"kerry",
+ "kexi",
+ "kexi/Forms Designer",
+ "kexi/General",
+diff --git a/tdeui/tests/kledtest.cpp b/tdeui/tests/kledtest.cpp
+index 4ba15877..8a16c122 100644
+--- a/tdeui/tests/kledtest.cpp
++++ b/tdeui/tests/kledtest.cpp
+@@ -98,7 +98,7 @@ KLedTest::nextColor() {
+ 
+ void 
+ KLedTest::nextLook() { 
+-  register int tmp;
++  int tmp;
+   if (kled_round) {
+     tmp = (static_cast<int>(ledlook) +1 ) % 3 ;
+   }
