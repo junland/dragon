@@ -15,10 +15,15 @@ start()
 {
     echo "*** ${SVNAME}: Starting dbus ..."
 
-    mkdir -p /var/lib/dbus /var/run/dbus
+    mkdir -p /var/lib/dbus /run/dbus
+    chown messagebus /var/lib/dbus
+    rm -f /run/dbus/pid
 
     # Validate or generate unique ID file (/var/lib/dbus/machine-id)
-    /usr/bin/dbus-uuidgen --ensure
+    /usr/bin/dbus-uuidgen --ensure && {
+     chmod 600 /var/lib/dbus/machine-id
+     ln -sf /var/lib/dbus/machine-id /etc/machine-id
+    }
 
     exec /usr/bin/dbus-daemon --nofork --system --nopidfile
 }
