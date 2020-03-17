@@ -1,7 +1,7 @@
 # Build recipe for dbus.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,10 +17,13 @@
 
 program=dbus
 version=1.12.16
-release=1
+release=2
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/daemons"
+
+# The installation of this package replaces to
+replace=dbus
 
 tarname=${program}-${version}.tar.gz
 
@@ -50,6 +53,10 @@ build()
     
     cd "$srcdir"
 
+    # Apply a patch to allow root to do anything (thanks to "Slackware Linux").
+    patch -Np1 \
+     -i "${worktree}/patches/dbus/dbus-1.12.x-allow_root_globally.diff"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
     
@@ -58,24 +65,31 @@ build()
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
+     --docdir=$docsdir \
+     --runstatedir=/run \
      --enable-static=no \
      --enable-shared=yes \
      --enable-debug=no \
      --enable-inotify \
-     --disable-x11-autolaunch \
+     --enable-x11-autolaunch \
      --disable-systemd \
      --disable-selinux \
-     --with-valgrind \
+     --disable-doxygen-docs \
+     --with-xml=expat \
      --with-dbus-user=messagebus \
-     --with-console-auth-dir=/var/run/console \
-     --with-system-pid-file=/var/run/dbus/dbus.pid \
-     --with-system-socket=/var/run/dbus/system_bus_socket \
-     --with-session-socket-dir=/tmp \
-     --without-x \
+     --with-console-auth-dir=/run/console \
+     --with-system-pid-file=/run/dbus/pid \
+     --with-system-socket=/run/dbus/system_bus_socket \
      --build="$(cc -dumpmachine)"
     
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
+
+    chown root:messagebus "${destdir}/usr/libexec/dbus-daemon-launch-helper"
+    chmod 4750 "${destdir}/usr/libexec/dbus-daemon-launch-helper"
+
+    mkdir -p "${destdir}/var/lib/dbus"
+    chown messagebus "${destdir}/var/lib/dbus"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
