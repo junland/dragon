@@ -1,7 +1,7 @@
 # Build recipe for D-Bus GLib.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018, 2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,14 +16,12 @@
 # limitations under the License.
 
 program=dbus-glib
+pkgname=dbus_glib
 version=0.110
-release=2
+release=3
 
 # Set 'outdir' for a nice and well-organized output directory
 outdir="${outdir}/${arch}/libs"
-
-# Set a custom package name preventing its replacement
-pkgname="$(echo $program | tr - _)"
 
 tarname=${program}-${version}.tar.gz
 
@@ -41,7 +39,7 @@ license="AFLv2.1 | GPLv2+"
 
 # Source documentation
 docs="AUTHORS COPYING HACKING NEWS README"
-docsdir="${docdir}/${program}-${version}"
+docsdir="${docdir}/${pkgname}-${version}"
 
 build()
 {
@@ -60,10 +58,19 @@ build()
      --mandir=$mandir \
      --enable-static=no \
      --enable-shared=yes \
+     --enable-bash-completion \
      --build="$(cc -dumpmachine)"
     
     make -j${jobs} V=1
-    make -j${jobs} V=1 DESTDIR="$destdir" install-strip
+    make -j${jobs} V=1 \
+     completiondir=/usr/share/bash-completion/completions \
+     DESTDIR="$destdir" \
+     install-strip
+
+    (
+        cd "${destdir}/usr/share/bash-completion/completions"
+        mv -f dbus-bash-completion.sh dbus-glib
+    )
 
     # Compress manpages
     lzip -9 "${destdir}/${mandir}/"/man?/*.?
