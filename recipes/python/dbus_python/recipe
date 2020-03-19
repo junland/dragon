@@ -1,0 +1,70 @@
+# Build recipe for dbus-python.
+#
+# Copyright (C) 2020 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+program=dbus-python
+pkgname=dbus_python
+version=1.2.16
+release=1
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/python"
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://dbus.freedesktop.org/releases/${program}/$tarname
+
+description="
+Python bindings for D-Bus.
+
+dbus_python provides Python bindings to the D-Bus API interface.
+"
+
+homepage=http://www.freedesktop.org/wiki/Software/DBusBindings
+license="MIT Expat variant"
+
+docs="AUTHORS CONTRIBUTING.md COPYING ChangeLog NEWS PKG-INFO README"
+docsdir="${docdir}/${pkgname}-${version}"
+
+build()
+{
+    set -e
+
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    rm -rf python3-build
+    mkdir python3-build
+    cd python3-build
+    ../configure PYTHON=/usr/bin/python3 \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --enable-static=no \
+     --enable-shared=yes \
+     --docdir=$docsdir
+    make -j${jobs} V=1
+    cd ..
+    make -j${jobs} V=1 -C python3-build DESTDIR="$destdir" install
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
