@@ -18,7 +18,7 @@
 program=lua
 version=5.3.5
 short_version="${version%.*}"
-release=4
+release=5
 
 # Set custom package name to avoid conflicts on package upgrades
 pkgname="lua${short_version%.*}"
@@ -48,7 +48,7 @@ docsdir="${docdir}/${pkgname}-${version}"
 
 _make_target()
 {
-    make -j${jobs} V=1 \
+    make -j${jobs} \
      MYCFLAGS="$QICFLAGS -DLUA_COMPAT_5_2 -DLUA_COMPAT_5_1" \
      MYLDFLAGS="$QILDFLAGS" \
      INSTALL_LIB="${destdir}/usr/lib${libSuffix}" \
@@ -76,6 +76,9 @@ build()
      -e "s#lib/lua#lib${libSuffix}/lua#" \
      -i src/luaconf.h
 
+    # Fix release number
+    sed -i "/R= /s|\$V\.4|${version}|" Makefile
+
     _make_target linux
     _make_target install
 
@@ -84,19 +87,10 @@ build()
     make clean
     patch -Np1 -i "${worktree}/patches/lua/lua-5.3.5-shared_library-1.patch"
 
-    _make_target TO_LIB="liblua.so liblua.so.1 liblua.so.1.4" linux
-    _make_target TO_LIB="liblua.so liblua.so.1 liblua.so.1.4" install
-
-    # Add extra symbolic links to find and link the library
-    (
-        cd "${destdir}/usr/lib${libSuffix}"
-        ln -sf liblua.so liblua.so."${short_version%.*}";	# 5
-        ln -sf liblua.so liblua.so.${short_version};		# 5.3
-    )
+    _make_target TO_LIB="liblua.so liblua.so.${short_version} liblua.so.${version}" linux
+    _make_target TO_LIB="liblua.so liblua.so.${short_version} liblua.so.${version}" install
 
     unset make_target
-
-    strip --strip-debug "${destdir}/usr/lib${libSuffix}/liblua.a"
 
     # Install pkg-config file
     mkdir -p "${destdir}/usr/lib${libSuffix}/pkgconfig"
