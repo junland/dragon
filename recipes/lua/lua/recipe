@@ -1,6 +1,7 @@
 # Build recipe for lua.
 #
-# Copyright (C) 2020 Kevin "The Nuclear" Bloom, <kevin.bloom@posteo.net>
+# Copyright (C) 2020 Kevin "The Nuclear" Bloom, <kevin.bloom@posteo.net>.
+# Copyright (c) 2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,33 +14,47 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# Based on recipes written by Mateus P. Rodrigues, <mprodrigues@dragora.org>
-# and Matias Fonzo, <selk@dragora.org>.
 
 program=lua
 version=5.3.5
-release=2
+short_version="${version%.*}"
+release=3
+
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/lua"
 
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=https://www.lua.org/ftp/${tarname}
+fetch=http://www.lua.org/ftp/${tarname}
 
 description="
-lua - powerful lightweight programming language designed for extending applications
+A lightweight programming language designed for extending applications.
 
-Lua is a powerful, efficient, lightweight, embeddable scripting language. It
-supports procedural programming, object-oriented programming, functional
+Lua is a powerful, efficient, lightweight, embeddable scripting language.
+It supports procedural programming, object-oriented programming, functional
 programming, data-driven programming, and data description.
 "
 
-homepage=https://www.lua.org/
+homepage=http://www.lua.org/
 license="MIT License"
 
 # Source documentation
 docs="README"
 docsdir="${docdir}/${program}-${version}"
+
+_make_target()
+{
+    make -j${jobs} V=1 \
+     MYCFLAGS="$QICFLAGS -DLUA_COMPAT_5_2 -DLUA_COMPAT_5_1" \
+     MYLDFLAGS="$QILDFLAGS" \
+     INSTALL_LIB="${destdir}/usr/lib${libSuffix}" \
+     INSTALL_LMOD="${destdir}/usr/share/lua/${short_version}" \
+     INSTALL_CMOD="${destdir}/usr/lib${libSuffix}/lua/${short_version}" \
+     INSTALL_DATA="cp -d" \
+     INSTALL_MAN="${destdir}/${mandir}/man1" \
+     INSTALL_TOP="${destdir}/usr" "$@"
+}
 
 build()
 {
@@ -49,27 +64,66 @@ build()
 
     cd "$srcdir"
 
-    make MYCFLAGS="$CFLAGS -fPIC -DLUA_COMPAT_5_2 -DLUA_COMPAT_5_1" MYLDFLAGS="$LDFLAGS" linux
-    make \
-      INSTALL_TOP="$destdir"/usr \
-      INSTALL_DATA='cp -d' \
-      INSTALL_MAN=$mandir \
-      install
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
 
-    # Delete index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-    fi
+    # Adjust Lua search path
+    sed \
+     -e 's#/usr/local/#/usr/#' \
+     -e "s#lib/lua#lib${libSuffix}/lua#" \
+     -i src/luaconf.h
+
+    _make_target linux
+    _make_target install
+
+    # Now build the shared library
+
+    make clean
+    patch -Np1 -i "${worktree}/patches/lua/lua-5.3.5-shared_library-1.patch"
+
+    _make_target TO_LIB="liblua.so liblua.so.1 liblua.so.1.4" linux
+    _make_target TO_LIB="liblua.so liblua.so.1 liblua.so.1.4" install
+
+    # Add extra symbolic links to find and link the library
+    (
+        cd "${destdir}/usr/lib${libSuffix}"
+        ln -sf liblua.so liblua.so."${short_version%.*}";	# 5
+        ln -sf liblua.so liblua.so.${short_version};		# 5.3
+    )
+
+    unset make_target
+
+    strip --strip-debug "${destdir}/usr/lib${libSuffix}/liblua.a"
+
+    # Install pkg-config file
+    mkdir -p "${destdir}/usr/lib${libSuffix}/pkgconfig"
+cat << EOF > "${destdir}/usr/lib${libSuffix}/pkgconfig/lua.pc"
+prefix=/usr
+INSTALL_BIN=\${prefix}/bin
+INSTALL_INC=\${prefix}/include
+INSTALL_LIB=\${prefix}/lib
+INSTALL_MAN=\${prefix}/share/man/man1
+INSTALL_LMOD=\${prefix}/share/lua/${short_version}
+INSTALL_CMOD=\${prefix}/lib${libSuffix}/lua/${short_version}
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib${libSuffix}
+includedir=\${prefix}/include
+
+Name: Lua
+Description: An Extensible Extension Language
+Version: ${version}
+Requires:
+Libs: -L\${libdir} -llua -lm -ldl
+Cflags: -I\${includedir}
+EOF
+
+    unset short_version
+
+    # Compress manual page(s)
+    lzip -9 "${destdir}/${mandir}"/man1/*
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
+
