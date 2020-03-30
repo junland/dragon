@@ -1,6 +1,7 @@
 # Build recipe for emacs.
 #
-# Copyright (C) 2020 Kevin "The Nuclear" Bloom, <kevin.bloom@posteo.net>
+# Copyright (C) 2020 Kevin "The Nuclear" Bloom, <kevin.bloom@posteo.net>.
+# Copyright (c) 2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,22 +14,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# Based on recipes written by Mateus P. Rodrigues, <mprodrigues@dragora.org>
-# and Matias Fonzo, <selk@dragora.org>.
 
 program=emacs
 version=26.3
 release=1
 
-tarname=${program}-${version}.tar.xz
+# Set 'outdir' for a nice and well-organized output directory
+outdir="${outdir}/${arch}/x-apps"
+
+tarname=${program}-${version}.tar.gz
 # srcdir=${program}-${version}    # Not needed in major releases
 
 # Remote source(s)
 fetch=http://ftp.gnu.org/gnu/emacs/$tarname
 
 description="
-emacs - The Emacs text editor.
+The Emacs text editor.
 
 GNU Emacs is an extensible, customizable text editor and more.
 At its core is an interpreter for Emacs Lisp, a dialect of the
@@ -51,32 +52,62 @@ build()
 
     cd "$srcdir"
 
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
     --libdir=/usr/lib${libSuffix} \
     --infodir=$infodir \
     --mandir=$mandir \
     --docdir=$docdir \
+    --program-prefix= \
+    --program-suffix= \
+    --with-modules \
     --with-x \
+    --with-x-toolkit=gtk3 \
+    --without-libsystemd \
+    --without-gconf \
+    --without-gsettings \
+    --without-compress-install \
     --build="$(cc -dumpmachine)"
 
     make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} DESTDIR="$destdir" install-strip
 
-    # Delete index file for the package
+    # A world without systemd is a healthy world...
+    rm -rf "${destdir}/usr/lib${libSuffix}/systemd"
+    rmdir "${destdir}/usr/lib${libSuffix}" 2> /dev/null || true
+
+    # Re-create directory for games
+    mkdir -p "${destdir}/var/games/emacs"
+    chown :games "${destdir}/var/games/emacs"
+
     if test -d "${destdir}/$infodir"
     then
+        # Delete index file for the package
         rm -f "${destdir}/${infodir}/dir"
+
+        # Compress info documents
+        lzip -9 "${destdir}/${infodir}"/* || true
+    fi
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
     fi
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
+
