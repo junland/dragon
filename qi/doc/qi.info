@@ -1,9 +1,10 @@
 This is qi.info, produced by makeinfo version 6.5 from qi.texi.
 
-This user guide is for Qi (version 1.3, 10 Sep 2019), which is a simple
+This user guide is for Qi (version 1.3, 1 Apr 2020), which is a simple
 but well-integrated package manager.
 
-   Copyright © 2019 Matias Andres Fonzo, Santiago del Estero, Argentina.
+   Copyright © 2019-2020 Matias Andres Fonzo, Santiago del Estero,
+Argentina.
 
      Permission is granted to copy, distribute and/or modify this
      document under the terms of the GNU Free Documentation License,
@@ -22,7 +23,7 @@ File: qi.info,  Node: Top,  Next: Introduction,  Up: (dir)
 Qi user guide
 *************
 
-This user guide is for Qi (version 1.3, 10 Sep 2019).
+This user guide is for Qi (version 1.3, 1 Apr 2020).
 
 * Menu:
 
@@ -38,7 +39,7 @@ This user guide is for Qi (version 1.3, 10 Sep 2019).
 * Index::
 
 
-   Copyright (C) 2019 Matias Fonzo.
+   Copyright (C) 2019-2020 Matias Fonzo.
 
    Qi's home page can be found at <http://www.dragora.org>.
 Send bug reports or suggestions to <dragora-users@nongnu.org>.
@@ -650,16 +651,13 @@ have lower precedence, plus added special terms.
 5.3 Writing recipes
 ===================
 
-Originally, qi was designed for the version 3 of Dragora GNU/Linux (this
-does not mean that you can't use it in another distribution, just that
-if you do you will need to test it for your selves).  To aid this here
-are some references to well written recipes:
+Originally, Qi was designed for the version 3 of Dragora GNU/Linux; this
+doesn't mean you can't use it in another distribution, just that if you
+do, you'll have to try it out for yourself.  To help with this, here are
+some references to well-written recipes:
 
-<http://git.savannah.nongnu.org/cgit/dragora.git/tree/recipes>.
-<http://notabug.org/dragora/dragora/src/master/recipes>.
-
-   You can also check the "doc" directory in the distribution sources of
-qi for some examples.
+   * <http://git.savannah.nongnu.org/cgit/dragora.git/tree/recipes>
+   * <http://notabug.org/dragora/dragora/src/master/recipes>
 
 5.4 Building packages
 =====================
@@ -723,6 +721,16 @@ Recommended practice is to set variables in the command line of
 'configure' or _make(1)_ instead of exporting to the environment.  As
 follows:
 
+   <http://www.gnu.org/software/make/manual/html_node/Environment.html>
+     It is not wise for makefiles to depend for their functioning on
+     environment variables set up outside their control, since this
+     would cause different users to get different results from the same
+     makefile.  This is against the whole purpose of most makefiles.
+
+   Setting environment variables for configure is deprecated because
+running configure in varying environments can be dangerous.
+
+   <http://gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Defining-Variables.html>
      Variables not defined in a site shell script can be set in the
      environment passed to configure.  However, some packages may run
      configure again during the build, and the customized values of
@@ -732,26 +740,18 @@ follows:
 
      './configure CC=/usr/local2/bin/gcc'
 
-     <http://gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Defining-Variables.html>
-
-     Indeed, while configure can notice the definition of CC in
-     './configure CC=bizarre-cc', it is impossible to notice it in
-     'CC=bizarre-cc ./configure', which, unfortunately, is what most
-     users do.
-
-     [...]
-
-     configure: error: changes in the environment can compromise the
-     build.
-
-     <http://gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Setting-Output-Variables.html>
-
-     It is not wise for makefiles to depend for their functioning on
-     environment variables set up outside their control, since this
-     would cause different users to get different results from the same
-     makefile.  This is against the whole purpose of most makefiles.
-
-     <http://gnu.org/software/make/manual/make.html#Environment>
+   <http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Setting-Output-Variables.html>
+     If for instance the user runs 'CC=bizarre-cc ./configure', then the
+     cache, config.h, and many other output files depend upon bizarre-cc
+     being the C compiler.  If for some reason the user runs ./configure
+     again, or if it is run via './config.status --recheck', (See
+     Automatic Remaking, and see config.status Invocation), then the
+     configuration can be inconsistent, composed of results depending
+     upon two different compilers.  [...]  Indeed, while configure can
+     notice the definition of CC in './configure CC=bizarre-cc', it is
+     impossible to notice it in 'CC=bizarre-cc ./configure', which,
+     unfortunately, is what most users do.  [...]  configure: error:
+     changes in the environment can compromise the build.
 
 5.6 The meta file
 =================
@@ -928,9 +928,9 @@ All the exit codes are described in this chapter.
 '1'
      Minor common errors:
 
-        - Help usage on illegal options or required arguments.
+        * Help usage on illegal options or required arguments.
 
-        - Program needed by qi (prerequisite) is not available.
+        * Program needed by qi (prerequisite) is not available.
 
 '2'
      Command execution error:
@@ -943,40 +943,40 @@ All the exit codes are described in this chapter.
 
      Compressed files means:
 
-        - Tarball files from tar(1).  Supported extensions: .tar,
+        * Tarball files from tar(1).  Supported extensions: .tar,
           .tar.gz, .tgz, .tar.Z, .tar.bz2, .tbz2, .tbz, .tar.xz, .txz
 
-        - Tarball files from tarlz(1).  Supported extensions: .tar.lz,
+        * Tarball files from tarlz(1).  Supported extensions: .tar.lz,
           .tlz
 
-        - Zip files from unzip(1).  Supported extensions: .zip, .ZIP
+        * Zip files from unzip(1).  Supported extensions: .zip, .ZIP
 
-        - Gzip files from gzip(1).  Supported extensions: .gz, .Z
+        * Gzip files from gzip(1).  Supported extensions: .gz, .Z
 
-        - Bzip2 files from bzip2(1).  Supported extensions: .bz2
+        * Bzip2 files from bzip2(1).  Supported extension: .bz2
 
-        - Lzip files from lzip(1).  Supported extensions: .lz
+        * Lzip files from lzip(1).  Supported extension: .lz
 
-        - Xz files from xz(1).  Supported extensions: .xz
+        * Xz files from xz(1).  Supported extension: .xz
 
 '4'
      File empty, not regular, or expected.
 
      Commonly, it is expected:
 
-        - An argument for the mode of operation.
+        * An argument for the mode of operation.
 
-        - A readable file or directory.
+        * A readable file or directory.
 
-        - A binary package (.tlz).
+        * A binary package (.tlz).
 
-        - A valid recipe.
+        * A valid recipe.
 
-        - An order file (.order).
+        * An order file (.order).
 
-        - A protocol supported by the network downloader tool.
+        * A protocol supported by the network downloader tool.
 
-        - A checksum file (.sha256).
+        * A checksum file (.sha256).
 
 '5'
      Empty or not defined variable:
@@ -1005,14 +1005,14 @@ Index
 * Menu:
 
 * configuration file:                    The qirc file.       (line   6)
-* environment variables:                 Recipes.             (line 244)
+* environment variables:                 Recipes.             (line 241)
 * exit codes:                            Exit status.         (line   6)
 * handling build order:                  Order files.         (line   6)
 * introduction:                          Introduction.        (line   6)
 * invocation:                            Invoking qi.         (line   6)
 * managing packages:                     Packages.            (line   6)
 * package blacklist:                     Packages.            (line 176)
-* package build:                         Recipes.             (line 200)
+* package build:                         Recipes.             (line 197)
 * package conflicts:                     Packages.            (line  30)
 * package creation:                      Creating packages.   (line   6)
 * package de-installation:               Packages.            (line 104)
@@ -1021,26 +1021,26 @@ Index
 * package upgrade:                       Packages.            (line 143)
 * recipes:                               Recipes.             (line   6)
 * special variables:                     Recipes.             (line  58)
-* the meta file:                         Recipes.             (line 292)
+* the meta file:                         Recipes.             (line 291)
 * variables:                             Recipes.             (line  29)
 * writing recipes:                       Recipes.             (line 186)
 
 
 
 Tag Table:
-Node: Top798
-Node: Introduction1573
-Node: Invoking qi2742
-Node: The qirc file6160
-Node: Packages7237
-Ref: Packages-Footnote-114273
-Node: Recipes14386
-Ref: Recipes-Footnote-127255
-Node: Order files27400
-Node: Creating packages28702
-Node: Examining packages29742
-Node: Exit status30652
-Node: Index32590
+Node: Top802
+Node: Introduction1581
+Node: Invoking qi2750
+Node: The qirc file6168
+Node: Packages7245
+Ref: Packages-Footnote-114281
+Node: Recipes14394
+Ref: Recipes-Footnote-127760
+Node: Order files27905
+Node: Creating packages29207
+Node: Examining packages30247
+Node: Exit status31157
+Node: Index33092
 
 End Tag Table
 

@@ -1,9 +1,9 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <!-- This user guide is for Qi (version 1.3,
-10 Sep 2019), which is a simple but well-integrated package manager.
+1 Apr 2020), which is a simple but well-integrated package manager.
 
-Copyright (C) 2019 Matias Andres Fonzo, Santiago del Estero,
+Copyright (C) 2019-2020 Matias Andres Fonzo, Santiago del Estero,
 Argentina.
 
 Permission is granted to copy, distribute and/or modify this document
@@ -109,7 +109,7 @@ Next: <a href="#Introduction" accesskey="n" rel="next">Introduction</a>, Up: <a 
 <a name="SEC_Top"></a>
 
 <p>This user guide is for Qi (version 1.3,
-10 Sep 2019).
+1 Apr 2020).
 </p>
 <table class="menu" border="0" cellspacing="0">
 <tr><td align="left" valign="top">&bull; <a href="#Introduction" accesskey="1">Introduction</a>:</td><td>&nbsp;&nbsp;</td><td align="left" valign="top">Description and features of qi
@@ -135,7 +135,7 @@ Next: <a href="#Introduction" accesskey="n" rel="next">Introduction</a>, Up: <a 
 </table>
 
 <br>
-<p>Copyright (C) 2019 Matias Fonzo.
+<p>Copyright (C) 2019-2020 Matias Fonzo.
 </p>
 <p>Qi&rsquo;s home page can be found at <a href="http://www.dragora.org">http://www.dragora.org</a>.
 Send&nbsp;bug&nbsp;reports&nbsp;or&nbsp;suggestions&nbsp;to&nbsp;<a href="mailto:dragora-users@nongnu.org"><span class="nolinebreak">dragora-users</span>@nongnu.org</a>.<!-- /@w -->
@@ -868,17 +868,16 @@ licensing.  Comma would have lower precedence, plus added special terms.
 <h3 class="section">5.3 Writing recipes</h3>
 <a name="index-writing-recipes"></a>
 
-<p>Originally, qi was designed for the version 3 of Dragora GNU/Linux (this
-does not mean that you can&rsquo;t use it in another distribution, just that
-if you do you will need to test it for your selves).  To aid this here
-are some references to well written recipes:
+<p>Originally, Qi was designed for the version 3 of Dragora GNU/Linux; this
+doesn&rsquo;t mean you can&rsquo;t use it in another distribution, just that if you do,
+you&rsquo;ll have to try it out for yourself. To help with this, here are some
+references to well-written recipes:
 </p>
-<p><a href="http://git.savannah.nongnu.org/cgit/dragora.git/tree/recipes">http://git.savannah.nongnu.org/cgit/dragora.git/tree/recipes</a>.
-<a href="http://notabug.org/dragora/dragora/src/master/recipes">http://notabug.org/dragora/dragora/src/master/recipes</a>.
-</p>
-<p>You can also check the &quot;doc&quot; directory in the distribution sources of qi
-for some examples.
-</p>
+<ul>
+<li> <a href="http://git.savannah.nongnu.org/cgit/dragora.git/tree/recipes">http://git.savannah.nongnu.org/cgit/dragora.git/tree/recipes</a>
+</li><li> <a href="http://notabug.org/dragora/dragora/src/master/recipes">http://notabug.org/dragora/dragora/src/master/recipes</a>
+</li></ul>
+
 <a name="Building-packages"></a>
 <h3 class="section">5.4 Building packages</h3>
 <a name="index-package-build"></a>
@@ -952,7 +951,19 @@ no effect by default.  The environment variables such as <code>CFLAGS</code>,
 &lsquo;<samp>configure</samp>&rsquo; or <em>make(1)</em> instead of exporting to the
 environment.  As follows:
 </p>
-<blockquote>
+<p><a href="http://www.gnu.org/software/make/manual/html_node/Environment.html">http://www.gnu.org/software/make/manual/html_node/Environment.html</a>
+</p><blockquote>
+<p>It is not wise for makefiles to depend for their functioning on environment
+variables set up outside their control, since this would cause different
+users to get different results from the same makefile.  This is against the
+whole purpose of most makefiles.
+</p></blockquote>
+
+<p>Setting environment variables for configure is deprecated because running
+configure in varying environments can be dangerous.
+</p>
+<p><a href="http://gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Defining-Variables.html">http://gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Defining-Variables.html</a>
+</p><blockquote>
 <p>Variables not defined in a site shell script can be set in the environment
 passed to configure.  However, some packages may run configure again
 during the build, and the customized values of these variables may be
@@ -960,30 +971,22 @@ lost.  In order to avoid this problem, you should set them in the
 configure command line, using &lsquo;<samp>VAR=value</samp>&rsquo;.  For example:
 </p>
 <p><code>./configure CC=/usr/local2/bin/gcc</code>
-</p>
-<p><a href="http://gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Defining-Variables.html">http://gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Defining-Variables.html</a>
 </p></blockquote>
 
-<blockquote>
-<p>Indeed, while configure can notice the definition of CC in
-&lsquo;<samp>./configure CC=bizarre-cc</samp>&rsquo;, it is impossible to notice it in
-&lsquo;<samp>CC=bizarre-cc ./configure</samp>&rsquo;, which, unfortunately, is what most
-users do.
-</p>
-<p>[...]
-</p>
-<p>configure: error: changes in the environment can compromise the build.
-</p>
-<p><a href="http://gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Setting-Output-Variables.html">http://gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Setting-Output-Variables.html</a>
-</p></blockquote>
-
-<blockquote>
-<p>It is not wise for makefiles to depend for their functioning on
-environment variables set up outside their control, since this would cause
-different users to get different results from the same makefile.  This is
-against the whole purpose of most makefiles.
-</p>
-<p><a href="http://gnu.org/software/make/manual/make.html#Environment">http://gnu.org/software/make/manual/make.html#Environment</a>
+<p><a href="http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Setting-Output-Variables.html">http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Setting-Output-Variables.html</a>
+</p><blockquote>
+<p>If for instance the user runs &lsquo;<samp>CC=bizarre-cc ./configure</samp>&rsquo;, then the cache,
+config.h, and many other output files depend upon bizarre-cc being the C
+compiler.  If for some reason the user runs ./configure again, or if it is
+run via &lsquo;<samp>./config.status --recheck</samp>&rsquo;, (See Automatic Remaking, and see
+config.status Invocation), then the configuration can be inconsistent,
+composed of results depending upon two different compilers.
+[...]
+Indeed, while configure can notice the definition of CC in &lsquo;<samp>./configure
+CC=bizarre-cc</samp>&rsquo;, it is impossible to notice it in &lsquo;<samp>CC=bizarre-cc
+./configure</samp>&rsquo;, which, unfortunately, is what most users do.
+[...]
+configure: error: changes in the environment can compromise the build.
 </p></blockquote>
 
 <a name="The-meta-file"></a>
@@ -1201,10 +1204,10 @@ Next: <a href="#Index" accesskey="n" rel="next">Index</a>, Previous: <a href="#E
 <dt>&lsquo;<samp>1</samp>&rsquo;</dt>
 <dd><p>Minor common errors:
 </p>
-<ul class="no-bullet">
-<li>- Help usage on illegal options or required arguments.
+<ul>
+<li> Help usage on illegal options or required arguments.
 
-</li><li>- Program needed by qi (prerequisite) is not available.
+</li><li> Program needed by qi (prerequisite) is not available.
 </li></ul>
 
 </dd>
@@ -1220,28 +1223,28 @@ arguments in case of error.
 </p>
 <p>Compressed files means:
 </p>
-<ul class="no-bullet">
-<li>- Tarball files from tar(1).
+<ul>
+<li> Tarball files from tar(1).
 Supported extensions: .tar, .tar.gz, .tgz, .tar.Z, .tar.bz2, .tbz2, .tbz,
 .tar.xz, .txz
 
-</li><li>- Tarball files from tarlz(1).
+</li><li> Tarball files from tarlz(1).
 Supported extensions: .tar.lz, .tlz
 
-</li><li>- Zip files from unzip(1).
+</li><li> Zip files from unzip(1).
 Supported extensions: .zip, .ZIP
 
-</li><li>- Gzip files from gzip(1).
+</li><li> Gzip files from gzip(1).
 Supported extensions: .gz, .Z
 
-</li><li>- Bzip2 files from bzip2(1).
-Supported extensions: .bz2
+</li><li> Bzip2 files from bzip2(1).
+Supported extension: .bz2
 
-</li><li>- Lzip files from lzip(1).
-Supported extensions: .lz
+</li><li> Lzip files from lzip(1).
+Supported extension: .lz
 
-</li><li>- Xz files from xz(1).
-Supported extensions: .xz
+</li><li> Xz files from xz(1).
+Supported extension: .xz
 </li></ul>
 
 </dd>
@@ -1250,20 +1253,20 @@ Supported extensions: .xz
 </p>
 <p>Commonly, it is expected:
 </p>
-<ul class="no-bullet">
-<li>- An argument for the mode of operation.
+<ul>
+<li> An argument for the mode of operation.
 
-</li><li>- A readable file or directory.
+</li><li> A readable file or directory.
 
-</li><li>- A binary package (.tlz).
+</li><li> A binary package (.tlz).
 
-</li><li>- A valid recipe.
+</li><li> A valid recipe.
 
-</li><li>- An order file (.order).
+</li><li> An order file (.order).
 
-</li><li>- A protocol supported by the network downloader tool.
+</li><li> A protocol supported by the network downloader tool.
 
-</li><li>- A checksum file (.sha256).
+</li><li> A checksum file (.sha256).
 </li></ul>
 
 </dd>
