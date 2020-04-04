@@ -905,54 +905,6 @@ upgrade_mode()
 
     echo "{^} Upgrading to $incoming ..."
 
-    # Check packages in the blacklist for installation
-
-    echo "Checking blacklist ..."
-    for item in $blacklist
-    do
-        case $item in
-        ${incoming}*)
-            if test ! -e "$rootdir${packagedir}/$incoming"
-            then
-                warn \
-                 ""                                                   \
-                 "    The package declared in the blacklist will be"  \
-                 "installed instead of being updated ..."             \
-                 ""
-                opt_prune=opt_prune install_mode "$1"
-                return 0
-            fi
-
-            if is_newer "$1" "$rootdir${packagedir}/$incoming"
-            then
-                warn \
-                 ""                                                             \
-                 "Incoming package is more RECENT than the installed package:"  \
-                 ""                                                             \
-                 "$( stat -c "%y %n" "$1" )"                                    \
-                 "$( stat -c "%y %n" "$rootdir${packagedir}/$incoming" )"       \
-                 ""                                                             \
-                 "    The package declared in the blacklist will be"            \
-                 "    installed as part of the upgrade process ..."             \
-                 ""
-                opt_prune=opt_prune install_mode "$1"
-                touch "$rootdir${packagedir}/$incoming"
-                return 0
-            else
-                warn \
-                 ""                                                        \
-                 "Blacklisted package is already up-to-date:"              \
-                 ""                                                        \
-                 "$( stat -c "%y %n" "$rootdir${packagedir}/$incoming" )"  \
-                 "$( stat -c "%y %n" "$1" )"                               \
-                 ""
-                return 6
-            fi
-            ;;
-        esac
-    done
-    unset item
-
     # Check package pre-existence
     if test "$opt_force" != opt_force && \
        test -e "$rootdir${packagedir}/$incoming"
@@ -963,6 +915,25 @@ upgrade_mode()
          "Unless the -f option is given, this package won't be UPGRADED."
         return 6;
     fi
+
+    # Check blacklisted packages
+
+    echo "Checking blacklist ..."
+    for item in $blacklist
+    do
+        case $item in
+        ${incoming}*)
+            warn \
+             "Package name detected on the blacklist \"${incoming}\"."     \
+             ""                                                            \
+             "  This package will be INSTALLED instead of being updated."  \
+             ""
+             opt_prune=opt_prune install_mode "$1"
+             return 0
+            ;;
+        esac
+    done
+    unset item
 
     # Prepare the package to install it in a temporary location
 
