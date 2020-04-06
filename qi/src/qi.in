@@ -253,11 +253,11 @@ build_mode()
     # Unset special variables that can only be predefined on
     # the recipe and not coming from ${sysconfdir}/qirc
 
-    unset srcdir destdir pkgname pkgversion program version release \
+    unset srcdir destdir pkgname pkgversion pkghashtag program version release \
           fetch description homepage license replace full_pkgname \
           CFLAGS CXXFLAGS LDFLAGS
 
-    # The following variables must be saved and restored
+    # The following variables must be saved to be restored, later
     save_arch="${save_arch:=$arch}"
     save_jobs="${save_jobs:=$jobs}"
     save_outdir="${save_outdir:=$outdir}"
@@ -316,10 +316,16 @@ build_mode()
     srcdir="${srcdir:=${program}-$version}"
     destdir="${destdir:=${TMPDIR}/package-$pkgname}"
 
-    # Complete package name adding 'pkgversion-arch+release'
-    full_pkgname="${full_pkgname:=$pkgname-${pkgversion}-${arch}+${release}}"
+    # If 'pkghashtag' has been defined, prefix it using the hash tag
+    if test -n "$pkghashtag"
+    then
+        pkghashtag="#${pkghashtag}"
+    fi
 
-    # If a package is going to be created, the existence of a
+    # Complete package name adding 'pkgversion-arch+release[#pkghashtag]'
+    full_pkgname="${full_pkgname:=$pkgname-${pkgversion}-${arch}+${release}${pkghashtag}}"
+
+    # If a package is going to be created the existence of a
     # previous build will be detected and reported.  Under normal
     # conditions the recipe is built as long as it is newer than
     # the produced package, if not, we warn to the user about it.
@@ -643,7 +649,7 @@ create_mode()
     if test "$name" = "${name%.tlz}"
     then
         warn "Package format '$name' not supported." \
-             "It should be \"name-version-architecture+release.tlz\""
+             "It should be \"name-version-architecture+release[#pkghashtag].tlz\""
         exit 4
     fi
 
