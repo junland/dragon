@@ -7,8 +7,8 @@
 @syncodeindex pg cp
 @comment %**end of header
 
-@set VERSION 1.3
-@set UPDATED 1 Apr 2020
+@set VERSION 1.4rc1
+@set UPDATED 7 Apr 2020
 
 @copying
 This user guide is for Qi (version @value{VERSION},
@@ -69,7 +69,7 @@ This user guide is for Qi (version @value{VERSION},
 @sp 1
 Copyright (C) 2019-2020 Matias Fonzo.
 
-Qi's home page can be found at @uref{http://www.dragora.org}.
+Qi's home page can be found at @uref{https://www.dragora.org}.
 @w{Send bug reports or suggestions to @email{dragora-users@@nongnu.org}.}
 
 @node Introduction
@@ -232,8 +232,8 @@ Don't create a .tlz package.
 @item -S
 Selects the option to skip completed recipes.
 
-This means, in interactive mode, when the dialog
-to summarize recipes is shown.
+This means, in interactive mode, when the dialog to
+summarize recipes is shown.
 @end table
 
 @noindent
@@ -257,8 +257,10 @@ The version number should be included in all bug reports.
 
 @noindent
 Expected non-option arguments are package directories and regular files:
-recipes or files ending in .tlz, .order.  When FILE is -, qi can read from
-the standard input.  See examples in @ref{Packages}.
+recipes or files ending in .tlz, .order.
+
+When FILE is -, qi can read from the standard input.  See examples at
+@ref{Packages}.
 
 
 @node The qirc file
@@ -273,18 +275,17 @@ at runtime, e.g., to build, install, remove or upgrade packages.
 It has the following rules:
 
 @itemize @bullet
-@item Variables must be declared as @samp{name=value}.
+@item The variables must be declared like any other variable of the shell.
 
-@item Declaration of values should only take one line, no line break.
-
-@item For security reasons, assignments like @samp{name=$var} are only
-interpreted as literal.
+@item For security reasons, the variables (with its values) are
+exported to avoid code execution when reading @file{qirc} initially.
 @end itemize
 
 @noindent
 The command line options related to the package directory and target
-directory plus some of the options used for the build mode can override
-some values in @file{qirc}.  See @ref{Invoking qi}.
+directory and some of the command line options used for the build mode,
+have the power to override the values declared on @file{qirc}.
+See @ref{Invoking qi}.
 
 @noindent
 The order in which qi looks for this file is:
@@ -430,9 +431,9 @@ cat FILELIST.txt | qi -i -
 
 The list of packages must contain full path names to be passed in the
 installation, e.g.:
-/var/cache/qi/packages/x86_64/devel/tcl-8.6.9-x86_64+1.tlz
-/var/cache/qi/packages/x86_64/devel/tk-8.6.9.1-x86_64+1.tlz
-/var/cache/qi/packages/x86_64/devel/vala-0.42.3-x86_64+1.tlz
+/var/cache/qi/packages/tcl-8.6.9-x86_64+1.tlz
+/var/cache/qi/packages/tk-8.6.9.1-x86_64+1.tlz
+/var/cache/qi/packages/vala-0.42.3-x86_64+1.tlz
 
 @section Removing packages
 @cindex package de-installation
@@ -446,17 +447,17 @@ qi -d xz-5.2.4-i586+1.tlz
 @noindent
 Delete mode will match the package name using @samp{$@{packagedir@}} as
 prefix.  For example, if the value of @samp{$@{packagedir@}} is set to
-/usr/local/pkgs, this will be equal to:
+/usr/pkg, this will be equal to:
 
 @example
-qi -d /usr/local/pkgs/xz-5.2.4-i586+1
+qi -d /usr/pkg/xz-5.2.4-i586+1
 @end example
 
 @noindent
 Detailed output (very verbose):
 
 @example
-qi -d -v /usr/local/pkgs/xz-5.2.4-i586+1
+qi -d -v /usr/pkg/xz-5.2.4-i586+1
 @end example
 
 A second -v gives more.
@@ -467,13 +468,13 @@ removing its links from @samp{$@{targetdir@}}, but this behavior can be
 changed if the -k option is passed:
 
 @example
-qi -d -k /usr/local/pkgs/lzip-1.21-i586+1
+qi -d -k /usr/pkg/lzip-1.21-i586+1
 @end example
 
 This means that the links to the package can be reactivated, later:
 
 @example
-cd /usr/local/pkgs && graft -i lzip-1.21-i586+1
+cd /usr/pkg && graft -i lzip-1.21-i586+1
 @end example
 
 @noindent
@@ -542,7 +543,7 @@ qi -u -f gcc-9.0.1-i586+1.tlz
 
 To implement general package facilities, either to install, remove or
 maintain the hierarchy of packages in a clean manner, qi makes use of the
-pruning operation via graft(1):
+pruning operation via graft(1) by default:
 
 There is a risk if those are crucial packages for the proper functioning
 of the system, because it implies the deactivation of symbolic from the
@@ -563,12 +564,8 @@ carried out in order to re-link possible differences with the recent
 content, this helps to avoid leaving dead links in the target directory.
 
 @noindent
-Since the upgrade mode is also used to install a new package, the mechanism
-for blacklist is to install a declared package if it does not already
-exist.  If it already exists, it is verified that the binary package is
-newer than the package directory in order to perform an update.
-
-Package names for the blacklist can be set from the configuration file.
+The package names for the blacklist to be declared must be set from
+the configuration file.
 
 
 @node Recipes
@@ -634,7 +631,7 @@ via @file{qirc}, there are other special variables which can be defined or
 redefined in a recipe.  See the following definitions:
 
 @samp{outdir} is the directory where the packages produced are written.
-This variable can not be redefined in the recipe.  Default sets to
+This variable can be redefined per-recipe.  Default sets to
 @samp{/var/cache/qi/packages}.
 
 @samp{worktree} is the working tree where archives, patches, and recipes
@@ -670,41 +667,53 @@ is assigned by default.  If @samp{pkgversion} is left undefined, the
 special variable @samp{version} is assigned by default.
 
 @samp{pkgname} and @samp{pkgversion} along with: @samp{version}, @samp{arch},
-and @samp{release} are used to produce the name of the package in the form:
-@samp{$@{pkgname@}-$@{pkgversion@}-$@{arch@}+$@{release@}.tlz}
+@samp{release}, and (optionally) @samp{pkghashtag} are used to produce the
+package name in the form:
+@samp{$@{pkgname@}-$@{pkgversion@}-$@{arch@}+$@{release@}[#$@{pkghashtag@}].tlz}
 
-A special variable called @samp{replace} can be used to declare package
-names that will be replaced at the time of installation.
+@samp{pkghashtag} is an optional special variable that can be defined on the
+recipe to categorize the package name.  If it is defined, then the
+package output will be composed as
+@samp{$@{pkgname@}-$@{pkgversion@}-$@{arch@}+$@{release@}#$@{pkghashtag@}.tlz}.
+Automatically, its value is prefixed with the character @samp{#}.
+
+A special variable called @samp{replace} can be used to declare package names
+that will be replaced at installation time.
 
 @noindent
 A typical recipe contains the following variables:
 
 @itemize @bullet
-@item @samp{program}: software name.
+@item @samp{program}: Software name.
 
 It matches the source name.  It is also used to compose the name of the
 package if @samp{$@{pkgname@}} is not specified.
 
-@item @samp{version}: software version.
+@item @samp{version}: Software version.
 
 It matches the source name.  It is also used to compose the version of the
 package if @samp{$@{pkgversion@}} is not specified.
 
-@item @samp{arch}: software architecture.
+@item @samp{arch}: Software architecture.
 
 It is used to compose the architecture of the package in which it is
 build.
 
-@item @samp{release}: release number.
+@item @samp{release}: Release number.
 
 This is used to reflect the release number of the package.  It is
 recommended to increase this number after any significant change in
 the recipe or post-install script.
+
+@item @samp{pkghashtag}: Package hash tag.
+
+Optional but recommended variable to categorize the package name when it is
+created.
 @end itemize
 
 @noindent
 Obtaining sources over the network must be declared in the recipe using
-the @samp{fetch} variable.  Use double quotes for separated values.
+the @samp{fetch} variable.
 
 The variables @samp{netget} and @samp{rsync} can be defined in @file{qirc}
 to establish a network downloader in order to get the sources.  If they
@@ -912,8 +921,8 @@ version, architecture, release, fetch address, description, and other
 minor data extracted from processed recipes.  The name of the file is
 generated as @samp{$@{full_pkgname@}.tlz.txt}, and its purpose is to
 reflect essential information to the user without having to look inside
-the package content.  The file format is also intended to be imported
-from other scripts.
+the package content.  The file format is also intended to be used by
+other scripts or by common Unix tools.
 
 The content of a meta file looks like:
 
@@ -929,13 +938,14 @@ The content of a meta file looks like:
 # interactive use.
 #
 
-QICFLAGS="-g0 -Os -mtune=generic -pipe"
-QICXXFLAGS="-g0 -Os -mtune=generic -pipe"
+QICFLAGS="-g0 -Os"
+QICXXFLAGS="-g0 -Os"
 QILDFLAGS="-s"
 pkgname=bash
 pkgversion=5.0
 arch=x86_64
 release=1
+pkghashtag=shell
 blurb="The Bourne Again SHell."
 homepage="http://www.gnu.org/software/bash"
 license="GPLv3+"
@@ -945,15 +955,15 @@ replace=""
 
 Package descriptions are extracted from the variable @samp{description}
 where each line is interpreted literally and pre-formatted to fit in
-(exactly) @strong{80 columns}, plus the character @samp{#} and a space
-is prefixed to every line.
+(exactly) @strong{80 columns}, plus the character @samp{#} and a blank
+space is prefixed to every line (shell comments).
 
 @noindent
 In addition to the Special variables, there are implicit variables such as
 @samp{blurb}:
 
 The @samp{blurb} variable is related to the special variable
-@samp{description}.  Its value is composed using the first (substantial)
+@samp{description}.  Its value is made from the first (substantial)
 line of @samp{description}, mentioned as the "brief description".
 
 
@@ -1028,7 +1038,7 @@ A package is produced using the contents of the Current Directory, and
 the package file is written out.
 
 @example
-Usage: qi -c [@var{OUTPUT/packagename.tlz}]...
+Usage: qi -c [@var{Output/PackageName.tlz}]...
 @end example
 
 The argument for the file name to be written must contain a fully
@@ -1039,13 +1049,13 @@ full name: name-version-architecture+release.tlz
 @sc{Example}
 
 @example
-cd /usr/local/pkgs
+cd /usr/pkg
 cd claws-mail-3.17.1-x86_64+1
-qi -c /var/cache/qi/packages/x86_64/local/claws-mail-3.17.1-x86_64+1.tlz
+qi -c /var/cache/qi/packages/claws-mail-3.17.1-x86_64+1.tlz
 @end example
 
 In this case, the package "claws-mail-3.17.1-x86_64+1.tlz" will be written
-into @samp{/var/cache/qi/packages/x86_64/local/}.
+into @samp{/var/cache/qi/packages/}.
 
 @noindent
 All packages produced are complemented by a checksum file (.sha256).

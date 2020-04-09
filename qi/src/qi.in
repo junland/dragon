@@ -972,7 +972,7 @@ upgrade_mode()
         fnmatch "$(pkgbase $found)*" "$incoming" || continue;
         echo "${long_name}:  Detected."
 
-        # A package directory is preserved if -k is given
+        # A package directory is preserved if -k was given
         delete_mode "$found" > /dev/null
     done
     unset long_name found
@@ -1064,6 +1064,9 @@ extract_mode()
 pkgbase()
 {
     string="$(basename -- "$1" .tlz)"
+
+    # Remove the possible trailing 'pkghashtag'
+    string="${string%%#*}"
 
     # Match cases to print the package name.
     #
@@ -1167,6 +1170,7 @@ pkgname=$pkgname
 pkgversion=$pkgversion
 arch=$arch
 release=$release
+pkghashtag=$pkghashtag
 blurb="$(echo "$description" | sed -e '/^$/d;2q')"
 homepage="$homepage"
 license="$license"

@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- This user guide is for Qi (version 1.3,
-1 Apr 2020), which is a simple but well-integrated package manager.
+<!-- This user guide is for Qi (version 1.4rc1,
+7 Apr 2020), which is a simple but well-integrated package manager.
 
 Copyright (C) 2019-2020 Matias Andres Fonzo, Santiago del Estero,
 Argentina.
@@ -108,8 +108,8 @@ Next: <a href="#Introduction" accesskey="n" rel="next">Introduction</a>, Up: <a 
 </div>
 <a name="SEC_Top"></a>
 
-<p>This user guide is for Qi (version 1.3,
-1 Apr 2020).
+<p>This user guide is for Qi (version 1.4rc1,
+7 Apr 2020).
 </p>
 <table class="menu" border="0" cellspacing="0">
 <tr><td align="left" valign="top">&bull; <a href="#Introduction" accesskey="1">Introduction</a>:</td><td>&nbsp;&nbsp;</td><td align="left" valign="top">Description and features of qi
@@ -137,7 +137,7 @@ Next: <a href="#Introduction" accesskey="n" rel="next">Introduction</a>, Up: <a 
 <br>
 <p>Copyright (C) 2019-2020 Matias Fonzo.
 </p>
-<p>Qi&rsquo;s home page can be found at <a href="http://www.dragora.org">http://www.dragora.org</a>.
+<p>Qi&rsquo;s home page can be found at <a href="https://www.dragora.org">https://www.dragora.org</a>.
 Send&nbsp;bug&nbsp;reports&nbsp;or&nbsp;suggestions&nbsp;to&nbsp;<a href="mailto:dragora-users@nongnu.org"><span class="nolinebreak">dragora-users</span>@nongnu.org</a>.<!-- /@w -->
 </p>
 <hr>
@@ -331,8 +331,8 @@ to the specified directory, including the log file for graft.
 <dt><code>-S</code></dt>
 <dd><p>Selects the option to skip completed recipes.
 </p>
-<p>This means, in interactive mode, when the dialog
-to summarize recipes is shown.
+<p>This means, in interactive mode, when the dialog to
+summarize recipes is shown.
 </p></dd>
 </dl>
 
@@ -358,8 +358,10 @@ The version number should be included in all bug reports.
 </dl>
 
 <p>Expected non-option arguments are package directories and regular files:
-recipes or files ending in .tlz, .order.  When FILE is -, qi can read from
-the standard input.  See examples in <a href="#Packages">Packages</a>.
+recipes or files ending in .tlz, .order.
+</p>
+<p>When FILE is -, qi can read from the standard input.  See examples at
+<a href="#Packages">Packages</a>.
 </p>
 
 <hr>
@@ -379,17 +381,16 @@ at runtime, e.g., to build, install, remove or upgrade packages.
 <p>It has the following rules:
 </p>
 <ul>
-<li> Variables must be declared as &lsquo;<samp>name=value</samp>&rsquo;.
+<li> The variables must be declared like any other variable of the shell.
 
-</li><li> Declaration of values should only take one line, no line break.
-
-</li><li> For security reasons, assignments like &lsquo;<samp>name=$var</samp>&rsquo; are only
-interpreted as literal.
+</li><li> For security reasons, the variables (with its values) are
+exported to avoid code execution when reading <samp>qirc</samp> initially.
 </li></ul>
 
 <p>The command line options related to the package directory and target
-directory plus some of the options used for the build mode can override
-some values in <samp>qirc</samp>.  See <a href="#Invoking-qi">Invoking qi</a>.
+directory and some of the command line options used for the build mode,
+have the power to override the values declared on <samp>qirc</samp>.
+See <a href="#Invoking-qi">Invoking qi</a>.
 </p>
 <p>The order in which qi looks for this file is:
 </p>
@@ -527,9 +528,9 @@ system is able to see the recent lzip.
 
 <p>The list of packages must contain full path names to be passed in the
 installation, e.g.:
-/var/cache/qi/packages/x86_64/devel/tcl-8.6.9-x86_64+1.tlz
-/var/cache/qi/packages/x86_64/devel/tk-8.6.9.1-x86_64+1.tlz
-/var/cache/qi/packages/x86_64/devel/vala-0.42.3-x86_64+1.tlz
+/var/cache/qi/packages/tcl-8.6.9-x86_64+1.tlz
+/var/cache/qi/packages/tk-8.6.9.1-x86_64+1.tlz
+/var/cache/qi/packages/vala-0.42.3-x86_64+1.tlz
 </p>
 <a name="Removing-packages"></a>
 <h3 class="section">4.3 Removing packages</h3>
@@ -543,16 +544,16 @@ installation, e.g.:
 
 <p>Delete mode will match the package name using &lsquo;<samp>${packagedir}</samp>&rsquo; as
 prefix.  For example, if the value of &lsquo;<samp>${packagedir}</samp>&rsquo; is set to
-/usr/local/pkgs, this will be equal to:
+/usr/pkg, this will be equal to:
 </p>
 <div class="example">
-<pre class="example">qi -d /usr/local/pkgs/xz-5.2.4-i586+1
+<pre class="example">qi -d /usr/pkg/xz-5.2.4-i586+1
 </pre></div>
 
 <p>Detailed output (very verbose):
 </p>
 <div class="example">
-<pre class="example">qi -d -v /usr/local/pkgs/xz-5.2.4-i586+1
+<pre class="example">qi -d -v /usr/pkg/xz-5.2.4-i586+1
 </pre></div>
 
 <p>A second -v gives more.
@@ -562,13 +563,13 @@ removing its links from &lsquo;<samp>${targetdir}</samp>&rsquo;, but this behavi
 changed if the -k option is passed:
 </p>
 <div class="example">
-<pre class="example">qi -d -k /usr/local/pkgs/lzip-1.21-i586+1
+<pre class="example">qi -d -k /usr/pkg/lzip-1.21-i586+1
 </pre></div>
 
 <p>This means that the links to the package can be reactivated, later:
 </p>
 <div class="example">
-<pre class="example">cd /usr/local/pkgs &amp;&amp; graft -i lzip-1.21-i586+1
+<pre class="example">cd /usr/pkg &amp;&amp; graft -i lzip-1.21-i586+1
 </pre></div>
 
 <p>Removing package from a different location:
@@ -633,7 +634,7 @@ upgrade process, just pass:
 
 <p>To implement general package facilities, either to install, remove or
 maintain the hierarchy of packages in a clean manner, qi makes use of the
-pruning operation via graft(1):
+pruning operation via graft(1) by default:
 </p>
 <p>There is a risk if those are crucial packages for the proper functioning
 of the system, because it implies the deactivation of symbolic from the
@@ -652,12 +653,8 @@ the content of the package will be updated over the existing content at
 carried out in order to re-link possible differences with the recent
 content, this helps to avoid leaving dead links in the target directory.
 </p>
-<p>Since the upgrade mode is also used to install a new package, the mechanism
-for blacklist is to install a declared package if it does not already
-exist.  If it already exists, it is verified that the binary package is
-newer than the package directory in order to perform an update.
-</p>
-<p>Package names for the blacklist can be set from the configuration file.
+<p>The package names for the blacklist to be declared must be set from
+the configuration file.
 </p>
 
 <hr>
@@ -731,7 +728,7 @@ via <samp>qirc</samp>, there are other special variables which can be defined or
 redefined in a recipe.  See the following definitions:
 </p>
 <p>&lsquo;<samp>outdir</samp>&rsquo; is the directory where the packages produced are written.
-This variable can not be redefined in the recipe.  Default sets to
+This variable can be redefined per-recipe.  Default sets to
 &lsquo;<samp>/var/cache/qi/packages</samp>&rsquo;.
 </p>
 <p>&lsquo;<samp>worktree</samp>&rsquo; is the working tree where archives, patches, and recipes
@@ -767,39 +764,51 @@ is assigned by default.  If &lsquo;<samp>pkgversion</samp>&rsquo; is left undefi
 special variable &lsquo;<samp>version</samp>&rsquo; is assigned by default.
 </p>
 <p>&lsquo;<samp>pkgname</samp>&rsquo; and &lsquo;<samp>pkgversion</samp>&rsquo; along with: &lsquo;<samp>version</samp>&rsquo;, &lsquo;<samp>arch</samp>&rsquo;,
-and &lsquo;<samp>release</samp>&rsquo; are used to produce the name of the package in the form:
-&lsquo;<samp>${pkgname}-${pkgversion}-${arch}+${release}.tlz</samp>&rsquo;
+&lsquo;<samp>release</samp>&rsquo;, and (optionally) &lsquo;<samp>pkghashtag</samp>&rsquo; are used to produce the
+package name in the form:
+&lsquo;<samp>${pkgname}-${pkgversion}-${arch}+${release}[#${pkghashtag}].tlz</samp>&rsquo;
 </p>
-<p>A special variable called &lsquo;<samp>replace</samp>&rsquo; can be used to declare package
-names that will be replaced at the time of installation.
+<p>&lsquo;<samp>pkghashtag</samp>&rsquo; is an optional special variable that can be defined on the
+recipe to categorize the package name.  If it is defined, then the
+package output will be composed as
+&lsquo;<samp>${pkgname}-${pkgversion}-${arch}+${release}#${pkghashtag}.tlz</samp>&rsquo;.
+Automatically, its value is prefixed with the character &lsquo;<samp>#</samp>&rsquo;.
+</p>
+<p>A special variable called &lsquo;<samp>replace</samp>&rsquo; can be used to declare package names
+that will be replaced at installation time.
 </p>
 <p>A typical recipe contains the following variables:
 </p>
 <ul>
-<li> &lsquo;<samp>program</samp>&rsquo;: software name.
+<li> &lsquo;<samp>program</samp>&rsquo;: Software name.
 
 <p>It matches the source name.  It is also used to compose the name of the
 package if &lsquo;<samp>${pkgname}</samp>&rsquo; is not specified.
 </p>
-</li><li> &lsquo;<samp>version</samp>&rsquo;: software version.
+</li><li> &lsquo;<samp>version</samp>&rsquo;: Software version.
 
 <p>It matches the source name.  It is also used to compose the version of the
 package if &lsquo;<samp>${pkgversion}</samp>&rsquo; is not specified.
 </p>
-</li><li> &lsquo;<samp>arch</samp>&rsquo;: software architecture.
+</li><li> &lsquo;<samp>arch</samp>&rsquo;: Software architecture.
 
 <p>It is used to compose the architecture of the package in which it is
 build.
 </p>
-</li><li> &lsquo;<samp>release</samp>&rsquo;: release number.
+</li><li> &lsquo;<samp>release</samp>&rsquo;: Release number.
 
 <p>This is used to reflect the release number of the package.  It is
 recommended to increase this number after any significant change in
 the recipe or post-install script.
+</p>
+</li><li> &lsquo;<samp>pkghashtag</samp>&rsquo;: Package hash tag.
+
+<p>Optional but recommended variable to categorize the package name when it is
+created.
 </p></li></ul>
 
 <p>Obtaining sources over the network must be declared in the recipe using
-the &lsquo;<samp>fetch</samp>&rsquo; variable.  Use double quotes for separated values.
+the &lsquo;<samp>fetch</samp>&rsquo; variable.
 </p>
 <p>The variables &lsquo;<samp>netget</samp>&rsquo; and &lsquo;<samp>rsync</samp>&rsquo; can be defined in <samp>qirc</samp>
 to establish a network downloader in order to get the sources.  If they
@@ -999,8 +1008,8 @@ version, architecture, release, fetch address, description, and other
 minor data extracted from processed recipes.  The name of the file is
 generated as &lsquo;<samp>${full_pkgname}.tlz.txt</samp>&rsquo;, and its purpose is to
 reflect essential information to the user without having to look inside
-the package content.  The file format is also intended to be imported
-from other scripts.
+the package content.  The file format is also intended to be used by
+other scripts or by common Unix tools.
 </p>
 <p>The content of a meta file looks like:
 </p>
@@ -1016,13 +1025,14 @@ from other scripts.
 # interactive use.
 #
 
-QICFLAGS=&quot;-g0 -Os -mtune=generic -pipe&quot;
-QICXXFLAGS=&quot;-g0 -Os -mtune=generic -pipe&quot;
+QICFLAGS=&quot;-g0 -Os&quot;
+QICXXFLAGS=&quot;-g0 -Os&quot;
 QILDFLAGS=&quot;-s&quot;
 pkgname=bash
 pkgversion=5.0
 arch=x86_64
 release=1
+pkghashtag=shell
 blurb=&quot;The Bourne Again SHell.&quot;
 homepage=&quot;http://www.gnu.org/software/bash&quot;
 license=&quot;GPLv3+&quot;
@@ -1032,14 +1042,14 @@ replace=&quot;&quot;
 
 <p>Package descriptions are extracted from the variable &lsquo;<samp>description</samp>&rsquo;
 where each line is interpreted literally and pre-formatted to fit in
-(exactly) <strong>80 columns</strong>, plus the character &lsquo;<samp>#</samp>&rsquo; and a space
-is prefixed to every line.
+(exactly) <strong>80 columns</strong>, plus the character &lsquo;<samp>#</samp>&rsquo; and a blank
+space is prefixed to every line (shell comments).
 </p>
 <p>In addition to the Special variables, there are implicit variables such as
 &lsquo;<samp>blurb</samp>&rsquo;:
 </p>
 <p>The &lsquo;<samp>blurb</samp>&rsquo; variable is related to the special variable
-&lsquo;<samp>description</samp>&rsquo;.  Its value is composed using the first (substantial)
+&lsquo;<samp>description</samp>&rsquo;.  Its value is made from the first (substantial)
 line of &lsquo;<samp>description</samp>&rsquo;, mentioned as the &quot;brief description&quot;.
 </p>
 
@@ -1125,7 +1135,7 @@ A package is produced using the contents of the Current Directory, and
 the package file is written out.
 </p>
 <div class="example">
-<pre class="example">Usage: qi -c [<var>OUTPUT/packagename.tlz</var>]...
+<pre class="example">Usage: qi -c [<var>Output/PackageName.tlz</var>]...
 </pre></div>
 
 <p>The argument for the file name to be written must contain a fully
@@ -1136,13 +1146,13 @@ full name: name-version-architecture+release.tlz
 <p><small>EXAMPLE</small>
 </p>
 <div class="example">
-<pre class="example">cd /usr/local/pkgs
+<pre class="example">cd /usr/pkg
 cd claws-mail-3.17.1-x86_64+1
-qi -c /var/cache/qi/packages/x86_64/local/claws-mail-3.17.1-x86_64+1.tlz
+qi -c /var/cache/qi/packages/claws-mail-3.17.1-x86_64+1.tlz
 </pre></div>
 
 <p>In this case, the package &quot;claws-mail-3.17.1-x86_64+1.tlz&quot; will be written
-into &lsquo;<samp>/var/cache/qi/packages/x86_64/local/</samp>&rsquo;.
+into &lsquo;<samp>/var/cache/qi/packages/</samp>&rsquo;.
 </p>
 <p>All packages produced are complemented by a checksum file (.sha256).
 </p>
