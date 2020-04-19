@@ -16,7 +16,7 @@
 
 program=gcc
 version=9.3.0
-release=1
+release=2
 
 # Define hash tag to categorize the package name output
 pkghashtag=devel
@@ -127,6 +127,9 @@ build()
      BOOT_CXXFLAGS="$QICXXFLAGS"
 
     make -j${jobs} V=1 DESTDIR="$destdir" install
+
+    # Delete non-shared version of libssp (provided on the musl package)
+    rm -f "${destdir}/usr/lib${libSuffix}"/libssp_nonshared.a
 
     # Strip ELF executables only excluding shared objects
     find "$destdir" -type f | xargs file | awk '/ELF/ && /executable/' | \
