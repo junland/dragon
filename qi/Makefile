@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 1.4rc1
+version		= 1.4
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -112,6 +112,7 @@ doc/$(project).html : doc/$(project).texi
 	 $(project).texi
 
 dist : doc
+	rm -f $(DISTNAME)
 	ln -sf . $(DISTNAME)
 	tarlz --solid -9 -cvf $(DISTNAME).tar.lz \
 	  $(DISTNAME)/AUTHORS \
@@ -119,7 +120,7 @@ dist : doc
 	  $(DISTNAME)/CREDITS \
 	  $(DISTNAME)/Makefile \
 	  $(DISTNAME)/NEWS \
-	  $(DISTNAME)/README \
+	  $(DISTNAME)/README.md \
 	  $(DISTNAME)/configure \
 	  $(DISTNAME)/doc/example.order \
 	  $(DISTNAME)/doc/fdl.txt \

@@ -7,8 +7,8 @@
 @syncodeindex pg cp
 @comment %**end of header
 
-@set VERSION 1.4rc1
-@set UPDATED 7 Apr 2020
+@set VERSION 1.4
+@set UPDATED 20 Apr 2020
 
 @copying
 This user guide is for Qi (version @value{VERSION},
@@ -131,7 +131,7 @@ Install packages.
 Resolve build order through .order files.
 
 @item -u
-Update packages (implies -i, -d and -p options).
+Upgrade packages (implies -i, -d and -p options).
 
 @item -w
 Warn about files that will be linked.
@@ -159,7 +159,7 @@ Only valid for -i, -d, or -u options.
 @item -f
 Force option.
 
-This option can force the build of a recipe, or force the update of a
+This option can force the build of a recipe, or force the upgrade of a
 pre-existing package.
 
 Only valid for -b, -u options.
@@ -271,15 +271,8 @@ The global @file{qirc} file offers a way to define variables and tools
 (such as a download manager) for default use.  This file is used by qi
 at runtime, e.g., to build, install, remove or upgrade packages.
 
-@noindent
-It has the following rules:
-
-@itemize @bullet
-@item The variables must be declared like any other variable of the shell.
-
-@item For security reasons, the variables (with its values) are
-exported to avoid code execution when reading @file{qirc} initially.
-@end itemize
+Variables and their possible values must be declared as any other
+variable in the shell.
 
 @noindent
 The command line options related to the package directory and target
@@ -511,7 +504,7 @@ To upgrade a package, just type:
 qi -u gcc-9.0.1-i586+1.tlz
 @end example
 
-This will proceed to update "gcc-9.0.1-i586+1" removing other versions
+This will proceed to upgrade "gcc-9.0.1-i586+1" removing any other version
 of "gcc" (if any).
 
 @noindent
@@ -667,15 +660,16 @@ is assigned by default.  If @samp{pkgversion} is left undefined, the
 special variable @samp{version} is assigned by default.
 
 @samp{pkgname} and @samp{pkgversion} along with: @samp{version}, @samp{arch},
-@samp{release}, and (optionally) @samp{pkghashtag} are used to produce the
+@samp{release}, and (optionally) @samp{pkgcategory} are used to produce the
 package name in the form:
-@samp{$@{pkgname@}-$@{pkgversion@}-$@{arch@}+$@{release@}[#$@{pkghashtag@}].tlz}
+@samp{$@{pkgname@}-$@{pkgversion@}-$@{arch@}+$@{release@}[@@$@{pkgcategory@}].tlz}
 
-@samp{pkghashtag} is an optional special variable that can be defined on the
+@samp{pkgcategory} is an optional special variable that can be defined on the
 recipe to categorize the package name.  If it is defined, then the
 package output will be composed as
-@samp{$@{pkgname@}-$@{pkgversion@}-$@{arch@}+$@{release@}#$@{pkghashtag@}.tlz}.
-Automatically, its value is prefixed with the character @samp{#}.
+@samp{$@{pkgname@}-$@{pkgversion@}-$@{arch@}+$@{release@}@@$@{pkgcategory@}.tlz}.
+Automatically, the value of @samp{pkgcategory} will be prefixed using the
+@samp{@@} character.
 
 A special variable called @samp{replace} can be used to declare package names
 that will be replaced at installation time.
@@ -705,7 +699,7 @@ This is used to reflect the release number of the package.  It is
 recommended to increase this number after any significant change in
 the recipe or post-install script.
 
-@item @samp{pkghashtag}: Package hash tag.
+@item @samp{pkgcategory}: Package category.
 
 Optional but recommended variable to categorize the package name when it is
 created.
@@ -928,28 +922,29 @@ The content of a meta file looks like:
 
 @example
 #
-# The Bourne Again SHell.
+# Pattern scanning and processing language.
 #
-# Bash is an sh-compatible shell that incorporates useful features from
-# the Korn shell (ksh) and C shell (csh).  It is intended to conform to
-# the IEEE POSIX P1003.2/ISO 9945.2 shell and tools standard.
+# The awk utility interprets a special-purpose programming language
+# that makes it possible to handle simple data-reformatting jobs
+# with just a few lines of code.  It is a free version of 'awk'.
 #
-# It offers functional improvements over sh for both programming and
-# interactive use.
+# GNU awk implements the AWK utility which is part of
+# IEEE Std 1003.1 Shell and Utilities (XCU).
 #
 
 QICFLAGS="-g0 -Os"
 QICXXFLAGS="-g0 -Os"
 QILDFLAGS="-s"
-pkgname=bash
-pkgversion=5.0
+pkgname=gawk
+pkgversion=5.0.1
 arch=x86_64
 release=1
-pkghashtag=shell
-blurb="The Bourne Again SHell."
-homepage="http://www.gnu.org/software/bash"
+pkgcategory=@@tools
+full_pkgname=gawk-5.0.1-x86_64+1@@tools
+blurb="Pattern scanning and processing language."
+homepage="http://www.gnu.org/software/gawk"
 license="GPLv3+"
-fetch="ftp://ftp.gnu.org/gnu/bash/bash-5.0.tar.gz"
+fetch="http://ftp.gnu.org/gnu/gawk/gawk-5.0.1.tar.lz"
 replace=""
 @end example
 

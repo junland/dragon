@@ -1,7 +1,7 @@
 This is qi.info, produced by makeinfo version 6.5 from qi.texi.
 
-This user guide is for Qi (version 1.4rc1, 7 Apr 2020), which is a
-simple but well-integrated package manager.
+This user guide is for Qi (version 1.4, 20 Apr 2020), which is a simple
+but well-integrated package manager.
 
    Copyright © 2019-2020 Matias Andres Fonzo, Santiago del Estero,
 Argentina.
@@ -23,7 +23,7 @@ File: qi.info,  Node: Top,  Next: Introduction,  Up: (dir)
 Qi user guide
 *************
 
-This user guide is for Qi (version 1.4rc1, 7 Apr 2020).
+This user guide is for Qi (version 1.4, 20 Apr 2020).
 
 * Menu:
 
@@ -102,7 +102,7 @@ qi supports the following options to operate:
      Resolve build order through .order files.
 
 '-u'
-     Update packages (implies -i, -d and -p options).
+     Upgrade packages (implies -i, -d and -p options).
 
 '-w'
      Warn about files that will be linked.
@@ -127,8 +127,8 @@ There are common options between modes:
 '-f'
      Force option.
 
-     This option can force the build of a recipe, or force the update of
-     a pre-existing package.
+     This option can force the build of a recipe, or force the upgrade
+     of a pre-existing package.
 
      Only valid for -b, -u options.
 
@@ -233,13 +233,8 @@ The global 'qirc' file offers a way to define variables and tools (such
 as a download manager) for default use.  This file is used by qi at
 runtime, e.g., to build, install, remove or upgrade packages.
 
-It has the following rules:
-
-   * The variables must be declared like any other variable of the
-     shell.
-
-   * For security reasons, the variables (with its values) are exported
-     to avoid code execution when reading 'qirc' initially.
+   Variables and their possible values must be declared as any other
+variable in the shell.
 
 The command line options related to the package directory and target
 directory and some of the command line options used for the build mode,
@@ -410,8 +405,8 @@ To upgrade a package, just type:
 
      qi -u gcc-9.0.1-i586+1.tlz
 
-   This will proceed to update "gcc-9.0.1-i586+1" removing other
-versions of "gcc" (if any).
+   This will proceed to upgrade "gcc-9.0.1-i586+1" removing any other
+version of "gcc" (if any).
 
 If you want to keep the package directories of versions found during the
 upgrade process, just pass:
@@ -556,15 +551,16 @@ assigned by default.  If 'pkgversion' is left undefined, the special
 variable 'version' is assigned by default.
 
    'pkgname' and 'pkgversion' along with: 'version', 'arch', 'release',
-and (optionally) 'pkghashtag' are used to produce the package name in
+and (optionally) 'pkgcategory' are used to produce the package name in
 the form:
-'${pkgname}-${pkgversion}-${arch}+${release}[#${pkghashtag}].tlz'
+'${pkgname}-${pkgversion}-${arch}+${release}[@${pkgcategory}].tlz'
 
-   'pkghashtag' is an optional special variable that can be defined on
+   'pkgcategory' is an optional special variable that can be defined on
 the recipe to categorize the package name.  If it is defined, then the
 package output will be composed as
-'${pkgname}-${pkgversion}-${arch}+${release}#${pkghashtag}.tlz'.
-Automatically, its value is prefixed with the character '#'.
+'${pkgname}-${pkgversion}-${arch}+${release}@${pkgcategory}.tlz'.
+Automatically, the value of 'pkgcategory' will be prefixed using the '@'
+character.
 
    A special variable called 'replace' can be used to declare package
 names that will be replaced at installation time.
@@ -592,7 +588,7 @@ A typical recipe contains the following variables:
      recommended to increase this number after any significant change in
      the recipe or post-install script.
 
-   * 'pkghashtag': Package hash tag.
+   * 'pkgcategory': Package category.
 
      Optional but recommended variable to categorize the package name
      when it is created.
@@ -775,28 +771,29 @@ scripts or by common Unix tools.
    The content of a meta file looks like:
 
      #
-     # The Bourne Again SHell.
+     # Pattern scanning and processing language.
      #
-     # Bash is an sh-compatible shell that incorporates useful features from
-     # the Korn shell (ksh) and C shell (csh).  It is intended to conform to
-     # the IEEE POSIX P1003.2/ISO 9945.2 shell and tools standard.
+     # The awk utility interprets a special-purpose programming language
+     # that makes it possible to handle simple data-reformatting jobs
+     # with just a few lines of code.  It is a free version of 'awk'.
      #
-     # It offers functional improvements over sh for both programming and
-     # interactive use.
+     # GNU awk implements the AWK utility which is part of
+     # IEEE Std 1003.1 Shell and Utilities (XCU).
      #
 
      QICFLAGS="-g0 -Os"
      QICXXFLAGS="-g0 -Os"
      QILDFLAGS="-s"
-     pkgname=bash
-     pkgversion=5.0
+     pkgname=gawk
+     pkgversion=5.0.1
      arch=x86_64
      release=1
-     pkghashtag=shell
-     blurb="The Bourne Again SHell."
-     homepage="http://www.gnu.org/software/bash"
+     pkgcategory=@tools
+     full_pkgname=gawk-5.0.1-x86_64+1@tools
+     blurb="Pattern scanning and processing language."
+     homepage="http://www.gnu.org/software/gawk"
      license="GPLv3+"
-     fetch="ftp://ftp.gnu.org/gnu/bash/bash-5.0.tar.gz"
+     fetch="http://ftp.gnu.org/gnu/gawk/gawk-5.0.1.tar.lz"
      replace=""
 
    Package descriptions are extracted from the variable 'description'
@@ -1013,14 +1010,14 @@ Index
 * Menu:
 
 * configuration file:                    The qirc file.       (line   6)
-* environment variables:                 Recipes.             (line 253)
+* environment variables:                 Recipes.             (line 254)
 * exit codes:                            Exit status.         (line   6)
 * handling build order:                  Order files.         (line   6)
 * introduction:                          Introduction.        (line   6)
 * invocation:                            Invoking qi.         (line   6)
 * managing packages:                     Packages.            (line   6)
 * package blacklist:                     Packages.            (line 175)
-* package build:                         Recipes.             (line 209)
+* package build:                         Recipes.             (line 210)
 * package conflicts:                     Packages.            (line  30)
 * package creation:                      Creating packages.   (line   6)
 * package de-installation:               Packages.            (line 103)
@@ -1029,26 +1026,26 @@ Index
 * package upgrade:                       Packages.            (line 142)
 * recipes:                               Recipes.             (line   6)
 * special variables:                     Recipes.             (line  58)
-* the meta file:                         Recipes.             (line 303)
+* the meta file:                         Recipes.             (line 304)
 * variables:                             Recipes.             (line  29)
-* writing recipes:                       Recipes.             (line 198)
+* writing recipes:                       Recipes.             (line 199)
 
 
 
 Tag Table:
-Node: Top805
-Node: Introduction1588
-Node: Invoking qi2757
-Node: The qirc file6178
-Node: Packages7288
-Ref: Packages-Footnote-113995
-Node: Recipes14108
-Ref: Recipes-Footnote-127909
-Node: Order files28054
-Node: Creating packages29356
-Node: Examining packages30363
-Node: Exit status31273
-Node: Index33208
+Node: Top803
+Node: Introduction1584
+Node: Invoking qi2753
+Node: The qirc file6176
+Node: Packages7137
+Ref: Packages-Footnote-113848
+Node: Recipes13961
+Ref: Recipes-Footnote-127880
+Node: Order files28025
+Node: Creating packages29327
+Node: Examining packages30334
+Node: Exit status31244
+Node: Index33179
 
 End Tag Table
 

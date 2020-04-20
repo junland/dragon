@@ -39,7 +39,7 @@ usage()
      "  -d          Delete packages"                                      \
      "  -i          Install packages"                                     \
      "  -o          Resolve build order through .order files"             \
-     "  -u          Update packages (implies -i, -d with -p)"             \
+     "  -u          Upgrade packages (implies -i, -d with -p)"            \
      "  -w          Warn about files that will be linked"                 \
      "  -x          Extract a package for debugging purposes"             \
      ""                                                                   \
@@ -48,7 +48,7 @@ usage()
      "  -P <DIR>    Package directory for installations."                 \
      "                Only valid for -i, -d, or -u options"               \
      "  -f          This option can force the build of a recipe,"         \
-     "              or force the update of a pre-existing package."       \
+     "              or force the upgrade of a pre-existing package."      \
      "                Only valid for -b, -u options"                      \
      "  -t <DIR>    Target directory for symbolic links."                 \
      "                Only valid for -i, -d, or -u options"               \
@@ -160,24 +160,14 @@ readconfig()
     then
         is_readable "$HOME/.qirc" 2> /dev/null && RCFILE="$HOME/.qirc";
 
-        echo "Processing \`${RCFILE}' ..."
+        echo "Importing configuration file from \`${RCFILE}' ..."
 
         test -f "$RCFILE" || {
             warn "${RCFILE} is not a regular file."
             return 1
         }
 
-        # Parse config file
-        while IFS='=' read -r variable value
-        do
-            case $variable in
-            \#* | "")	# Ignore commented or blank lines
-                continue
-                ;;
-            esac
-
-            export "$variable"
-        done < "$RCFILE"
+        . "$RCFILE"
     fi
 }
 
@@ -248,16 +238,16 @@ build_mode()
                 "${worktree}/recipes" \
                 "$tardir"
 
-    # Variables treatment for the current and next recipe.
+    # Variables treatment for the current and the next recipe.
     #
-    # Unset special variables that can only be predefined on
-    # the recipe and not coming from ${sysconfdir}/qirc
+    # Unset special variables that can only be predefined in
+    # the recipe and does not come from '${sysconfdir}/qirc'
 
-    unset srcdir destdir pkgname pkgversion pkghashtag program version release \
+    unset srcdir destdir pkgname pkgversion pkgcategory program version release \
           fetch description homepage license replace full_pkgname \
           CFLAGS CXXFLAGS LDFLAGS
 
-    # The following variables must be saved to be restored, later
+    # The following variables must be restored, later
     save_arch="${save_arch:=$arch}"
     save_jobs="${save_jobs:=$jobs}"
     save_outdir="${save_outdir:=$outdir}"
@@ -316,14 +306,17 @@ build_mode()
     srcdir="${srcdir:=${program}-$version}"
     destdir="${destdir:=${TMPDIR}/package-$pkgname}"
 
-    # If 'pkghashtag' has been defined, prefix it using the hash tag
-    if test -n "$pkghashtag"
+    # If 'pkgcategory' has been defined, prefix it using "the at symbol"
+    if test -n "$pkgcategory"
     then
-        pkghashtag="#${pkghashtag}"
+        pkgcategory='@'${pkgcategory}
     fi
 
-    # Complete package name adding 'pkgversion-arch+release[#pkghashtag]'
-    full_pkgname="${full_pkgname:=$pkgname-${pkgversion}-${arch}+${release}${pkghashtag}}"
+    # Complete package name adding 'pkgversion-arch+release[@pkgcategory]'
+    full_pkgname="${full_pkgname:=$pkgname-${pkgversion}-${arch}+${release}${pkgcategory}}"
+
+    # Use 'arch' as suffix for 'outdir' to have a well-organized package output
+    outdir=${outdir}/${arch}
 
     # If a package is going to be created the existence of a
     # previous build will be detected and reported.  Under normal
@@ -473,13 +466,13 @@ build_mode()
 
     if test -d "${TMPDIR}/$srcdir" && test -z "$keep_srcdir"
     then
-        rm -rf -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
+        rm -r -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
         echo "removed directory: '${TMPDIR}/$srcdir'"
     fi
 
     if test -d "$destdir"
     then
-        rm -rf -- "$destdir" || chkstatus_or_exit
+        rm -r -- "$destdir" || chkstatus_or_exit
         echo "removed directory: '$destdir'"
     fi
     mkdir -p -- "$destdir" || chkstatus_or_exit
@@ -614,13 +607,13 @@ build_mode()
         fi   
     fi
 
-    # Install or update the package if -i or -u was passed
+    # Install or upgrade the package if -i or -u was passed
     if test "$opt_nopkg" != opt_nopkg
     then
         if test "$opt_install" = opt_install
         then
             install_mode "${outdir}/${full_pkgname}.tlz"
-        elif test "$opt_update" = opt_update
+        elif test "$opt_upgrade" = opt_upgrade
         then
             upgrade_mode "${outdir}/${full_pkgname}.tlz"
         fi
@@ -649,7 +642,7 @@ create_mode()
     if test "$name" = "${name%.tlz}"
     then
         warn "Package format '$name' not supported." \
-             "It should be \"name-version-architecture+release[#pkghashtag].tlz\""
+             "It should be \"name-version-architecture+release[@pkgcategory].tlz\""
         exit 4
     fi
 
@@ -917,7 +910,7 @@ upgrade_mode()
     then
         warn \
          ""                                                                \
-         "    The package to be updated already exist;"                    \
+         "    The package to be upgraded already exist;"                   \
          "Unless the -f option is given, this package won't be UPGRADED."
         return 6;
     fi
@@ -930,9 +923,9 @@ upgrade_mode()
         case $item in
         ${incoming}*)
             warn \
-             "Package name detected on the blacklist \"${incoming}\"."     \
-             ""                                                            \
-             "  This package will be INSTALLED instead of being updated."  \
+             "Package name declared on the blacklist \"${incoming}\"."      \
+             ""                                                             \
+             "  This package will be INSTALLED instead of being upgraded."  \
              ""
              opt_prune=opt_prune install_mode "$1"
              return 0
@@ -973,7 +966,7 @@ upgrade_mode()
         echo "${long_name}:  Detected."
 
         # A package directory is preserved if -k was given
-        delete_mode "$found" > /dev/null
+        delete_mode $found > /dev/null
     done
     unset long_name found
 
@@ -1065,14 +1058,12 @@ pkgbase()
 {
     string="$(basename -- "$1" .tlz)"
 
-    # Remove the possible trailing 'pkghashtag'
-    string="${string%%#*}"
-
     # Match cases to print the package name.
     #
     # We will take into account the four segments removing
-    # the last two to print the package (long) name
-    case $string in
+    # the last two (and the possible category) to print the
+    # long package name
+    case "${string%'@'*}" in
     *-*-*+*)
         echo "${string%-*-*}"
         ;;
@@ -1158,7 +1149,7 @@ do_meta()
     #
     # The package description is pre-formatted in 78 columns,
     # the '#' character and a space is added as prefix to conform
-    # 80 columns in total
+    # the 80 columns in total
 
     cat << EOF
 $(echo "$description" | fold -w 78 | awk '$0="# " $0')
@@ -1170,7 +1161,8 @@ pkgname=$pkgname
 pkgversion=$pkgversion
 arch=$arch
 release=$release
-pkghashtag=$pkghashtag
+pkgcategory=$pkgcategory
+full_pkgname=$full_pkgname
 blurb="$(echo "$description" | sed -e '/^$/d;2q')"
 homepage="$homepage"
 license="$license"
@@ -1189,7 +1181,7 @@ blacklist="perl5 graft tarlz plzip musl glibc"
 RC=RC
 RCFILE=@SYSCONFDIR@/qirc
 opt_install=opt_install.off
-opt_update=opt_update.off
+opt_upgrade=opt_upgrade.off
 opt_force=opt_force.off
 opt_keep=opt_keep.off
 opt_incr_release=opt_incr_release.off
@@ -1265,7 +1257,7 @@ do
         fi
         if test "$mode" = build_mode
         then
-            opt_update=opt_update
+            opt_upgrade=opt_upgrade
         fi
         ;;
     w)
@@ -1360,10 +1352,15 @@ then
 fi
 
 # Program sanity check
+
+\unalias -a;		# Unset all possible aliases.
+unset -f command;	# Ensure command is not a user function.
+umask 022;		# Remove write permission for group and other.
+
 for need in awk basename chmod cp dirname find fold graft grep \
             mkdir mktemp rm rmdir sed sha256sum stat tarlz
 do
-    if ! type $need > /dev/null
+    if ! command -v $need > /dev/null
     then
         warn "${PROGRAM}: Prerequisite \`${need}' not found in PATH"
         exit 2
@@ -1399,8 +1396,6 @@ then
     usage
     exit 4
 fi
-
-umask 022;	# Remove write permission for group and other.
 
 # Validate 'packagedir' and 'targetdir' as canonical directories
 

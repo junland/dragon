@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- This user guide is for Qi (version 1.4rc1,
-7 Apr 2020), which is a simple but well-integrated package manager.
+<!-- This user guide is for Qi (version 1.4,
+20 Apr 2020), which is a simple but well-integrated package manager.
 
 Copyright (C) 2019-2020 Matias Andres Fonzo, Santiago del Estero,
 Argentina.
@@ -108,8 +108,8 @@ Next: <a href="#Introduction" accesskey="n" rel="next">Introduction</a>, Up: <a 
 </div>
 <a name="SEC_Top"></a>
 
-<p>This user guide is for Qi (version 1.4rc1,
-7 Apr 2020).
+<p>This user guide is for Qi (version 1.4,
+20 Apr 2020).
 </p>
 <table class="menu" border="0" cellspacing="0">
 <tr><td align="left" valign="top">&bull; <a href="#Introduction" accesskey="1">Introduction</a>:</td><td>&nbsp;&nbsp;</td><td align="left" valign="top">Description and features of qi
@@ -214,7 +214,7 @@ performed.
 </p>
 </dd>
 <dt><code>-u</code></dt>
-<dd><p>Update packages (implies -i, -d and -p options).
+<dd><p>Upgrade packages (implies -i, -d and -p options).
 </p>
 </dd>
 <dt><code>-w</code></dt>
@@ -246,7 +246,7 @@ performed.
 <dt><code>-f</code></dt>
 <dd><p>Force option.
 </p>
-<p>This option can force the build of a recipe, or force the update of a
+<p>This option can force the build of a recipe, or force the upgrade of a
 pre-existing package.
 </p>
 <p>Only valid for -b, -u options.
@@ -378,15 +378,9 @@ Next: <a href="#Packages" accesskey="n" rel="next">Packages</a>, Previous: <a hr
 (such as a download manager) for default use.  This file is used by qi
 at runtime, e.g., to build, install, remove or upgrade packages.
 </p>
-<p>It has the following rules:
+<p>Variables and their possible values must be declared as any other
+variable in the shell.
 </p>
-<ul>
-<li> The variables must be declared like any other variable of the shell.
-
-</li><li> For security reasons, the variables (with its values) are
-exported to avoid code execution when reading <samp>qirc</samp> initially.
-</li></ul>
-
 <p>The command line options related to the package directory and target
 directory and some of the command line options used for the build mode,
 have the power to override the values declared on <samp>qirc</samp>.
@@ -604,7 +598,7 @@ directory is removed.
 <pre class="example">qi -u gcc-9.0.1-i586+1.tlz
 </pre></div>
 
-<p>This will proceed to update &quot;gcc-9.0.1-i586+1&quot; removing other versions
+<p>This will proceed to upgrade &quot;gcc-9.0.1-i586+1&quot; removing any other version
 of &quot;gcc&quot; (if any).
 </p>
 <p>If you want to keep the package directories of versions found during the
@@ -764,15 +758,16 @@ is assigned by default.  If &lsquo;<samp>pkgversion</samp>&rsquo; is left undefi
 special variable &lsquo;<samp>version</samp>&rsquo; is assigned by default.
 </p>
 <p>&lsquo;<samp>pkgname</samp>&rsquo; and &lsquo;<samp>pkgversion</samp>&rsquo; along with: &lsquo;<samp>version</samp>&rsquo;, &lsquo;<samp>arch</samp>&rsquo;,
-&lsquo;<samp>release</samp>&rsquo;, and (optionally) &lsquo;<samp>pkghashtag</samp>&rsquo; are used to produce the
+&lsquo;<samp>release</samp>&rsquo;, and (optionally) &lsquo;<samp>pkgcategory</samp>&rsquo; are used to produce the
 package name in the form:
-&lsquo;<samp>${pkgname}-${pkgversion}-${arch}+${release}[#${pkghashtag}].tlz</samp>&rsquo;
+&lsquo;<samp>${pkgname}-${pkgversion}-${arch}+${release}[@${pkgcategory}].tlz</samp>&rsquo;
 </p>
-<p>&lsquo;<samp>pkghashtag</samp>&rsquo; is an optional special variable that can be defined on the
+<p>&lsquo;<samp>pkgcategory</samp>&rsquo; is an optional special variable that can be defined on the
 recipe to categorize the package name.  If it is defined, then the
 package output will be composed as
-&lsquo;<samp>${pkgname}-${pkgversion}-${arch}+${release}#${pkghashtag}.tlz</samp>&rsquo;.
-Automatically, its value is prefixed with the character &lsquo;<samp>#</samp>&rsquo;.
+&lsquo;<samp>${pkgname}-${pkgversion}-${arch}+${release}@${pkgcategory}.tlz</samp>&rsquo;.
+Automatically, the value of &lsquo;<samp>pkgcategory</samp>&rsquo; will be prefixed using the
+&lsquo;<samp>@</samp>&rsquo; character.
 </p>
 <p>A special variable called &lsquo;<samp>replace</samp>&rsquo; can be used to declare package names
 that will be replaced at installation time.
@@ -801,7 +796,7 @@ build.
 recommended to increase this number after any significant change in
 the recipe or post-install script.
 </p>
-</li><li> &lsquo;<samp>pkghashtag</samp>&rsquo;: Package hash tag.
+</li><li> &lsquo;<samp>pkgcategory</samp>&rsquo;: Package category.
 
 <p>Optional but recommended variable to categorize the package name when it is
 created.
@@ -1015,28 +1010,29 @@ other scripts or by common Unix tools.
 </p>
 <div class="example">
 <pre class="example">#
-# The Bourne Again SHell.
+# Pattern scanning and processing language.
 #
-# Bash is an sh-compatible shell that incorporates useful features from
-# the Korn shell (ksh) and C shell (csh).  It is intended to conform to
-# the IEEE POSIX P1003.2/ISO 9945.2 shell and tools standard.
+# The awk utility interprets a special-purpose programming language
+# that makes it possible to handle simple data-reformatting jobs
+# with just a few lines of code.  It is a free version of 'awk'.
 #
-# It offers functional improvements over sh for both programming and
-# interactive use.
+# GNU awk implements the AWK utility which is part of
+# IEEE Std 1003.1 Shell and Utilities (XCU).
 #
 
 QICFLAGS=&quot;-g0 -Os&quot;
 QICXXFLAGS=&quot;-g0 -Os&quot;
 QILDFLAGS=&quot;-s&quot;
-pkgname=bash
-pkgversion=5.0
+pkgname=gawk
+pkgversion=5.0.1
 arch=x86_64
 release=1
-pkghashtag=shell
-blurb=&quot;The Bourne Again SHell.&quot;
-homepage=&quot;http://www.gnu.org/software/bash&quot;
+pkgcategory=@tools
+full_pkgname=gawk-5.0.1-x86_64+1@tools
+blurb=&quot;Pattern scanning and processing language.&quot;
+homepage=&quot;http://www.gnu.org/software/gawk&quot;
 license=&quot;GPLv3+&quot;
-fetch=&quot;ftp://ftp.gnu.org/gnu/bash/bash-5.0.tar.gz&quot;
+fetch=&quot;http://ftp.gnu.org/gnu/gawk/gawk-5.0.1.tar.lz&quot;
 replace=&quot;&quot;
 </pre></div>
 

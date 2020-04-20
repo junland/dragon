@@ -1,3 +1,5 @@
+Qi
+==
 
 Qi is a simple but well-integrated package manager.  It can create,
 install, remove, and upgrade software packages.  Qi produces binary
@@ -18,40 +20,47 @@ terms of the GNU General Public License.  There are only two major
 dependencies for the magic: graft(1) and tarlz(1), the rest is expected
 to be found in any Unix-like system.
 
-== RUNTIME REQUIREMENTS
+RUNTIME REQUIREMENTS
+--------------------
 
 - A POSIX-compliant shell.
 
-- Graft: http://peters.gormand.com.au/Home/tools
+- Graft for handling symlinks: http://peters.gormand.com.au/Home/tools
 
-- Perl (http://www.perl.org) is required in order to run graft(1).
+- Perl in order to run Graft: http://www.perl.org
 
-                                  ~ Note ~
-    Take into account when graft is installed, you can define some
-    macros like PACKAGEDIR and TARGETDIR.  To be consistent use the
-    same paths when `configure', adjusting it via --packagedir and
-    --targetdir options.  If you have not changed the default values
-    used on the graft installation, you can avoid these steps, since
-    qi uses the same graft values for PACKAGEDIR and TARGETDIR.
+- Tarlz for produce binary packages: http://lzip.nongnu.org/tarlz.html
 
-- Tarlz to produce binary packages: http://lzip.nongnu.org/tarlz.html
+### Note
 
-== INSTALLATION
+Take into account when you are going to install graft, you can define some
+macros like PACKAGEDIR and TARGETDIR.  To be consistent, please use the
+same paths when `configure` adjusting them through the --packagedir and
+--targetdir options.
+
+If you have not changed the default values used on the graft installation,
+you can avoid these steps, since qi uses the same values of graft for
+PACKAGEDIR and TARGETDIR.
+
+INSTALLATION
+------------
 
 To configure, make and install qi, type:
 
-  $ ./configure
-  $ make
-  $ make install
+    $ ./configure
+    $ make
+    $ make install
 
-See `./configure --help' for more options.
+See `./configure --help` for more options.
 
-To install in a different location, DESTDIR is supported.  This is useful
-for package distributors:
+To install qi in a different location, type:
 
-  $ make DESTDIR=/tmp/qi install
+    $ make DESTDIR=/tmp/qi install
 
-== CONTACT
+This is useful for package distributors.
 
-  The Qi home page can be found at `https://www.dragora.org'.
+CONTACT
+-------
+
+  The Qi home page can be found at https://www.dragora.org.
 Send bug reports or suggestions to <dragora-users@nongnu.org>.
