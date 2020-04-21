@@ -1,4 +1,4 @@
-# Build recipe for dbus (Use 'dbus_x11' instead for X11 support).
+# Build recipe for dbus.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
 # Copyright (c) 2018-2020 Matias Fonzo, <selk@dragora.org>.
@@ -17,10 +17,16 @@
 
 program=dbus
 version=1.12.16
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=daemons
+
+# Set a custom name for this package
+pkgname=dbus_x11
+
+# The installation of this package replaces to
+replace=dbus
 
 tarname=${program}-${version}.tar.gz
 
@@ -28,7 +34,7 @@ tarname=${program}-${version}.tar.gz
 fetch=http://dbus.freedesktop.org/releases/dbus/$tarname
 
 description="
-A system daemon and a per user login session daemon.
+A system daemon and a per user login session daemon (with X11 support).
 
 The message bus is built on top of a general one-to-one message passing
 framework, which can be used by any two apps to communicate directly
@@ -40,7 +46,7 @@ license="AFLv2.1 | GPLv2+"
 
 # Source documentation
 docs="AUTHORS COPYING ChangeLog NEWS README"
-docsdir="${docdir}/${program}-${version}"
+docsdir="${docdir}/${pkgname}-${version}"
 
 build()
 {
@@ -68,7 +74,7 @@ build()
      --enable-shared=yes \
      --enable-debug=no \
      --enable-inotify \
-     --disable-x11-autolaunch \
+     --enable-x11-autolaunch \
      --disable-systemd \
      --disable-selinux \
      --disable-doxygen-docs \
@@ -77,13 +83,12 @@ build()
      --with-console-auth-dir=/run/console \
      --with-system-pid-file=/run/dbus/pid \
      --with-system-socket=/run/dbus/system_bus_socket \
-     --without-x \
      --build="$(cc -dumpmachine)"
     
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
-    chown root:Hmessagebus "${destdir}/usr/libexec/dbus-daemon-launch-helper"
+    chown root:messagebus "${destdir}/usr/libexec/dbus-daemon-launch-helper"
     chmod 4750 "${destdir}/usr/libexec/dbus-daemon-launch-helper"
 
     mkdir -p "${destdir}/var/lib/dbus"
