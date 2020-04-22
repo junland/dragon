@@ -296,7 +296,7 @@ build_mode()
     # Allow the dot as definition for 'tardir'
     if test "$tardir" = .
     then
-        tardir="$CWD"
+        tardir=$CWD
     fi
 
     # Set default values for the following special variables
@@ -815,8 +815,9 @@ install_mode()
             echo "Running post-install script for \`${name}' ..."
             (
                 # Rely on 'targetdir' if 'rootdir' is empty
-                cd -- "${rootdir:-$targetdir}"/ && \
-                 . "$rootdir${packagedir}/${name}/var/lib/qi/${name}.sh"
+                rootdir="${rootdir:-$targetdir}"
+                cd -- "$rootdir" && \
+                 . "${packagedir}/${name}/var/lib/qi/${name}.sh"
             )
         fi
 
@@ -829,7 +830,7 @@ install_mode()
                 do
                     if ! test -e "$replace"
                     then
-                        warn "${replace}: Declared package does not exist. (ignored)"
+                        warn "${replace}: Declared package does not exist. (ignoring)"
                         continue;
                     fi
 
