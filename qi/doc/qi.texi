@@ -8,7 +8,7 @@
 @comment %**end of header
 
 @set VERSION 1.5rc1
-@set UPDATED 21 Apr 2020
+@set UPDATED 24 Apr 2020
 
 @copying
 This user guide is for Qi (version @value{VERSION},
@@ -186,7 +186,7 @@ conflicts occur.
 @item -r /rootdir
 Use the fully qualified named directory as the root directory for all qi
 operations.  The target directory and package directory will be relative
-to the specified directory, including the log file for graft.
+to the specified directory, including Graft's log file.
 
 @item -v
 Be verbose (a 2nd -v gives more).
@@ -308,7 +308,9 @@ which may also contain manual pages, documentation, or any other file
 associated to a specific software.
 
 The package format used by qi is a simplified POSIX pax archive
-compressed with lzip.  The file extension for packages is @samp{.tlz}.
+compressed with lzip@footnote{For more details about the lzip format, visit
+@url{https://www.nongnu.org/lzip/}.}.  The file extension for packages ends
+in @samp{.tlz}.
 
 @noindent
 Both package installation and package de-installation are managed using
@@ -401,11 +403,11 @@ Installing package in a different location:
 qi -r /media/floppy -i lzip-1.21-i586+1.tlz
 @end example
 
-The -r option assumes @samp{$@{targetdir@}} and @samp{$@{packagedir@}}.
-See:
+Important: the -r option assumes @samp{$@{targetdir@}} and
+@samp{$@{packagedir@}}.  See the following example.
 
 @example
-qi -r /home/selk -P /pkgs -t / -i lzip-1.21-i586+1.tlz
+qi -r /home/selk -i lzip-1.21-i586+1.tlz
 @end example
 
 In this case the content of "lzip-1.21-i586+1.tlz" will be decompressed
@@ -419,14 +421,21 @@ system is able to see the recent lzip.
 Installing from a list of packages using standard input:
 
 @example
-cat FILELIST.txt | qi -i -
+qi -i - < PACKAGELIST.txt
+@end example
+
+Or in combination with another tool:
+@example
+sort -u PACKAGELIST.txt | qi -i -
 @end example
 
 The list of packages must contain full path names to be passed in the
 installation, e.g.:
+@example
 /var/cache/qi/packages/tcl-8.6.9-x86_64+1.tlz
 /var/cache/qi/packages/tk-8.6.9.1-x86_64+1.tlz
 /var/cache/qi/packages/vala-0.42.3-x86_64+1.tlz
+@end example
 
 @section Removing packages
 @cindex package de-installation
@@ -474,7 +483,7 @@ cd /usr/pkg && graft -i lzip-1.21-i586+1
 Removing package from a different location:
 
 @example
-qi -r /home/cthulhu -P /pkgs -t / -d xz-5.2.4-i586+1
+qi -r /home/cthulhu -d xz-5.2.4-i586+1
 @end example
 
 @noindent

@@ -24,7 +24,13 @@
 # 6  = Package already installed
 # 10 = Network manager error
 
-#### Functions
+\unalias -a;	# Unset all possible aliases.
+LC_ALL=C;	# Override locale settings.
+IFS='
+ 	';	# Reset Internal Field Separator.
+umask 022;	# Remove write permission for group and other.
+
+### Functions
 
 usage()
 {
@@ -59,8 +65,7 @@ usage()
      "  -r <DIR>    Use the fully qualified named directory as the"       \
      "              root directory for all qi operations.  The target"    \
      "              directory and package directory will be relative to"  \
-     "              the specified directory, including the log file for"  \
-     "              graft"                                                \
+     "              the specified directory, including Graft's log file"  \
      "  -v          Be verbose (a 2nd -v gives more)"                     \
      ""                                                                   \
      "Options for 'build' mode (-b):"                                     \
@@ -171,7 +176,7 @@ readconfig()
     fi
 }
 
-#### Mode functions
+### Mode functions
 
 build_mode()
 {
@@ -815,9 +820,8 @@ install_mode()
             echo "Running post-install script for \`${name}' ..."
             (
                 # Rely on 'targetdir' if 'rootdir' is empty
-                rootdir="${rootdir:-$targetdir}"
-                cd -- "$rootdir" && \
-                 . "${packagedir}/${name}/var/lib/qi/${name}.sh"
+                cd -- "${rootdir:=$targetdir}"/ && \
+                 . "$rootdir${packagedir}/${name}/var/lib/qi/${name}.sh"
             )
         fi
 
@@ -830,7 +834,7 @@ install_mode()
                 do
                     if ! test -e "$replace"
                     then
-                        warn "${replace}: Declared package does not exist. (ignoring)"
+                        warn "Declared package \`${replace}' does not exist. (ignoring)"
                         continue;
                     fi
 
@@ -1053,27 +1057,11 @@ extract_mode()
     unset name PRVDIR
 }
 
-#### Extra functions used in the modes
+### Extra functions used in the modes
 
 pkgbase()
 {
-    string="$(basename -- "$1" .tlz)"
-
-    # Match cases to print the package name.
-    #
-    # We will take into account the four segments removing
-    # the last two (and the possible category) to print the
-    # long package name
-    case "${string%'@'*}" in
-    *-*-*+*)
-        echo "${string%-*-*}"
-        ;;
-    *)
-        echo "$string"
-        ;;
-    esac
-
-    unset string
+    echo "$(basename -- "$1" .tlz)" | sed -e 's/[-_][.]*[[:digit:]].*$//'
 }
 
 unpack()
@@ -1173,7 +1161,7 @@ replace="$replace"
 EOF
 }
 
-#### Default values
+### Default values
 
 PROGRAM="${0##*/}"
 packagedir=@PACKAGEDIR@
@@ -1217,7 +1205,7 @@ QI_WORKTREE=$worktree
 QI_TARDIR=$tardir
 QI_OUTDIR=$outdir
 
-#### Parse options
+### Parse options
 
 while getopts :bcdiouwxLNP:t:fkvO:W:Z:a:j:1nSpr:hV name
 do
@@ -1354,9 +1342,7 @@ fi
 
 # Program sanity check
 
-\unalias -a;		# Unset all possible aliases.
 unset -f command;	# Ensure command is not a user function.
-umask 022;		# Remove write permission for group and other.
 
 for need in awk basename chmod cp dirname find fold graft grep \
             mkdir mktemp rm rmdir sed sha256sum stat tarlz

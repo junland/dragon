@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- This user guide is for Qi (version 1.4,
-20 Apr 2020), which is a simple but well-integrated package manager.
+<!-- This user guide is for Qi (version 1.5rc1,
+24 Apr 2020), which is a simple but well-integrated package manager.
 
 Copyright (C) 2019-2020 Matias Andres Fonzo, Santiago del Estero,
 Argentina.
@@ -108,8 +108,8 @@ Next: <a href="#Introduction" accesskey="n" rel="next">Introduction</a>, Up: <a 
 </div>
 <a name="SEC_Top"></a>
 
-<p>This user guide is for Qi (version 1.4,
-20 Apr 2020).
+<p>This user guide is for Qi (version 1.5rc1,
+24 Apr 2020).
 </p>
 <table class="menu" border="0" cellspacing="0">
 <tr><td align="left" valign="top">&bull; <a href="#Introduction" accesskey="1">Introduction</a>:</td><td>&nbsp;&nbsp;</td><td align="left" valign="top">Description and features of qi
@@ -417,7 +417,8 @@ which may also contain manual pages, documentation, or any other file
 associated to a specific software.
 </p>
 <p>The package format used by qi is a simplified POSIX pax archive
-compressed with lzip.  The file extension for packages is &lsquo;<samp>.tlz</samp>&rsquo;.
+compressed with lzip<a name="DOCF1" href="#FOOT1"><sup>1</sup></a>.  The file extension for packages ends
+in &lsquo;<samp>.tlz</samp>&rsquo;.
 </p>
 <p>Both package installation and package de-installation are managed using
 two important (internal) variables: &lsquo;<samp>${packagedir}</samp>&rsquo; and
@@ -442,7 +443,7 @@ multiple versions of the same package to coexist on the same system.
 Since multiple packages can be installed or removed at the same time,
 certain conflicts may arise between the packages.
 </p>
-<p>graft<a name="DOCF1" href="#FOOT1"><sup>1</sup></a>
+<p>graft<a name="DOCF2" href="#FOOT2"><sup>2</sup></a>
 defines a CONFLICT as one of the following conditions:
 </p>
 <ul>
@@ -500,11 +501,11 @@ links to the belonging package.  This behavior can be forced if the
 <pre class="example">qi -r /media/floppy -i lzip-1.21-i586+1.tlz
 </pre></div>
 
-<p>The -r option assumes &lsquo;<samp>${targetdir}</samp>&rsquo; and &lsquo;<samp>${packagedir}</samp>&rsquo;.
-See:
+<p>Important: the -r option assumes &lsquo;<samp>${targetdir}</samp>&rsquo; and
+&lsquo;<samp>${packagedir}</samp>&rsquo;.  See the following example.
 </p>
 <div class="example">
-<pre class="example">qi -r /home/selk -P /pkgs -t / -i lzip-1.21-i586+1.tlz
+<pre class="example">qi -r /home/selk -i lzip-1.21-i586+1.tlz
 </pre></div>
 
 <p>In this case the content of &quot;lzip-1.21-i586+1.tlz&quot; will be decompressed
@@ -517,15 +518,22 @@ system is able to see the recent lzip.
 <p>Installing from a list of packages using standard input:
 </p>
 <div class="example">
-<pre class="example">cat FILELIST.txt | qi -i -
+<pre class="example">qi -i - &lt; PACKAGELIST.txt
+</pre></div>
+
+<p>Or in combination with another tool:
+</p><div class="example">
+<pre class="example">sort -u PACKAGELIST.txt | qi -i -
 </pre></div>
 
 <p>The list of packages must contain full path names to be passed in the
 installation, e.g.:
-/var/cache/qi/packages/tcl-8.6.9-x86_64+1.tlz
+</p><div class="example">
+<pre class="example">/var/cache/qi/packages/tcl-8.6.9-x86_64+1.tlz
 /var/cache/qi/packages/tk-8.6.9.1-x86_64+1.tlz
 /var/cache/qi/packages/vala-0.42.3-x86_64+1.tlz
-</p>
+</pre></div>
+
 <a name="Removing-packages"></a>
 <h3 class="section">4.3 Removing packages</h3>
 <a name="index-package-de_002dinstallation"></a>
@@ -569,7 +577,7 @@ changed if the -k option is passed:
 <p>Removing package from a different location:
 </p>
 <div class="example">
-<pre class="example">qi -r /home/cthulhu -P /pkgs -t / -d xz-5.2.4-i586+1
+<pre class="example">qi -r /home/cthulhu -d xz-5.2.4-i586+1
 </pre></div>
 
 <p>Removing a package using standard input:
@@ -857,7 +865,7 @@ one would be used on the meta file creation.  See
 <pre class="example">homepage=http://www.gnu.org/software/gcc
 </pre></div>
 
-<p>The variable &lsquo;<samp>license</samp>&rsquo; is used for license information<a name="DOCF2" href="#FOOT2"><sup>2</sup></a>.
+<p>The variable &lsquo;<samp>license</samp>&rsquo; is used for license information<a name="DOCF3" href="#FOOT3"><sup>3</sup></a>.
 Some code in the program can be covered by license A, license B, or
 license C.  For &quot;separate licensing&quot; or &quot;heterogeneous licensing&quot;, we
 suggest using <strong>|</strong> for a disjunction, <strong>&amp;</strong> for a conjunction
@@ -1404,9 +1412,12 @@ Previous: <a href="#Exit-status" accesskey="p" rel="prev">Exit status</a>, Up: <
 <h4 class="footnotes-heading">Footnotes</h4>
 
 <h3><a name="FOOT1" href="#DOCF1">(1)</a></h3>
+<p>For more details about the lzip format, visit
+<a href="https://www.nongnu.org/lzip/">https://www.nongnu.org/lzip/</a>.</p>
+<h3><a name="FOOT2" href="#DOCF2">(2)</a></h3>
 <p>The official guide for Graft can be found at
 <a href="http://peters.gormand.com.au/Home/tools/graft/graft.html">http://peters.gormand.com.au/Home/tools/graft/graft.html</a>.</p>
-<h3><a name="FOOT2" href="#DOCF2">(2)</a></h3>
+<h3><a name="FOOT3" href="#DOCF3">(3)</a></h3>
 <p>The proposal for &lsquo;<samp>license</samp>&rsquo; was made by Richard M. Stallman at
 <a href="http://lists.gnu.org/archive/html/gnu-linux-libre/2016-05/msg00003.html">http://lists.gnu.org/archive/html/gnu-linux-libre/2016-05/msg00003.html</a>.</p>
 </div>
