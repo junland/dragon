@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- This user guide is for Qi (version 1.5rc1,
-24 Apr 2020), which is a simple but well-integrated package manager.
+<!-- This user guide is for Qi (version 2.0rc1,
+25 May 2020), which is a simple but well-integrated package manager.
 
 Copyright (C) 2019-2020 Matias Andres Fonzo, Santiago del Estero,
 Argentina.
@@ -108,8 +108,8 @@ Next: <a href="#Introduction" accesskey="n" rel="next">Introduction</a>, Up: <a 
 </div>
 <a name="SEC_Top"></a>
 
-<p>This user guide is for Qi (version 1.5rc1,
-24 Apr 2020).
+<p>This user guide is for Qi (version 2.0rc1,
+25 May 2020).
 </p>
 <table class="menu" border="0" cellspacing="0">
 <tr><td align="left" valign="top">&bull; <a href="#Introduction" accesskey="1">Introduction</a>:</td><td>&nbsp;&nbsp;</td><td align="left" valign="top">Description and features of qi
@@ -179,189 +179,195 @@ Next: <a href="#The-qirc-file" accesskey="n" rel="next">The qirc file</a>, Previ
 <h2 class="chapter">2 Invoking qi</h2>
 <a name="index-invocation"></a>
 
-<p>This chapter describes the synopsis and command line options for
-invoke Qi.
+<p>This chapter describes the synopsis for invoking Qi.
 </p>
 <div class="example">
-<pre class="example">Usage: qi [<var>OPTION</var>]... [<var>FILE</var>]...
+<pre class="example">Usage: qi MODE [<var>OPTION</var>...] [<var>FILE</var>]...
 </pre></div>
 
-<p>One mandatory option specifies the operation that &lsquo;<samp>qi</samp>&rsquo; should
-perform, other options are meant to detail how this operation should be
-performed.
+<p>One mandatory mode specifies the operation that &lsquo;<samp>qi</samp>&rsquo; should
+perform, options are meant to detail how this operation should be
+performed during or after the process.
 </p>
-<p>qi supports the following options to operate:
+<p>Qi supports the following modes to operate:
 </p>
 <dl compact="compact">
-<dt><code>-b</code></dt>
-<dd><p>Build package using recipe names.
+<dt><code>warn</code></dt>
+<dd><p>Warn about files that will be installed.
 </p>
 </dd>
-<dt><code>-c</code></dt>
-<dd><p>Create .tlz package from directory.
-</p>
-</dd>
-<dt><code>-d</code></dt>
-<dd><p>Delete packages.
-</p>
-</dd>
-<dt><code>-i</code></dt>
+<dt><code>install</code></dt>
 <dd><p>Install packages.
 </p>
 </dd>
-<dt><code>-o</code></dt>
-<dd><p>Resolve build order through .order files.
+<dt><code>remove</code></dt>
+<dd><p>Remove packages.
 </p>
 </dd>
-<dt><code>-u</code></dt>
-<dd><p>Upgrade packages (implies -i, -d and -p options).
+<dt><code>upgrade</code></dt>
+<dd><p>Upgrade packages.
 </p>
 </dd>
-<dt><code>-w</code></dt>
-<dd><p>Warn about files that will be linked.
+<dt><code>extract</code></dt>
+<dd><p>Extract package for debugging purposes.
 </p>
 </dd>
-<dt><code>-x</code></dt>
-<dd><p>Extract a package for debugging purposes.
+<dt><code>create</code></dt>
+<dd><p>Create .tlz package from directory.
+</p>
+</dd>
+<dt><code>build</code></dt>
+<dd><p>Build packages using recipe names.
+</p>
+</dd>
+<dt><code>order</code></dt>
+<dd><p>Resolve build order through .order files
 </p></dd>
 </dl>
 
-<p>There are common options between modes:
-</p>
-<dl compact="compact">
-<dt><code>-N</code></dt>
-<dd><p>Do not read the configuration file.
-</p>
-<p>This will ignore any value in the qirc file.
-</p>
-</dd>
-<dt><code>-P &lt;DIR&gt;</code></dt>
-<dd><p>Package directory for installations.
-</p>
-<p>This option sets &lsquo;<samp>${packagedir}</samp>&rsquo;.
-</p>
-<p>Only valid for -i, -d, or -u options.
-</p>
-</dd>
+<p>Options when installing, removing, or upgrading software packages:
+</p><dl compact="compact">
 <dt><code>-f</code></dt>
-<dd><p>Force option.
-</p>
-<p>This option can force the build of a recipe, or force the upgrade of a
-pre-existing package.
-</p>
-<p>Only valid for -b, -u options.
-</p>
-</dd>
-<dt><code>-t &lt;DIR&gt;</code></dt>
-<dd><p>Target directory for symbolic links.
-</p>
-<p>This option sets &lsquo;<samp>${targetdir}</samp>&rsquo;.
-</p>
-<p>Only valid for -i, -d, or -u options.
+<dt><code>--force</code></dt>
+<dd><p>Force upgrade of pre-existing packages.
 </p>
 </dd>
 <dt><code>-k</code></dt>
-<dd><p>Keep (don&rsquo;t delete) &lsquo;<samp>${srcdir}</samp>&rsquo; or &lsquo;<samp>${destdir}</samp>&rsquo; in build
-mode, keep (don&rsquo;t delete) package directory in delete mode.
+<dt><code>--keep</code></dt>
+<dd><p>Keep package directory when remove/upgrade.
 </p>
-<p>Only valid for -b, -d or -u options.
+<p>Keep (don&rsquo;t delete) &lsquo;<samp>${srcdir}</samp>&rsquo; or &lsquo;<samp>${destdir}</samp>&rsquo; when
+build; also keep the package directory when using the remove mode.
 </p>
 </dd>
 <dt><code>-p</code></dt>
-<dd><p>Prune conflicts on package installations.
-</p>
-<p>This option may proceed with the package installation if one or more
-conflicts occur.
+<dt><code>--prune</code></dt>
+<dd><p>Prune conflicts.
 </p>
 </dd>
-<dt><code>-r /rootdir</code></dt>
+<dt><code>-P</code></dt>
+<dt><code>--packagedir=&lt;dir&gt;</code></dt>
+<dd><p>Set directory for package installations.
+</p>
+</dd>
+<dt><code>-t</code></dt>
+<dt><code>--targetdir=&lt;dir&gt;</code></dt>
+<dd><p>Set target directory for symbolic links.
+</p>
+</dd>
+<dt><code>-r</code></dt>
+<dt><code>--rootdir=&lt;dir&gt;</code></dt>
 <dd><p>Use the fully qualified named directory as the root directory for all qi
-operations.  The target directory and package directory will be relative
-to the specified directory, including the log file for graft.
+operations.
 </p>
-</dd>
-<dt><code>-v</code></dt>
-<dd><p>Be verbose (a 2nd -v gives more).
+<p>Note: the target directory and the package directory will be
+relative to the specified directory, excepting the graft log file.
 </p></dd>
 </dl>
 
-<p>Options for build mode (-b):
+<p>Options when building software packages using recipes:
 </p>
 <dl compact="compact">
-<dt><code>-O &lt;DIR&gt;</code></dt>
-<dd><p>Where the packages produced are written.
-</p>
-<p>This option sets &lsquo;<samp>${outdir}</samp>&rsquo;.
-</p>
-</dd>
-<dt><code>-W &lt;DIR&gt;</code></dt>
-<dd><p>Where archives, patches, and recipes are expected.
-</p>
-<p>This option sets &lsquo;<samp>${worktree}</samp>&rsquo;.
-</p>
-</dd>
-<dt><code>-Z &lt;DIR&gt;</code></dt>
-<dd><p>Where (compressed) sources will be found.
-</p>
-<p>This option sets &lsquo;<samp>${tardir}</samp>&rsquo;.
-</p>
-</dd>
 <dt><code>-a</code></dt>
-<dd><p>Architecture to use.
-</p>
-<p>Default value is obtained via uname(1) as &lsquo;<samp>uname -m</samp>&rsquo;.
+<dt><code>--architecture</code></dt>
+<dd><p>Set architecture name for the package.
 </p>
 </dd>
 <dt><code>-j</code></dt>
+<dt><code>--jobs</code></dt>
 <dd><p>Parallel jobs for the compiler.
 </p>
-<p>If not specified, default sets to 1.
-</p>
-</dd>
-<dt><code>-1</code></dt>
-<dd><p>Increment release number (&lsquo;<samp>${release}</samp>&rsquo; + 1).
-</p>
-<p>It will be omitted if the -n option is being used.
-</p>
-</dd>
-<dt><code>-n</code></dt>
-<dd><p>Don&rsquo;t create a .tlz package.
+<p>This option sets the variable &lsquo;<samp>${jobs}</samp>&rsquo;.  If not specified, default
+sets to 1.
 </p>
 </dd>
 <dt><code>-S</code></dt>
-<dd><p>Selects the option to skip completed recipes.
+<dt><code>--skip-questions</code></dt>
+<dd><p>Skip questions on completed recipes.
 </p>
-<p>This means, in interactive mode, when the dialog to
-summarize recipes is shown.
+</dd>
+<dt><code>-1</code></dt>
+<dt><code>--increment</code></dt>
+<dd><p>Increment release number (&lsquo;<samp>${release}</samp>&rsquo; + 1).
+</p>
+<p>The effect of this option will be omitted if &ndash;no-package is being used.
+</p>
+</dd>
+<dt><code>-n</code></dt>
+<dt><code>--no-package</code></dt>
+<dd><p>Do not create a .tlz package.
+</p>
+</dd>
+<dt><code>-i</code></dt>
+<dt><code>--install</code></dt>
+<dd><p>Install package after the build.
+</p>
+</dd>
+<dt><code>-u</code></dt>
+<dt><code>--upgrade</code></dt>
+<dd><p>Upgrade package after the build.
+</p>
+</dd>
+<dt><code>-o</code></dt>
+<dt><code>--outdir=&lt;dir&gt;</code></dt>
+<dd><p>Where the packages produced will be written.
+</p>
+<p>This option sets the variable &lsquo;<samp>${outdir}</samp>&rsquo;.
+</p>
+</dd>
+<dt><code>-w</code></dt>
+<dt><code>--worktree=&lt;dir&gt;</code></dt>
+<dd><p>Where archives, patches, recipes are expected.
+</p>
+<p>This option sets the variable &lsquo;<samp>${worktree}</samp>&rsquo;.
+</p>
+</dd>
+<dt><code>-s</code></dt>
+<dt><code>--sourcedir=&lt;dir&gt;</code></dt>
+<dd><p>Where compressed sources will be found.
+</p>
+<p>This option sets the variable &lsquo;<samp>${tardir}</samp>&rsquo;.
 </p></dd>
 </dl>
 
-<p>Informative options:
+<p>Other options:
 </p>
 <dl compact="compact">
+<dt><code>-N</code></dt>
+<dt><code>--no-rc</code></dt>
+<dd><p>Do not read the configuration file.
+</p>
+<p>This will ignore reading the qirc file.
+</p>
+</dd>
 <dt><code>-L</code></dt>
-<dd><p>Print default directory locations.
+<dt><code>--show-location</code></dt>
+<dd><p>Print default directory locations and exit.
 </p>
 <p>This will print the target directory, package directory, working tree,
-the directory for tarballs, and the output directory for the packages
+the directory for sources, and the output directory for the packages
 produced.
 </p>
 </dd>
 <dt><code>-h</code></dt>
-<dd><p>Display the help describing the options and then exit.
+<dt><code>--help</code></dt>
+<dd><p>Display the usage and exit.
 </p>
 </dd>
-<dt><code>-V</code></dt>
-<dd><p>Print the version number and license information.
-The version number should be included in all bug reports.
+<dt><code>--version</code></dt>
+<dd><p>Output version information and exit.
 </p></dd>
 </dl>
 
-<p>Expected non-option arguments are package directories and regular files:
-recipes or files ending in .tlz, .order.
+<p>When FILE is -, qi can read from the standard input.  See examples from
+the <a href="#Packages">Packages</a> section.
 </p>
-<p>When FILE is -, qi can read from the standard input.  See examples at
-<a href="#Packages">Packages</a>.
+<p>Exit status: 0 for a normal exit, 1 for minor common errors (help usage,
+support not available, etc), 2 to indicate a command execution error;
+3 for integrity check error on compressed files, 4 for empty, not
+regular, or expected files, 5 for empty or not defined variables,
+6 when a package already exist, 10 for network manager errors.
+For more details, see the <a href="#Exit-status">Exit status</a> section.
 </p>
 
 <hr>
@@ -417,8 +423,8 @@ which may also contain manual pages, documentation, or any other file
 associated to a specific software.
 </p>
 <p>The package format used by qi is a simplified POSIX pax archive
-compressed with lzip<a name="DOCF1" href="#FOOT1"><sup>1</sup></a>.  The file extension for packages ends
-in &lsquo;<samp>.tlz</samp>&rsquo;.
+compressed using lzip<a name="DOCF1" href="#FOOT1"><sup>1</sup></a>.  The
+file extension for packages ends in &lsquo;<samp>.tlz</samp>&rsquo;.
 </p>
 <p>Both package installation and package de-installation are managed using
 two important (internal) variables: &lsquo;<samp>${packagedir}</samp>&rsquo; and
@@ -461,7 +467,7 @@ and is a symbolic link to something other than the package object.
 conflict arises.  When a package is going to be deleted, qi tells to
 graft(1) to remove those parts that are not in conflict, leaving the
 links to the belonging package.  This behavior can be forced if the
--p option is given.
+&ndash;prune option is given.
 </p>
 <a name="Installing-packages"></a>
 <h3 class="section">4.2 Installing packages</h3>
@@ -470,68 +476,72 @@ links to the belonging package.  This behavior can be forced if the
 <p>To install a single package, simply type:
 </p>
 <div class="example">
-<pre class="example">qi -i coreutils-8.30-i586+1.tlz
+<pre class="example">qi install coreutils_8.30_i586-1_tools.tlz
 </pre></div>
 
 <p>To install multiple packages at once, type:
 </p>
 <div class="example">
-<pre class="example">qi -i gcc-8.3.0-i586+1.tlz rafaela-2.2-i586+1.tlz ...
+<pre class="example">qi install gcc_8.3.0_i586-1_devel.tlz rafaela_2.2_i586-1_legacy.tlz ...
 </pre></div>
 
 <p>Warn about the files that will be linked:
 </p>
 <div class="example">
-<pre class="example">qi -w bash-5.0-i586+1.tlz
+<pre class="example">qi warn bash_5.0_i586-1_shells.tlz
 </pre></div>
 
 <p>This is to verify the content of a package before installing it.
 </p>
-<p>See the process of an installation (very verbose):
+<p>See the process of an installation:
 </p>
 <div class="example">
-<pre class="example">qi -i -v mariana-3.0-i586+1.tlz
+<pre class="example">qi install --verbose mariana_3.0_i586-1_woman.tlz
 </pre></div>
 
-<p>A second -v gives more.
+<p>The option -V gives more (very verbose).
 </p>
 <p>Installing package in a different location:
 </p>
 <div class="example">
-<pre class="example">qi -r /media/floppy -i lzip-1.21-i586+1.tlz
+<pre class="example">qi install --rootdir=/media/floppy lzip_1.21_i586-1_compressors.tlz
 </pre></div>
 
-<p>Important: the -r option assumes &lsquo;<samp>${targetdir}</samp>&rsquo; and
+<p>Important: the &ndash;rootdir option assumes &lsquo;<samp>${targetdir}</samp>&rsquo; and
 &lsquo;<samp>${packagedir}</samp>&rsquo;.  See the following example.
 </p>
 <div class="example">
-<pre class="example">qi -r /home/selk -i lzip-1.21-i586+1.tlz
+<pre class="example">qi install --rootdir=/home/selk lzip_1.21_i586-1_compressors.tlz
 </pre></div>
 
-<p>In this case the content of &quot;lzip-1.21-i586+1.tlz&quot; will be decompressed
-into &lsquo;<samp>/home/selk/pkgs/lzip-1.21-i586+1</samp>&rsquo;.  Assuming that the main
-binary for lzip is under &lsquo;<samp>/home/selk/pkgs/lzip-1.21-i586+1/usr/bin/</samp>&rsquo;
+<p>In this case the content of &quot;lzip_1.21_i586-1_compressors.tlz&quot; will be
+decompressed into &lsquo;<samp>/home/selk/pkgs/lzip_1.21_i586-1_compressors</samp>&rsquo;.
+Assuming that the main binary for lzip is under
+&lsquo;<samp>/home/selk/pkgs/lzip_1.21_i586-1_compressors/usr/bin/</samp>&rsquo;
 the target for &quot;usr/bin&quot; will be created at &lsquo;<samp>/home/selk</samp>&rsquo;.  Considering
 that you have exported the <code>PATH</code> as &lsquo;<samp>${HOME}/usr/bin</samp>&rsquo;, now the
-system is able to see the recent lzip.
+system is able to see the recent lzip command.
 </p>
 <p>Installing from a list of packages using standard input:
 </p>
 <div class="example">
-<pre class="example">qi -i - &lt; PACKAGELIST.txt
+<pre class="example">qi install - &lt; PACKAGELIST.txt
 </pre></div>
 
 <p>Or in combination with another tool:
 </p><div class="example">
-<pre class="example">sort -u PACKAGELIST.txt | qi -i -
+<pre class="example">sort -u PACKAGELIST.txt | qi install -
 </pre></div>
 
-<p>The list of packages must contain full path names to be passed in the
-installation, e.g.:
+<p>The sort command will read and sorts the list of declared packages,
+while trying to have unique entries for each statement.  The output
+produced is captured by Qi to install each package.
+</p>
+<p>An example of a list containing package names is:
 </p><div class="example">
-<pre class="example">/var/cache/qi/packages/tcl-8.6.9-x86_64+1.tlz
-/var/cache/qi/packages/tk-8.6.9.1-x86_64+1.tlz
-/var/cache/qi/packages/vala-0.42.3-x86_64+1.tlz
+<pre class="example">/var/cache/qi/packages/amd64/tcl_8.6.9_amd64-1_devel.tlz
+/var/cache/qi/packages/amd64/tk_8.6.9.1_amd64-1_devel.tlz
+/var/cache/qi/packages/amd64/vala_0.42.3_amd64-1_devel.tlz
 </pre></div>
 
 <a name="Removing-packages"></a>
@@ -541,49 +551,49 @@ installation, e.g.:
 <p>To remove a package, simply type:
 </p>
 <div class="example">
-<pre class="example">qi -d xz-5.2.4-i586+1.tlz
+<pre class="example">qi remove xz_5.2.4_i586-1_compressors.tlz
 </pre></div>
 
-<p>Delete mode will match the package name using &lsquo;<samp>${packagedir}</samp>&rsquo; as
+<p>Remove mode will match the package name using &lsquo;<samp>${packagedir}</samp>&rsquo; as
 prefix.  For example, if the value of &lsquo;<samp>${packagedir}</samp>&rsquo; is set to
 /usr/pkg, this will be equal to:
 </p>
 <div class="example">
-<pre class="example">qi -d /usr/pkg/xz-5.2.4-i586+1
+<pre class="example">qi remove /usr/pkg/xz_5.2.4_i586-1_compressors
 </pre></div>
 
-<p>Detailed output (very verbose):
+<p>Detailed output:
 </p>
 <div class="example">
-<pre class="example">qi -d -v /usr/pkg/xz-5.2.4-i586+1
+<pre class="example">qi remove --verbose /usr/pkg/xz_5.2.4_i586-1_compressors
 </pre></div>
 
-<p>A second -v gives more.
+<p>The option -V gives more (very verbose).
 </p>
-<p>By default the delete mode does not preserve a package directory after
+<p>By default the remove mode does not preserve a package directory after
 removing its links from &lsquo;<samp>${targetdir}</samp>&rsquo;, but this behavior can be
-changed if the -k option is passed:
+changed if the &ndash;keep option is passed:
 </p>
 <div class="example">
-<pre class="example">qi -d -k /usr/pkg/lzip-1.21-i586+1
+<pre class="example">qi remove --keep /usr/pkg/lzip_1.21_i586-1_compressors
 </pre></div>
 
 <p>This means that the links to the package can be reactivated, later:
 </p>
 <div class="example">
-<pre class="example">cd /usr/pkg &amp;&amp; graft -i lzip-1.21-i586+1
+<pre class="example">cd /usr/pkg &amp;&amp; graft -i lzip_1.21_i586-1_compressors
 </pre></div>
 
 <p>Removing package from a different location:
 </p>
 <div class="example">
-<pre class="example">qi -r /home/cthulhu -d xz-5.2.4-i586+1
+<pre class="example">qi remove --rootdir=/home/cthulhu xz_5.2.4_i586-1_compressors
 </pre></div>
 
 <p>Removing a package using standard input:
 </p>
 <div class="example">
-<pre class="example">echo &quot;vala-0.42.3-x86_64+1&quot; | qi -d -
+<pre class="example">echo vala_0.42.3_amd64-1_devel | qi remove -
 </pre></div>
 
 <p>This will match with the package directory.
@@ -603,31 +613,31 @@ directory is removed.
 <p>To upgrade a package, just type:
 </p>
 <div class="example">
-<pre class="example">qi -u gcc-9.0.1-i586+1.tlz
+<pre class="example">qi upgrade gcc_9.0.1_i586-1_devel.tlz
 </pre></div>
 
-<p>This will proceed to upgrade &quot;gcc-9.0.1-i586+1&quot; removing any other version
-of &quot;gcc&quot; (if any).
+<p>This will proceed to upgrade &quot;gcc_9.0.1_i586-1_devel&quot; removing any other
+version of &quot;gcc&quot; (if any).
 </p>
 <p>If you want to keep the package directories of versions found during the
 upgrade process, just pass:
 </p>
 <div class="example">
-<pre class="example">qi -u -k gcc-9.0.1-i586+1.tlz
+<pre class="example">qi upgrade --keep gcc_9.0.1_i586-1_devel.tlz
 </pre></div>
 
-<p>To see the upgrade process (very verbose):
+<p>To see the upgrade process:
 </p>
 <div class="example">
-<pre class="example">qi -u -v gcc-9.0.1-i586+1.tlz
+<pre class="example">qi upgrade --verbose gcc_9.0.1_i586-1_devel.tlz
 </pre></div>
 
-<p>A second -v gives more.
+<p>The option -V gives more (very verbose).
 </p>
 <p>To force the upgrade of an existing package:
 </p>
 <div class="example">
-<pre class="example">qi -u -f gcc-9.0.1-i586+1.tlz
+<pre class="example">qi upgrade --force gcc_9.0.1_i586-1_devel.tlz
 </pre></div>
 
 <a name="Package-blacklist"></a>
@@ -687,9 +697,9 @@ brace.  The line finishing the section contains just a closing brace.
 The section names or the function names currently recognized are
 &lsquo;<samp>build</samp>&rsquo;.
 </p>
-<p>The &lsquo;<samp>build</samp>&rsquo; section is an augmented shell script.  This is the main
-section (or <strong>shell function</strong>) which contains the instructions to
-build and produce a package.
+<p>The &lsquo;<samp>build</samp>&rsquo; section (or <strong>shell function</strong>) is an augmented
+shell script that contains the main instructions for building a software
+source.
 </p>
 <a name="Variables"></a>
 <h3 class="section">5.1 Variables</h3>
@@ -768,14 +778,15 @@ special variable &lsquo;<samp>version</samp>&rsquo; is assigned by default.
 <p>&lsquo;<samp>pkgname</samp>&rsquo; and &lsquo;<samp>pkgversion</samp>&rsquo; along with: &lsquo;<samp>version</samp>&rsquo;, &lsquo;<samp>arch</samp>&rsquo;,
 &lsquo;<samp>release</samp>&rsquo;, and (optionally) &lsquo;<samp>pkgcategory</samp>&rsquo; are used to produce the
 package name in the form:
-&lsquo;<samp>${pkgname}-${pkgversion}-${arch}+${release}[@${pkgcategory}].tlz</samp>&rsquo;
+&lsquo;<samp>${pkgname}_${pkgversion}_${arch}-${release}[_${pkgcategory}].tlz</samp>&rsquo;
 </p>
 <p>&lsquo;<samp>pkgcategory</samp>&rsquo; is an optional special variable that can be defined on the
 recipe to categorize the package name.  If it is defined, then the
 package output will be composed as
-&lsquo;<samp>${pkgname}-${pkgversion}-${arch}+${release}@${pkgcategory}.tlz</samp>&rsquo;.
+&lsquo;<samp>${pkgname}_${pkgversion}_${arch}-${release}[_${pkgcategory}.tlz</samp>&rsquo;.
 Automatically, the value of &lsquo;<samp>pkgcategory</samp>&rsquo; will be prefixed using the
-&lsquo;<samp>@</samp>&rsquo; character.
+&lsquo;<samp>_</samp>&rsquo; (underscore) character which will be added to the last part of the
+package name.
 </p>
 <p>A special variable called &lsquo;<samp>replace</samp>&rsquo; can be used to declare package names
 that will be replaced at installation time.
@@ -873,7 +884,7 @@ suggest using <strong>|</strong> for a disjunction, <strong>&amp;</strong> for a
 licensing.  Comma would have lower precedence, plus added special terms.
 </p>
 <div class="example">
-<pre class="example">license=&quot;LGPL, GPL | Artistic + added permission&quot;
+<pre class="example">license=&quot;LGPL, GPL | Artistic - added permission&quot;
 </pre></div>
 
 <a name="Writing-recipes"></a>
@@ -911,35 +922,36 @@ completed adding &quot;recipe&quot; to the specified path name.
 <p>To build a single package, type:
 </p>
 <div class="example">
-<pre class="example">qi -b x-apps/xterm
+<pre class="example">qi build x-apps/xterm
 </pre></div>
 
 <p>Multiple jobs can be passed to the compiler to speed up the build process:
 </p>
 <div class="example">
-<pre class="example">qi -b -j3 x-apps/xterm
+<pre class="example">qi build --jobs 3 x-apps/xterm
 </pre></div>
 
-<p>Update or install the package produced (if it is not already installed)
-when finish:
+<p>Update or install the produced package (if not already installed) when the
+build mode ends:
 </p>
 <div class="example">
-<pre class="example">qi -b -j3 -u x-apps/xterm
+<pre class="example">qi build -j3 --upgrade x-apps/xterm
 </pre></div>
 
 <p>Only process a recipe but do not create the binary package:
 </p>
 <div class="example">
-<pre class="example">qi -b -n dict/aspell
+<pre class="example">qi build --no-package dict/aspell
 </pre></div>
 
-<p>The options -i or -u have no effect when -n is given.
+<p>The options &ndash;install or &ndash;upgrade have no effect when &ndash;no-package
+is given.
 </p>
 <p>This can be useful to inspect the build process of recipe:
 </p>
-<p>qi -b -k -n dict/aspell 2&gt;&amp;1 | tee aspell-buildlog.txt
+<p>qi build &ndash;keep &ndash;no-package dict/aspell 2&gt;&amp;1 | tee aspell-log.txt
 </p>
-<p>The -k option could preserve the source directory and the destination
+<p>The &ndash;keep option could preserve the source directory and the destination
 directory for later inspection.  A log file of the build process will be
 created redirecting both, standard error and standard output to tee(1).
 </p>
@@ -1033,10 +1045,10 @@ QICXXFLAGS=&quot;-g0 -Os&quot;
 QILDFLAGS=&quot;-s&quot;
 pkgname=gawk
 pkgversion=5.0.1
-arch=x86_64
+arch=amd64
 release=1
-pkgcategory=@tools
-full_pkgname=gawk-5.0.1-x86_64+1@tools
+pkgcategory=&quot;tools&quot;
+full_pkgname=gawk_5.0.1_amd64-1_tools
 blurb=&quot;Pattern scanning and processing language.&quot;
 homepage=&quot;http://www.gnu.org/software/gawk&quot;
 license=&quot;GPLv3+&quot;
@@ -1109,10 +1121,10 @@ libs/tiff: libs/libjpeg-turbo
 <p>To proceed with each recipe, we can type:
 </p>
 <div class="example">
-<pre class="example">qi -o imglibs.order | qi -b -i -
+<pre class="example">qi order imglibs.order | qi build --install -
 </pre></div>
 
-<p>The output of &lsquo;<samp>qi -o imglibs.order</samp>&rsquo; tells to qi in which order it
+<p>The output of &lsquo;<samp>qi order imglibs.order</samp>&rsquo; tells to qi in which order it
 should build the recipes:
 </p>
 <div class="example">
@@ -1133,30 +1145,29 @@ Next: <a href="#Examining-packages" accesskey="n" rel="next">Examining packages<
 <h2 class="chapter">7 Creating packages</h2>
 <a name="index-package-creation"></a>
 
-<p>The &quot;creation mode&quot; is an internal function of qi to make new Qi compatible
-compatible packages, the creation mode is selected by the -c option.
-A package is produced using the contents of the Current Directory, and
-the package file is written out.
+<p>The &quot;creation mode&quot; is an internal function of qi to make new Qi
+compatible packages.  A package is produced using the contents of
+the Current Working Directory and the package file is written out.
 </p>
 <div class="example">
-<pre class="example">Usage: qi -c [<var>Output/PackageName.tlz</var>]...
+<pre class="example">Usage: qi create [<var>Output/PackageName.tlz</var>]...
 </pre></div>
 
 <p>The argument for the file name to be written must contain a fully
 qualified named directory as the output directory where the package
 produced will be written.  The file name should be composed using the
-full name: name-version-architecture+release.tlz
+full name: name-version-architecture-release[-pkgcategory].tlz
 </p>
 <p><small>EXAMPLE</small>
 </p>
 <div class="example">
 <pre class="example">cd /usr/pkg
-cd claws-mail-3.17.1-x86_64+1
-qi -c /var/cache/qi/packages/claws-mail-3.17.1-x86_64+1.tlz
+cd claws-mail_3.17.1_amd64-1_x-apps
+qi create /var/cache/qi/packages/claws-mail_3.17.1_amd64-1_x-apps
 </pre></div>
 
-<p>In this case, the package &quot;claws-mail-3.17.1-x86_64+1.tlz&quot; will be written
-into &lsquo;<samp>/var/cache/qi/packages/</samp>&rsquo;.
+<p>In this case, the package &quot;claws-mail_3.17.1_amd64-1_x-apps&quot; will be
+written into &lsquo;<samp>/var/cache/qi/packages/</samp>&rsquo;.
 </p>
 <p>All packages produced are complemented by a checksum file (.sha256).
 </p>
@@ -1172,30 +1183,28 @@ Next: <a href="#Exit-status" accesskey="n" rel="next">Exit status</a>, Previous:
 <a name="index-package-examination"></a>
 
 <p>The &quot;extraction mode&quot; serves to examine binary packages for debugging
-purposes. The extraction mode is selected by the -x option.  It
-decompresses a package into a single directory, verifying its integrity
-and preserving its properties.
+purposes. It decompresses a package into a single directory, verifying
+its integrity and preserving all of it properties (owner and permission).
 </p>
 <div class="example">
-<pre class="example">Usage: qi -x [<var>packagename.tlz</var>]...
+<pre class="example">Usage: qi extract [<var>packagename.tlz</var>]...
 </pre></div>
 
 <p><small>EXAMPLE</small>
 </p>
 <div class="example">
-<pre class="example">qi -x mksh-R56c-x86_64+1.tlz
+<pre class="example">qi extract mksh_R56c_amd64-1_shells.tlz
 </pre></div>
 
-<p>This action will put the content of &quot;mksh-R56c-x86_64+1.tlz&quot; into a
+<p>This action will put the content of &quot;mksh_R56c_amd64-1_shells.tlz&quot; into a
 single directory, this will be a private directory for the user who
-</p>
-<p>requested the action, creation mode will be equal to <strong>u=rwx,g=,o=
+requested the action, creation mode will be equal to <strong>u=rwx,g=,o=
 (0700)</strong>.  The package content will reside on this location, default
 mask to deploy the content will be equal to
 <strong>u=rwx,g=rwx,o=rwx (0000)</strong>.
 </p>
-<p>The creation of the custom directory is influenced by the value of the
-<code>TMPDIR</code> variable.
+<p>Note: the creation of the custom directory is influenced by the value of
+the <code>TMPDIR</code> variable.
 </p>
 
 <hr>
@@ -1228,8 +1237,8 @@ Next: <a href="#Index" accesskey="n" rel="next">Index</a>, Previous: <a href="#E
 <dt>&lsquo;<samp>2</samp>&rsquo;</dt>
 <dd><p>Command execution error:
 </p>
-<p>This code is used to return the evaluation of external commands and shell
-arguments in case of error.
+<p>This code is used to return the evaluation of an external command or shell
+arguments in case of failure.
 </p>
 </dd>
 <dt>&lsquo;<samp>3</samp>&rsquo;</dt>
@@ -1238,11 +1247,11 @@ arguments in case of error.
 <p>Compressed files means:
 </p>
 <ul>
-<li> Tarball files from tar(1).
+<li> A tarball file from tar(1).
 Supported extensions: .tar, .tar.gz, .tgz, .tar.Z, .tar.bz2, .tbz2, .tbz,
 .tar.xz, .txz
 
-</li><li> Tarball files from tarlz(1).
+</li><li> A tarball file from tarlz(1).
 Supported extensions: .tar.lz, .tlz
 
 </li><li> Zip files from unzip(1).
@@ -1265,30 +1274,24 @@ Supported extension: .xz
 <dt>&lsquo;<samp>4</samp>&rsquo;</dt>
 <dd><p>File empty, not regular, or expected.
 </p>
-<p>Commonly, it is expected:
+<p>It&rsquo;s commonly expected:
 </p>
 <ul>
 <li> An argument for the mode of operation.
 
-</li><li> A readable file or directory.
+</li><li> A regular file or readable directory.
 
-</li><li> A binary package (.tlz).
-
-</li><li> A valid recipe.
-
-</li><li> An order file (.order).
+</li><li> An expected extension: .tlz, .sha256, .order.
 
 </li><li> A protocol supported by the network downloader tool.
-
-</li><li> A checksum file (.sha256).
 </li></ul>
 
 </dd>
 <dt>&lsquo;<samp>5</samp>&rsquo;</dt>
 <dd><p>Empty or not defined variable:
 </p>
-<p>This code is used to report empty or undefined variables; usually,
-variables coming from a recipe or assigned arrays that are tested.
+<p>This code is used to report empty or undefined variables (usually
+variables coming from a recipe or assigned arrays that are tested).
 </p>
 </dd>
 <dt>&lsquo;<samp>6</samp>&rsquo;</dt>
@@ -1412,8 +1415,8 @@ Previous: <a href="#Exit-status" accesskey="p" rel="prev">Exit status</a>, Up: <
 <h4 class="footnotes-heading">Footnotes</h4>
 
 <h3><a name="FOOT1" href="#DOCF1">(1)</a></h3>
-<p>For more details about the lzip format, visit
-<a href="https://www.nongnu.org/lzip/">https://www.nongnu.org/lzip/</a>.</p>
+<p>For more details about tarlz and the
+lzip format, visit <a href="https://lzip.nongnu.org/tarlz.html">https://lzip.nongnu.org/tarlz.html</a>.</p>
 <h3><a name="FOOT2" href="#DOCF2">(2)</a></h3>
 <p>The official guide for Graft can be found at
 <a href="http://peters.gormand.com.au/Home/tools/graft/graft.html">http://peters.gormand.com.au/Home/tools/graft/graft.html</a>.</p>

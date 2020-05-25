@@ -18,24 +18,25 @@
 
 usage() {
     printf "%s\n" \
-"Usage: configure [options]"                                                   \
-""                                                                             \
-"Defaults for the options are specified in brackets."                          \
-""                                                                             \
-"Options:"                                                                     \
-"  --prefix=DIR         install files in DIR [${prefix}]"                      \
-"  --exec-prefix=DIR    base DIR for arch-dependent files [${exec_prefix}]"    \
-"  --bindir=DIR         user executables [${bindir}]"                          \
-"  --sbindir=DIR        system admin executables [${sbindir}]"                 \
-"  --libexecdir=DIR     program executables [${libexecdir}]"                   \
-"  --sysconfdir=DIR     read-only single-machine data [${sysconfdir}]"         \
-"  --localstatedir=DIR  modifiable single-machine data [${localstatedir}]"     \
-"  --datarootdir=DIR    read-only arch-independent data root [${datarootdir}]" \
-"  --infodir=DIR        info documentation [${infodir}]"                       \
-"  --mandir=DIR         man documentation [${mandir}]"                         \
-"  --docdir=DIR         documentation root [${docdir}]"                        \
-"  --packagedir=DIR     package installation directory [${packagedir}]"        \
-"  --targetdir=DIR      target directory for linking [${targetdir}]"           \
+"Usage: configure [options]"                                                      \
+""                                                                                \
+"Defaults for the options are specified in brackets."                             \
+""                                                                                \
+"Options:"                                                                        \
+"  --prefix=DIR         install files in DIR [${prefix}]"                         \
+"  --exec-prefix=DIR    base DIR for arch-dependent files [${exec_prefix}]"       \
+"  --bindir=DIR         user executables [${bindir}]"                             \
+"  --sbindir=DIR        system admin executables [${sbindir}]"                    \
+"  --libexecdir=DIR     program executables [${libexecdir}]"                      \
+"  --sysconfdir=DIR     read-only single-machine data [${sysconfdir}]"            \
+"  --localstatedir=DIR  modifiable single-machine data [${localstatedir}]"        \
+"  --datarootdir=DIR    read-only arch-independent data root [${datarootdir}]"    \
+"  --infodir=DIR        info documentation [${infodir}]"                          \
+"  --mandir=DIR         man documentation [${mandir}]"                            \
+"  --docdir=DIR         documentation root [${docdir}]"                           \
+"  --packagedir=DIR     set directory for package installations [${packagedir}]"  \
+"  --targetdir=DIR      set target directory for symbolic links [${targetdir}]"   \
+"  --arch=name          set default package architecture [${arch}]"               \
 ""
 }
 
@@ -53,6 +54,7 @@ mandir='$(datarootdir)/man'
 docdir='$(datarootdir)/doc'
 packagedir='/usr/local/pkgs'
 targetdir='/usr/local'
+arch="$(uname -m)"
 
 return_variables() {
     printf "%s\n" \
@@ -69,6 +71,7 @@ return_variables() {
      "docdir = $docdir"                \
      "packagedir = $packagedir"        \
      "targetdir = $targetdir"          \
+     "arch = $arch"                    \
      ""
 }
 
@@ -167,13 +170,20 @@ do
     --targetdir=*)
         targetdir="${1#*=}"
         ;;
-    -h | --help)
+    --arch)
+        arch="$2"
+        shift
+        ;;
+    --arch=*)
+        arch="${1#*=}"
+        ;;
+    --help | --hel | --he | --h | '--?' | -help | -hel | -he | -h | '-?' )
         usage
         exit
         ;;
-    --)	# End of options
+    --)
         shift
-        break
+        break;	# End of options.
         ;;
     -*)
         echo "configure: WARNING: unrecognized option '${1}'" 1>&2

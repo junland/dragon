@@ -24,88 +24,85 @@
 # 6  = Package already installed
 # 10 = Network manager error
 
-\unalias -a;	# Unset all possible aliases.
+PROGRAM="${0##*/}"
+
 LC_ALL=C;	# Override locale settings.
-IFS='
- 	';	# Reset Internal Field Separator.
 umask 022;	# Remove write permission for group and other.
+export LC_ALL
 
 ### Functions
 
 usage()
 {
-    printf "%s\n" \
-     "Qi - A user-friendly package manager."                              \
-     ""                                                                   \
-     "Usage: $PROGRAM [OPTION...] [FILE]..."                              \
-     ""                                                                   \
-     "Operation mode:"                                                    \
-     "  -b          Build packages using recipe names"                    \
-     "  -c          Create .tlz package from directory"                   \
-     "  -d          Delete packages"                                      \
-     "  -i          Install packages"                                     \
-     "  -o          Resolve build order through .order files"             \
-     "  -u          Upgrade packages (implies -i, -d with -p)"            \
-     "  -w          Warn about files that will be linked"                 \
-     "  -x          Extract a package for debugging purposes"             \
-     ""                                                                   \
-     "Common options:"                                                    \
-     "  -N          Do not read the configuration file"                   \
-     "  -P <DIR>    Package directory for installations."                 \
-     "                Only valid for -i, -d, or -u options"               \
-     "  -f          This option can force the build of a recipe,"         \
-     "              or force the upgrade of a pre-existing package."      \
-     "                Only valid for -b, -u options"                      \
-     "  -t <DIR>    Target directory for symbolic links."                 \
-     "                Only valid for -i, -d, or -u options"               \
-     "  -k          Keep \`\${srcdir}' or \`\${destdir}' in build mode,"  \
-     "              keep package directory in delete mode."               \
-     "                Only valid for -b, -d or -u options"                \
-     "  -p          Prune conflicts on package installations"             \
-     "  -r <DIR>    Use the fully qualified named directory as the"       \
-     "              root directory for all qi operations.  The target"    \
-     "              directory and package directory will be relative to"  \
-     "              the specified directory, including Graft's log file"  \
-     "  -v          Be verbose (a 2nd -v gives more)"                     \
-     ""                                                                   \
-     "Options for 'build' mode (-b):"                                     \
-     "  -O  <DIR>   Where the packages produced are written"              \
-     "  -W  <DIR>   Where archives, patches, and recipes are expected"    \
-     "  -Z  <DIR>   Where (compressed) sources will be found"             \
-     "  -a          Architecture to use [detected]"                       \
-     "  -j          Parallel jobs for the compiler"                       \
-     "  -1          Increment release number (\`\${release}' + 1)"        \
-     "  -n          Don't create a .tlz package"                          \
-     "  -S          Selects the option to skip completed recipes"         \
-     ""                                                                   \
-     "Informative options:"                                               \
-     "  -L          Print default directory locations"                    \
-     "  -h          Display this help and exit"                           \
-     "  -V          Output version information"                           \
-     ""                                                                   \
-     "Some influential environment variables:"                            \
-     "  TMPDIR      Temporary directory for sources"                      \
-     "  QICFLAGS    C compiler flags"                                     \
-     "  QICXXFLAGS  C++ compiler flags"                                   \
-     "  QILDFLAGS   Linker flags"                                         \
-     ""                                                                   \
-     "When FILE is -, read standard input."                               \
-     ""
-}
-
-version()
-{
-    printf "%s\n" \
-     "$PROGRAM @VERSION@" \
-     "Copyright (C) 2016-2020 Matias Andres Fonzo." \
-     "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>" \
-     "This is free software: you are free to change and redistribute it." \
-     "There is NO WARRANTY, to the extent permitted by law."
+    printf "%s\\n" \
+     "Qi - A user-friendly package manager."                                                   \
+     ""                                                                                        \
+     "Usage: $PROGRAM MODE [OPTION...] [FILE]..."                                              \
+     ""                                                                                        \
+     "Defaults for the options are specified in brackets."                                     \
+     ""                                                                                        \
+     "Operating modes:"                                                                        \
+     "  warn                     Warn about files that will be installed"                      \
+     "  install                  Install packages"                                             \
+     "  remove                   Remove packages"                                              \
+     "  upgrade                  Upgrade packages"                                             \
+     "  extract                  Extract package for debugging purposes"                       \
+     "  create                   Create .tlz package from directory"                           \
+     "  build                    Build packages using recipe names"                            \
+     "  order                    Resolve build order through .order files"                     \
+     ""                                                                                        \
+     "Options when installing, removing, or upgrading software packages:"                      \
+     "  -f, --force              Force upgrade of pre-existing packages"                       \
+     "  -k, --keep               Keep package directory when remove/upgrade"                   \
+     "  -p, --prune              Prune conflicts"                                              \
+     "  -P, --packagedir=<dir>   Set directory for package installations"                      \
+     "  -t, --targetdir=<dir>    Set target directory for symbolic links"                      \
+     "  -r, --rootdir=<dir>      Use the fully qualified named directory as"                   \
+     "                           the root directory for all qi operations"                     \
+     "                           Note: the target directory and the package"                   \
+     "                           directory will be relative to the specified"                  \
+     "                           directory, excepting the graft log file"                      \
+     ""                                                                                        \
+     "Options when building software packages using recipes:"                                  \
+     "  -a, --architecture       Set architecture name for the package [${arch}]"              \
+     "  -j, --jobs               Parallel jobs for the compiler [${jobs}]"                     \
+     "  -S, --skip-questions     Skip questions on completed recipes"                          \
+     "  -1, --increment          Increment release number (\`\${release}' + 1)"                \
+     "  -n, --no-package         Do not create a .tlz package"                                 \
+     "  -i, --install            Install package after the build"                              \
+     "  -u, --upgrade            Upgrade package after the build"                              \
+     "  -o, --outdir=<dir>       Where the packages produced will be written [${outdir}]"      \
+     "  -w, --worktree=<dir>     Where archives, patches, recipes are expected [${worktree}]"  \
+     "  -s, --sourcedir=<dir>    Where compressed sources will be found [${tardir}]"           \
+     ""                                                                                        \
+     "Other options:"                                                                          \
+     "  -N, --no-rc              Do not read the configuration file"                           \
+     "  -v, --verbose            Be verbose"                                                   \
+     "  -V, --very-verbose       Be very verbose"                                              \
+     "  -L, --show-location      Print default directory locations and exit"                   \
+     "  -h, --help               Display this help and exit"                                   \
+     "      --version            Output version information and exit"                          \
+     ""                                                                                        \
+     "Some influential environment variables:"                                                 \
+     "  TMPDIR                   Temporary directory for sources [${TMPDIR}]"                  \
+     "  QICFLAGS                 C compiler flags [${QICFLAGS}]"                               \
+     "  QICXXFLAGS               C++ compiler flags [${QICXXFLAGS}]"                           \
+     "  QILDFLAGS                Linker flags [${QILDFLAGS}]"                                  \
+     ""                                                                                        \
+     "When FILE is -, read standard input."                                                    \
+     ""                                                                                        \
+     "Exit status: 0 for a normal exit, 1 for minor common errors (help usage,"                \
+     "support not available, etc), 2 to indicate a command execution error;"                   \
+     "3 for integrity check error on compressed files, 4 for empty, not"                       \
+     "regular, or expected files, 5 for empty or not defined variables,"                       \
+     "6 when a package already exist, 10 for network manager errors."                          \
+     ""                                                                                        \
+     "Qi home page: https://www.dragora.org"
 }
 
 warn()
 {
-    printf "%s\n" "$@" 1>&2
+    printf "%s\\n" "$@" 1>&2
 }
 
 is_readable()
@@ -126,7 +123,7 @@ is_readable()
 # Portable alternative to the file operator -nt (among shells)
 is_newer()
 {
-    if test -n "$(find $1 -prune -newer $2 -print)"
+    if test -n "$(find "$1" -prune -newer "$2" -print)"
     then
         return 0
     fi
@@ -153,7 +150,7 @@ chkstatus_or_exit()
     if test $status -ne 0
     then
         echo "^ Return status = $status" 1>&2
-        exit ${1-2};	# If not given, defaults to 2
+        exit "${1-2}";	# If not given, defaults to 2
     fi
 
     unset status
@@ -161,24 +158,24 @@ chkstatus_or_exit()
 
 readconfig()
 {
-    if test $RC = RC
+    if test "$readconfig" = readconfig
     then
-        is_readable "$HOME/.qirc" 2> /dev/null && RCFILE="$HOME/.qirc";
+        is_readable "$HOME/.qirc" 2> /dev/null && _rcfile="$HOME/.qirc";
 
-        echo "Importing configuration file from \`${RCFILE}' ..."
+        echo "Importing configuration file \`${_rcfile}' ..."
 
-        test -f "$RCFILE" || {
-            warn "${RCFILE} is not a regular file."
-            return 1
+        test -f "$_rcfile" || {
+            warn "$_rcfile is not a regular file."
+            return 1;
         }
 
-        . "$RCFILE"
+        . "$_rcfile"
     fi
 }
 
 ### Mode functions
 
-build_mode()
+mode_build()
 {
     recipe=$1
 
@@ -230,12 +227,7 @@ build_mode()
 
     is_readable "${CWD}/$recipe" || exit 4
 
-    # Find target architecture if 'arch' is not set
-    if test -z "$arch"
-    then
-        arch="$( ${CC:-cc} -dumpmachine 2> /dev/null )" || arch=unknown
-        arch="${arch%%-*}"	# Get the rid of target triplet.
-    fi
+    echo "{@} Building from ${CWD}/$recipe ..."
 
     # Re-create external directories
     mkdir -p -- "${worktree}/archive" \
@@ -269,7 +261,6 @@ build_mode()
 
     # Import the recipe
 
-    echo "{@} Building from ${CWD}/$recipe ..."
     . "${CWD}/$recipe"
     chkstatus_or_exit
 
@@ -295,7 +286,7 @@ build_mode()
     # Increment the release number if the option was given
     if test "$opt_incr_release" = opt_incr_release
     then
-        release=$(( $release + 1 ))
+        release=$(( release + 1 ))
     fi
 
     # Allow the dot as definition for 'tardir'
@@ -311,14 +302,14 @@ build_mode()
     srcdir="${srcdir:=${program}-$version}"
     destdir="${destdir:=${TMPDIR}/package-$pkgname}"
 
-    # If 'pkgcategory' has been defined, prefix it using "the at symbol"
+    # If 'pkgcategory' has been defined, prefix it using the underscore
     if test -n "$pkgcategory"
     then
-        pkgcategory='@'${pkgcategory}
+        pkgcategory='_'${pkgcategory}
     fi
 
-    # Complete package name adding 'pkgversion-arch+release[@pkgcategory]'
-    full_pkgname="${full_pkgname:=$pkgname-${pkgversion}-${arch}+${release}${pkgcategory}}"
+    # Compose the full package name
+    full_pkgname="${full_pkgname:=${pkgname}_${pkgversion}_${arch}-${release}${pkgcategory}}"
 
     # Use 'arch' as suffix for 'outdir' to have a well-organized package output
     outdir=${outdir}/${arch}
@@ -378,7 +369,7 @@ build_mode()
             # the user need to pass the option explicitly
             if test ! -t 0
             then
-                printf "%s\n" \
+                printf "%s\\n" \
                  "Do you want to rebuild this package?"   \
                  "1) Yes, built it"                       \
                  "2) No, skip it [default]"               \
@@ -392,7 +383,7 @@ build_mode()
                     ;;
                 3*)
                     unset ANSWER
-                    echo "Building UNPROCESSED/MODIFIED recipes ..." > /dev/tty
+                    echo "=== Building UNPROCESSED/MODIFIED recipes ..." > /dev/tty
                     echo ""
                     opt_skipqsts=opt_skipqsts
                     readonly opt_skipqsts
@@ -406,7 +397,7 @@ build_mode()
                     ;;
                 esac
             else
-                warn "Use the -f option to reprocess ${CWD}/$recipe." ""
+                warn "Use the --force option to reprocess ${CWD}/$recipe." ""
                 return 6;
             fi
         fi
@@ -414,16 +405,16 @@ build_mode()
 
     # Fetch remote sources
 
-    echo "Fetching remote sources if needed ..."
+    echo "=== Fetching remote sources if needed ..."
     if test -n "$fetch"
     then
         for origin in $fetch
         do
             _source="${origin##*/}"
 
-            echo "Looking for \"$_source\" ..."
+            echo "=== Looking for \"$_source\" ..."
 
-            echo "Verifying checksum file \"${_source}.sha256\" from '${tardir}'"
+            echo "=== Verifying checksum file \`${tardir}/${_source}.sha256'"
             if test -e "${tardir}/${_source}.sha256"
             then
                 ( cd -- "$tardir" && sha256sum - ) < "${tardir}/${_source}.sha256"
@@ -444,14 +435,14 @@ build_mode()
             case $origin in
             rsync://*)
                     (
-                        cd -- "$tardir" && $rsync $origin || exit $?
-                        sha256sum $_source > ${_source}.sha256
+                        cd -- "$tardir" && $rsync "$origin" || exit $?
+                        sha256sum "$_source" > "${_source}.sha256"
                     );  chkstatus_or_exit 10
                 ;;
             *://*)
                     (
-                        cd -- "$tardir" && $netget $origin || exit $?
-                        sha256sum $_source > ${_source}.sha256
+                        cd -- "$tardir" && $netget "$origin" || exit $?
+                        sha256sum "$_source" > "${_source}.sha256"
                     );  chkstatus_or_exit 10
                 ;;
             *)
@@ -467,11 +458,11 @@ build_mode()
     # Prepare special directories for build the source,
     # the destination and the output of the package
 
-    echo "Preparing directories ..."
+    echo "=== Preparing directories ..."
 
     if test -d "${TMPDIR}/$srcdir" && test -z "$keep_srcdir"
     then
-        rm -r -- "${TMPDIR}/$srcdir" || chkstatus_or_exit
+        rm -r -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
         echo "removed directory: '${TMPDIR}/$srcdir'"
     fi
 
@@ -489,7 +480,7 @@ build_mode()
         echo "mkdir: created directory '$outdir'"
     fi
 
-    echo "Entering to 'TMPDIR': $TMPDIR ..."
+    echo "=== Entering to '${TMPDIR}' ..."
     cd -- "$TMPDIR" || chkstatus_or_exit
 
     # Set trap before to run the build() function in order
@@ -503,7 +494,7 @@ build_mode()
         _xtrace_flag=_xtrace_flag_is_set ;;
     esac
 
-    echo "Running build() ..."
+    echo "=== Running the build() function ..."
     build
     unset build
 
@@ -532,16 +523,17 @@ build_mode()
         # Edit the recipe when 'release' is incremented
         if test "$opt_incr_release" = opt_incr_release
         then
-            echo ",s/^\(release\)=.*/\1=${release}/"$'\nw' | \
+            echo ",s/^\\(release\\)=.*/\\1=${release}/"$'\nw' | \
              ed "${CWD}/$recipe" || chkstatus_or_exit
         fi
 
         mkdir -p -- "${destdir}/var/lib/qi" || chkstatus_or_exit
 
-        # Include a recipe copy into the package
+        # Include a copy of the recipe into the package
         cp -p "${CWD}/$recipe" \
               "${destdir}/var/lib/qi/${full_pkgname}.recipe" && \
-        chmod 644 "${destdir}/var/lib/qi/${full_pkgname}.recipe" || chkstatus_or_exit
+         chmod 644 "${destdir}/var/lib/qi/${full_pkgname}.recipe"
+        chkstatus_or_exit
 
         # Detect post-install script for inclusion
 
@@ -550,7 +542,8 @@ build_mode()
             echo "${CWD}/post-install:  Detected."
             cp -p "${CWD}/post-install" \
                   "${destdir}/var/lib/qi/${full_pkgname}.sh" && \
-            chmod 644 "${destdir}/var/lib/qi/${full_pkgname}.sh" || chkstatus_or_exit
+             chmod 644 "${destdir}/var/lib/qi/${full_pkgname}.sh"
+            chkstatus_or_exit
         fi
 
         # Detect declared package names for later replacement
@@ -570,7 +563,7 @@ build_mode()
         fi
 
         # Create meta file for package information
-        echo "Creating meta file ${full_pkgname}.tlz.txt ..."
+        echo "=== Creating meta file ${full_pkgname}.tlz.txt ..."
         do_meta > "${outdir}/${full_pkgname}.tlz.txt" || chkstatus_or_exit
 
         # Make a copy of it for the database
@@ -578,7 +571,7 @@ build_mode()
               "${destdir}/var/lib/qi/${full_pkgname}.txt" || chkstatus_or_exit
 
         # Produce the package
-        cd -- "$destdir" && create_mode "${outdir}/${full_pkgname}.tlz"
+        cd -- "$destdir" && mode_create "${outdir}/${full_pkgname}.tlz"
     fi
 
     # Back to the current working directory
@@ -587,7 +580,7 @@ build_mode()
     # Delete 'srcdir' or 'destdir' if -k was not given
     if test "$opt_keep" != opt_keep
     then
-        echo "Deleting temporary directories ..."
+        echo "=== Deleting temporary directories ..."
 
         srcdir="${srcdir%%/*}"	# Directory name without parents.
 
@@ -617,10 +610,10 @@ build_mode()
     then
         if test "$opt_install" = opt_install
         then
-            install_mode "${outdir}/${full_pkgname}.tlz"
+            mode_install "${outdir}/${full_pkgname}.tlz"
         elif test "$opt_upgrade" = opt_upgrade
         then
-            upgrade_mode "${outdir}/${full_pkgname}.tlz"
+            mode_upgrade "${outdir}/${full_pkgname}.tlz"
         fi
     fi
 
@@ -629,7 +622,7 @@ build_mode()
     echo ""
 }
 
-create_mode()
+mode_create()
 {
     directory="$(dirname -- "$1")"
 
@@ -647,16 +640,16 @@ create_mode()
     if test "$name" = "${name%.tlz}"
     then
         warn "Package format '$name' not supported." \
-             "It should be \"name-version-architecture+release[@pkgcategory].tlz\""
+             "It should be \"name_version_architecture-release[_pkgcategory].tlz\""
         exit 4
     fi
 
-    echo "{#} Creating package $name ..."
+    echo "{#} Creating package name $name ..."
 
-    ( umask 022 ; tarlz --solid -9 -cvf - * ) > "${directory}/$name"
+    ( umask 022 ; tarlz --solid -9 -cvf - -- * ) > "${directory}/$name"
     chkstatus_or_exit 3
 
-    ( cd -- "$directory" && sha256sum $name > ${name}.sha256 )
+    ( cd -- "$directory" && sha256sum "$name" > "${name}.sha256" )
     chkstatus_or_exit 4
 
     echo "Package created on \`${directory}/${name}'."
@@ -666,11 +659,11 @@ create_mode()
     unset directory name
 }
 
-delete_mode()
+mode_remove()
 {
     expunge="${packagedir}/$(basename -- "$1" .tlz)"
 
-    echo "{<} Deleting package $rootdir${expunge} ..."
+    echo "<<< Deleting package $rootdir${expunge} ..."
 
     # Complain if the package directory does not exist
 
@@ -688,13 +681,13 @@ delete_mode()
     # Scan for possible conflicts, stop if arise
     if test "$opt_prune" != opt_prune
     then
-        echo "Checking for possible conflicts ..."
+        echo "=== Checking for possible conflicts ..."
         if graft -d -n $graft_r -t "$targetdir" "$expunge" 2>&1 | \
          grep ^CONFLICT
         then
             warn "" \
              "    A conflict occurred during uninstallation;"  \
-             "Unless the -p option is given, this package will be PRESERVED."
+             "Unless the --prune option is given, this package will be PRESERVED."
             return 6;
         fi
     fi
@@ -705,18 +698,18 @@ delete_mode()
     # Remove objects (files, links or directories) from the target
     # directory that are in conflict with the package directory
 
-    echo "Pruning any conflict ..."
+    echo "=== Pruning any conflict ..."
     graft -p -D -u $graft_r -t "$targetdir" "$expunge"
     chkstatus_or_exit 2
 
-    echo "Disabling links ..."
+    echo "=== Disabling links ..."
     graft -d -D -u $graft_v $graft_r -t "$targetdir" "$expunge"
     chkstatus_or_exit 2
 
     # Delete package directory
     if test "$opt_keep" != opt_keep
     then
-        echo "Deleting package directory, if it exists as such ..."
+        echo "=== Deleting package directory, if it exists as such ..."
 
         if test -d "${rootdir}$expunge"
         then
@@ -732,7 +725,7 @@ delete_mode()
     unset expunge
 }
 
-install_mode()
+mode_install()
 {
     # Complain if the package cannot be well-read
 
@@ -748,13 +741,13 @@ install_mode()
 
     # Make preparations to install the package
 
-    echo "{>} Installing package $1 ..."
+    echo ">>> Installing package $1 ..."
 
     # Get the filename
     name="$(basename -- "$1" .tlz)"
 
-    echo "Checking tarball integrity ..."
-    tarlz -tf "$1" > /dev/null
+    echo "=== Checking tarball integrity ..."
+    tarlz --missing-crc -tf "$1" > /dev/null
     chkstatus_or_exit 3
 
     # Create package directory using 'name'
@@ -767,13 +760,13 @@ install_mode()
     # Scan for possible conflicts, stop if arise
     if test "$opt_prune" != opt_prune
     then
-        echo "Checking for possible conflicts ..."
+        echo "=== Checking for possible conflicts ..."
         if graft -i -n $graft_r -t "$targetdir" "${packagedir}/$name" 2>&1 | \
          grep ^CONFLICT
         then
             warn "" \
              "    A conflict occurred during installation;"  \
-             "Unless the -p option is given, this package won't be LINKED."
+             "Unless the --prune option is given, this package won't be LINKED."
              return 6;
         fi
     fi
@@ -781,7 +774,7 @@ install_mode()
     # Ignore some signals up to completing the installation
     trap "" HUP INT QUIT ABRT TERM
 
-    echo "Decompressing $1 ..."
+    echo "=== Decompressing $1 ..."
     ( cd -- "$rootdir${packagedir}/$name" && tarlz -xf - ) < "$1"
     chkstatus_or_exit 3
 
@@ -789,15 +782,15 @@ install_mode()
 
     # Remove objects (files, links or directories) from the target
     # directory that are in conflict with the package directory
-    echo "Pruning any conflict ..."
+    echo "=== Pruning any conflict ..."
     graft -p -D -u $graft_r -t "$targetdir" "${packagedir}/$name"
     chkstatus_or_exit 2
 
-    echo "Enabling symbolic links ..."
+    echo "=== Enabling symbolic links ..."
     graft -i -P $graft_v $graft_r -t "$targetdir" "${packagedir}/$name"
     chkstatus_or_exit 2
 
-    # Avoid unnecessary runs coming from the upgrade_mode(),
+    # Avoid unnecessary runs coming from the upgrade mode,
     # this is when the incoming package is **pre-installed**
 
     if test "$_isUpgrade" != _isUpgrade.on
@@ -817,7 +810,7 @@ install_mode()
         # Check and run the post-install script if exist
         if test -r "$rootdir${packagedir}/${name}/var/lib/qi/${name}.sh"
         then
-            echo "Running post-install script for \`${name}' ..."
+            echo "=== Running post-install script for \`${name}' ..."
             (
                 # Rely on 'targetdir' if 'rootdir' is empty
                 cd -- "${rootdir:=$targetdir}"/ && \
@@ -830,7 +823,7 @@ install_mode()
         then
             while read -r line
             do
-                for replace in "$rootdir${packagedir}/$(pkgbase $line)"-*
+                for replace in "$rootdir${packagedir}/$(pkgbase "$line")"-*
                 do
                     if ! test -e "$replace"
                     then
@@ -842,8 +835,9 @@ install_mode()
 
                     # The search for the package to be replaced cannot
                     # be the same to the incoming package, even to the
-                    # temporary location coming from the upgrade_mode()
-                    if test "$replace" = "$name" || test "$replace" = "${PRVLOC##*/}"
+                    # temporary location coming from the upgrade mode
+                    if test "$replace" = "$name" || \
+                       test "$replace" = "${PRVLOC##*/}"
                     then
                         continue;
                     fi
@@ -871,7 +865,8 @@ install_mode()
     unset name
 }
 
-resolve_mode() {
+mode_order()
+{
     # Complain if the file cannot be well-read
 
     is_readable "$1" || exit 4
@@ -894,7 +889,7 @@ resolve_mode() {
      "$1" | awk '!s[$0]++'
 }
 
-upgrade_mode()
+mode_upgrade()
 {
     # Complain if the package does not end in .tlz
 
@@ -907,7 +902,7 @@ upgrade_mode()
     # Get the filename
     incoming="$(basename -- "$1" .tlz)"
 
-    echo "{^} Upgrading to $incoming ..."
+    echo ">^< Upgrading to $incoming ..."
 
     # Check package pre-existence
     if test "$opt_force" != opt_force && \
@@ -916,13 +911,13 @@ upgrade_mode()
         warn \
          ""                                                                \
          "    The package to be upgraded already exist;"                   \
-         "Unless the -f option is given, this package won't be UPGRADED."
+         "Unless the --force option is given, this package won't be UPGRADED."
         return 6;
     fi
 
     # Check blacklisted packages
 
-    echo "Checking blacklist ..."
+    echo "=== Checking blacklist ..."
     for item in $blacklist
     do
         case $item in
@@ -932,7 +927,7 @@ upgrade_mode()
              ""                                                             \
              "  This package will be INSTALLED instead of being upgraded."  \
              ""
-             opt_prune=opt_prune install_mode "$1"
+             opt_prune=opt_prune mode_install "$1"
              return 0
             ;;
         esac
@@ -949,17 +944,17 @@ upgrade_mode()
     save_packagedir="$rootdir${packagedir}"
     packagedir="$PRVLOC"
 
-    echo "Pre-installing package in a temporary location ..."
+    echo "=== Pre-installing package in a temporary location ..."
     opt_prune=opt_prune		# Turn on prune operation.
-    _isUpgrade=_isUpgrade.on install_mode "$1" > /dev/null
+    _isUpgrade=_isUpgrade.on mode_install "$1" > /dev/null
     _isUpgrade=_isUpgrade.off
 
     # Restore variable before looking for old packages
     packagedir=$save_packagedir
     unset save_packagedir
 
-    echo "Looking for installations under the same name ..."
-    for long_name in "$rootdir${packagedir}/$(pkgbase $incoming)"*
+    echo "=== Looking for installations under the same name ..."
+    for long_name in "$rootdir${packagedir}/$(pkgbase "$incoming")"*
     do
         found="${long_name##*/}"
 
@@ -967,20 +962,20 @@ upgrade_mode()
         # cannot be the same to the temporary location
         test "$long_name" = "$PRVLOC" && continue;
 
-        fnmatch "$(pkgbase $found)*" "$incoming" || continue;
-        echo "${long_name}:  Detected."
+        fnmatch "$(pkgbase "$found")*" "$incoming" || continue;
+        echo "${long_name} has been detected."
 
         # A package directory is preserved if -k was given
-        delete_mode $found > /dev/null
+        mode_remove "$found" > /dev/null
     done
     unset long_name found
 
     # Re-install the package removing the temporary location
 
-    install_mode "$1"
+    mode_install "$1"
     opt_prune=opt_prune.off	# Turn off prune operation.
 
-    echo "Deleting temporary location ..."
+    echo "=== Deleting temporary location ..."
     rm -rf -- "$PRVLOC" || chkstatus_or_exit
     echo "removed directory: '$PRVLOC'"
 
@@ -991,7 +986,7 @@ upgrade_mode()
     unset incoming PRVLOC
 }
 
-warn_mode()
+mode_warn()
 {
     # Complain if the package cannot be well-read
 
@@ -1015,7 +1010,7 @@ warn_mode()
     return 0
 }
 
-extract_mode()
+mode_extract()
 {
     # Perform sanity checks before package extraction
 
@@ -1034,18 +1029,19 @@ extract_mode()
     PRVDIR="${TMPDIR}/${name}.${RANDOM-0}$$"
 
     # Trap to remove 'PRVDIR' on disruptions
-    trap "rm -rf -- $PRVDIR" HUP INT ABRT TERM
+    trap 'rm -rf -- "$PRVDIR"' HUP INT ABRT TERM
 
     # Create 'PRVDIR' removing access for all but user
-    ( umask 077 ; mkdir -- $PRVDIR )
-    mkdir -p -m 700 -- $PRVDIR
+    ( umask 077 ; mkdir -- "$PRVDIR" )
+    mkdir -p -- "$PRVDIR"
+    chmod 700 -- "$PRVDIR"
 
-    echo "Extracting package $name ..."
-    ( umask 000 ; cd -- $PRVDIR && tarlz -xvf - ) < "$1"
+    echo "--- Extracting package $name ..."
+    ( umask 000 ; cd -- "$PRVDIR" && tarlz -xvf - ) < "$1"
     if test $? -ne 0
     then
         # Try to remove (empty) 'PRVDIR' on failure
-        rmdir -- $PRVDIR
+        rmdir -- "$PRVDIR"
         exit 3;
     fi
     echo "$name has been extracted on $PRVDIR"
@@ -1057,11 +1053,11 @@ extract_mode()
     unset name PRVDIR
 }
 
-### Extra functions used in the modes
+### Extra functions to be used during the modes
 
 pkgbase()
 {
-    echo "$(basename -- "$1" .tlz)" | sed -e 's/[-_][.]*[[:digit:]].*$//'
+    printf %s "${1%%_*}"
 }
 
 unpack()
@@ -1150,7 +1146,7 @@ pkgname=$pkgname
 pkgversion=$pkgversion
 arch=$arch
 release=$release
-pkgcategory=$pkgcategory
+pkgcategory="$(echo "$pkgcategory" | tr -d _)"
 full_pkgname=$full_pkgname
 blurb="$(echo "$description" | sed -e '/^$/d;2q')"
 homepage="$homepage"
@@ -1163,12 +1159,11 @@ EOF
 
 ### Default values
 
-PROGRAM="${0##*/}"
 packagedir=@PACKAGEDIR@
 targetdir=@TARGETDIR@
 blacklist="perl5 graft tarlz plzip musl glibc"
-RC=RC
-RCFILE=@SYSCONFDIR@/qirc
+readconfig=readconfig
+_rcfile=@SYSCONFDIR@/qirc
 opt_install=opt_install.off
 opt_upgrade=opt_upgrade.off
 opt_force=opt_force.off
@@ -1178,15 +1173,16 @@ opt_skipqsts=opt_skipqsts.off
 opt_nopkg=opt_nopkg.off
 opt_prune=opt_prune.off
 rootdir=""
+arch=@ARCH@
 jobs=1
 mode=""
-verbose=0
-graft_v=-v
+readstdin=""
+graft_v=""
 graft_r=""
 _isUpgrade=_isUpgrade.off
 TMPDIR="${TMPDIR:=/usr/src/qi/build}"
 QICFLAGS="${QICFLAGS:=-g0 -Os}"
-QICXXFLAGS="${QICXXFLAGS:=$QICFLAGS}"
+QICXXFLAGS="${QICXXFLAGS:=-g0 -Os}"
 QILDFLAGS="${QILDFLAGS:=-s}"
 worktree=/usr/src/qi
 tardir=${worktree}/sources
@@ -1205,135 +1201,265 @@ QI_WORKTREE=$worktree
 QI_TARDIR=$tardir
 QI_OUTDIR=$outdir
 
-### Parse options
+### Parse modes and options
 
-while getopts :bcdiouwxLNP:t:fkvO:W:Z:a:j:1nSpr:hV name
-do
-    case $name in
-    b)
-        if test -z "$mode"
-        then
-            readconfig
-            mode=build_mode
-        fi
-        ;;
-    c)
-        mode=create_mode
-        ;;
-    d)
-        readconfig
-        mode=delete_mode
-        ;;
-    i)
-        if test -z "$mode"
-        then
-            readconfig
-            mode=install_mode
-        fi
-        if test "$mode" = build_mode
-        then
-            opt_install=opt_install
-        fi
-        ;;
-    o)
-        mode=resolve_mode
-        ;;
-    u)
-        if test -z "$mode"
-        then
-            readconfig
-            mode=upgrade_mode
-        fi
-        if test "$mode" = build_mode
-        then
-            opt_upgrade=opt_upgrade
-        fi
-        ;;
-    w)
-        mode=warn_mode
-        ;;
-    x)
-        mode=extract_mode
-        ;;
-    L)
-        printf "%s\n" \
-         "QI_TARGETDIR=$QI_TARGETDIR"    \
-         "QI_PACKAGEDIR=$QI_PACKAGEDIR"  \
-         "QI_WORKTREE=$QI_WORKTREE"      \
-         "QI_TARDIR=$QI_TARDIR"          \
-         "QI_OUTDIR=$QI_OUTDIR"
-        exit 0
-        ;;
-    N)
-        RC=RC.off
-        ;;
-    P)
-        packagedir="$OPTARG"
-        ;;
-    t)
-        targetdir="$OPTARG"
-        ;;
-    f)
-        opt_force=opt_force
-        ;;
-    k)
-        opt_keep=opt_keep
-        ;;
-    v)
-        verbose=$(( verbose + 1 ))
-        ;;
-    O)
-        outdir="$OPTARG"
-        ;;
-    W)
-        worktree="$OPTARG"
-        ;;
-    Z)
-        tardir="$OPTARG"
-        ;;
-    a)
-        arch="$OPTARG"
-        ;;
-    j)
-        jobs="$OPTARG"
-        ;;
-    1)
-        opt_incr_release=opt_incr_release
-        ;;
-    n)
-        opt_nopkg=opt_nopkg
-        ;;
-    S)
-        opt_skipqsts=opt_skipqsts
-        ;;
-    p)
-        opt_prune=opt_prune
-        ;;
-    r)
-        rootdir="$OPTARG"
-        ;;
-    h)
-        usage
-        exit 0
-        ;;
-    V)
-        version
-        exit 0
-        ;;
-    :)
-        warn "Option '-${OPTARG}' requires an argument"
-        usage
+_validate_mode()
+{
+    if test -n "$mode"
+    then
+        warn "${PROGRAM}: First defined mode: ${mode#*_}" \
+             "Switching to another mode is not allowed (${1})."
+        exit 1
+    fi
+}
+
+_validate_option()
+{
+    if test -z "$2"
+    then
+        warn "${PROGRAM}: The '${1}' option requires an argument" \
+             "Try '${PROGRAM} --help' for more information."
+        exit 1
+    fi
+}
+
+_validate_directory()
+{
+    if test ! -d "$2"
+    then
+        warn "${PROGRAM}: ${1} \"${2}\" must be a valid directory name"
+        exit 1
+    fi
+}
+
+_validate_digit()
+{
+    name="$1"
+    shift
+
+    # Taken from https://mywiki.wooledge.org/BashFAQ/054
+    case ${1#[-+]} in
+    '')
+        warn "${PROGRAM}: The '${name}' option has no defined value"
         exit 1
         ;;
-    \?)
-        warn "Illegal option -- '-${OPTARG}'"
-        usage
+    *.*.*)
+        warn "${PROGRAM}: The '${name}' option has more than one decimal point on it \"${1}\""
+        exit 1
+        ;;
+    *[!0-9]*)
+        warn "${PROGRAM}: The '${name}' option contains a non-valid digit on it \"${1}\""
         exit 1
         ;;
     esac
-done
-shift $(( OPTIND - 1 ))
 
+    unset name
+}
+
+while test $# -gt 0
+do
+    case $1 in
+    install)
+        _validate_mode install
+        readconfig
+        mode=mode_install
+        ;;
+    remove)
+        _validate_mode remove
+        readconfig
+        mode=mode_remove
+        ;;
+    upgrade)
+        _validate_mode upgrade
+        readconfig
+        mode=mode_upgrade
+        ;;
+    extract)
+        _validate_mode extract
+        readconfig
+        mode=mode_extract
+        ;;
+    create)
+        _validate_mode create
+        readconfig
+        mode=mode_create
+        ;;
+    order)
+        _validate_mode order
+        readconfig
+        mode=mode_order
+        ;;
+    build)
+        _validate_mode build
+        readconfig
+        mode=mode_build
+        ;;
+    --no-rc | -N )
+        readconfig=readconfig.off
+        ;;
+    --install | -i )
+        opt_install=opt_install
+        ;;
+    --upgrade | -u )
+        opt_upgrade=opt_upgrade
+        ;;
+    --force | -f )
+        opt_force=opt_force
+        ;;
+    --keep | -k )
+        opt_keep=opt_keep
+        ;;
+    --prune | -p )
+        opt_prune=opt_prune
+        ;;
+    --packagedir | -P )
+        _validate_option "$1" "$2"
+        packagedir="$2"
+        _validate_directory "$1" "$packagedir"
+        shift
+        ;;
+    --packagedir=*)
+        _validate_option "$1" "$2"
+        packagedir="${1#*=}"
+        _validate_directory "$1" "$packagedir"
+        ;;
+    --targetdir | -t )
+        _validate_option "$1" "$2"
+        targetdir="$2"
+        _validate_directory "$1" "$targetdir"
+        shift
+        ;;
+    --targetdir=*)
+        _validate_option "$1" "$2"
+        targetdir="${1#*=}"
+        _validate_directory "$1" "$targetdir"
+        ;;
+    --rootdir | -r )
+        _validate_option "$1" "$2"
+        rootdir="$2"
+        _validate_directory "$1" "$rootdir"
+        shift
+        ;;
+    --rootdir=*)
+        _validate_option "$1" "$2"
+        rootdir="${1#*=}"
+        _validate_directory "$1" "$rootdir"
+        ;;
+    --outdir | -o )
+        _validate_option "$1" "$2"
+        outdir="$2"
+        _validate_directory "$1" "$outdir"
+        shift
+        ;;
+    --outdir=*)
+        _validate_option "$1" "$2"
+        outdir="${1#*=}"
+        _validate_directory "$1" "$outdir"
+        ;;
+    --worktree | -w )
+        _validate_option "$1" "$2"
+        worktree="$2"
+        _validate_directory "$1" "$worktree"
+        shift
+        ;;
+    --worktree=*)
+        _validate_option "$1" "$2"
+        worktree="${1#*=}"
+        _validate_directory "$1" "$worktree"
+        ;;
+    --sourcedir | -s )
+        _validate_option "$1" "$2"
+        tardir="$2"
+        _validate_directory "$1" "$tardir"
+        shift
+        ;;
+    --sourcedir=*)
+        _validate_option "$1" "$2"
+        tardir="${1#*=}"
+        _validate_directory "$1" "$tardir"
+        ;;
+    --architecture | -a )
+        _validate_option "$1" "$2"
+        arch="$2"
+        shift
+        ;;
+    --arch=*)
+        _validate_option "$1" "$2"
+        arch="${1#*=}"
+        ;;
+    --jobs | -j )
+        jobs="$2"
+        _validate_digit "$1" "$jobs"
+        shift
+        ;;
+    -j[0-9]*)
+        jobs="${1#-j*}"
+        _validate_digit '-j' "$jobs"
+        ;;
+    --jobs=*)
+        jobs="${1#*=}"
+        _validate_digit '--jobs=' "$jobs"
+        ;;
+    --no-package | -n )
+        opt_nopkg=opt_nopkg
+        ;;
+    --increment | -1 )
+        opt_incr_release=opt_incr_release
+        ;;
+    --skip-questions | -S )
+        opt_skipqsts=opt_skipqsts
+        ;;
+    --verbose | -v )
+        graft_v=-v
+        ;;
+    --very-verbose | -V )
+        graft_v=-V
+        ;;
+    --show-location | -L )
+        printf "%s\\n" \
+         "QI_TARGETDIR=$QI_TARGETDIR"   \
+         "QI_PACKAGEDIR=$QI_PACKAGEDIR" \
+         "QI_WORKTREE=$QI_WORKTREE"     \
+         "QI_TARDIR=$QI_TARDIR"         \
+         "QI_OUTDIR=$QI_OUTDIR"
+        exit 0
+        ;;
+    --help | --hel | --he | --h | '--?' | -help | -hel | -he | -h | '-?' )
+        usage
+        exit 0
+        ;;
+    --version | --versio | --versi | --vers | \
+     -version |  -versio |  -versi |  -vers )
+        printf "%s\\n" \
+         "$PROGRAM @VERSION@" \
+         "Copyright (C) 2016-2020 Matias Andres Fonzo." \
+         "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>" \
+         "This is free software: you are free to change and redistribute it." \
+         "There is NO WARRANTY, to the extent permitted by law."
+        exit 0
+        ;;
+    '-')
+        readstdin=readstdin
+        break
+        ;;
+    --)
+        shift
+        break;	# End of options.
+        ;;
+    -*)
+        warn "qi: Unrecognized option: $1" \
+             "Try '${PROGRAM} --help' for more information."
+        exit 1
+        ;;
+    *)
+        break;	# No more options.
+        ;;
+    esac
+    shift
+done
+unset _validate_mode _validate_option _validate_directory _validate_digit
+
+# When there are no arguments, show the help
 if test $# -eq 0
 then
     usage
@@ -1342,10 +1468,11 @@ fi
 
 # Program sanity check
 
+\unalias -a;		# Unset all possible aliases.
 unset -f command;	# Ensure command is not a user function.
 
 for need in awk basename chmod cp dirname find fold graft grep \
-            mkdir mktemp rm rmdir sed sha256sum stat tarlz
+            mkdir mktemp rm rmdir sed sha256sum stat tarlz tr
 do
     if ! command -v $need > /dev/null
     then
@@ -1355,18 +1482,18 @@ do
 done
 unset need
 
-# Determine verbosity level/flag
-
-if test "$verbose" -gt 1
-then
-    graft_v=-V
-fi
-
 # Read standard input if FILE is -, or when
-# FILE is not connected to a terminal.
+# FILE is not connected to a terminal
 
-if test "$1" = - || test ! -t 0
+if test "$readstdin" = readstdin
 then
+    if test -t 0
+    then
+        warn "qi: I won't read from a connected terminal." \
+             "Try '${PROGRAM} --help' for more information."
+        exit 1
+    fi
+
     # Unset positional parameters setting $# to zero
     set --
 
@@ -1376,11 +1503,12 @@ then
         set -- "$@" "$input"
     done
 fi
+unset readstdin
 
-# We need at least one operating mode
 if test -z "$mode"
 then
-    usage
+    warn "qi: We need at least one (valid) operating mode." \
+         "Try '${PROGRAM} --help' for more information."
     exit 4
 fi
 
@@ -1420,7 +1548,7 @@ then
         rootdir="${rootdir%/}"
 
         # A workaround for graft-2.13+.  The specified directory is
-        # relative to the log file, we prepend it inside the rootdir
+        # relative to the log file, we prepend it inside 'rootdir'
 
         eval "$(graft -L)" ; GRAFT_LOGFILE="${GRAFT_LOGFILE:=/var/log/graft}"
         mkdir -p -- "$rootdir$(dirname -- $GRAFT_LOGFILE)" || chkstatus_or_exit
@@ -1449,6 +1577,6 @@ readonly TMPDIR
 
 for package in "$@"
 do
-    $mode $package
+    $mode "$package"
 done
 

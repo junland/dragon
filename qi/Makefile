@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 1.5rc1
+version		= 2.0rc1
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -33,6 +33,7 @@ mandir		= $(datarootdir)/man
 docdir		= $(datarootdir)/doc
 packagedir	= /usr/local/pkgs
 targetdir	= /usr/local
+arch		= $(shell uname -m)
 ##
 DISTNAME	= ${project}-${version}
 
@@ -41,7 +42,7 @@ INSTALL         = install
 INSTALL_PROGRAM = ${INSTALL} -p -m 755
 INSTALL_DATA    = ${INSTALL} -p -m 644
 INSTALL_DIR     = mkdir -p -m 755
-HELP2MAN_OPTS   = --version-option=-V
+HELP2MAN_OPTS   = --version-option=--version
 
 .PHONY: all \
 	doc info man html \
@@ -57,8 +58,10 @@ all : $(project) $(project)rc
 $(project) : src/$(project)
 
 src/$(project) : src/$(project).in
-	@echo "Making tool: src/$(project) ..."
-	@sed -e "s|@VERSION@|$(version)|g" \
+
+	@echo "Making src/$(project) ..."
+	@echo ""
+	sed -e "s|@VERSION@|$(version)|g" \
 	  -e "s|@PREFIX@|$(prefix)|g" \
 	  -e "s|@BINDIR@|$(bindir)|g" \
 	  -e "s|@SBINDIR@|$(sbindir)|g" \
@@ -70,14 +73,17 @@ src/$(project) : src/$(project).in
 	  -e "s|@DOCDIR@|$(docdir)|g" \
 	  -e "s|@PACKAGEDIR@|$(packagedir)|g" \
 	  -e "s|@TARGETDIR@|$(targetdir)|g" \
+	  -e "s|@ARCH@|$(arch)|g" \
 	 $< > $@ && \
 	 chmod 755 $@
 
 $(project)rc : etc/$(project)rc
 
 etc/$(project)rc : etc/$(project)rc.in
+
 	@echo "Making config: etc/$(project)rc ..."
-	@sed -e "s|@PREFIX@|$(prefix)|g" \
+	@echo ""
+	sed -e "s|@PREFIX@|$(prefix)|g" \
 	  -e "s|@BINDIR@|$(bindir)|g" \
 	  -e "s|@SBINDIR@|$(sbindir)|g" \
 	  -e "s|@LIBEXECDIR@|$(libexecdir)|g" \
@@ -102,8 +108,8 @@ man : doc/qi.1
 
 doc/qi.1 : src/qi
 	LC_ALL=C help2man ${HELP2MAN_OPTS} \
-	 -n 'a simple but well-integrated package manager' \
-	 -o $@ src/qi
+	 --name="a simple but well-integrated package manager" \
+	 --output=$@ src/qi
 
 html : doc/$(project).html
 
@@ -144,8 +150,8 @@ clean :
 
 install : all install-info install-man
 
-	@echo "*** Checking required directories ..."
-
+	@echo ""
+	@echo "* Checking required directories ..."
 	if [ ! -d "$(DESTDIR)${bindir}" ] ; then \
 	  $(INSTALL_DIR) "$(DESTDIR)${bindir}" ; \
 	fi
@@ -153,24 +159,32 @@ install : all install-info install-man
 	  $(INSTALL_DIR) "$(DESTDIR)${sysconfdir}" ; \
 	fi
 
-	@echo "*** Installing on $(DESTDIR)${bindir} ..."
-
+	@echo ""
+	@echo "* Installing on $(DESTDIR)${bindir} ..."
 	$(INSTALL_PROGRAM) src/$(project) "$(DESTDIR)${bindir}/$(project)"
 
-	@echo "*** Installing config file on $(DESTDIR)${sysconfdir} ..."
+	@echo ""
+	@echo "* Installing config file on $(DESTDIR)${sysconfdir} ..."
 	$(INSTALL_DATA) etc/$(project)rc "$(DESTDIR)${sysconfdir}/$(project)rc"
 
+	@echo ""
+	@echo "* Creating package and target directory (if needed) ..."
+	if [ ! -d "$(DESTDIR)${packagedir}" ] ; then \
+	  $(INSTALL_DIR) "$(DESTDIR)${packagedir}" ; \
+	fi
+	if [ ! -d "$(DESTDIR)${targetdir}" ] ; then \
+	  $(INSTALL_DIR) "$(DESTDIR)${targetdir}" ; \
+	fi
+	@echo ""
 	@echo "Done."
 
 install-info :
 
-	@echo "*** Checking required directory ..."
-
+	@echo ""
+	@echo "* Installing Info document on $(DESTDIR)${infodir} ..."
 	if [ ! -d "$(DESTDIR)${infodir}" ] ; then \
 	    $(INSTALL_DIR) "$(DESTDIR)${infodir}" ; \
 	fi
-
-	@echo "*** Installing Info document on $(DESTDIR)${infodir} ..."
 
 	$(INSTALL_DATA) doc/$(project).info \
 	"$(DESTDIR)${infodir}/$(project).info"
@@ -180,18 +194,18 @@ install-info :
 
 install-man :
 
+	@echo ""
+	@echo "* Installing manual pages on $(DESTDIR)${mandir}/man1 ..."
 	if [ ! -d "$(DESTDIR)${mandir}/man1" ] ; then \
 	    $(INSTALL_DIR) "$(DESTDIR)${mandir}/man1" ; \
 	fi                  
-		  	
-	@echo "*** Installing manual pages on $(DESTDIR)${mandir}/man1 ..."
 
 	$(INSTALL_DATA) doc/qi.1 "$(DESTDIR)${mandir}/man1"
 
 uninstall : uninstall-info uninstall-man
 
-	@echo "*** Uninstalling from $(DESTDIR)${bindir} ..."
-
+	@echo ""
+	@echo "* Uninstalling from $(DESTDIR)${bindir} ..."
 	-rm -f "$(DESTDIR)${bindir}/$(project)"
 
 	-rm -f "$(DESTDIR)${sysconfdir}/$(project)rc"
