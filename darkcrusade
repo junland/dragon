@@ -2,7 +2,7 @@
 #
 # Deploy static cross-compilers for easy distribution
 #
-# Copyright (c) 2016-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,10 +38,10 @@ set -e
 LC_ALL=C
 export LC_ALL
 
-#### Default values
+### Default values
 
-# Get physical working directory, absolute path name
-CWD=$(CDPATH= cd -P -- $(dirname -- "$0") && printf "$PWD")
+# Get physical working directory (absolute path)
+CWD="$(CDPATH='' cd -P -- "$(dirname -- "$0")" && pwd -P)"
 
 # Output directory for tarballs
 output="${CWD}/OUTPUT.darkcrusade"
@@ -58,14 +58,14 @@ tarname=darkcrusade_"$(date +%Y%b)"
 phase_one=${output}/phase1-native-"$(uname -m)".$$
 
 echo "${PROGRAM}: Creating native cross compiler on $phase_one ..."
-"${CWD}"/bootstrap -s0 -o $phase_one
+"${CWD}"/bootstrap -s0 -o "$phase_one"
 
 # Now will start the preparatives to use the recent native cross compiler
 
 echo "${PROGRAM}: Using (existing) compiler from $phase_one ..."
 
 # Set flags according to the generated compiler
-for BTCC in ${phase_one}/cross/*/bin/*-gcc
+for BTCC in "${phase_one}"/cross/*/bin/*-gcc
 do
     if test -x "$BTCC"
     then
@@ -73,7 +73,7 @@ do
         break
     fi
 done
-for BTCXX in ${phase_one}/cross/*/bin/*-g++
+for BTCXX in "${phase_one}"/cross/*/bin/*-g++
 do
     if test -x "$BTCXX"
     then
@@ -92,28 +92,30 @@ IS_DARKCRUSADE=IS_DARKCRUSADE
 export BTCC BTCXX IS_DARKCRUSADE
 
 # Loop for create the targets, phase 2
-for target in "${CWD}"/targets/${@:-*}
+for target in ${CWD}/targets/${@:-*}
 do
     target="${target##*/}"
-
     phase_two=${output}/phase2-${target}.$$
 
     echo "darkcrusade: Making target $target ..."
-    "${CWD}"/bootstrap -s0 -a $target -o $phase_two 2>&1 | \
-     tee ${output}/${tarname}-${target}.log
+    "${CWD}"/bootstrap -s0 -a "$target" -o "$phase_two" 2>&1 | \
+     tee "${output}/${tarname}-${target}.log"
 
     # Provide log file, tarball plus checkum
 
-    lzip -9 ${output}/${tarname}-${target}.log
+    lzip -9 "${output}/${tarname}-${target}.log" &
+    rm -f "${output}/${tarname}-${target}.tar" \
+          "${output}/${tarname}-${target}.tar.lz"
 
-    # Produce tarball and .sha256
+    cd "$phase_two"
+    ( umask 022 ; tarlz --solid -9 -cvf - -- cross/ ) \
+     > "${output}/${tarname}-${target}.tar.lz"
 
-    cd $output && rm -f ${tarname}-${target}.tar ${tarname}-${target}.tar.lz
-
-    cd $phase_two && tarlz -c cross/ > ${output}/${tarname}-${target}.tar.lz
-
-    cd $output && sha256sum ${tarname}-${target}.tar.lz \
-      > ${tarname}-${target}.tar.lz.sha256
+    (
+        cd -- "$output" && \
+        sha256sum "${tarname}-${target}.tar.lz" \
+         > "${tarname}-${target}.tar.lz.sha256"
+    )
 
     # Back to the current working directory
     cd -- "$CWD"

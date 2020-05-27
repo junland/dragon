@@ -29,27 +29,27 @@ LC_ALL=C
 LANGUAGE=C
 export LC_ALL LANGUAGE
 
-# Get current working directory (absolute path)
-CWD="$(CDPATH= cd -- $(dirname -- "$0") && pwd)"
+# Get physical working directory (absolute path)
+CWD="$(CDPATH='' cd -P -- "$(dirname -- "$0")" && pwd -P)" || exit $?
 
-#### Functions
+### Functions
 
 usage() {
-    printf "%s\n" \
+    printf "%s\\n" \
      "Builder of custom stages (cross compilers, GNU/Linux distributions)"  \
      ""                                                                     \
-     "Usage: $PROGRAM [OPTION]... [FILE]..."                                \
+     "Usage: $PROGRAM [OPTION...] [FILE]..."                                \
      ""                                                                     \
      "Defaults for the options are specified in brackets."                  \
      ""                                                                     \
      "Options:"                                                             \
-     "  -h          display this help and exit"                             \
-     "  -V          print version information and exit"                     \
      "  -a          target architecture [${arch}]"                          \
      "  -j          parallel jobs for the compiler [${jobs}]"               \
      "  -k          keep (don't delete) source directory"                   \
      "  -o          output directory [${output}]"                           \
      "  -s          stage number to build [${stage}]"                       \
+     "  -h          display this help and exit"                             \
+     "  -V          print version information and exit"                     \
      ""                                                                     \
      "Some influential environment variables:"                              \
      "  TMPDIR      temporary directory for sources [${TMPDIR}]"            \
@@ -63,7 +63,7 @@ usage() {
      "Supported architectures (targets):"
      for name in "${CWD}/targets"/*
      do
-         printf "%s" "${name##*/} "
+         printf %s "${name##*/} "
      done
      unset name
     echo ""
@@ -71,8 +71,8 @@ usage() {
 
 version()
 {
-    printf "%s\n" \
-     "$PROGRAM 3.22" \
+    printf "%s\\n" \
+     "$PROGRAM 3.23" \
      "Copyright (C) 2014-2020 Matias Andres Fonzo." \
      "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>" \
      "This is free software: you are free to change and redistribute it." \
@@ -81,7 +81,7 @@ version()
 
 warn()
 {
-    echo "$@" 1>&2
+    printf "%s\\n" "$@" 1>&2
 }
 
 chkstatus_or_exit()
@@ -91,7 +91,7 @@ chkstatus_or_exit()
     if test $status -ne 0
     then
         echo "Return status = $status" 1>&2
-        exit ${1-2};	# If not given, defaults to 2
+        exit "${1-2}";	# If not given, defaults to 2
     fi
 
     unset status
@@ -135,27 +135,27 @@ unpack()
             ;;
         *.gz)
             gzip -t "$file" && \
-            gzip -cd "$file" > "$(basename -- $file .gz)"
+            gzip -cd "$file" > "$(basename -- "$file" .gz)"
             chkstatus_or_exit 3
             ;;
         *.Z)
             gzip -t "$file" && \
-            gzip -cd "$file" > "$(basename -- $file .Z)"
+            gzip -cd "$file" > "$(basename -- "$file" .Z)"
             chkstatus_or_exit 3
             ;;
         *.bz2)
             bzip2 -t "$file" && \
-            bzip2 -cd "$file" > "$(basename -- $file .bz2)"
+            bzip2 -cd "$file" > "$(basename -- "$file" .bz2)"
             chkstatus_or_exit 3
             ;;
         *.lz)
             lzip -t "$file" && \
-            lzip -cd "$file" > "$(basename -- $file .lz)"
+            lzip -cd "$file" > "$(basename -- "$file" .lz)"
             chkstatus_or_exit 3
             ;;
         *.xz)
             xz -t "$file" && \
-            xz -cd "$file" > "$(basename -- $file .xz)"
+            xz -cd "$file" > "$(basename -- "$file" .xz)"
             chkstatus_or_exit 3
             ;;
         *)
@@ -177,12 +177,13 @@ unpack()
 
 warn_flags()
 {
-    warn "WARNING: Environment variable '$1' is set."   \
-         "This will be unset to avoid possible risks."  \
-         ""
+    warn "" \
+     "WARNING: Environment variable '$1' is set."   \
+     "This will be unset to avoid possible risks."  \
+     ""
 }
 
-#### Default values
+### Default values
 
 BTCC="${BTCC:=cc}"
 BTCXX="${BTCXX:=c++}"
@@ -201,7 +202,7 @@ TMPDIR="${TMPDIR:=${output}/sources}"
 # Compose vendor name adding "-" as suffix
 test -n "$VENDOR" && VENDOR="${VENDOR}-"
 
-#### Parse options
+### Parse options
 
 while getopts :ha:j:ko:s:V name
 do
@@ -245,11 +246,11 @@ shift $(( OPTIND - 1 ))
 
 # Check for environment variables, print warning, unset in any case
 
-test "${CC:+CC_defined}" = CC_defined && warn_flags CC
-test "${CXX:+CXX_defined}" = CXX_defined && warn_flags CXX
-test "${CFLAGS:+CFLAGS_defined}" = CFLAGS_defined && warn_flags CFLAGS
-test "${CXXFLAGS:+CXXFLAGS_defined}" = CXXFLAGS_defined && warn_flags CXXFLAGS
-test "${LDFLAGS:+LDFLAGS_defined}" = LDFLAGS_defined && warn_flags LDFLAGS
+test -n "$CC" && warn_flags CC
+test -n "$CXX" && warn_flags CXX
+test -n "$CFLAGS" && warn_flags CFLAGS
+test -n "$CXXFLAGS" && warn_flags CXXFLAGS
+test -n "$LDFLAGS" && warn_flags LDFLAGS
 unset CC CXX CFLAGS CXXFLAGS LDFLAGS warn_flags
 
 # Load target architecture-file
@@ -299,7 +300,7 @@ fi
 crossdir=${output}/cross/${target}
 rootdir=${output}/stage${stage}
 
-printf "%s\n" \
+printf "%s\\n" \
  "BTCC: $BTCC"                  \
  "BTCXX: $BTCXX"                \
  "BTCFLAGS: $BTCFLAGS"          \
@@ -324,7 +325,7 @@ PATH="${crossdir}/bin:${PATH}"
 export PATH VENDOR TMPDIR
 
 # Main loop
-for file in "${CWD}/stages/${stage}"/${@:-??-*}
+for file in ${CWD}/stages/${stage}/${@:-??-*}
 do
     file="${file##*/}"
 
@@ -339,7 +340,7 @@ do
         continue;
     fi
 
-    #### Stage pre-settings
+    ### Stage pre-settings
 
     # Create sysroot directory, recreating the symlink for the stage 0
 
