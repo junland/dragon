@@ -1137,7 +1137,7 @@ do_meta()
     # the 80 columns in total
 
     cat << EOF
-$(echo "$description" | fold -w 78 | awk '$0="# " $0')
+$(printf "%s\\n" "$description" | fold -w 78 | awk '$0="# " $0')
 
 QICFLAGS="$QICFLAGS"
 QICXXFLAGS="$QICXXFLAGS"
@@ -1146,7 +1146,7 @@ pkgname=$pkgname
 pkgversion=$pkgversion
 arch=$arch
 release=$release
-pkgcategory="$(echo "$pkgcategory" | tr -d _)"
+pkgcategory="${pkgcategory#_*}"
 full_pkgname=$full_pkgname
 blurb="$(echo "$description" | sed -e '/^$/d;2q')"
 homepage="$homepage"
@@ -1467,7 +1467,7 @@ fi
 unset -f command;	# Ensure command is not a user function.
 
 for need in awk basename chmod cp dirname find fold graft grep \
-            mkdir mktemp rm rmdir sed sha256sum stat tarlz tr
+            mkdir mktemp rm rmdir sed sha256sum stat tarlz
 do
     if ! command -v $need > /dev/null
     then
