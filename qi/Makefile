@@ -94,6 +94,7 @@ etc/$(project)rc : etc/$(project)rc.in
 	  -e "s|@DOCDIR@|$(docdir)|g" \
 	  -e "s|@PACKAGEDIR@|$(packagedir)|g" \
 	  -e "s|@TARGETDIR@|$(targetdir)|g" \
+	  -e "s|@ARCH@|$(arch)|g" \
 	 $< > $@ && \
 	chmod 644 $@
 

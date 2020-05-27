@@ -16,8 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
+
 usage() {
-    printf "%s\n" \
+    printf "%s\\n" \
 "Usage: configure [options]"                                                      \
 ""                                                                                \
 "Defaults for the options are specified in brackets."                             \
@@ -57,7 +59,7 @@ targetdir='/usr/local'
 arch="$(uname -m)"
 
 return_variables() {
-    printf "%s\n" \
+    printf "%s\\n" \
      "prefix = $prefix"                \
      "exec_prefix = $exec_prefix"      \
      "bindir = $bindir"                \
@@ -200,7 +202,8 @@ echo "Creating config.mak ..."
 return_variables;		# Show configured variables.
 : > config.mak;			# Clean up config.mak, first.
 
-return_variables > config.mak && \
- echo "OK, now you can run \`make'"
-exit $?
+if return_variables > config.mak
+then
+    touch src/qi.in && echo "OK, now you can run \`make'"
+fi
 
