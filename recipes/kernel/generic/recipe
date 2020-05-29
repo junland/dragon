@@ -16,7 +16,7 @@
 
 program=linux
 version=5.4.28
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=kernel
@@ -60,7 +60,7 @@ build()
     make mrproper
 
     case $arch in
-    x86_64)
+    amd64 | x32 | x86_64*)
         echo "Copying config-x86_64_generic ..."
         cp -p "${worktree}/archive/kernel/config-x86_64_generic" .config
         kernel_arch=x86_64
@@ -70,13 +70,13 @@ build()
         cp -p "${worktree}/archive/kernel/config-x86_generic" .config
         kernel_arch=i386
         ;;
-    armv7a)
+    armhf)
         echo "Copying config-armv7a ..."
         cp -p "${worktree}/archive/kernel/config-armv7a" .config
         kernel_arch=arm
         ;;
     *)
-        echo "No custom configuration file detected for your architecture." 1>&2
+        echo "${0}: No custom configuration file detected for your architecture." 1>&2
         exit 1;
         ;;
     esac
