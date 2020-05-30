@@ -67,6 +67,34 @@ build()
 {
     set -e
 
+    # Figure out architecture name for default package names in Dragora 3+
+    #
+    # See git_tree/targets/ for 'package_arch' on it.
+    #
+    case $(gcc -dumpmachine) in
+    aarch64-*)
+        package_arch=arm64
+        ;;
+    arm-*-musleabi)
+        package_arch=armfp
+        ;;
+    arm-*-musleabihf)
+        package_arch=armhf
+        ;;
+    armv7hl-*-musleabihf)
+        package_arch=armhl
+        ;;
+    *x32-*)
+        package_arch=x32
+        ;;
+    x86_64-*)
+        package_arch=amd64
+        ;;
+    powerpc64le-*)
+        package_arch=ppc64le
+        ;;
+    esac
+
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
@@ -85,8 +113,10 @@ build()
      --mandir=/usr/share/man \
      --docdir=/usr/share/doc \
      --packagedir=/usr/pkg \
-     --targetdir=/
+     --targetdir=/ \
+     --arch="${package_arch:-$(uname -m)}"
 
+    unset package_arch
     make -j${jobs} DESTDIR="$destdir" install
 
     ln -s qi "${destdir}/usr/bin/dragora-qi"
