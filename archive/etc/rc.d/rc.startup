@@ -97,6 +97,7 @@ if test ! -f /fastboot
 then
     # Limit number of filesystem checkers using the max. number of processors
     FSCK_MAX_INST=$(nproc 2> /dev/null) || FSCK_MAX_INST=1
+    export FSCK_MAX_INST
 
     # Force checks if the regular file '/forcefsck' exists
     test -f /forcefsck && forcefsck_flag=-f
@@ -113,11 +114,12 @@ then
         else
             if test $status -ge 4
             then
-                echo "EXIT CODE = $status"                        1>&2
-                echo ""                                           1>&2
-                echo "A maintenance shell will be started ..."    1>&2
-                echo "Refer to the file system-specific utility"  1>&2
-                echo "and manual pages for correction."           1>&2
+                printf "%s\\n" \
+                 "^ Return status = $status"                  \
+                 ""                                           \
+                 "A maintenance shell will be started ..."    \
+                 "Refer to the file system-specific utility"  \
+                 "and manual pages for correction." 1>&2
                 if type sulogin > /dev/null
                 then
                     sulogin
@@ -230,7 +232,7 @@ fi
 
 # Re-create hierarchy for temporary files (if needed)
 
-mkdir -p -m 1777 -- /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
+mkdir -p -- /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
 chmod 1777 -- /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
 
 # Re-create file records for logins and logouts
@@ -319,14 +321,14 @@ if test "$RC_ESPEAKUP" != 0
 then
     echo "(Startup) Activating software synthesizer: espeakup -V $RC_EVOICE"
     modprobe -q speakup_soft
-    espeakup -V $RC_EVOICE
+    espeakup -V "$RC_EVOICE"
 fi
 unset RC_ESPEAKUP RC_EVOICE
 
 # Load keyboard map
 
 echo "Loading keyboard map: loadkeys $RC_KEYMAP"
-loadkeys $RC_KEYMAP
+loadkeys "$RC_KEYMAP"
 unset RC_KEYMAP
 
 # Set terminal attributes
