@@ -37,6 +37,14 @@ usage()
     printf "%s\\n" \
      "Qi - A user-friendly package manager."                                                   \
      ""                                                                                        \
+     "Qi is a simple but well-integrated package manager.  It can create,"                     \
+     "install, remove, and upgrade software packages.  Qi produces binary"                     \
+     "packages using recipes, which are files containing specific instructions"                \
+     "to build each package from source.  Qi can manage multiple packages"                     \
+     "under a single directory hierarchy.  This method allows to maintain a"                   \
+     "set of packages and multiple versions of them.  This means that Qi could"                \
+     "be used as the main package manager or complement the existing one."                     \
+     ""                                                                                        \
      "Usage: $PROGRAM MODE [OPTION...] [FILE]..."                                              \
      ""                                                                                        \
      "Defaults for the options are specified in brackets."                                     \
@@ -66,6 +74,7 @@ usage()
      "Options when building software packages using recipes:"                                  \
      "  -a, --architecture       Set architecture name for the package [${arch}]"              \
      "  -j, --jobs               Parallel jobs for the compiler [${jobs}]"                     \
+     "  -k, --keep               Keep \`\${srcdir}' or \`\${destdir}' when build"              \
      "  -S, --skip-questions     Skip questions on completed recipes"                          \
      "  -1, --increment          Increment release number (\`\${release}' + 1)"                \
      "  -n, --no-package         Do not create a .tlz package"                                 \
@@ -177,6 +186,9 @@ readconfig()
 
 mode_build()
 {
+    echo ""
+    echo "{@} Building \"${1}\" ..."
+
     recipe=$1
 
     # A recipe is any valid regular file.  Qi sets priorities for reading a
@@ -226,8 +238,6 @@ mode_build()
     # Check readability for load the recipe on success
 
     is_readable "${CWD}/$recipe" || exit 4
-
-    echo "{@} Building from ${CWD}/$recipe ..."
 
     # Re-create external directories
     mkdir -p -- "${worktree}/archive" \
@@ -428,7 +438,7 @@ mode_build()
 
             if test ! -e "${tardir}/$_source"
             then
-                warn "    Can't find $_source in ${tardir};" \
+                warn "    Can't find \"${_source}\" at \"${tardir}\";" \
                      "attempting to get it from ${origin%/*} ..."
             fi
 
@@ -460,13 +470,18 @@ mode_build()
 
     echo "=== Preparing directories ..."
 
-    if test -d "${TMPDIR}/$srcdir" && test -z "$keep_srcdir"
+    if test -z "$keep_srcdir"
     then
-        rm -r -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
-        echo "removed directory: '${TMPDIR}/$srcdir'"
+        if test -e "${TMPDIR}/$srcdir"
+        then
+            rm -r -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
+            echo "removed directory: '${TMPDIR}/$srcdir'"
+        fi
+    else
+        warn "The variable 'keep_srcdir' is set (${keep_srcdir})."
     fi
 
-    if test -d "$destdir"
+    if test -e "$destdir"
     then
         rm -r -- "$destdir" || chkstatus_or_exit
         echo "removed directory: '$destdir'"
@@ -474,13 +489,13 @@ mode_build()
     mkdir -p -- "$destdir" || chkstatus_or_exit
     echo "mkdir: created directory '$destdir'"
 
-    if test ! -d "$outdir"
+    if test ! -e "$outdir"
     then
         mkdir -p -- "$outdir" || chkstatus_or_exit
         echo "mkdir: created directory '$outdir'"
     fi
 
-    echo "=== Entering to '${TMPDIR}' ..."
+    echo "=== Changing to '${TMPDIR}' ..."
     cd -- "$TMPDIR" || chkstatus_or_exit
 
     # Set trap before to run the build() function in order
@@ -494,7 +509,7 @@ mode_build()
         _xtrace_flag=_xtrace_flag_is_set ;;
     esac
 
-    echo "=== Running the build() function ..."
+    echo "=== Running build() function ..."
     build
     unset build
 
@@ -562,13 +577,12 @@ mode_build()
             unset item
         fi
 
-        # Create meta file for package information
+        # Create (external) meta file for package information,
+        # make a copy of it for the package database
         echo "=== Creating meta file ${full_pkgname}.tlz.txt ..."
         do_meta > "${outdir}/${full_pkgname}.tlz.txt" || chkstatus_or_exit
-
-        # Make a copy of it for the database
         cp -p "${outdir}/${full_pkgname}.tlz.txt" \
-              "${destdir}/var/lib/qi/${full_pkgname}.txt" || chkstatus_or_exit
+         "${destdir}/var/lib/qi/${full_pkgname}.txt" || chkstatus_or_exit
 
         # Produce the package
         cd -- "$destdir" && mode_create "${outdir}/${full_pkgname}.tlz"
@@ -577,32 +591,27 @@ mode_build()
     # Back to the current working directory
     cd -- "$CWD" || chkstatus_or_exit
 
-    # Delete 'srcdir' or 'destdir' if -k was not given
-    if test "$opt_keep" != opt_keep
+    echo "=== Deleting 'srcdir', 'destdir' ..."
+    if test "$opt_keep" != opt_keep && test -z "$keep_srcdir"
     then
-        echo "=== Deleting temporary directories ..."
+        srcdir="${srcdir%%/*}";	# Directory name without parents.
 
-        srcdir="${srcdir%%/*}"	# Directory name without parents.
-
-        if test -r "${TMPDIR}/$srcdir"
+        if is_readable "${TMPDIR}/$srcdir"
         then
-            if test -z "$keep_srcdir"
-            then
-                (
-                    cd -- "$TMPDIR" && rm -rf -- "$srcdir" && \
-                     echo "removed directory: '${TMPDIR}/${srcdir}'"
-                );  chkstatus_or_exit
-            else
-                warn "The variable 'keep_srcdir' has been set;" \
-                     "'${TMPDIR}/${srcdir}' will not be deleted."
-            fi
+            rm -r -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
+            echo "removed directory: '${TMPDIR}/$srcdir'"
         fi
 
-        if test -r "$destdir"
+        if is_readable "$destdir"
         then
-            rm -rf -- "$destdir" || chkstatus_or_exit
+            rm -r -- "$destdir" || chkstatus_or_exit
             echo "removed directory: '$destdir'"
-        fi   
+        fi
+    else
+        warn \
+         "    A request to preserve 'srcdir' or 'destdir' has been made:" \
+         "${TMPDIR}/$srcdir" \
+         "$destdir"
     fi
 
     # Install or upgrade the package if -i or -u was passed
@@ -617,13 +626,16 @@ mode_build()
         fi
     fi
 
-    echo ""
-    echo "All done for ${CWD}/${recipe}."
+    echo "{@} All done for \"${CWD}/${recipe}\"."
+    echo "|-- End Of 'build' mode."
     echo ""
 }
 
 mode_create()
 {
+    echo ""
+    echo "{#} Creating package name \"${1}\" ..."
+
     directory="$(dirname -- "$1")"
 
     # Perform sanity checks
@@ -644,30 +656,31 @@ mode_create()
         exit 4
     fi
 
-    echo "{#} Creating package name $name ..."
-
     ( umask 022 ; tarlz --solid -9 -cvf - -- * ) > "${directory}/$name"
     chkstatus_or_exit 3
 
     ( cd -- "$directory" && sha256sum "$name" > "${name}.sha256" )
     chkstatus_or_exit 4
 
-    echo "Package created on \`${directory}/${name}'."
-    echo ""
+    echo "{#} Package name \"${name}\" created on \`${directory}'."
 
     # Remove used variables
     unset directory name
+
+    echo "|-- End Of 'create' mode."
+    echo ""
 }
 
 mode_remove()
 {
     expunge="${packagedir}/$(basename -- "$1" .tlz)"
 
-    echo "<<< Deleting package $rootdir${expunge} ..."
+    echo ""
+    echo "<<< Removing package \"$rootdir${expunge}\" ..."
 
     # Complain if the package directory does not exist
 
-    test -d "$rootdir${expunge}" || {
+    test -e "$rootdir${expunge}" || {
         warn "Package directory '$rootdir${expunge}' does not exist."
         return 4
     }
@@ -709,11 +722,11 @@ mode_remove()
     # Delete package directory
     if test "$opt_keep" != opt_keep
     then
-        echo "=== Deleting package directory, if it exists as such ..."
+        echo "=== Deleting package directory, if exists as such ..."
 
-        if test -d "${rootdir}$expunge"
+        if test -e "${rootdir}$expunge"
         then
-            rm -rf -- "${rootdir}$expunge" || chkstatus_or_exit
+            rm -r -- "${rootdir}$expunge" || chkstatus_or_exit
             echo "removed directory: '${rootdir}$expunge'"
         fi
     fi
@@ -723,10 +736,16 @@ mode_remove()
 
     # Remove used variables
     unset expunge
+
+    echo "|-- End Of 'remove' mode."
+    echo ""
 }
 
 mode_install()
 {
+    echo ""
+    echo ">>> Installing package \"${1}\" ..."
+
     # Complain if the package cannot be well-read
 
     is_readable "$1" || exit 4
@@ -740,8 +759,6 @@ mode_install()
     fi
 
     # Make preparations to install the package
-
-    echo ">>> Installing package $1 ..."
 
     # Get the filename
     name="$(basename -- "$1" .tlz)"
@@ -863,6 +880,9 @@ mode_install()
 
     # Remove used variables
     unset name
+
+    echo "|-- End Of 'install' mode."
+    echo ""
 }
 
 mode_order()
@@ -891,6 +911,9 @@ mode_order()
 
 mode_upgrade()
 {
+    echo ""
+    echo "{%} Upgrading package \"${1}\" ..."
+
     # Complain if the package does not end in .tlz
 
     if ! fnmatch '*.tlz' "$1"
@@ -901,8 +924,6 @@ mode_upgrade()
 
     # Get the filename
     incoming="$(basename -- "$1" .tlz)"
-
-    echo ">^< Upgrading to $incoming ..."
 
     # Check package pre-existence
     if test "$opt_force" != opt_force && \
@@ -979,11 +1000,13 @@ mode_upgrade()
     rm -rf -- "$PRVLOC" || chkstatus_or_exit
     echo "removed directory: '$PRVLOC'"
 
-    echo ""
-    echo "Successful upgrade to '${incoming}'."
+    echo "{%} Successful upgrade to \"${1}\"."
 
     # Remove remaining variables
     unset incoming PRVLOC
+
+    echo "|-- End Of 'upgrade' mode."
+    echo ""
 }
 
 mode_warn()
@@ -1161,7 +1184,7 @@ EOF
 
 packagedir=@PACKAGEDIR@
 targetdir=@TARGETDIR@
-blacklist="perl5 graft tarlz plzip musl glibc"
+blacklist="perl5 graft tarlz plzip musl glibc coreutils bash mksh"
 readconfig=readconfig
 _rcfile=@SYSCONFDIR@/qirc
 opt_install=opt_install.off
@@ -1180,6 +1203,7 @@ readstdin=""
 graft_v=""
 graft_r=""
 _isUpgrade=_isUpgrade.off
+keep_srcdir=""
 TMPDIR="${TMPDIR:=/usr/src/qi/build}"
 QICFLAGS="${QICFLAGS:=-g0 -Os}"
 QICXXFLAGS="${QICXXFLAGS:=-g0 -Os}"

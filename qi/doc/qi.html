@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- This user guide is for Qi (version 2.0rc4,
-30 May 2020), which is a simple but well-integrated package manager.
+<!-- This user guide is for Qi (version 2.0rc5,
+31 May 2020), which is a simple but well-integrated package manager.
 
 Copyright (C) 2019-2020 Matias Andres Fonzo, Santiago del Estero,
 Argentina.
@@ -108,8 +108,8 @@ Next: <a href="#Introduction" accesskey="n" rel="next">Introduction</a>, Up: <a 
 </div>
 <a name="SEC_Top"></a>
 
-<p>This user guide is for Qi (version 2.0rc4,
-30 May 2020).
+<p>This user guide is for Qi (version 2.0rc5,
+31 May 2020).
 </p>
 <table class="menu" border="0" cellspacing="0">
 <tr><td align="left" valign="top">&bull; <a href="#Introduction" accesskey="1">Introduction</a>:</td><td>&nbsp;&nbsp;</td><td align="left" valign="top">Description and features of qi
@@ -234,10 +234,14 @@ performed during or after the process.
 </dd>
 <dt><code>-k</code></dt>
 <dt><code>--keep</code></dt>
-<dd><p>Keep package directory when remove/upgrade.
+<dd><p>Keep directories when build/remove/upgrade.
 </p>
-<p>Keep (don&rsquo;t delete) &lsquo;<samp>${srcdir}</samp>&rsquo; or &lsquo;<samp>${destdir}</samp>&rsquo; when
-build; also keep the package directory when using the remove mode.
+<p>Keep (don&rsquo;t delete) the package directory when using remove/upgrade mode.
+</p>
+<p>This will also try to preserve the directories &lsquo;<samp>${srcdir}</samp>&rsquo; and
+&lsquo;<samp>${destdir}</samp>&rsquo; when using build mode.  Its effect is available in
+recipes as &lsquo;<samp>${keep_srcdir}</samp>&rsquo;. See <a href="#Recipes">Special variables</a>
+for details.
 </p>
 </dd>
 <dt><code>-p</code></dt>
@@ -758,8 +762,8 @@ the value of CWD (Current Working Directory), this is where the recipe
 lives.
 </p>
 <p>&lsquo;<samp>arch</samp>&rsquo; is the architecture to compose the package name.  Its value is
-available in the recipe as &lsquo;<samp>${arch}</samp>&rsquo;.  Default value is the output
-of &lsquo;<samp>uname -m</samp>&rsquo;.
+available in the recipe as &lsquo;<samp>${arch}</samp>&rsquo;.  Default value is the one
+that was set in the Qi configuration.
 </p>
 <p>&lsquo;<samp>jobs</samp>&rsquo; is the number of parallel jobs to pass to the compiler.  Its
 value is available in the recipe as &lsquo;<samp>${jobs}</samp>&rsquo;.  The default value
@@ -793,6 +797,29 @@ package name.
 </p>
 <p>A special variable called &lsquo;<samp>replace</samp>&rsquo; can be used to declare package names
 that will be replaced at installation time.
+</p>
+<p>The special variable &lsquo;<samp>keep_srcdir</samp>&rsquo; is provided to preserve the
+directories &lsquo;<samp>${srcdir}</samp>&rsquo; and &lsquo;<samp>${destdir}</samp>&rsquo;, if exists as such.
+Note: The declaration of this variable is subject to manual deactivation;
+its purpose in recipes is to preserve the directories that relate to the
+package&rsquo;s build and destination directory, that is so that another recipe
+can get a new package (or meta package) from there.  For example, the
+declaration can be done as:
+</p>
+<div class="example">
+<pre class="example">keep_srcdir=keep_srcdir
+</pre></div>
+
+<p>Then from another recipe you would proceed to copy the necessary files that
+will compose the meta package, from the main function you must deactivate
+the variable at the end:
+</p>
+<div class="example">
+<pre class="example">unset keep_srcdir
+</pre></div>
+
+<p>This will leave the &rsquo;keep_srcdir&rsquo; variable blank to continue with the rest
+of the recipes.
 </p>
 <p>A typical recipe contains the following variables:
 </p>

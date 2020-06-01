@@ -1,6 +1,6 @@
 This is qi.info, produced by makeinfo version 6.5 from qi.texi.
 
-This user guide is for Qi (version 2.0rc4, 30 May 2020), which is a
+This user guide is for Qi (version 2.0rc5, 31 May 2020), which is a
 simple but well-integrated package manager.
 
    Copyright © 2019-2020 Matias Andres Fonzo, Santiago del Estero,
@@ -23,7 +23,7 @@ File: qi.info,  Node: Top,  Next: Introduction,  Up: (dir)
 Qi user guide
 *************
 
-This user guide is for Qi (version 2.0rc4, 30 May 2020).
+This user guide is for Qi (version 2.0rc5, 31 May 2020).
 
 * Menu:
 
@@ -116,10 +116,15 @@ Qi supports the following modes to operate:
 
 '-k'
 '--keep'
-     Keep package directory when remove/upgrade.
+     Keep directories when build/remove/upgrade.
 
-     Keep (don't delete) '${srcdir}' or '${destdir}' when build; also
-     keep the package directory when using the remove mode.
+     Keep (don't delete) the package directory when using remove/upgrade
+     mode.
+
+     This will also try to preserve the directories '${srcdir}' and
+     '${destdir}' when using build mode.  Its effect is available in
+     recipes as '${keep_srcdir}'.  See *note Special variables: Recipes.
+     for details.
 
 '-p'
 '--prune'
@@ -552,8 +557,8 @@ as '${tardir}'; a value of .  for 'tardir' sets it to the value of CWD
 (Current Working Directory), this is where the recipe lives.
 
    'arch' is the architecture to compose the package name.  Its value is
-available in the recipe as '${arch}'.  Default value is the output of
-'uname -m'.
+available in the recipe as '${arch}'.  Default value is the one that was
+set in the Qi configuration.
 
    'jobs' is the number of parallel jobs to pass to the compiler.  Its
 value is available in the recipe as '${jobs}'.  The default value is 1.
@@ -585,6 +590,25 @@ package name.
 
    A special variable called 'replace' can be used to declare package
 names that will be replaced at installation time.
+
+   The special variable 'keep_srcdir' is provided to preserve the
+directories '${srcdir}' and '${destdir}', if exists as such.  Note: The
+declaration of this variable is subject to manual deactivation; its
+purpose in recipes is to preserve the directories that relate to the
+package's build and destination directory, that is so that another
+recipe can get a new package (or meta package) from there.  For example,
+the declaration can be done as:
+
+     keep_srcdir=keep_srcdir
+
+   Then from another recipe you would proceed to copy the necessary
+files that will compose the meta package, from the main function you
+must deactivate the variable at the end:
+
+     unset keep_srcdir
+
+   This will leave the 'keep_srcdir' variable blank to continue with the
+rest of the recipes.
 
 A typical recipe contains the following variables:
 
@@ -1025,14 +1049,14 @@ Index
 * Menu:
 
 * configuration file:                    The qirc file.       (line   6)
-* environment variables:                 Recipes.             (line 257)
+* environment variables:                 Recipes.             (line 276)
 * exit codes:                            Exit status.         (line   6)
 * handling build order:                  Order files.         (line   6)
 * introduction:                          Introduction.        (line   6)
 * invocation:                            Invoking qi.         (line   6)
 * managing packages:                     Packages.            (line   6)
 * package blacklist:                     Packages.            (line 184)
-* package build:                         Recipes.             (line 211)
+* package build:                         Recipes.             (line 230)
 * package conflicts:                     Packages.            (line  31)
 * package creation:                      Creating packages.   (line   6)
 * package de-installation:               Packages.            (line 112)
@@ -1041,9 +1065,9 @@ Index
 * package upgrade:                       Packages.            (line 151)
 * recipes:                               Recipes.             (line   6)
 * special variables:                     Recipes.             (line  58)
-* the meta file:                         Recipes.             (line 307)
+* the meta file:                         Recipes.             (line 326)
 * variables:                             Recipes.             (line  29)
-* writing recipes:                       Recipes.             (line 200)
+* writing recipes:                       Recipes.             (line 219)
 
 
 
@@ -1051,17 +1075,17 @@ Tag Table:
 Node: Top806
 Node: Introduction1590
 Node: Invoking qi2759
-Node: The qirc file6398
-Node: Packages7359
-Ref: Packages-Footnote-114725
-Ref: Packages-Footnote-214827
-Node: Recipes14940
-Ref: Recipes-Footnote-128981
-Node: Order files29126
-Node: Creating packages30444
-Node: Examining packages31431
-Node: Exit status32343
-Node: Index34210
+Node: The qirc file6581
+Node: Packages7542
+Ref: Packages-Footnote-114908
+Ref: Packages-Footnote-215010
+Node: Recipes15123
+Ref: Recipes-Footnote-129960
+Node: Order files30105
+Node: Creating packages31423
+Node: Examining packages32410
+Node: Exit status33322
+Node: Index35189
 
 End Tag Table
 

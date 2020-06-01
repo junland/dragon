@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 2.0rc4
+version		= 2.0rc5
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -42,7 +42,7 @@ INSTALL         = install
 INSTALL_PROGRAM = ${INSTALL} -p -m 755
 INSTALL_DATA    = ${INSTALL} -p -m 644
 INSTALL_DIR     = mkdir -p -m 755
-HELP2MAN_OPTS   = --version-option=--version
+HELP2MAN_OPTS   = --version-string=${version}
 
 .PHONY: all \
 	doc info man html \

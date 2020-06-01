@@ -7,8 +7,8 @@
 @syncodeindex pg cp
 @comment %**end of header
 
-@set VERSION 2.0rc4
-@set UPDATED 30 May 2020
+@set VERSION 2.0rc5
+@set UPDATED 31 May 2020
 
 @copying
 This user guide is for Qi (version @value{VERSION},
@@ -147,10 +147,14 @@ Force upgrade of pre-existing packages.
 
 @item -k
 @itemx --keep
-Keep package directory when remove/upgrade.
+Keep directories when build/remove/upgrade.
 
-Keep (don't delete) @samp{$@{srcdir@}} or @samp{$@{destdir@}} when
-build; also keep the package directory when using the remove mode.
+Keep (don't delete) the package directory when using remove/upgrade mode.
+
+This will also try to preserve the directories @samp{$@{srcdir@}} and
+@samp{$@{destdir@}} when using build mode.  Its effect is available in
+recipes as @samp{$@{keep_srcdir@}}. See @ref{Recipes, Special variables}
+for details.
 
 @item -p
 @itemx --prune
@@ -658,8 +662,8 @@ the value of CWD (Current Working Directory), this is where the recipe
 lives.
 
 @samp{arch} is the architecture to compose the package name.  Its value is
-available in the recipe as @samp{$@{arch@}}.  Default value is the output
-of @samp{uname -m}.
+available in the recipe as @samp{$@{arch@}}.  Default value is the one
+that was set in the Qi configuration.
 
 @samp{jobs} is the number of parallel jobs to pass to the compiler.  Its
 value is available in the recipe as @samp{$@{jobs@}}.  The default value
@@ -693,6 +697,29 @@ package name.
 
 A special variable called @samp{replace} can be used to declare package names
 that will be replaced at installation time.
+
+The special variable @samp{keep_srcdir} is provided to preserve the
+directories @samp{$@{srcdir@}} and @samp{$@{destdir@}}, if exists as such.
+Note: The declaration of this variable is subject to manual deactivation;
+its purpose in recipes is to preserve the directories that relate to the
+package's build and destination directory, that is so that another recipe
+can get a new package (or meta package) from there.  For example, the
+declaration can be done as:
+
+@example
+keep_srcdir=keep_srcdir
+@end example
+
+Then from another recipe you would proceed to copy the necessary files that
+will compose the meta package, from the main function you must deactivate
+the variable at the end:
+
+@example
+unset keep_srcdir
+@end example
+
+This will leave the 'keep_srcdir' variable blank to continue with the rest
+of the recipes.
 
 @noindent
 A typical recipe contains the following variables:
