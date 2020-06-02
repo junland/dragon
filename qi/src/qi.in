@@ -35,8 +35,6 @@ export LC_ALL
 usage()
 {
     printf "%s\\n" \
-     "Qi - A user-friendly package manager."                                                   \
-     ""                                                                                        \
      "Qi is a simple but well-integrated package manager.  It can create,"                     \
      "install, remove, and upgrade software packages.  Qi produces binary"                     \
      "packages using recipes, which are files containing specific instructions"                \
@@ -462,7 +460,7 @@ mode_build()
         done
         unset origin _source
     else
-        warn "The variable 'fetch' is empty."
+        warn "${recipe}: The variable 'fetch' is empty."
     fi
 
     # Prepare special directories for build the source,
@@ -478,7 +476,8 @@ mode_build()
             echo "removed directory: '${TMPDIR}/$srcdir'"
         fi
     else
-        warn "The variable 'keep_srcdir' is set (${keep_srcdir})."
+        warn \
+         "WARNING: The variable 'keep_srcdir' has been set (${keep_srcdir})."
     fi
 
     if test -e "$destdir"
@@ -596,13 +595,13 @@ mode_build()
     then
         srcdir="${srcdir%%/*}";	# Directory name without parents.
 
-        if is_readable "${TMPDIR}/$srcdir"
+        if test -e "${TMPDIR}/$srcdir"
         then
             rm -r -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
             echo "removed directory: '${TMPDIR}/$srcdir'"
         fi
 
-        if is_readable "$destdir"
+        if test -e "$destdir"
         then
             rm -r -- "$destdir" || chkstatus_or_exit
             echo "removed directory: '$destdir'"
