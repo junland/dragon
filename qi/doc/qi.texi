@@ -7,8 +7,8 @@
 @syncodeindex pg cp
 @comment %**end of header
 
-@set VERSION 2.0rc6
-@set UPDATED 02 Jun 2020
+@set VERSION 2.0rc7
+@set UPDATED 03 Jun 2020
 
 @copying
 This user guide is for Qi (version @value{VERSION},
@@ -153,8 +153,8 @@ Keep (don't delete) the package directory when using remove/upgrade mode.
 
 This will also try to preserve the directories @samp{$@{srcdir@}} and
 @samp{$@{destdir@}} when using build mode.  Its effect is available in
-recipes as @samp{$@{keep_srcdir@}}. See @ref{Recipes, Special variables}
-for details.
+recipes as @samp{$@{keep_srcdir@}} and @samp{$@{keep_destdir@}}.  See
+@ref{Recipes, Special variables} for details.
 
 @item -p
 @itemx --prune
@@ -378,21 +378,21 @@ links to the belonging package.  This behavior can be forced if the
 To install a single package, simply type:
 
 @example
-qi install coreutils_8.30_i586-1_tools.tlz
+qi install coreutils_8.30_i586-1@@tools.tlz
 @end example
 
 @noindent
 To install multiple packages at once, type:
 
 @example
-qi install gcc_8.3.0_i586-1_devel.tlz rafaela_2.2_i586-1_legacy.tlz ...
+qi install gcc_8.3.0_i586-1@@devel.tlz rafaela_2.2_i586-1@@legacy.tlz ...
 @end example
 
 @noindent
 Warn about the files that will be linked:
 
 @example
-qi warn bash_5.0_i586-1_shells.tlz
+qi warn bash_5.0_i586-1@@shells.tlz
 @end example
 
 This is to verify the content of a package before installing it.
@@ -401,7 +401,7 @@ This is to verify the content of a package before installing it.
 See the process of an installation:
 
 @example
-qi install --verbose mariana_3.0_i586-1_woman.tlz
+qi install --verbose mariana_3.0_i586-1@@woman.tlz
 @end example
 
 The option -V gives more (very verbose).
@@ -410,20 +410,20 @@ The option -V gives more (very verbose).
 Installing package in a different location:
 
 @example
-qi install --rootdir=/media/floppy lzip_1.21_i586-1_compressors.tlz
+qi install --rootdir=/media/floppy lzip_1.21_i586-1@@compressors.tlz
 @end example
 
 Important: the --rootdir option assumes @samp{$@{targetdir@}} and
-@samp{$@{packagedir@}}.  See the following example.
+@samp{$@{packagedir@}}.  See the following example:
 
 @example
-qi install --rootdir=/home/selk lzip_1.21_i586-1_compressors.tlz
+qi install --rootdir=/home/selk lzip_1.21_i586-1@@compressors.tlz
 @end example
 
-In this case the content of "lzip_1.21_i586-1_compressors.tlz" will be
-decompressed into @samp{/home/selk/pkgs/lzip_1.21_i586-1_compressors}.
+The content of "lzip_1.21_i586-1@@compressors.tlz" will be decompressed
+into @samp{/home/selk/pkgs/lzip_1.21_i586-1@@compressors}.
 Assuming that the main binary for lzip is under
-@samp{/home/selk/pkgs/lzip_1.21_i586-1_compressors/usr/bin/}
+@samp{/home/selk/pkgs/lzip_1.21_i586-1@@compressors/usr/bin/}
 the target for "usr/bin" will be created at @samp{/home/selk}.  Considering
 that you have exported the @env{PATH} as @samp{$@{HOME@}/usr/bin}, now the
 system is able to see the recent lzip command.
@@ -446,9 +446,9 @@ produced is captured by Qi to install each package.
 
 An example of a list containing package names is:
 @example
-/var/cache/qi/packages/amd64/tcl_8.6.9_amd64-1_devel.tlz
-/var/cache/qi/packages/amd64/tk_8.6.9.1_amd64-1_devel.tlz
-/var/cache/qi/packages/amd64/vala_0.42.3_amd64-1_devel.tlz
+/var/cache/qi/packages/amd64/tcl_8.6.9_amd64-1@@devel.tlz
+/var/cache/qi/packages/amd64/tk_8.6.9.1_amd64-1@@devel.tlz
+/var/cache/qi/packages/amd64/vala_0.42.3_amd64-1@@devel.tlz
 @end example
 
 @section Removing packages
@@ -457,23 +457,23 @@ An example of a list containing package names is:
 To remove a package, simply type:
 
 @example
-qi remove xz_5.2.4_i586-1_compressors.tlz
+qi remove xz_5.2.4_i586-1@@compressors.tlz
 @end example
 
 @noindent
 Remove mode will match the package name using @samp{$@{packagedir@}} as
-prefix.  For example, if the value of @samp{$@{packagedir@}} is set to
-/usr/pkg, this will be equal to:
+prefix.  For example, if the value of @samp{$@{packagedir@}} has been
+set to /usr/pkg, this will be equal to:
 
 @example
-qi remove /usr/pkg/xz_5.2.4_i586-1_compressors
+qi remove /usr/pkg/xz_5.2.4_i586-1@@compressors
 @end example
 
 @noindent
 Detailed output:
 
 @example
-qi remove --verbose /usr/pkg/xz_5.2.4_i586-1_compressors
+qi remove --verbose /usr/pkg/xz_5.2.4_i586-1@@compressors
 @end example
 
 The option -V gives more (very verbose).
@@ -484,27 +484,27 @@ removing its links from @samp{$@{targetdir@}}, but this behavior can be
 changed if the --keep option is passed:
 
 @example
-qi remove --keep /usr/pkg/lzip_1.21_i586-1_compressors
+qi remove --keep /usr/pkg/lzip_1.21_i586-1@@compressors
 @end example
 
 This means that the links to the package can be reactivated, later:
 
 @example
-cd /usr/pkg && graft -i lzip_1.21_i586-1_compressors
+cd /usr/pkg && graft -i lzip_1.21_i586-1@@compressors
 @end example
 
 @noindent
 Removing package from a different location:
 
 @example
-qi remove --rootdir=/home/cthulhu xz_5.2.4_i586-1_compressors
+qi remove --rootdir=/home/cthulhu xz_5.2.4_i586-1@@compressors
 @end example
 
 @noindent
 Removing a package using standard input:
 
 @example
-echo vala_0.42.3_amd64-1_devel | qi remove -
+echo vala_0.42.3_amd64-1@@devel | qi remove -
 @end example
 
 This will match with the package directory.
@@ -524,10 +524,10 @@ directory is removed.
 To upgrade a package, just type:
 
 @example
-qi upgrade gcc_9.0.1_i586-1_devel.tlz
+qi upgrade gcc_9.0.1_i586-1@@devel.tlz
 @end example
 
-This will proceed to upgrade "gcc_9.0.1_i586-1_devel" removing any other
+This will proceed to upgrade "gcc_9.0.1_i586-1@@devel" removing any other
 version of "gcc" (if any).
 
 @noindent
@@ -535,14 +535,14 @@ If you want to keep the package directories of versions found during the
 upgrade process, just pass:
 
 @example
-qi upgrade --keep gcc_9.0.1_i586-1_devel.tlz
+qi upgrade --keep gcc_9.0.1_i586-1@@devel.tlz
 @end example
 
 @noindent
 To see the upgrade process:
 
 @example
-qi upgrade --verbose gcc_9.0.1_i586-1_devel.tlz
+qi upgrade --verbose gcc_9.0.1_i586-1@@devel.tlz
 @end example
 
 The option -V gives more (very verbose).
@@ -551,7 +551,7 @@ The option -V gives more (very verbose).
 To force the upgrade of an existing package:
 
 @example
-qi upgrade --force gcc_9.0.1_i586-1_devel.tlz
+qi upgrade --force gcc_9.0.1_i586-1@@devel.tlz
 @end example
 
 @subsection Package blacklist
@@ -685,41 +685,42 @@ special variable @samp{version} is assigned by default.
 @samp{pkgname} and @samp{pkgversion} along with: @samp{version}, @samp{arch},
 @samp{release}, and (optionally) @samp{pkgcategory} are used to produce the
 package name in the form:
-@samp{$@{pkgname@}_$@{pkgversion@}_$@{arch@}-$@{release@}[_$@{pkgcategory@}].tlz}
+@samp{$@{pkgname@}_$@{pkgversion@}_$@{arch@}-$@{release@}[@@$@{pkgcategory@}].tlz}
 
 @samp{pkgcategory} is an optional special variable that can be defined on the
 recipe to categorize the package name.  If it is defined, then the
 package output will be composed as
-@samp{$@{pkgname@}_$@{pkgversion@}_$@{arch@}-$@{release@}[_$@{pkgcategory@}.tlz}.
+@samp{$@{pkgname@}_$@{pkgversion@}_$@{arch@}-$@{release@}[@@$@{pkgcategory@}.tlz}.
 Automatically, the value of @samp{pkgcategory} will be prefixed using the
-@samp{_} (underscore) character which will be added to the last part of the
-package name.
+@samp{@@} (at) symbol which will be added to the last part of the package name.
 
 A special variable called @samp{replace} can be used to declare package names
 that will be replaced at installation time.
 
-The special variable @samp{keep_srcdir} is provided to preserve the
-directories @samp{$@{srcdir@}} and @samp{$@{destdir@}}, if exists as such.
-Note: The declaration of this variable is subject to manual deactivation;
-its purpose in recipes is to preserve the directories that relate to the
-package's build and destination directory, that is so that another recipe
-can get a new package (or meta package) from there.  For example, the
-declaration can be done as:
+The special variables @samp{keep_srcdir} and @samp{keep_destdir} are provided
+in order to preserve the directories @samp{$@{srcdir@}} or @samp{$@{destdir@}},
+if those exists as such.  Note: The declaration of these variables are subject
+to manual deactivation; its purpose in recipes is to preserve the directories
+that relate to the package's build (source) and destination directory, that is
+so that another recipe can get a new package (or meta package) from there.  For
+example, the declarations can be done as:
 
 @example
 keep_srcdir=keep_srcdir
+keep_destdir=keep_destdir
 @end example
 
 Then from another recipe you would proceed to copy the necessary files that
 will compose the meta package, from the main function you must deactivate
-the variable at the end:
+the variables at the end:
 
 @example
 unset keep_srcdir
+unset keep_destdir
 @end example
 
-This will leave the 'keep_srcdir' variable blank to continue with the rest
-of the recipes.
+This will leave the 'keep_srcdir' and 'keep_destdir' variables blank to
+continue with the rest of the recipes.
 
 @noindent
 A typical recipe contains the following variables:
@@ -988,7 +989,7 @@ pkgversion=5.0.1
 arch=amd64
 release=1
 pkgcategory="tools"
-full_pkgname=gawk_5.0.1_amd64-1_tools
+full_pkgname=gawk_5.0.1_amd64-1@@tools
 blurb="Pattern scanning and processing language."
 homepage="http://www.gnu.org/software/gawk"
 license="GPLv3+"
@@ -1086,17 +1087,17 @@ Usage: qi create [@var{Output/PackageName.tlz}]...
 The argument for the file name to be written must contain a fully
 qualified named directory as the output directory where the package
 produced will be written.  The file name should be composed using the
-full name: name-version-architecture-release[-pkgcategory].tlz
+full name: name-version-architecture-release[@@pkgcategory].tlz
 
 @sc{Example}
 
 @example
 cd /usr/pkg
-cd claws-mail_3.17.1_amd64-1_x-apps
-qi create /var/cache/qi/packages/claws-mail_3.17.1_amd64-1_x-apps
+cd claws-mail_3.17.1_amd64-1@@x-apps
+qi create /var/cache/qi/packages/claws-mail_3.17.1_amd64-1@@x-apps
 @end example
 
-In this case, the package "claws-mail_3.17.1_amd64-1_x-apps" will be
+In this case, the package "claws-mail_3.17.1_amd64-1@@x-apps" will be
 written into @samp{/var/cache/qi/packages/}.
 
 @noindent
@@ -1118,10 +1119,10 @@ Usage: qi extract [@var{packagename.tlz}]...
 @sc{Example}
 
 @example
-qi extract mksh_R56c_amd64-1_shells.tlz
+qi extract mksh_R56c_amd64-1@@shells.tlz
 @end example
 
-This action will put the content of "mksh_R56c_amd64-1_shells.tlz" into a
+This action will put the content of "mksh_R56c_amd64-1@@shells.tlz" into a
 single directory, this will be a private directory for the user who
 requested the action, creation mode will be equal to @strong{u=rwx,g=,o=
 (0700)}.  The package content will reside on this location, default

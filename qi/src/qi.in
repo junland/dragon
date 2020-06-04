@@ -310,10 +310,10 @@ mode_build()
     srcdir="${srcdir:=${program}-$version}"
     destdir="${destdir:=${TMPDIR}/package-$pkgname}"
 
-    # If 'pkgcategory' has been defined, prefix it using the underscore
+    # If 'pkgcategory' has been defined, prefix it using the "at" symbol
     if test -n "$pkgcategory"
     then
-        pkgcategory='_'${pkgcategory}
+        pkgcategory='@'${pkgcategory}
     fi
 
     # Compose the full package name
@@ -480,13 +480,16 @@ mode_build()
          "WARNING: The variable 'keep_srcdir' has been set (${keep_srcdir})."
     fi
 
-    if test -e "$destdir"
+    if test -z "$keep_destdir"
     then
-        rm -r -- "$destdir" || chkstatus_or_exit
-        echo "removed directory: '$destdir'"
+        if test -e "$destdir"
+        then
+            rm -r -- "$destdir" || chkstatus_or_exit
+            echo "removed directory: '$destdir'"
+        fi
+        mkdir -p -- "$destdir" || chkstatus_or_exit
+        echo "mkdir: created directory '$destdir'"
     fi
-    mkdir -p -- "$destdir" || chkstatus_or_exit
-    echo "mkdir: created directory '$destdir'"
 
     if test ! -e "$outdir"
     then
@@ -560,13 +563,13 @@ mode_build()
             chkstatus_or_exit
         fi
 
-        # Detect declared package names for later replacement
+        # Detect declared package name(s) for later replacement
 
         if test -n "$replace"
         then
             warn \
-             "The following package names has been declared for replacement:" \
-             "    $replace"
+             "=== The following package names has been declared for replacement:" \
+             "$replace"
 
             rm -f "${destdir}/var/lib/qi/${full_pkgname}.replace"
             for item in $replace
@@ -580,8 +583,8 @@ mode_build()
         # make a copy of it for the package database
         echo "=== Creating meta file ${full_pkgname}.tlz.txt ..."
         do_meta > "${outdir}/${full_pkgname}.tlz.txt" || chkstatus_or_exit
-        cp -p "${outdir}/${full_pkgname}.tlz.txt" \
-         "${destdir}/var/lib/qi/${full_pkgname}.txt" || chkstatus_or_exit
+        cp -p     "${outdir}/${full_pkgname}.tlz.txt" \
+          "${destdir}/var/lib/qi/${full_pkgname}.txt" || chkstatus_or_exit
 
         # Produce the package
         cd -- "$destdir" && mode_create "${outdir}/${full_pkgname}.tlz"
@@ -591,29 +594,34 @@ mode_build()
     cd -- "$CWD" || chkstatus_or_exit
 
     echo "=== Deleting 'srcdir', 'destdir' ..."
-    if test "$opt_keep" != opt_keep && test -z "$keep_srcdir"
+    if test "$opt_keep" != opt_keep
     then
-        srcdir="${srcdir%%/*}";	# Directory name without parents.
-
-        if test -e "${TMPDIR}/$srcdir"
+        if test -z "$keep_srcdir"
         then
-            rm -r -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
-            echo "removed directory: '${TMPDIR}/$srcdir'"
+            srcdir="${srcdir%%/*}";	# Directory name without parents.
+            if test -e "${TMPDIR}/$srcdir"
+            then
+                rm -r -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
+                echo "removed directory: '${TMPDIR}/$srcdir'"
+            fi
         fi
 
-        if test -e "$destdir"
+        if test -z "$keep_destdir"
         then
-            rm -r -- "$destdir" || chkstatus_or_exit
-            echo "removed directory: '$destdir'"
+            if test -e "$destdir"
+            then
+                rm -r -- "$destdir" || chkstatus_or_exit
+                echo "removed directory: '$destdir'"
+            fi
         fi
     else
         warn \
-         "    A request to preserve 'srcdir' or 'destdir' has been made:" \
+         "    Request via --keep to preserve 'srcdir' or 'destdir' has been made:" \
          "${TMPDIR}/$srcdir" \
          "$destdir"
     fi
 
-    # Install or upgrade the package if -i or -u was passed
+    # Install or upgrade the package after build
     if test "$opt_nopkg" != opt_nopkg
     then
         if test "$opt_install" = opt_install
@@ -651,7 +659,7 @@ mode_create()
     if test "$name" = "${name%.tlz}"
     then
         warn "Package format '$name' not supported." \
-             "It should be \"name_version_architecture-release[_pkgcategory].tlz\""
+             "It should be \"name_version_architecture-release[@pkgcategory].tlz\""
         exit 4
     fi
 
@@ -839,11 +847,11 @@ mode_install()
         then
             while read -r line
             do
-                for replace in "$rootdir${packagedir}/$(pkgbase "$line")"-*
+                for replace in "$rootdir${packagedir}/$(pkgbase "$line")"_*
                 do
                     if ! test -e "$replace"
                     then
-                        warn "Declared package \`${replace}' does not exist. (ignoring)"
+                        warn "<^> Declared package \`${replace}' does not exist. (ignoring)"
                         continue;
                     fi
 
@@ -852,10 +860,15 @@ mode_install()
                     # The search for the package to be replaced cannot
                     # be the same to the incoming package, even to the
                     # temporary location coming from the upgrade mode
-                    if test "$replace" = "$name" || \
-                       test "$replace" = "${PRVLOC##*/}"
+                    if test "$replace" = "$name"
                     then
+                        warn "    The declared name for the replacement is equal to the incoming package." \
+                             "Replacement for \`${replace}' will be ignored ..."
                         continue;
+                    elif test "$replace" = "${PRVLOC##*/}"
+                    then
+                        warn "The declared name for the replacement matches the private directory."
+                        exit 6;
                     fi
 
                     warn "WARNING: Replacing package \`${replace}' ..."
@@ -980,12 +993,16 @@ mode_upgrade()
 
         # The search for the package to be deleted
         # cannot be the same to the temporary location
-        test "$long_name" = "$PRVLOC" && continue;
+        if test "$long_name" = "$PRVLOC"
+        then
+            warn "The declared name for the replacement matches the private directory."
+            exit 6;
+        fi
 
         fnmatch "$(pkgbase "$found")*" "$incoming" || continue;
         echo "${long_name} has been detected."
 
-        # A package directory is preserved if -k was given
+        # A package directory will be preserved if --keep is given
         mode_remove "$found" > /dev/null
     done
     unset long_name found
@@ -1168,7 +1185,7 @@ pkgname=$pkgname
 pkgversion=$pkgversion
 arch=$arch
 release=$release
-pkgcategory="${pkgcategory#_*}"
+pkgcategory="${pkgcategory#@*}"
 full_pkgname=$full_pkgname
 blurb="$(echo "$description" | sed -e '/^$/d;2q')"
 homepage="$homepage"
@@ -1203,6 +1220,7 @@ graft_v=""
 graft_r=""
 _isUpgrade=_isUpgrade.off
 keep_srcdir=""
+keep_destdir=""
 TMPDIR="${TMPDIR:=/usr/src/qi/build}"
 QICFLAGS="${QICFLAGS:=-g0 -Os}"
 QICXXFLAGS="${QICXXFLAGS:=-g0 -Os}"
@@ -1447,7 +1465,8 @@ do
          "QI_OUTDIR=$QI_OUTDIR"
         exit 0
         ;;
-    --help | --hel | --he | --h | '--?' | -help | -hel | -he | -h | '-?' )
+    --help | --hel | --he | --h | '--?' | -help | -hel | -he | -h | '-?' | \
+     help )
         usage
         exit 0
         ;;
