@@ -25,35 +25,33 @@ fi
 while true
 do
     dialog --colors \
-     --backtitle "\ZbBoot loader installation" \
+     --backtitle "\\ZbBoot loader installation" \
      --title "GRand Unified Bootloader" \
      --default-button "${_default_button:-ok}" \
      --ok-label "Install / Reinstall" \
      --cancel-label "Ignore & Continue" \
      --menu \
-"It's time to install a boot loader (GNU GRUB).\n\n\
-If you do not have a boot loader, it is recommended to install it in\n\
+"It's time to install a boot loader (GNU GRUB).\\n\\n\
+If you do not have a boot loader, it is recommended to install it in\\n\
 the Master Boot Record (MBR).  It is possible to overwrite your current \
-boot loader.\n\n\
+boot loader.\\n\\n\
 You can also install the boot loader on the Root partition (superblock), \
 but note that the partition needs the boot flag to boot.  If you have not \
 used this flag before when you created the partitions you can do so later \
 by invoking 'cfdisk' or 'fdisk'." 19 72 2 \
      "0" "Install GRUB on the Master Boot Record" \
      "1" "Install GRUB on the Super block" \
-     2> ${SUBTMPDIR}/return-MenuBootloader || _status=$?
+     2> "${SUBTMPDIR}/return-MenuBootloader" || _status=$?
     if test -n "$_status" && test $_status -gt 0
     then
         if test $_status -eq 1
         then
-            # Ignore exit status on 'cancel'
-            return 0
+            return 0		# Ignore exit status on 'cancel'.
         fi
-        # Any other dialogs code.
-        return $_status
+        return "$_status"	# Any other dialog(1) code.
     fi
 
-    answer="$(cat -- ${SUBTMPDIR}/return-MenuBootloader)"
+    answer="$(cat -- "${SUBTMPDIR}"/return-MenuBootloader)"
 
     # Check for selected options
     case $answer in
@@ -70,12 +68,17 @@ by invoking 'cfdisk' or 'fdisk'." 19 72 2 \
         # Check if it is a logical volume
         if pvs | grep -q dev
         then
-            array=( $(pvs --ignorelockingfailure --noheadings | awk '{ print $1 }') )
+            array=()
+            while IFS='' read -r line
+            do
+                array+=("$line")
+            done < <(pvs --ignorelockingfailure --noheadings | awk '{ print $1 }')
 
             # Verify on which partition to install
             if (( ${#array[*]} > 1 ))
             then
-                i=0 ; for partition in "${array[@]}"
+                i=0
+                for partition in "${array[@]}"
                 do
                     partition="${partition/[0-9]*/}"
                     xlist[i++]=$partition
@@ -84,29 +87,29 @@ by invoking 'cfdisk' or 'fdisk'." 19 72 2 \
                 unset i partition
 
                 # Remove possible duplicate elements
-                xlist=( $(echo "${xlist[@]}" | awk '!s[$0]++') )
+                xlist=( $(printf "%s\\n" "${xlist[@]}" | awk '!s[$0]++') )
 
                 dialog --colors \
-                 --backtitle "\ZbBoot loader installation" \
+                 --backtitle "\\ZbBoot loader installation" \
                  --title "$_submenu_title" \
                  --menu \
-"More than one disk or partition has been detected.\n\n\
+"More than one disk or partition has been detected.\\n\\n\
 Please select the boot loader destination:" 0 0 0 "${xlist[@]}" \
-                 2> ${SUBTMPDIR}/return-MenuBootloader_cases || continue;
-                BOOT_DEVICE="$(cat -- ${SUBTMPDIR}/return-MenuBootloader_cases)"
+                 2> "${SUBTMPDIR}/return-MenuBootloader_cases" || continue;
+                BOOT_DEVICE="$(cat -- "${SUBTMPDIR}"/return-MenuBootloader_cases)"
             else
                 BOOT_DEVICE="${array[0]}"
             fi
 
-            unset array
+            unset array xlist
         fi
         unset _submenu_title
 
         # To fallback if 'BOOT_DEVICE' is not defined, null
-        BOOT_DEVICE="${BOOT_DEVICE:=$(cat -- ${SUBTMPDIR}/root_device)}"
+        BOOT_DEVICE="${BOOT_DEVICE:=$(cat -- "${SUBTMPDIR}"/root_device)}"
 
-        # If the super block was not chosen, we don't need
-        # the device number to install in the MBR
+        # If the superblock was not chosen, we do not need
+        # the device number to install on the MBR
         if test "$answer" != 1
         then
             BOOT_DEVICE="${BOOT_DEVICE/[0-9]*/}"
@@ -114,20 +117,25 @@ Please select the boot loader destination:" 0 0 0 "${xlist[@]}" \
         unset answer
 
         # GRUB Installation
+
         dialog --colors \
-         --backtitle "\ZbGRUB: Installing the boot loader" \
+         --backtitle "\\ZbGRUB: Installing the boot loader" \
          --title "Installing GRUB on $BOOT_DEVICE" \
          --prgbox \
-"chroot /media/dragora-root /usr/sbin/grub-install --force $BOOT_DEVICE && echo \"^ Return status = $?\ " $(( $LINES - 8 )) $COLUMNS
+"chroot /media/dragora-root /usr/sbin/grub-install --force $BOOT_DEVICE && \
+ echo \"^ Return status = $?\"" $(( LINES - 8 )) $COLUMNS
 
         # GRUB config file
+
         dialog --colors \
-         --backtitle "\ZbGRUB: Generating configuration file" \
+         --backtitle "\\ZbGRUB: Generating configuration file" \
          --title "Generating grub.cfg" \
          --prgbox \
-"chroot /media/dragora-root /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg && echo \"^ Return status = $?\"" $(( $LINES - 8 )) $COLUMNS
+"chroot /media/dragora-root /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg && \
+ echo \"^ Return status = $?\"" $(( LINES - 8 )) $COLUMNS
 
         unset BOOT_DEVICE
+
         _default_button=cancel
         continue;
         ;;

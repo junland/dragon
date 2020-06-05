@@ -5,8 +5,8 @@
 # A function to produce the fstab entry for the physical swap partition
 add_fstabEntry()
 {
-    printf "%-43s %-14s %-12s %-16s %-3s %s\n" \
-     "$device" "swap" "swap" "defaults" "0" "0" > ${SUBTMPDIR}/fstab
+    printf "%-43s %-14s %-12s %-16s %-3s %s\\n" \
+     "$device" "swap" "swap" "defaults" "0" "0" > "${SUBTMPDIR}/fstab"
 }
 
 list="$(fdisk -l 2> /dev/null | grep -m 1 swap)" || true
@@ -17,23 +17,23 @@ device="${list%% *}"
 if test ! -b "$device"
 then
     dialog --colors \
-     --backtitle "\ZbMaking Swap partition" \
+     --backtitle "\\ZbMaking Swap partition" \
      --title "NO SWAP PARTITION DETECTED" \
      --yesno \
-"No swap partition has been detected.\n\n\
+"No swap partition has been detected.\\n\\n\
 
-Setting up a swap partition is recommended because\n\
-it will enable the system to use available physical\n\
-memory (RAM) more efficiently and also provide a\n\
-safeguard in situations where RAM is exhausted.\n\n\
+Setting up a swap partition is recommended because\\n\
+it will enable the system to use available physical\\n\
+memory (RAM) more efficiently and also provide a\\n\
+safeguard in situations where RAM is exhausted.\\n\\n\
 
-If you want to make use of hibernation (suspend to\n\
-disk), a swap partition of sufficient size is\n\
-required.\n\n\
+If you want to make use of hibernation (suspend to\\n\
+disk), a swap partition of sufficient size is\\n\
+required.\\n\\n\
 
-Would you like to proceed without a swap partition?\n" 17 57 || \
+Would you like to proceed without a swap partition?\\n" 17 57 || \
     {
-        printf "%s\n" "" \
+        printf "%s\\n" "" \
          "Please create a swap partition using fdisk(8) or cfdisk(8)." \
          "Then re-run the installer to give it the proper formatting." \
          "" \
@@ -47,51 +47,51 @@ fi
 if grep -q "^${device}" /proc/swaps
 then
     dialog --colors \
-     --backtitle "\ZbActive swap partition: $device" \
+     --backtitle "\\ZbActive swap partition: $device" \
      --title "SWAP PARTITION $device IS ACTIVE" \
      --msgbox \
-"An active swap partition has been detected.\n\n\
-It will be added to the file system representation table\n\
+"An active swap partition has been detected.\\n\\n\
+It will be added to the file system representation table\\n\
 (/etc/fstab) during installation." 9 61 || return $?
     add_fstabEntry
 else
     # Offer format possibility
 
-    size="$(echo $list | awk '{ print $5 }')"
+    size="$(echo "$list" | awk '{ print $5 }')"
     unset list
 
     dialog --colors \
-     --backtitle "\ZbPartitions: Swap format" \
+     --backtitle "\\ZbPartitions: Swap format" \
      --title "SWAP PARTITION DETECTED" \
      --ok-label "Format" \
      --cancel-label "Ignore & Continue" \
      --checklist \
-"A swap partition has been detected.\n\n\
-We offer the possibility to format it properly,\n\
-as well as you can simply ignore this part and\n\
-continue if you previously formatted it:\n\n\
+"A swap partition has been detected.\\n\\n\
+We offer the possibility to format it properly,\\n\
+as well as you can simply ignore this part and\\n\
+continue if you previously formatted it:\\n\\n\
 Device name: $device [${size}]" 14 52 1 \
 "$device"    "Check for bad blocks (slow)" off \
-    2> ${SUBTMPDIR}/return-MakeSwap || \
+    2> "${SUBTMPDIR}/return-MakeSwap" || \
     {
         dialog --colors \
-         --backtitle "\ZbPartitions: Swap partition activation" \
+         --backtitle "\\ZbPartitions: Swap partition activation" \
          --title "SWAP PARTITION $device" --ok-label "Continue" \
-         --prgbox "Activating swap partition..." "swapon -v -f $device" $(( $LINES / 2 )) $COLUMNS
+         --prgbox "Activating swap partition..." "swapon -v -f $device" $(( LINES / 2 )) $COLUMNS
 
         if swapon -s | grep -q "$device"
         then
             add_fstabEntry
         else
             dialog --colors \
-             --backtitle "\ZbPartitions: Swap partition activation" \
+             --backtitle "\\ZbPartitions: Swap partition activation" \
              --title "SWAP PARTITION $device" \
              --msgbox \
 "An error occurred when trying to activate the swap partition.
-This may require manual intervention of the problem.\n\n\
+This may require manual intervention of the problem.\\n\\n\
 
 It is safe to continue with the installation if you consider \
-the swap partition non-crucial.  Otherwise press \Z3[Esc]\Zn to abort \
+the swap partition non-crucial.  Otherwise press \\Z3[Esc]\\Zn to abort \
 and review the problem.  Once resolved, re-run the installer." 11 66 || return $?
         fi
 
@@ -105,34 +105,34 @@ and review the problem.  Once resolved, re-run the installer." 11 66 || return $
     if test -s "${SUBTMPDIR}/return-MakeSwap"
     then
         dialog --colors \
-         --backtitle "\ZbPartitions: Formatting and checking swap partition ${device}" \
+         --backtitle "\\ZbPartitions: Formatting and checking swap partition ${device}" \
          --title "SWAP PARTITION $device" \
-         --prgbox "mkswap -c $device" $(( $LINES / 2 )) $COLUMNS
+         --prgbox "mkswap -c $device" $(( LINES / 2 )) $COLUMNS
     else
         dialog --colors \
-         --backtitle "\ZbPartitions: Formatting swap partition ${device}" \
+         --backtitle "\\ZbPartitions: Formatting swap partition ${device}" \
          --title "SWAP PARTITION $device" \
-         --prgbox "mkswap $device" $(( $LINES / 2 )) $COLUMNS
+         --prgbox "mkswap $device" $(( LINES / 2 )) $COLUMNS
     fi
 
     dialog --colors \
-     --backtitle "\ZbPartitions: Swap partition activation" \
+     --backtitle "\\ZbPartitions: Swap partition activation" \
      --title "SWAP PARTITION $device" --ok-label "Continue" \
-     --prgbox "Activating swap partition..." "swapon -v -f $device" $(( $LINES / 2 )) $COLUMNS
+     --prgbox "Activating swap partition..." "swapon -v -f $device" $(( LINES / 2 )) $COLUMNS
 
     if swapon -s | grep -q "$device"
     then
         add_fstabEntry
     else
         dialog --colors \
-         --backtitle "\ZbPartitions: Swap partition activation" \
+         --backtitle "\\ZbPartitions: Swap partition activation" \
          --title "SWAP PARTITION $device" \
          --msgbox \
 "An error occurred when trying to activate the swap partition.
-This may require manual intervention of the problem.\n\n\
+This may require manual intervention of the problem.\\n\\n\
 
 It is safe to continue with the installation if you consider \
-the swap partition non-crucial.  Otherwise press \Z3[Esc]\Zn to abort \
+the swap partition non-crucial.  Otherwise press \\Z3[Esc]\\Zn to abort \
 and review the problem.  Once resolved, re-run the installer." 11 66
     fi
 fi

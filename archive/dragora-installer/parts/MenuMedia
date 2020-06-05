@@ -7,17 +7,17 @@
 while true
 do
     dialog --colors \
-     --backtitle "\ZbSelecting the installation medium" \
+     --backtitle "\\ZbSelecting the installation medium" \
      --title "INSTALLATION ORIGIN" \
      --menu \
 "Please select the installation medium containing the software packages \
 to install Dragora:" 10 54 2 \
      "0" "CDROM" \
      "1" "Local or mounted directory" \
-     2> ${SUBTMPDIR}/return-MenuMedia
+     2> "${SUBTMPDIR}/return-MenuMedia"
 
     # Check for selected options
-    case "$(cat -- ${SUBTMPDIR}/return-MenuMedia)" in
+    case "$(cat -- "${SUBTMPDIR}"/return-MenuMedia)" in
     0) ## CDROM
 
         # Try to detect the device name via /proc
@@ -32,14 +32,14 @@ to install Dragora:" 10 54 2 \
             test -n "$name" || continue
 
             dialog --colors \
-             --backtitle "\ZbCDROM: Discovering drive name" \
+             --backtitle "\\ZbCDROM: Discovering drive name" \
              --title "Searching CDROM drive" --sleep 1 \
              --infobox "Checking device: /dev/${name}" 3 34
 
             test -b "$name" || continue
 
             dialog --colors \
-             --backtitle "\ZbCDROM: /dev/${name}" \
+             --backtitle "\\ZbCDROM: /dev/${name}" \
              --title "Checking device content" --sleep 1 \
              --infobox "Mounting /dev/${name} under /media/dragora-medium" 3 52
 
@@ -48,29 +48,31 @@ to install Dragora:" 10 54 2 \
                 umount /media/dragora-medium
             fi
 
-            if mount -t iso9660 /dev/${name} /media/dragora-medium > /dev/null 2>&1
+            if mount -t iso9660 \
+             "/dev/${name}" /media/dragora-medium > /dev/null 2>&1
             then
                 if test -d /media/dragora-medium/packages
                 then
-                    echo "/media/dragora-medium/packages" > ${SUBTMPDIR}/MediumFound
+                    echo "/media/dragora-medium/packages" \
+                     > "${SUBTMPDIR}/MediumFound"
 
                     # Save device name to eject later
-                    echo "/dev/${name}" > ${SUBTMPDIR}/CDDevice
+                    echo "/dev/${name}" > "${SUBTMPDIR}/CDDevice"
 
                     break 2;
                 else
                     dialog --colors \
-                     --backtitle "\ZbCDROM: Dragora packages" \
+                     --backtitle "\\ZbCDROM: Dragora packages" \
                      --title "CD/DVD content" \
                      --msgbox \
-"The /dev/${name} device was successfully mounted under the\n\
-/media/dragora-medium directory.  However, the contents\n\
-for the Dragora packages were not found.  They are\n\
-searched through /media/dragora-medium/packages.\n\
-\n\
-Next, the installer will proceed with another device\n\
-looking for the package directory to install Dragora.\n\
-(Let's say, if you inserted the CD/DVD containing the\n\
+"The /dev/${name} device was successfully mounted under the\\n\
+/media/dragora-medium directory.  However, the contents\\n\
+for the Dragora packages were not found.  They are\\n\
+searched through /media/dragora-medium/packages.\\n\
+\\n\
+Next, the installer will proceed with another device\\n\
+looking for the package directory to install Dragora.\\n\
+(Let's say, if you inserted the CD/DVD containing the\\n\
 Dragora packages in a second CDROM drive)." 14 63
                 fi
             fi
@@ -79,44 +81,44 @@ Dragora packages in a second CDROM drive)." 14 63
         unset name list
 
         dialog --colors \
-         --backtitle "\ZbSelecting the installation medium: CDROM (medium not found)" \
+         --backtitle "\\ZbSelecting the installation medium: CDROM (medium not found)" \
          --title "CDROM detection" \
          --ok-label "Return" \
          --msgbox \
-"It was not possible to detect the device name for your CDROM drive.\n\n\
-Please return to the previous menu by pressing \Zb\Z7ENTER\Zn in order to\n\
+"It was not possible to detect the device name for your CDROM drive.\\n\\n\
+Please return to the previous menu by pressing \\Zb\\Z7ENTER\\Zn in order to\\n\
 try by other means..." 9 71
         ;;
     1) ## Local or mounted directory
         while true
         do
             dialog --colors \
-             --backtitle "\ZbSelecting the installation medium: Local or mounted directory" \
+             --backtitle "\\ZbSelecting the installation medium: Local or mounted directory" \
              --title "Define valid directory" \
              --cancel-label "- Back" --inputbox \
-"Please enter a directory path containing the packages to\n\
-install Dragora.  Note: the package directory search is\n\
-relative to the specified directory.  For example, if you\n\
-enter \"/media/harddisk\" the installer will complete the\n\
+"Please enter a directory path containing the packages to\\n\
+install Dragora.  Note: the package directory search is\\n\
+relative to the specified directory.  For example, if you\\n\
+enter \"/media/harddisk\" the installer will complete the\\n\
 path by adding \"/media/harddisk/packages\"." 12 62 \
-             2> ${SUBTMPDIR}/return-MenuMedia_case1 || continue 2;
+             2> "${SUBTMPDIR}/return-MenuMedia_case1" || continue 2;
 
-            answer="$(cat -- ${SUBTMPDIR}/return-MenuMedia_case1)"
+            answer="$(cat -- "${SUBTMPDIR}"/return-MenuMedia_case1)"
             test -n "$answer" || continue
 
             if test ! -d "/${answer}/packages"
             then
                 dialog --colors \
-                 --backtitle "\ZbSelecting the installation medium: Local or mounted directory" \
+                 --backtitle "\\ZbSelecting the installation medium: Local or mounted directory" \
                  --title "Directory not found" \
                  --ok-label "Return" --msgbox \
-"The \"packages\" subdirectory does not exist\n\
-under the specified directory:\n\
+"The \"packages\" subdirectory does not exist\\n\
+under the specified directory:\\n\
 /${answer#/*}" 8 47
                 continue
             fi
 
-            echo "/${answer}/packages" > ${SUBTMPDIR}/MediumFound
+            echo "/${answer}/packages" > "${SUBTMPDIR}/MediumFound"
             unset answer
             break 2;
         done

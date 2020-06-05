@@ -7,7 +7,7 @@ addEntry()
     service=$1
     description=$2
 
-    if test -s /media/dragora-root/etc/perp/${service}/rc.main
+    if test -s "/media/dragora-root/etc/perp/${service}/rc.main"
     then
         # Detect current changes for previous installations
 
@@ -20,22 +20,23 @@ addEntry()
             _toggle_flag=off
         fi
 
-        echo "\"${service}\" \"\" $_toggle_flag \"${description}\" \\" >> ${SUBTMPDIR}/ConfServices 
+        echo "\"${service}\" \"\" $_toggle_flag \"${description}\" \\" \
+         >> "${SUBTMPDIR}/ConfServices"
     fi
     unset service description sticky_bit _toggle_flag
 }
 
-cat << EOF > ${SUBTMPDIR}/ConfServices
+cat << EOF > "${SUBTMPDIR}/ConfServices"
 dialog --colors \\
- --backtitle "\ZbChoosing the running services" \\
+ --backtitle "\\ZbChoosing the running services" \\
  --title "PERSISTENT PROCESS" --no-cancel \\
  --item-help --checklist \\
 "A \"persistent process\" is any program intended to be \\
 long-running, highly available, and purpose critical. \\
 Also known and often described as a \"service\", a persistent \\
 process normally provides some essential, on-demand system \\
-service.\n\n\\
-Please select the daemons that you want to start, monitor, log,\n\\
+service.\\n\\n\\
+Please select the daemons that you want to start, monitor, log,\\n\\
 and control as persistent processes from system startup." 12 71 0 \\
 EOF
 
@@ -52,22 +53,22 @@ addEntry udevd "Device event managing daemon [REQUIRED]."
 addEntry wpa_supplicant "Wi-Fi Protected Access client and IEEE 802.1X supplicant."
 unset addEntry
 
-echo ' 2> ${SUBTMPDIR}/return-ConfServices' >> ${SUBTMPDIR}/ConfServices
-echo "" > ${SUBTMPDIR}/return-ConfServices
+printf "%s\\n" ' 2> "${SUBTMPDIR}/return-ConfServices"' \
+ >> "${SUBTMPDIR}/ConfServices"
 
-. ${SUBTMPDIR}/ConfServices;	# Show menu.
+. "${SUBTMPDIR}/ConfServices";	# Show menu.
 
-test -s ${SUBTMPDIR}/return-ConfServices || return 0;
+test -s "${SUBTMPDIR}/return-ConfServices" || return 0;
 
 # Set sticky bit according to the selection
 for service in acpid crond dbus dhcpcd inetd klog socklog sshd udevd \
                wpa_supplicant ; \
 do
-    if grep -q -o -m 1 "$service" ${SUBTMPDIR}/return-ConfServices
+    if grep -q -o -m 1 "$service" "${SUBTMPDIR}/return-ConfServices"
     then
-        chmod a+t /media/dragora-root/etc/perp/${service}
+        chmod a+t "/media/dragora-root/etc/perp/${service}"
     else
-        chmod a-t /media/dragora-root/etc/perp/${service}
+        chmod a-t "/media/dragora-root/etc/perp/${service}"
     fi
 done
 unset service

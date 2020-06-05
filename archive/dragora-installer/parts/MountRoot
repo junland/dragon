@@ -3,15 +3,15 @@
 # Purpose: Mount root partition, device from declared fstab.
 
 dialog --colors \
- --backtitle "\ZbRoot partition" \
+ --backtitle "\\ZbRoot partition" \
  --title "ROOT MOUNT" --sleep 3 \
  --infobox "Preparing to mount designated root partition for installation..." 3 68
 
 # Figure out device name from fstab
-ROOT_DEVICE="$(awk '$2 == "/" { print $1 }' ${SUBTMPDIR}/fstab | cut -f 1 -d ' ')"
+ROOT_DEVICE="$(awk '$2 == "/" { print $1 }' "${SUBTMPDIR}/fstab" | cut -f 1 -d ' ')"
 
 # Expose 'ROOT_DEVICE' for MenuBootloader
-echo $ROOT_DEVICE > ${SUBTMPDIR}/root_device
+echo "$ROOT_DEVICE" > "${SUBTMPDIR}/root_device"
 
 # Create mount-point destination
 mkdir -p -- /media/dragora-root
@@ -20,13 +20,13 @@ if mountpoint -q /media/dragora-root
 then
     umount /media/dragora-root
 fi
-umount $ROOT_DEVICE > /dev/null 2>&1 || true
+umount "$ROOT_DEVICE" > /dev/null 2>&1 || true
 
 dialog --clear
 
 echo "Mounting $ROOT_DEVICE on /media/dragora-root ..."
 sleep 1
-mount -v $ROOT_DEVICE /media/dragora-root
+mount -v "$ROOT_DEVICE" /media/dragora-root
 sleep 2
 
 # This will be used later (e.g bootloader entry)

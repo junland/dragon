@@ -16,7 +16,7 @@ cat << EOF > "${SUBTMPDIR}/fstab"
 EOF
 cat "${SUBTMPDIR}/fstab.sorted" >> "${SUBTMPDIR}/fstab"
 
-printf "%-43s %-14s %-12s %-16s %-3s %s\n" \
+printf "%-43s %-14s %-12s %-16s %-3s %s\\n" \
  "/dev/fd0"    "/media/floppy" "auto"       "noauto,owner,rw"     "0" "0"  \
  "#/dev/cdrom" "/media/cdrom" "iso9660,udf" "noauto,owner,ro"     "0" "0"  \
  "#tmp"        "/tmp"         "tmpfs"       "defaults"            "0" "0"  \
@@ -26,11 +26,11 @@ printf "%-43s %-14s %-12s %-16s %-3s %s\n" \
 # Show menu to edit the produced fstab (if desired)
 
 dialog --no-shadow --colors \
- --backtitle "\ZbFile system table information" \
+ --backtitle "\\ZbFile system table information" \
  --title "FILE SYSTEM TABLE EDITOR" \
  --ok-label "Save/Continue" --no-cancel \
  --defaultno --editbox "${SUBTMPDIR}/fstab" $((LINES - 8)) $COLUMNS \
-2> ${SUBTMPDIR}/fstab.edit
+2> "${SUBTMPDIR}/fstab.edit"
 
 # Check for differences and offer menu to view or apply changes
 
@@ -44,12 +44,12 @@ then
         _status=0
 
         dialog --colors \
-         --backtitle "\ZbFile system table modification" \
+         --backtitle "\\ZbFile system table modification" \
          --title "CURRENT FILE SYSTEM TABLE" \
          --help-button --help-label "View Diff" \
          --yesno \
-"The file system table has been modified.\n\n\
-Would you like to apply the changes made?.  If you say \"No\",\n\
+"The file system table has been modified.\\n\\n\
+Would you like to apply the changes made?.  If you say \"No\",\\n\
 the installer will continue with the default fstab." 9 65 || _status=$?
 
         case $_status in
@@ -62,7 +62,7 @@ the installer will continue with the default fstab." 9 65 || _status=$?
             ;;
         2) ## Button "View Diff"
             dialog --no-shadow --colors \
-             --backtitle "\ZbFile system table modification (unified difference)" \
+             --backtitle "\\ZbFile system table modification (unified difference)" \
              --title "FILE SYSTEM TABLE CHANGES" \
              --exit-label "Return" \
              --cr-wrap --textbox "${SUBTMPDIR}/fstab.diff" $((LINES - 8)) $COLUMNS || continue;

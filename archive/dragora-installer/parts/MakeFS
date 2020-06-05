@@ -14,41 +14,41 @@ makeMenu()
         size="$(echo "$line" | tr -d '[*+]' | awk '{ print $5 }')"	# Size field.
 
         # Get device mount point and file system type
-        devpoint="$(awk -v patr=$device '$1 == patr { print $2 }' ${SUBTMPDIR}/fstab 2> /dev/null)"
-        formatfs="$(awk -v patr=$device '$1 == patr { print $3 }' ${SUBTMPDIR}/fstab 2> /dev/null)"
+        devpoint="$(awk -v patr="$device" '$1 == patr { print $2 }' "${SUBTMPDIR}/fstab" 2> /dev/null)"
+        formatfs="$(awk -v patr="$device" '$1 == patr { print $3 }' "${SUBTMPDIR}/fstab" 2> /dev/null)"
 
         if test -z "$formatfs" || test "$formatfs" = defaults
         then
-            formatfs="$(blkid -s TYPE -o value $device 2> /dev/null)"
+            formatfs="$(blkid -s TYPE -o value "$device" 2> /dev/null)"
         fi
 
         # Write entry to be showed on the MakeFS menu
         echo "\"${device}\" \"${formatfs:-Linux} ${size} $devpoint\" \\" \
-         >> ${SUBTMPDIR}/MakeFS
+         >> "${SUBTMPDIR}/MakeFS"
+    done < "${SUBTMPDIR}/partitions"
 
-    done < ${SUBTMPDIR}/partitions
-    echo ' 2> ${SUBTMPDIR}/return-MakeFS || _code=$?' \
-     >> ${SUBTMPDIR}/MakeFS
+    echo ' 2> "${SUBTMPDIR}/return-MakeFS" || _code=$?' \
+     >> "${SUBTMPDIR}/MakeFS"
 }
 
 # Ask to assign a valid mount point
 askMountPoint()
 {
     dialog --colors \
-     --backtitle "\ZbSetting Linux partitions: Mount point for $1" \
+     --backtitle "\\ZbSetting Linux partitions: Mount point for $1" \
      --title "MOUNT POINT" \
      --no-cancel --ok-label "Continue" --inputbox \
-"A mount point can be assigned to the partition:\n\n\
-  Consider declaring a complete path such as \"/storage\".\n\
-If you declare the single slash \"/\" it will be designated\n\
-for the (main) root partition.\n\n\
+"A mount point can be assigned to the partition:\\n\\n\
+  Consider declaring a complete path such as \"/storage\".\\n\
+If you declare the single slash \"/\" it will be designated\\n\
+for the (main) root partition.\\n\\n\
 
-Note: If you use directory names that contain spaces,\n\
-the same will be converted using the octal character\n\
-040, which is interpreted by the file system table.\n\n\
-Enter a mount point for '${1}'.  If you leave\n\
+Note: If you use directory names that contain spaces,\\n\
+the same will be converted using the octal character\\n\
+040, which is interpreted by the file system table.\\n\\n\
+Enter a mount point for '${1}'.  If you leave\\n\
 this blank, any previous entries will be deleted:" 19 63 \
-     2> ${SUBTMPDIR}/return-MakeFS_askMountPoint || return 0
+     2> "${SUBTMPDIR}/return-MakeFS_askMountPoint" || return 0
 
     # We remove possible single/double quotes from the answer.
     # Also we convert any blank space (tab or space) into the
@@ -57,8 +57,8 @@ this blank, any previous entries will be deleted:" 19 63 \
     # blank spaces.  We are not managing the octal tab character
     # (011) since TAB is a functional key in dialog(1).
 
-    mntpoint="$(sed -e "s/[\'\"]//g" -e 's/[[:blank:]]/\\040/g' \
-                  ${SUBTMPDIR}/return-MakeFS_askMountPoint)"
+    mntpoint="$(sed -e "s/[\\'\"]//g" -e 's/[[:blank:]]/\\040/g' \
+                  "${SUBTMPDIR}/return-MakeFS_askMountPoint")"
 
     if test -n "$mntpoint"
     then
@@ -69,29 +69,29 @@ this blank, any previous entries will be deleted:" 19 63 \
         esac
 
         # Refresh file system type information
-        formatfs="$(blkid -s TYPE -o value $1 2> /dev/null)"
+        formatfs="$(blkid -s TYPE -o value "$1" 2> /dev/null)"
 
         # Write fstab entry
 
-        printf "%-43s %-14s %-12s %-16s %-3s %s\n" \
+        printf "%-43s %-14s %-12s %-16s %-3s %s\\n" \
          "$1" "$mntpoint" "$formatfs" "defaults" "1" "${fs_passno}" \
-         >> ${SUBTMPDIR}/fstab
+         >> "${SUBTMPDIR}/fstab"
 
         unset fs_passno formatfs
 
         # Remove possible duplicates
-        if test "$(grep -c "^$1" ${SUBTMPDIR}/fstab)" -gt 1
+        if test "$(grep -c "^$1" "${SUBTMPDIR}"/fstab)" -gt 1
         then
-            repeated="$(grep -m 1 -n "^$1" ${SUBTMPDIR}/fstab)"
+            repeated="$(grep -m 1 -n "^$1" "${SUBTMPDIR}"/fstab)"
             repeated="${repeated%%:*}"
-            sed -i "${repeated}d" ${SUBTMPDIR}/fstab
+            sed -i "${repeated}d" "${SUBTMPDIR}/fstab"
             unset repeated
         fi
     else # Remove the whole fstab entry
         if test -n "$1" && test -s "${SUBTMPDIR}/fstab"
         then
             escape_slash="$(printf '%s' "$1" | sed 's/\//\\\//g')"
-            sed -i "/${escape_slash}/d" ${SUBTMPDIR}/fstab
+            sed -i "/${escape_slash}/d" "${SUBTMPDIR}/fstab"
             unset escape_slash
         fi
     fi
@@ -101,23 +101,23 @@ this blank, any previous entries will be deleted:" 19 63 \
 _mkfs()
 {
     dialog --colors \
-     --backtitle "\ZbPartitions: ${2}" \
+     --backtitle "\\ZbPartitions: ${2}" \
      --title "FILE SYSTEM FORMAT" \
      --ok-label "Format" --cr-wrap --checklist \
-"The following device can be formatted using the \"${1}\" command:\n\n\
-$(fdisk -l $2 | head -n 1)" 13 55 1 \
+"The following device can be formatted using the \"${1}\" command:\\n\\n\
+$(fdisk -l "$2" | head -n 1)" 13 55 1 \
 "$2"    "Check for bad blocks (slow)" off \
-    2> ${SUBTMPDIR}/return-MakeFS_mkfs || return $?
+    2> "${SUBTMPDIR}/return-MakeFS_mkfs" || return $?
 
     if test -s "${SUBTMPDIR}/return-MakeFS_mkfs"
     then
         dialog --colors \
-         --backtitle "\ZbPartitions: Formatting and checking Linux partition ${2}" \
+         --backtitle "\\ZbPartitions: Formatting and checking Linux partition ${2}" \
          --title "${2}: Formatting & Checking" \
          --prgbox "$1 -c $2" 30 72
     else
         dialog --colors \
-         --backtitle "\ZbPartitions: Formatting Linux partition ${2}" \
+         --backtitle "\\ZbPartitions: Formatting Linux partition ${2}" \
          --title "${2}: Formatting" \
          --prgbox "$1 $2" 30 72
     fi
@@ -126,7 +126,7 @@ $(fdisk -l $2 | head -n 1)" 13 55 1 \
 _mkxfs()
 {
     dialog --colors \
-     --backtitle "\ZbPartitions: Formatting Linux partition ${2}" \
+     --backtitle "\\ZbPartitions: Formatting Linux partition ${2}" \
      --title "${2}: Formatting" \
      --prgbox "$1 -f $2" 30 72
 }
@@ -134,7 +134,7 @@ _mkxfs()
 formatMenu()
 {
     dialog --colors \
-     --backtitle "\Zb${1}: Setting a file system" \
+     --backtitle "\\Zb${1}: Setting a file system" \
      --title "FILE SYSTEM SELECTION" \
      --default-item "ext3" \
      --item-help --cr-wrap --menu \
@@ -144,24 +144,24 @@ formatMenu()
 "ext4" "Fourth extended filesystem"       "We suggest using it more for a 64-bit system than for a 32-bit system"                              \
 "jfs"  "A Journaled file system"          "Actual usage of jfs in GNU/Linux is uncommon, as ext4 typically offers better performance"          \
 "xfs"  "A 64-bit journaling file system"  "xfs is a high-performance 64-bit journaling file system suitable for real-time applications"        \
-    2> ${SUBTMPDIR}/return-MakeFS_formatMenu || _status=$?
+    2> "${SUBTMPDIR}/return-MakeFS_formatMenu" || _status=$?
 
     if test -n "$_status" && test $_status -ne 0
     then
-        return $_status;
+        return "$_status";
     fi
     unset _status
 
     # Try to unmount the device if it is already mounted
-    umount $1 > /dev/null 2>&1 || true
+    umount "$1" > /dev/null 2>&1 || true
 
     # Check for selected options to give the proper format
-    case "$(cat -- ${SUBTMPDIR}/return-MakeFS_formatMenu)" in
-    ext2)  _mkfs  mkfs.ext2 $1 ;;
-    ext3)  _mkfs  mkfs.ext3 $1 ;;
-    ext4)  _mkfs  mkfs.ext4 $1 ;;
-     jfs)  _mkfs  jfs_mkfs  $1 ;;
-     xfs)  _mkxfs mkfs.xfs  $1 ;;
+    case "$(cat -- "${SUBTMPDIR}"/return-MakeFS_formatMenu)" in
+    ext2)  _mkfs  mkfs.ext2 "$1" ;;
+    ext3)  _mkfs  mkfs.ext3 "$1" ;;
+    ext4)  _mkfs  mkfs.ext4 "$1" ;;
+     jfs)  _mkfs  jfs_mkfs  "$1" ;;
+     xfs)  _mkxfs mkfs.xfs  "$1" ;;
     esac
 }
 
@@ -169,23 +169,23 @@ formatMenu()
 
 while true
 do
-    cat << EOF > ${SUBTMPDIR}/MakeFS
+    cat << EOF > "${SUBTMPDIR}/MakeFS"
 dialog --colors \\
- --backtitle "\ZbPartitions and mount points" \\
+ --backtitle "\\ZbPartitions and mount points" \\
  --title "Setting Linux partitions" \\
  --ok-button "Establish" --extra-button \\
  --extra-label "Done" \\
  --menu \\
-"The following Linux partitions has been detected:\n\n\\
-  Selecting a partition gives you the possibility to set up\n\\
+"The following Linux partitions has been detected:\\n\\n\\
+  Selecting a partition gives you the possibility to set up\\n\\
 a file system or a mount point for the boot stage of the system. \\
 Once this has been established, choose the \\"Done\\" button to \\
 continue with the installation." 16 65 5 \\
 EOF
-    makeMenu && . ${SUBTMPDIR}/MakeFS
+    makeMenu && . "${SUBTMPDIR}/MakeFS"
     case "${_code:-$?}" in
     0)
-        partition="$(cat -- ${SUBTMPDIR}/return-MakeFS)"
+        partition="$(cat -- "${SUBTMPDIR}"/return-MakeFS)"
 
         if test -z "$partition"
         then
@@ -193,51 +193,51 @@ EOF
             exit 99;
         fi
 
-        if test -n "$(blkid -s TYPE -o value $partition 2> /dev/null)"
+        if test -n "$(blkid -s TYPE -o value "$partition" 2> /dev/null)"
         then
             dialog --colors \
-             --backtitle "\ZbPartitions and mount points" \
+             --backtitle "\\ZbPartitions and mount points" \
              --title "$partition" \
              --no-cancel --menu \
-"* Selected device already contains a file system *\n\n\
-You can assign a mount point for system startup, you also\n\
-have the ability to re-format the partition.  If you choose\n\
-the latter, you will lose all your data and will be asked\n\
-for a mounting point.\n\n\
+"* Selected device already contains a file system *\\n\\n\
+You can assign a mount point for system startup, you also\\n\
+have the ability to re-format the partition.  If you choose\\n\
+the latter, you will lose all your data and will be asked\\n\
+for a mounting point.\\n\\n\
 What would you like to do for '${partition}'?" 17 64 3 \
              "0" "Assign a mount point" \
              "1" "Format again (data loss risk)" \
              "<" "Return to previous menu" \
-            2> ${SUBTMPDIR}/return-MakeFS_case || continue;
+            2> "${SUBTMPDIR}/return-MakeFS_case" || continue;
 
             # Check for selected options
-            case "$(cat -- ${SUBTMPDIR}/return-MakeFS_case)" in
-            0)  askMountPoint $partition;;
-            1)  formatMenu $partition && askMountPoint $partition;;
+            case "$(cat -- "${SUBTMPDIR}"/return-MakeFS_case)" in
+            0)  askMountPoint "$partition";;
+            1)  formatMenu "$partition" && askMountPoint "$partition";;
             esac
         else
-            formatMenu $partition && askMountPoint $partition
+            formatMenu "$partition" && askMountPoint "$partition"
         fi
         ;;
     3)
         # To verify the existence of the designated root mount point
-        if grep -qs -m 1 '/ ' ${SUBTMPDIR}/fstab
+        if grep -qs -m 1 '/ ' "${SUBTMPDIR}/fstab"
         then
             break;
         else
             dialog --colors \
-             --backtitle "\ZbPartitions and mount points: Unknown mount point for the root partition" \
+             --backtitle "\\ZbPartitions and mount points: Unknown mount point for the root partition" \
              --title "NO MOUNT POINT FOR ROOT" \
              --ok-label "Return" --msgbox \
-"There is no declared mount point for the root partition.\n\n\
-  Please go back and assign a mount point for the\n\
-root partition.  Remember that the mount point must\n\
+"There is no declared mount point for the root partition.\\n\\n\
+  Please go back and assign a mount point for the\\n\
+root partition.  Remember that the mount point must\\n\
 be declared as \"/\" (without quotes and spaces)." 10 60 || \
              { unset _code ; continue ; }
         fi
         ;;
     *)
-        exit $_code
+        exit "$_code"
         ;;
     esac
     unset _code;	# To take the value again.
