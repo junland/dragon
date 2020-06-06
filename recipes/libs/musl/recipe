@@ -16,7 +16,7 @@
 
 program=musl
 version=1.2.0
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -68,10 +68,8 @@ build()
         patch -Np1 -i "${worktree}/patches/musl/musl-nolibcc_stage1.diff"
     fi
 
-    # Tune up some options to optimize i586/x86_64
-    patch -Np1 -i "${worktree}/patches/musl/musl-tune.diff"
-
-    ./configure $configure_args \
+    ./configure CFLAGS="$QICFLAGS" \
+     $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --syslibdir=/lib \
      --enable-shared \
