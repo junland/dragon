@@ -173,7 +173,7 @@ To quit a dialog (such as the one you are in), press \\Z3[Esc]\\Zn.
 # Try to detect and mount the hybrid ISO image, there may be a USB memory
 # stick already inserted.  If not, the media menu will be displayed.
 
-mkdir -p -- /media/dragora-medium
+mkdir -p -- /media/dragora-packages
 
 if ! blkid -t LABEL="Dragora Packages" > /dev/null
 then
@@ -186,22 +186,22 @@ press \\Z3[Enter]\\Zn to continue.  Otherwise, a media selection menu\\n\
 will be displayed." 7 65
     if blkid -t LABEL="Dragora Packages" > /dev/null
     then
-        if ! mountpoint -q /media/dragora-medium
+        if ! mountpoint -q /media/dragora-packages
         then
-            mount -v -t iso9660 LABEL="Dragora Packages" /media/dragora-medium && \
-             echo "/media/dragora-medium/packages" > "${SUBTMPDIR}/MediumFound"
+            mount -v -t iso9660 LABEL="Dragora Packages" /media/dragora-packages && \
+             echo "/media/dragora-packages/packages" > "${SUBTMPDIR}/MediumFound"
             sleep 2
         fi
     else
         . @PARTS@MenuMedia
     fi
 else
-    if ! mountpoint -q /media/dragora-medium
+    if ! mountpoint -q /media/dragora-packages
     then
-        mount -v -t iso9660 LABEL="Dragora Packages" /media/dragora-medium
+        mount -v -t iso9660 LABEL="Dragora Packages" /media/dragora-packages
         sleep 2
     fi
-    echo "/media/dragora-medium/packages" > "${SUBTMPDIR}/MediumFound"
+    echo "/media/dragora-packages/packages" > "${SUBTMPDIR}/MediumFound"
 fi
 
 # Attempt to unmount possible pre-mounted filesystem(s)
@@ -210,7 +210,7 @@ mountpoint -q /media/dragora-root/proc && umount /media/dragora-root/proc
 mountpoint -q /media/dragora-root/dev && umount /media/dragora-root/dev
 
 # Clean up possible empty mount-directories
-rmdir -- /media/dragora-medium /media/dragora-root 2> /dev/null || true
+rmdir -- /media/dragora-packages /media/dragora-root 2> /dev/null || true
 
 # Double-check to see the installation directory
 if test ! -f "${SUBTMPDIR}/MediumFound"
@@ -241,9 +241,9 @@ fi
 
 if test -e /media/dragora-root/etc/fstab
 then
-    if mountpoint -q /media/dragora-medium
+    if mountpoint -q /media/dragora-packages
     then
-        umount /media/dragora-medium
+        umount /media/dragora-packages
     fi
     if test -s "${SUBTMPDIR}/SeTCDdev"
     then
