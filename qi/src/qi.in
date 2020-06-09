@@ -640,9 +640,6 @@ mode_build()
 
 mode_create()
 {
-    echo ""
-    echo "{#} Creating package name \"${1}\" ..."
-
     directory="$(dirname -- "$1")"
 
     # Perform sanity checks
@@ -655,6 +652,9 @@ mode_create()
     is_readable "$directory" || exit 4
 
     name="$(basename -- "$1")"
+
+    echo ""
+    echo "{#} Creating package name \"${name}\" ..."
 
     if test "$name" = "${name%.tlz}"
     then
@@ -862,13 +862,14 @@ mode_install()
                     # temporary location coming from the upgrade mode
                     if test "$replace" = "$name"
                     then
-                        warn "    The declared name for the replacement is equal to the incoming package." \
-                             "Replacement for \`${replace}' will be ignored ..."
+                        warn \
+                         "    The declared name for the replacement is equal to the incoming package." \
+                         "Replacement for \`${replace}' will be ignored ..."
                         continue;
-                    elif test "$replace" = "${PRVLOC##*/}"
+                    fi
+                    if test "$replace" = "${PRVLOC##*/}"
                     then
-                        warn "The declared name for the replacement matches the private directory."
-                        exit 6;
+                        continue;
                     fi
 
                     warn "WARNING: Replacing package \`${replace}' ..."
@@ -993,11 +994,7 @@ mode_upgrade()
 
         # The search for the package to be deleted
         # cannot be the same to the temporary location
-        if test "$long_name" = "$PRVLOC"
-        then
-            warn "The declared name for the replacement matches the private directory."
-            exit 6;
-        fi
+        test "$long_name" = "$PRVLOC" && continue;
 
         fnmatch "$(pkgbase "$found")*" "$incoming" || continue;
         echo "${long_name} has been detected."
