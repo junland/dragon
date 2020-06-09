@@ -15,9 +15,9 @@ mountPoint()
           # into common spaces for directory creation (see MakeFS)
           directory="$(printf '%s' "$directory" | tr '\\040' ' ')"
 
-          if test ! -d "/media/dragora-root/$directory"
+          if test ! -d "/media/dragora-root/${directory}"
           then
-            mkdir -p -- "/media/dragora-root/$directory"
+              mkdir -p -- "/media/dragora-root/${directory}"
           fi
       done
 }
@@ -48,13 +48,21 @@ then
     mountNonRoot
 
     # Copy fstab into root partition
-    mkdir -p -- /media/dragora-root/etc && \
-     cp -f -- "${SUBTMPDIR}/fstab" /media/dragora-root/etc/
+    mkdir -p -- /media/dragora-root/etc || true
+    cp -f -- "${SUBTMPDIR}/fstab" /media/dragora-root/etc/
 else
-    dialog --no-shadow --colors \
-     --backtitle "\\ZbFile system table (fstab)" \
-     --title "EXISTING FILE SYSTEM TABLE" \
-     --yesno \
+    # Offer the possibility to overwrite the fstab file only if
+    # there is a difference, since there is no point in asking to
+    # overwrite the (newly) created and copied file
+
+    compare=$(cmp -s "${SUBTMPDIR}/fstab" /media/dragora-root/etc/fstab) || _code=$?
+
+    if test -n "$_code" && test $_code -eq 1
+    then	# Differs.
+        dialog --no-shadow --colors \
+         --backtitle "\\ZbFile system table (fstab)" \
+         --title "EXISTING FILE SYSTEM TABLE" \
+         --yesno \
 "A file system table already exists on the mounted root
 partition (/media/dragora-root/etc/fstab).\\n\\n\
 Overwrite this file only if:\\n\
@@ -67,11 +75,13 @@ Do not overwrite the file system table if you are adding\\n\
 software to the existing system...\\n\\n\
 Do you want to replace the existing fstab with the new one?" \
 $((LINES - 4)) 64 || return 0
-    mountPoint
-    mountNonRoot
-    mkdir -p -- /media/dragora-root/etc && \
-     cp -f -- "${SUBTMPDIR}/fstab" /media/dragora-root/etc/
+        mountPoint
+        mountNonRoot
+
+        mkdir -p -- /media/dragora-root/etc || true
+        cp -f -- "${SUBTMPDIR}/fstab" /media/dragora-root/etc/
+    fi
 fi
 
-unset mountPoint mountNonRoot
+unset mountPoint mountNonRoot compare _code
 
