@@ -32,18 +32,20 @@ export LC_ALL LANGUAGE
 
 unmountFilesystems()
 {
-    for filesystem in /media/dragora-root/sys   \
-                      /media/dragora-root/proc  \
-                      /media/dragora-root/dev   \
-                      /media/dragora-root       \
-                      /media/dragora-packages ; \
+    for filesystem in \
+     /media/dragora-root/sys   \
+     /media/dragora-root/proc  \
+     /media/dragora-root/dev   \
+     /media/dragora-root       \
+     /media/dragora-packages ; \
     do
         if mountpoint -q "$filesystem"
         then
-            echo "Unmounting ${filesystem} ..."
-            if ! umount -v "$filesystem"
+            echo ""
+            echo "Unmounting \`${filesystem}' ..."
+            if ! umount -v -R "$filesystem"
             then
-                echo "Doing a lazy unmount for $filesystem ..."
+                echo "    ^ Doing a lazy unmount for \`${filesystem}' ..."
                 umount -v -l "$filesystem"
             fi
         fi

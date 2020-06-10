@@ -4,7 +4,7 @@
 
 # Make declared mount points from fstab, exclude:
 # commentaries, root, and possible swapfile.
-mountPoint()
+makeMountPoints()
 {
     grep -E -v '^#|swap|/ ' "${SUBTMPDIR}/fstab" | \
      awk '{ print substr($2,2) }' | while read -r directory
@@ -35,19 +35,23 @@ mountNonRoot()
              mntpoint="/media/dragora-root/${mntpoint}"
 
              echo ""
-             echo "Mounting the rest of the file systems ..."
+             umount -v "$device" || true
              mount -v "$device" "$mntpoint" || exit $?
-             sleep 1
+             sleep 2
          done
     fi
 }
 
+dialog --colors \
+ --backtitle "\\ZbNon-root partition(s)" \
+ --title "NON-ROOT MOUNTS" --sleep 2 \
+ --infobox "Preparing to mount the rest of the file systems ..." 3 55
+makeMountPoints
+mountNonRoot
+
 if test ! -e /media/dragora-root/etc/fstab
 then
-    mountPoint
-    mountNonRoot
-
-    # Copy fstab into root partition
+    # Copy fstab into the root partition
     mkdir -p -- /media/dragora-root/etc || true
     cp -f -- "${SUBTMPDIR}/fstab" /media/dragora-root/etc/
 else
@@ -74,14 +78,11 @@ properly.\\n\\n\
 Do not overwrite the file system table if you are adding\\n\
 software to the existing system...\\n\\n\
 Do you want to replace the existing fstab with the new one?" \
-$((LINES - 4)) 64 || return 0
-        mountPoint
-        mountNonRoot
-
+$((LINES - 6)) 64 || return 0
         mkdir -p -- /media/dragora-root/etc || true
         cp -f -- "${SUBTMPDIR}/fstab" /media/dragora-root/etc/
     fi
 fi
 
-unset mountPoint mountNonRoot compare _code
+unset makeMountPoints mountNonRoot compare _code
 
