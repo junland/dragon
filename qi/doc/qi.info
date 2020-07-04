@@ -1,6 +1,6 @@
 This is qi.info, produced by makeinfo version 6.5 from qi.texi.
 
-This user guide is for Qi (version 2.0rc9, 15 Jun 2020), which is a
+This user guide is for Qi (version 2.0rc10, 04 Jul 2020), which is a
 simple but well-integrated package manager.
 
    Copyright © 2019-2020 Matias Andres Fonzo, Santiago del Estero,
@@ -23,7 +23,7 @@ File: qi.info,  Node: Top,  Next: Introduction,  Up: (dir)
 Qi user guide
 *************
 
-This user guide is for Qi (version 2.0rc9, 15 Jun 2020).
+This user guide is for Qi (version 2.0rc10, 04 Jul 2020).
 
 * Menu:
 
@@ -77,13 +77,13 @@ File: qi.info,  Node: Invoking qi,  Next: The qirc file,  Prev: Introduction,  U
 
 This chapter describes the synopsis for invoking Qi.
 
-     Usage: qi MODE [OPTION...] [FILE]...
+     Usage: qi COMMAND [OPTION...] [FILE]...
 
-One mandatory mode specifies the operation that 'qi' should perform,
+One mandatory command specifies the operation that 'qi' should perform,
 options are meant to detail how this operation should be performed
 during or after the process.
 
-Qi supports the following modes to operate:
+Qi supports the following commands:
 
 'warn'
      Warn about files that will be installed.
@@ -98,10 +98,10 @@ Qi supports the following modes to operate:
      Upgrade packages.
 
 'extract'
-     Extract package for debugging purposes.
+     Extract packages for debugging purposes.
 
 'create'
-     Create .tlz package from directory.
+     Create a .tlz package from directory.
 
 'build'
      Build packages using recipe names.
@@ -109,7 +109,8 @@ Qi supports the following modes to operate:
 'order'
      Resolve build order through .order files
 
-   Options when installing, removing, or upgrading software packages:
+Options when installing, removing, or upgrading software packages:
+
 '-f'
 '--force'
      Force upgrade of pre-existing packages.
@@ -119,10 +120,10 @@ Qi supports the following modes to operate:
      Keep directories when build/remove/upgrade.
 
      Keep (don't delete) the package directory when using remove/upgrade
-     mode.
+     command.
 
      This will also try to preserve the directories '${srcdir}' and
-     '${destdir}' when using build mode.  Its effect is available in
+     '${destdir}' when using build command.  Its effect is available in
      recipes as '${keep_srcdir}' and '${keep_destdir}'.  See *note
      Special variables: Recipes. for details.
 
@@ -202,6 +203,16 @@ Options when building software packages using recipes:
 
 Other options:
 
+'-v'
+'--verbose'
+     Be verbose (an extra -v gives more).
+
+     It sets the verbosity level, default sets to 0.
+
+     The value 1 is used for more verbosity while the value 2 is too
+     detailed.  Although at the moment it is limited to graft(1)
+     verbosity.
+
 '-N'
 '--no-rc'
      Do not read the configuration file.
@@ -220,11 +231,12 @@ Other options:
 '--help'
      Display the usage and exit.
 
+'-V'
 '--version'
 
      This will print the (short) version information and then exit.
 
-     The same can be achieved if it is invoked as 'qi version'.
+     The same can be achieved if Qi is invoked as 'qi version'.
 
    When FILE is -, qi can read from the standard input.  See examples
 from the *note Packages:: section.
@@ -250,9 +262,9 @@ runtime, e.g., to build, install, remove or upgrade packages.
 variable in the shell.
 
 The command line options related to the package directory and target
-directory and some of the command line options used for the build mode,
-have the power to override the values declared on 'qirc'.  See *note
-Invoking qi::.
+directory and some of the command line options used for the build
+command, have the power to override the values declared on 'qirc'.  See
+*note Invoking qi::.
 
 The order in which qi looks for this file is:
 
@@ -338,7 +350,7 @@ See the process of an installation:
 
      qi install --verbose mariana_3.0_i586-1@woman.tlz
 
-   The option -V gives more (very verbose).
+   A second -verbose or -v option gives more (very verbose).
 
 Installing package in a different location:
 
@@ -380,9 +392,9 @@ To remove a package, simply type:
 
      qi remove xz_5.2.4_i586-1@compressors.tlz
 
-Remove mode will match the package name using '${packagedir}' as prefix.
-For example, if the value of '${packagedir}' has been set to /usr/pkg,
-this will be equal to:
+Remove command will match the package name using '${packagedir}' as
+prefix.  For example, if the value of '${packagedir}' has been set to
+/usr/pkg, this will be equal to:
 
      qi remove /usr/pkg/xz_5.2.4_i586-1@compressors
 
@@ -390,11 +402,11 @@ Detailed output:
 
      qi remove --verbose /usr/pkg/xz_5.2.4_i586-1@compressors
 
-   The option -V gives more (very verbose).
+   A second -verbose or -v option gives more (very verbose).
 
-By default the remove mode does not preserve a package directory after
-removing its links from '${targetdir}', but this behavior can be changed
-if the -keep option is passed:
+By default the remove command does not preserve a package directory
+after removing its links from '${targetdir}', but this behavior can be
+changed if the -keep option is passed:
 
      qi remove --keep /usr/pkg/lzip_1.21_i586-1@compressors
 
@@ -415,8 +427,8 @@ Removing a package using standard input:
 4.4 Upgrading packages
 ======================
 
-The upgrade mode inherits the properties of the installation and removal
-process.  To make sure that a package is updated, the package is
+The upgrade command inherits the properties of the installation and
+removal process.  To make sure that a package is updated, the package is
 installed in a temporary directory taking '${packagedir}' into account.
 Once the incoming package is pre-installed, qi can proceed to search and
 delete packages that have the same name (considered as previous ones).
@@ -439,7 +451,7 @@ To see the upgrade process:
 
      qi upgrade --verbose gcc_9.0.1_i586-1@devel.tlz
 
-   The option -V gives more (very verbose).
+   A second -verbose or -v option gives more (very verbose).
 
 To force the upgrade of an existing package:
 
@@ -461,7 +473,7 @@ A blacklist of package names has been devised for the case where a user
 decides to upgrade all the packages in the system, or just the crucial
 ones, such as the C library.
 
-   The blacklist is related to the upgrade mode only, consists in
+   The blacklist is related to the upgrade command only, consists in
 installing a package instead of updating it or removing previous
 versions of it; the content of the package will be updated over the
 existing content at '${packagedir}', while the existing links from
@@ -735,7 +747,7 @@ process:
      qi build --jobs 3 x-apps/xterm
 
 Update or install the produced package (if not already installed) when
-the build mode ends:
+the build command ends:
 
      qi build -j3 --upgrade x-apps/xterm
 
@@ -762,7 +774,7 @@ Qi has environment variables which can be used at build time:
 
    The variable 'TMPDIR' sets the temporary directory for sources, which
 is used for package extractions (see *note Examining packages::) and is
-prepended to the value of '${srcdir}' and '${destdir}' in build mode.
+prepended to the value of '${srcdir}' and '${destdir}' in build command.
 By convention its default value is equal to '/usr/src/qi/build'.
 
    The variables 'QICFLAGS', 'QICXXFLAGS', and 'QILDFLAGS' have no
@@ -808,7 +820,7 @@ running configure in varying environments can be dangerous.
 5.6 The meta file
 =================
 
-The "meta file" is a regular file created during the build mode, it
+The "meta file" is a regular file created during the build command, it
 contains information about the package such as package name, package
 version, architecture, release, fetch address, description, and other
 minor data extracted from processed recipes.  The name of the file is
@@ -868,7 +880,7 @@ File: qi.info,  Node: Order files,  Next: Creating packages,  Prev: Recipes,  Up
 6 Order files
 *************
 
-The order mode has the purpose of resolving the build order through
+The order command has the purpose of resolving the build order through
 .order files.  An order file contains a list of recipe names, by default
 does not perform any action other than to print a resolved list in
 descending order.  For example, if *a* depends on *b* and *c*, and *c*
@@ -918,7 +930,7 @@ File: qi.info,  Node: Creating packages,  Next: Examining packages,  Prev: Order
 7 Creating packages
 *******************
 
-The "creation mode" is an internal function of qi to make new Qi
+The creation command is an internal function of qi to make new Qi
 compatible packages.  A package is produced using the contents of the
 Current Working Directory and the package file is written out.
 
@@ -946,7 +958,7 @@ File: qi.info,  Node: Examining packages,  Next: Exit status,  Prev: Creating pa
 8 Examining packages
 ********************
 
-The "extraction mode" serves to examine binary packages for debugging
+The extraction command serves to examine binary packages for debugging
 purposes.  It decompresses a package into a single directory, verifying
 its integrity and preserving all of it properties (owner and
 permission).
@@ -958,8 +970,8 @@ permission).
      qi extract mksh_R56c_amd64-1@shells.tlz
 
    This action will put the content of "mksh_R56c_amd64-1@shells.tlz"
-into a single directory, this will be a private directory for the user
-who requested the action, creation mode will be equal to *u=rwx,g=,o=
+into a single directory, this is a private directory for the user who
+requested the action, creation operation will be equal to *u=rwx,g=,o=
 (0700)*.  The package content will reside on this location, default mask
 to deploy the content will be equal to *u=rwx,g=rwx,o=rwx (0000)*.
 
@@ -1016,7 +1028,7 @@ All the exit codes are described in this chapter.
 
      It's commonly expected:
 
-        * An argument for the mode of operation.
+        * An argument for giving commands.
 
         * A regular file or readable directory.
 
@@ -1074,20 +1086,20 @@ Index
 
 
 Tag Table:
-Node: Top806
-Node: Introduction1590
-Node: Invoking qi2759
-Node: The qirc file6603
-Node: Packages7564
-Ref: Packages-Footnote-114923
-Ref: Packages-Footnote-215025
-Node: Recipes15138
-Ref: Recipes-Footnote-130088
-Node: Order files30233
-Node: Creating packages31551
-Node: Examining packages32538
-Node: Exit status33450
-Node: Index35317
+Node: Top807
+Node: Introduction1592
+Node: Invoking qi2761
+Node: The qirc file6880
+Node: Packages7844
+Ref: Packages-Footnote-115267
+Ref: Packages-Footnote-215369
+Node: Recipes15482
+Ref: Recipes-Footnote-130441
+Node: Order files30586
+Node: Creating packages31907
+Node: Examining packages32895
+Node: Exit status33808
+Node: Index35669
 
 End Tag Table
 

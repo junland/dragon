@@ -43,17 +43,17 @@ usage()
      "set of packages and multiple versions of them.  This means that Qi could"                \
      "be used as the main package manager or complement the existing one."                     \
      ""                                                                                        \
-     "Usage: $PROGRAM MODE [OPTION...] [FILE]..."                                              \
+     "Usage: $PROGRAM COMMAND [OPTION...] [FILE]..."                                           \
      ""                                                                                        \
      "Defaults for the options are specified in brackets."                                     \
      ""                                                                                        \
-     "Operating modes:"                                                                        \
+     "List of commands:"                                                                       \
      "  warn                     Warn about files that will be installed"                      \
      "  install                  Install packages"                                             \
      "  remove                   Remove packages"                                              \
      "  upgrade                  Upgrade packages"                                             \
-     "  extract                  Extract package for debugging purposes"                       \
-     "  create                   Create .tlz package from directory"                           \
+     "  extract                  Extract packages for debugging purposes"                      \
+     "  create                   Create a .tlz package from directory"                         \
      "  build                    Build packages using recipe names"                            \
      "  order                    Resolve build order through .order files"                     \
      ""                                                                                        \
@@ -84,11 +84,10 @@ usage()
      ""                                                                                        \
      "Other options:"                                                                          \
      "  -N, --no-rc              Do not read the configuration file"                           \
-     "  -v, --verbose            Be verbose"                                                   \
-     "  -V, --very-verbose       Be very verbose"                                              \
+     "  -v, --verbose            Be verbose (an extra -v gives more) [${verbose}]"             \
      "  -L, --show-location      Print default directory locations and exit"                   \
      "  -h, --help               Display this help and exit"                                   \
-     "      --version            Output version information and exit"                          \
+     "  -V, --version            Output version information and exit"                          \
      ""                                                                                        \
      "Some influential environment variables:"                                                 \
      "  TMPDIR                   Temporary directory for sources [${TMPDIR}]"                  \
@@ -104,6 +103,7 @@ usage()
      "regular, or expected files, 5 for empty or not defined variables,"                       \
      "6 when a package already exist, 10 for network manager errors."                          \
      ""                                                                                        \
+     "Report bugs to dragora-users@nongnu.org"                                                 \
      "Qi home page: https://www.dragora.org"
 }
 
@@ -1067,7 +1067,9 @@ mode_extract()
     mkdir -p -- "$PRVDIR"
     chmod 700 -- "$PRVDIR"
 
+    echo ""
     echo "--- Extracting package $name ..."
+
     ( umask 000 ; cd -- "$PRVDIR" && tarlz -xvf - ) < "$1"
     if test $? -ne 0
     then
@@ -1075,7 +1077,9 @@ mode_extract()
         rmdir -- "$PRVDIR"
         exit 3;
     fi
-    echo "$name has been extracted on $PRVDIR"
+
+    echo ""
+    echo "\"${name}\" has been extracted on \`${PRVDIR}'"
 
     # Reset given signals
     trap - HUP INT ABRT TERM
@@ -1203,6 +1207,7 @@ opt_incr_release=opt_incr_release.off
 opt_skipqsts=opt_skipqsts.off
 opt_nopkg=opt_nopkg.off
 opt_prune=opt_prune.off
+verbose=0
 rootdir=""
 arch=@ARCH@
 jobs=1
@@ -1240,8 +1245,8 @@ _validate_mode()
 {
     if test -n "$mode"
     then
-        warn "${PROGRAM}: First defined mode: ${mode#*_}" \
-             "Switching to another mode is not allowed (${1})."
+        warn "${PROGRAM}: First defined command: ${mode#*_}" \
+             "Switching to another command is not allowed (${1})."
         exit 1
     fi
 }
@@ -1443,10 +1448,11 @@ do
         opt_skipqsts=opt_skipqsts
         ;;
     --verbose | -v )
-        graft_v=-v
+        verbose=$(( verbose + 1 ))
         ;;
-    --very-verbose | -V )
-        graft_v=-V
+    -vv)
+        # ^ Trick for a second -v.
+        verbose=2
         ;;
     --show-location | -L )
         printf "%s\\n" \
@@ -1463,7 +1469,7 @@ do
         exit 0
         ;;
     --version | --versio | --versi | --vers | \
-     -version |  -versio |  -versi |  -vers | version )
+     -version |  -versio |  -versi |  -vers | -V | version )
         echo "$PROGRAM version @VERSION@"
         exit 0
         ;;
@@ -1511,6 +1517,18 @@ do
 done
 unset need
 
+# Set verbosity level/flag
+
+if test "$verbose" -gt 0
+then
+    if test "$verbose" -eq 1
+    then
+        graft_v=-v
+    else
+        graft_v=-V
+    fi
+fi
+
 # Read standard input if FILE is -, or when
 # FILE is not connected to a terminal
 
@@ -1536,7 +1554,7 @@ unset readstdin
 
 if test -z "$mode"
 then
-    warn "qi: We need at least one (valid) operating mode." \
+    warn "qi: We need at least one (valid) command." \
          "Try '${PROGRAM} --help' for more information."
     exit 4
 fi

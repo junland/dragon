@@ -7,8 +7,8 @@
 @syncodeindex pg cp
 @comment %**end of header
 
-@set VERSION 2.0rc9
-@set UPDATED 15 Jun 2020
+@set VERSION 2.0rc10
+@set UPDATED 04 Jul 2020
 
 @copying
 This user guide is for Qi (version @value{VERSION},
@@ -102,16 +102,16 @@ to be found in any Unix-like system.
 This chapter describes the synopsis for invoking Qi.
 
 @example
-Usage: qi MODE [@var{OPTION}...] [@var{FILE}]...
+Usage: qi COMMAND [@var{OPTION}...] [@var{FILE}]...
 @end example
 
 @noindent
-One mandatory mode specifies the operation that @samp{qi} should
+One mandatory command specifies the operation that @samp{qi} should
 perform, options are meant to detail how this operation should be
 performed during or after the process.
 
 @noindent
-Qi supports the following modes to operate:
+Qi supports the following commands:
 
 @table @code
 @item warn
@@ -127,10 +127,10 @@ Remove packages.
 Upgrade packages.
 
 @item extract
-Extract package for debugging purposes.
+Extract packages for debugging purposes.
 
 @item create
-Create .tlz package from directory.
+Create a .tlz package from directory.
 
 @item build
 Build packages using recipe names.
@@ -139,7 +139,9 @@ Build packages using recipe names.
 Resolve build order through .order files
 @end table
 
+@noindent
 Options when installing, removing, or upgrading software packages:
+
 @table @code
 @item -f
 @itemx --force
@@ -149,10 +151,10 @@ Force upgrade of pre-existing packages.
 @itemx --keep
 Keep directories when build/remove/upgrade.
 
-Keep (don't delete) the package directory when using remove/upgrade mode.
+Keep (don't delete) the package directory when using remove/upgrade command.
 
 This will also try to preserve the directories @samp{$@{srcdir@}} and
-@samp{$@{destdir@}} when using build mode.  Its effect is available in
+@samp{$@{destdir@}} when using build command.  Its effect is available in
 recipes as @samp{$@{keep_srcdir@}} and @samp{$@{keep_destdir@}}.  See
 @ref{Recipes, Special variables} for details.
 
@@ -237,6 +239,15 @@ This option sets the variable @samp{$@{tardir@}}.
 Other options:
 
 @table @code
+@item -v
+@itemx --verbose
+Be verbose (an extra -v gives more).
+
+It sets the verbosity level, default sets to 0.
+
+The value 1 is used for more verbosity while the value 2 is too detailed.
+Although at the moment it is limited to graft(1) verbosity.
+
 @item -N
 @itemx --no-rc
 Do not read the configuration file.
@@ -255,11 +266,12 @@ produced.
 @itemx --help
 Display the usage and exit.
 
-@item --version
+@item -V
+@itemx --version
 
 This will print the (short) version information and then exit.
 
-The same can be achieved if it is invoked as @samp{qi version}.
+The same can be achieved if Qi is invoked as @samp{qi version}.
 @end table
 
 When FILE is -, qi can read from the standard input.  See examples from
@@ -286,7 +298,7 @@ variable in the shell.
 
 @noindent
 The command line options related to the package directory and target
-directory and some of the command line options used for the build mode,
+directory and some of the command line options used for the build command,
 have the power to override the values declared on @file{qirc}.
 See @ref{Invoking qi}.
 
@@ -404,7 +416,7 @@ See the process of an installation:
 qi install --verbose mariana_3.0_i586-1@@woman.tlz
 @end example
 
-The option -V gives more (very verbose).
+A second --verbose or -v option gives more (very verbose).
 
 @noindent
 Installing package in a different location:
@@ -461,7 +473,7 @@ qi remove xz_5.2.4_i586-1@@compressors.tlz
 @end example
 
 @noindent
-Remove mode will match the package name using @samp{$@{packagedir@}} as
+Remove command will match the package name using @samp{$@{packagedir@}} as
 prefix.  For example, if the value of @samp{$@{packagedir@}} has been
 set to /usr/pkg, this will be equal to:
 
@@ -476,10 +488,10 @@ Detailed output:
 qi remove --verbose /usr/pkg/xz_5.2.4_i586-1@@compressors
 @end example
 
-The option -V gives more (very verbose).
+A second --verbose or -v option gives more (very verbose).
 
 @noindent
-By default the remove mode does not preserve a package directory after
+By default the remove command does not preserve a package directory after
 removing its links from @samp{$@{targetdir@}}, but this behavior can be
 changed if the --keep option is passed:
 
@@ -512,7 +524,7 @@ This will match with the package directory.
 @section Upgrading packages
 @cindex package upgrade
 
-The upgrade mode inherits the properties of the installation and removal
+The upgrade command inherits the properties of the installation and removal
 process.  To make sure that a package is updated, the package is installed
 in a temporary directory taking @samp{$@{packagedir@}} into account.  Once
 the incoming package is pre-installed, qi can proceed to search and delete
@@ -545,7 +557,7 @@ To see the upgrade process:
 qi upgrade --verbose gcc_9.0.1_i586-1@@devel.tlz
 @end example
 
-The option -V gives more (very verbose).
+A second --verbose or -v option gives more (very verbose).
 
 @noindent
 To force the upgrade of an existing package:
@@ -571,7 +583,7 @@ A blacklist of package names has been devised for the case where
 a user decides to upgrade all the packages in the system, or
 just the crucial ones, such as the C library.
 
-The blacklist is related to the upgrade mode only, consists in installing
+The blacklist is related to the upgrade command only, consists in installing
 a package instead of updating it or removing previous versions of it;
 the content of the package will be updated over the existing content at
 @samp{$@{packagedir@}}, while the existing links from
@@ -872,7 +884,7 @@ qi build --jobs 3 x-apps/xterm
 
 @noindent
 Update or install the produced package (if not already installed) when the
-build mode ends:
+build command ends:
 
 @example
 qi build -j3 --upgrade x-apps/xterm
@@ -905,7 +917,7 @@ Qi has environment variables which can be used at build time:
 The variable @env{TMPDIR} sets the temporary directory for sources, which is
 used for package extractions (see @ref{Examining packages}) and is
 prepended to the value of @samp{$@{srcdir@}} and @samp{$@{destdir@}} in
-build mode.  By convention its default value is equal to
+build command.  By convention its default value is equal to
 @samp{/usr/src/qi/build}.
 
 The variables @env{QICFLAGS}, @env{QICXXFLAGS}, and @env{QILDFLAGS} have
@@ -958,7 +970,7 @@ configure: error: changes in the environment can compromise the build.
 @section The meta file
 @cindex the meta file
 
-The "meta file" is a regular file created during the build mode, it
+The "meta file" is a regular file created during the build command, it
 contains information about the package such as package name, package
 version, architecture, release, fetch address, description, and other
 minor data extracted from processed recipes.  The name of the file is
@@ -1015,7 +1027,7 @@ line of @samp{description}, mentioned as the "brief description".
 @chapter Order files
 @cindex handling build order
 
-The order mode has the purpose of resolving the build order through
+The order command has the purpose of resolving the build order through
 .order files.  An order file contains a list of recipe names, by default
 does not perform any action other than to print a resolved list in
 descending order.  For example, if @strong{a} depends on @strong{b} and
@@ -1076,7 +1088,7 @@ libs/tiff
 @chapter Creating packages
 @cindex package creation
 
-The "creation mode" is an internal function of qi to make new Qi
+The creation command is an internal function of qi to make new Qi
 compatible packages.  A package is produced using the contents of
 the Current Working Directory and the package file is written out.
 
@@ -1108,7 +1120,7 @@ All packages produced are complemented by a checksum file (.sha256).
 @chapter Examining packages
 @cindex package examination
 
-The "extraction mode" serves to examine binary packages for debugging
+The extraction command serves to examine binary packages for debugging
 purposes. It decompresses a package into a single directory, verifying
 its integrity and preserving all of it properties (owner and permission).
 
@@ -1123,15 +1135,14 @@ qi extract mksh_R56c_amd64-1@@shells.tlz
 @end example
 
 This action will put the content of "mksh_R56c_amd64-1@@shells.tlz" into a
-single directory, this will be a private directory for the user who
-requested the action, creation mode will be equal to @strong{u=rwx,g=,o=
-(0700)}.  The package content will reside on this location, default
-mask to deploy the content will be equal to
-@strong{u=rwx,g=rwx,o=rwx (0000)}.
+single directory, this is a private directory for the user who requested
+the action, creation operation will be equal to @strong{u=rwx,g=,o= (0700)}.
+The package content will reside on this location, default mask to deploy
+the content will be equal to @strong{u=rwx,g=rwx,o=rwx (0000)}.
 
 @noindent
-Note: the creation of the custom directory is influenced by the value of
-the @env{TMPDIR} variable.
+Note: the creation of the custom directory is influenced by the value
+of the @env{TMPDIR} variable.
 
 
 @node Exit status
@@ -1194,7 +1205,7 @@ File empty, not regular, or expected.
 It's commonly expected:
 
 @itemize @bullet
-@item An argument for the mode of operation.
+@item An argument for giving commands.
 
 @item A regular file or readable directory.
 
