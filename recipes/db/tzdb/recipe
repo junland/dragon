@@ -17,7 +17,7 @@
 
 program=tzdb
 version=2020a
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=db
@@ -68,8 +68,23 @@ build()
      KSHELL="/bin/sh -" \
      DESTDIR="$destdir" install
 
-    # We do not offer 'tzselect'
-    rm -f "${destdir}/usr/bin/tzselect"
+    # 1. We do not offer 'tzselect'.
+    # 2. To set default localtime.
+    # 3. To be linked via post-install.
+    rm -f \
+     "${destdir}/usr/bin/tzselect" \
+     "${destdir}/etc/localtime" \
+     "${destdir}/etc/zoneinfo-posix"
+
+    # Create .nograft to copy via post-installation the time zone files
+    # instead of being linked to the package directory; this is to ensure
+    # that the database is always up to date after a package update.  :-)
+
+    find "${destdir}"/etc/zoneinfo* -type d -print | \
+     while read -r directory
+     do
+         ( cd -- "$directory" && touch .nograft )
+     done
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"

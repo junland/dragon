@@ -1,4 +1,8 @@
 
+# Copy/update time zone database to the /etc hierarchy
+
+cp -Rpf "${packagedir}/${name}"/etc/zoneinfo* etc/
+
 # Set default zone info file, default points to 'UTC'
 
 if test -r etc/zoneinfo/UTC
@@ -13,7 +17,13 @@ then
     fi
 fi
 
-# Re-create symlink for "zoneinfo-posix" at /etc
+if test ! -e etc/localtime
+then
+    echo "Setting default time zone to UTC (etc/localtime -> zoneinfo/UTC) ..."
+    ln -sf zoneinfo/UTC etc/localtime
+fi
+
+# Re-create symlink for "zoneinfo-posix" directory
 
 rm -f etc/zoneinfo-posix
 cd etc && ln -sf zoneinfo zoneinfo-posix
