@@ -1,0 +1,34 @@
+From 63699ef407390adad73351a1320dfdd1f9373c17 Mon Sep 17 00:00:00 2001
+From: Paul Eggert <eggert@cs.ucla.edu>
+Date: Thu, 9 Jul 2020 13:01:07 -0700
+Subject: [PROPOSED] Fix leapseconds comment when EXPIRES_LINE
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+* leapseconds.awk: Don’t output a comment explaining why
+something is commented out, when it is not commented out.
+---
+ leapseconds.awk | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/leapseconds.awk b/leapseconds.awk
+index 924ade9..1d3c606 100755
+--- a/leapseconds.awk
++++ b/leapseconds.awk
+@@ -105,8 +105,10 @@ END {
+     print ""
+     print "# UTC timestamp when this leap second list expires."
+     print "# Any additional leap seconds will come after this."
+-    print "# This Expires line is commented out for now,"
+-    print "# so that pre-2020a zic implementations do not reject this file."
++    if (! EXPIRES_LINE) {
++      print "# This Expires line is commented out for now,"
++      print "# so that pre-2020a zic implementations do not reject this file."
++    }
+     printf "%sExpires %.4d\t%s\t%.2d\t%.2d:%.2d:%.2d\n", \
+       EXPIRES_LINE ? "" : "#", \
+       ss_year, monthabbr[ss_month], ss_mday, ss_hour, ss_min, ss_sec
+-- 
+2.17.1
+

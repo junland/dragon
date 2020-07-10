@@ -17,7 +17,7 @@
 
 program=tzdb
 version=2020a
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=db
@@ -55,6 +55,10 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # Fix a warning on compilation, see
+    # https://mm.icann.org/pipermail/tz/2020-July/029165.html
+    patch -p1 < "${worktree}/patches/tzdb/0001-Fix-leapseconds-comment-when-EXPIRES_LINE.patch"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
