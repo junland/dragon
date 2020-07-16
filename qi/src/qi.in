@@ -34,7 +34,7 @@ export LC_ALL
 
 usage()
 {
-    printf "%s\\n" \
+    printf '%s\n' \
      "Qi is a simple but well-integrated package manager.  It can create,"                     \
      "install, remove, and upgrade software packages.  Qi produces binary"                     \
      "packages using recipes, which are files containing specific instructions"                \
@@ -43,7 +43,7 @@ usage()
      "set of packages and multiple versions of them.  This means that Qi could"                \
      "be used as the main package manager or complement the existing one."                     \
      ""                                                                                        \
-     "Usage: $PROGRAM COMMAND [OPTION...] [FILE]..."                                           \
+     "Usage: $PROGRAM COMMAND [OPTIONS] [FILE]..."                                             \
      ""                                                                                        \
      "Defaults for the options are specified in brackets."                                     \
      ""                                                                                        \
@@ -103,13 +103,12 @@ usage()
      "regular, or expected files, 5 for empty or not defined variables,"                       \
      "6 when a package already exist, 10 for network manager errors."                          \
      ""                                                                                        \
-     "Report bugs to dragora-users@nongnu.org"                                                 \
      "Qi home page: https://www.dragora.org"
 }
 
 warn()
 {
-    printf "%s\\n" "$@" 1>&2
+    printf '%s\n' "$@" 1>&2
 }
 
 is_readable()
@@ -148,6 +147,16 @@ fnmatch()
         return 1
         ;;
     esac
+}
+
+# A shell replacement for basename(1)
+_basename()
+{
+    _filename="${1##*/}"
+
+    printf '%s\n' "${_filename%$2}"
+
+    unset _filename
 }
 
 chkstatus_or_exit()
@@ -231,7 +240,7 @@ mode_build()
     # Get working directory and base name of the recipe
 
     CWD="$(dirname -- "$recipe")"
-    recipe="$(basename -- "$recipe")"
+    recipe="$(_basename "$recipe")"
 
     # Check readability for load the recipe on success
 
@@ -259,10 +268,10 @@ mode_build()
     save_opt_nopkg="${save_opt_nopkg:=$opt_nopkg}"
 
     # Reset variable values in case of return
-    arch=$save_arch
-    jobs=$save_jobs
-    outdir=$save_outdir
-    opt_nopkg=$save_opt_nopkg
+    arch="$save_arch"
+    jobs="$save_jobs"
+    outdir="$save_outdir"
+    opt_nopkg="$save_opt_nopkg"
 
     # The following variables cannot be redefined on the recipe
     readonly worktree netget rsync
@@ -300,7 +309,7 @@ mode_build()
     # Allow the dot as definition for 'tardir'
     if test "$tardir" = .
     then
-        tardir=$CWD
+        tardir="$CWD"
     fi
 
     # Set default values for the following special variables
@@ -313,14 +322,14 @@ mode_build()
     # If 'pkgcategory' has been defined, prefix it using the "at" symbol
     if test -n "$pkgcategory"
     then
-        pkgcategory='@'${pkgcategory}
+        pkgcategory="@${pkgcategory}"
     fi
 
     # Compose the full package name
     full_pkgname="${full_pkgname:=${pkgname}_${pkgversion}_${arch}-${release}${pkgcategory}}"
 
     # Use 'arch' as suffix for 'outdir' to have a well-organized package output
-    outdir=${outdir}/${arch}
+    outdir="${outdir}/${arch}"
 
     # If a package is going to be created the existence of a
     # previous build will be detected and reported.  Under normal
@@ -377,7 +386,7 @@ mode_build()
             # the user need to pass the option explicitly
             if test ! -t 0
             then
-                printf "%s\\n" \
+                printf '%s\n' \
                  "Do you want to rebuild this package?"   \
                  "1) Yes, built it"                       \
                  "2) No, skip it [default]"               \
@@ -574,7 +583,8 @@ mode_build()
             rm -f "${destdir}/var/lib/qi/${full_pkgname}.replace"
             for item in $replace
             do
-                echo "$replace" >> "${destdir}/var/lib/qi/${full_pkgname}.replace"
+                printf '%s\n' "$replace" >> \
+                 "${destdir}/var/lib/qi/${full_pkgname}.replace"
             done
             unset item
         fi
@@ -650,7 +660,7 @@ mode_create()
     fi
     is_readable "$directory" || exit 4
 
-    name="$(basename -- "$1")"
+    name="$(_basename "$1")"
 
     echo ""
     echo "{#} Creating package name \"${name}\" ..."
@@ -678,7 +688,7 @@ mode_create()
 
 mode_remove()
 {
-    expunge="${packagedir}/$(basename -- "$1" .tlz)"
+    expunge="${packagedir}/$(_basename "$1" .tlz)"
 
     echo ""
     echo "<<< Removing package \"$rootdir${expunge}\" ..."
@@ -765,7 +775,7 @@ mode_install()
     # Make preparations to install the package
 
     # Get the filename
-    name="$(basename -- "$1" .tlz)"
+    name="$(_basename "$1" .tlz)"
 
     echo "=== Checking tarball integrity ..."
     tarlz --missing-crc -tf "$1" > /dev/null
@@ -857,14 +867,8 @@ mode_install()
                     # The search for the package to be replaced cannot
                     # be the same to the incoming package, even to the
                     # temporary location coming from the upgrade mode
-                    if test "$replace" = "$name"
-                    then
-                        warn \
-                         "    The declared name for the replacement is equal to the incoming package." \
-                         "Replacement for \`${replace}' will be ignored ..."
-                        continue;
-                    fi
-                    if test "$replace" = "${PRVLOC##*/}"
+                    if test "$replace" = "$name" || \
+                       test "_x_${replace}" = "_x_${PRVLOC##*/}"
                     then
                         continue;
                     fi
@@ -929,7 +933,7 @@ mode_upgrade()
     fi
 
     # Get the filename
-    incoming="$(basename -- "$1" .tlz)"
+    incoming="$(_basename "$1" .tlz)"
 
     echo ""
     echo "{%} Upgrading package \"${incoming}\" ..."
@@ -1054,7 +1058,7 @@ mode_extract()
 
     # Preparations to extract the package
 
-    name="$(basename -- "$1" .tlz)"
+    name="$(_basename "$1" .tlz)"
 
     # Set random directory using 'name' as prefix
     PRVDIR="${TMPDIR}/${name}.${RANDOM-0}$$"
@@ -1092,7 +1096,7 @@ mode_extract()
 
 pkgbase()
 {
-    printf %s "${1%%_*}"
+    printf '%s' "${1%%_*}"
 }
 
 unpack()
@@ -1132,27 +1136,27 @@ unpack()
             ;;
         *.gz)
             gzip -t "$file" && \
-            gzip -cd "$file" > "$(basename -- $file .gz)"
+            gzip -cd "$file" > "$(_basename "$file" .gz)"
             chkstatus_or_exit 3
             ;;
         *.Z)
             gzip -t "$file" && \
-            gzip -cd "$file" > "$(basename -- $file .Z)"
+            gzip -cd "$file" > "$(_basename "$file" .Z)"
             chkstatus_or_exit 3
             ;;
         *.bz2)
             bzip2 -t "$file" && \
-            bzip2 -cd "$file" > "$(basename -- $file .bz2)"
+            bzip2 -cd "$file" > "$(_basename "$file" .bz2)"
             chkstatus_or_exit 3
             ;;
         *.lz)
             lzip -t "$file" && \
-            lzip -cd "$file" > "$(basename -- $file .lz)"
+            lzip -cd "$file" > "$(_basename "$file" .lz)"
             chkstatus_or_exit 3
             ;;
         *.xz)
             xz -t "$file" && \
-            xz -cd "$file" > "$(basename -- $file .xz)"
+            xz -cd "$file" > "$(_basename "$file" .xz)"
             chkstatus_or_exit 3
             ;;
         *)
@@ -1172,7 +1176,7 @@ do_meta()
     # the 80 columns in total
 
     cat << EOF
-$(printf "%s\\n" "$description" | fold -w 78 | awk '$0="# " $0')
+$(printf '%s\n' "$description" | fold -w 78 | awk '$0="# " $0')
 
 QICFLAGS="$QICFLAGS"
 QICXXFLAGS="$QICXXFLAGS"
@@ -1455,7 +1459,7 @@ do
         verbose=2
         ;;
     --show-location | -L )
-        printf "%s\\n" \
+        printf '%s\n' \
          "QI_TARGETDIR=$QI_TARGETDIR"   \
          "QI_PACKAGEDIR=$QI_PACKAGEDIR" \
          "QI_WORKTREE=$QI_WORKTREE"     \
@@ -1506,8 +1510,8 @@ fi
 \unalias -a;		# Unset all possible aliases.
 unset -f command;	# Ensure command is not a user function.
 
-for need in awk basename chmod cp dirname find fold graft grep \
-            mkdir mktemp rm rmdir sed sha256sum stat tarlz
+for need in awk chmod cp dirname find fold graft grep mkdir \
+            mktemp rm rmdir sed sha256sum stat tarlz ; \
 do
     if ! command -v $need > /dev/null
     then
@@ -1598,7 +1602,7 @@ then
         # relative to the log file, we prepend it inside 'rootdir'
 
         eval "$(graft -L)" ; GRAFT_LOGFILE="${GRAFT_LOGFILE:=/var/log/graft}"
-        mkdir -p -- "$rootdir$(dirname -- $GRAFT_LOGFILE)" || chkstatus_or_exit
+        mkdir -p -- "$rootdir$(dirname -- "$GRAFT_LOGFILE")" || chkstatus_or_exit
 
         # Compose 'rootdir' and log file option to be used with graft(1)
         graft_r="-r $rootdir -l $GRAFT_LOGFILE"
