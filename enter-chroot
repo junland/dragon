@@ -96,22 +96,23 @@ mount -o bind "${CWD}/patches" "${rootdir}/usr/src/qi/patches"
 mount -o bind "${CWD}/recipes" "${rootdir}/usr/src/qi/recipes"
 mount -o bind "${CWD}/sources" "${rootdir}/usr/src/qi/sources"
 
-# Change reported architecture for a proper chroot environment
-_setarch=""
-for architecture in /tools/bin/*-linux*
-do
-    case $architecture in
-    *i486-*)  _setarch="setarch i486"; break;;
-    *i586-*)  _setarch="setarch i586"; break;;
-    esac
-done
-unset architecture
+# Change reported architecture for an appropriate environment
+_machine_type=""
+
+if file /tools/bin/busybox | grep -q "32-bit"
+then
+    if command -v linux32 > /dev/null
+    then
+        echo "Using the linux32 command for this machine type: $(uname -m) ..."
+        _machine_type="linux32"
+    fi
+fi
 
 # Add trap for unmount the series, signalled or not
-trap 'echo ; unmountSeries' EXIT HUP QUIT ABRT TERM
+trap 'echo ""; unmountSeries' EXIT HUP QUIT ABRT TERM
 
 echo "Entering via chroot $rootdir ..."
-$_setarch chroot "$rootdir" /tools/bin/env -i \
+$_machine_type chroot "$rootdir" /tools/bin/env -i \
   PATH=/bin:/usr/bin:/sbin:/usr/sbin:/tools/bin:/opt/trinity/bin \
   SHELL=/bin/sh \
   HOME=/root \
