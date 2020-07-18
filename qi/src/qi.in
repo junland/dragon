@@ -663,7 +663,7 @@ mode_create()
     name="$(_basename "$1")"
 
     echo ""
-    echo "{#} Creating package name \"${name}\" ..."
+    echo "{#} Creating package name \`${name}' ..."
 
     if test "$name" = "${name%.tlz}"
     then
@@ -691,7 +691,7 @@ mode_remove()
     expunge="${packagedir}/$(_basename "$1" .tlz)"
 
     echo ""
-    echo "<<< Removing package \"$rootdir${expunge}\" ..."
+    echo "<<< Removing package \`$rootdir${expunge}' ..."
 
     # Complain if the package directory does not exist
 
@@ -738,7 +738,6 @@ mode_remove()
     if test "$opt_keep" != opt_keep
     then
         echo "=== Deleting package directory, if exists as such ..."
-
         if test -e "${rootdir}$expunge"
         then
             rm -r -- "${rootdir}$expunge" || chkstatus_or_exit
@@ -758,7 +757,7 @@ mode_remove()
 mode_install()
 {
     echo ""
-    echo ">>> Installing package \"${1}\" ..."
+    echo ">>> Installing package \`${1}' ..."
 
     # Complain if the package cannot be well-read
 
@@ -781,18 +780,21 @@ mode_install()
     tarlz --missing-crc -tf "$1" > /dev/null
     chkstatus_or_exit 3
 
+    # To accept random directory from the upgrade mode
+    _packagedir="${_packagedir:=$packagedir}"
+
     # Create package directory using 'name'
-    if ! test -d "$rootdir${packagedir}/$name"
+    if ! test -d "$rootdir${_packagedir}/$name"
     then
-        mkdir -p -- "$rootdir${packagedir}/$name" || chkstatus_or_exit
-        echo "mkdir: created directory '$rootdir${packagedir}/$name'"
+        mkdir -p -- "$rootdir${_packagedir}/$name" || chkstatus_or_exit
+        echo "mkdir: created directory '$rootdir${_packagedir}/$name'"
     fi
 
     # Scan for possible conflicts, stop if arise
     if test "$opt_prune" != opt_prune
     then
         echo "=== Checking for possible conflicts ..."
-        if graft -i -n $graft_r -t "$targetdir" "${packagedir}/$name" 2>&1 | \
+        if graft -i -n $graft_r -t "$targetdir" "${_packagedir}/$name" 2>&1 | \
          grep ^CONFLICT
         then
             warn "" \
@@ -805,8 +807,8 @@ mode_install()
     # Ignore some signals up to completing the installation
     trap "" HUP INT QUIT ABRT TERM
 
-    echo "=== Decompressing $1 ..."
-    ( cd -- "$rootdir${packagedir}/$name" && tarlz -xf - ) < "$1"
+    echo "=== Decompressing package ..."
+    ( cd -- "$rootdir${_packagedir}/$name" && tarlz -xf - ) < "$1"
     chkstatus_or_exit 3
 
     # Transite package to Graft control
@@ -814,11 +816,11 @@ mode_install()
     # Remove objects (files, links or directories) from the target
     # directory that are in conflict with the package directory
     echo "=== Pruning any conflict ..."
-    graft -p -D -u $graft_r -t "$targetdir" "${packagedir}/$name"
+    graft -p -D -u $graft_r -t "$targetdir" "${_packagedir}/$name"
     chkstatus_or_exit 2
 
     echo "=== Enabling symbolic links ..."
-    graft -i -P $graft_v $graft_r -t "$targetdir" "${packagedir}/$name"
+    graft -i -P $graft_v $graft_r -t "$targetdir" "${_packagedir}/$name"
     chkstatus_or_exit 2
 
     # Avoid unnecessary runs coming from the upgrade mode,
@@ -827,9 +829,9 @@ mode_install()
     if test "$_isUpgrade" != _isUpgrade.on
     then
         # Show package description
-        if test -r "$rootdir${packagedir}/${name}/var/lib/qi/${name}.txt"
+        if test -r "$rootdir${_packagedir}/${name}/var/lib/qi/${name}.txt"
         then
-            awk '/^#/' "$rootdir${packagedir}/${name}/var/lib/qi/${name}.txt"
+            awk '/^#/' "$rootdir${_packagedir}/${name}/var/lib/qi/${name}.txt"
         elif test -r "${1}.txt"
         then
             # From external meta file (current directory)
@@ -839,22 +841,22 @@ mode_install()
         fi
 
         # Check and run the post-install script if exist
-        if test -r "$rootdir${packagedir}/${name}/var/lib/qi/${name}.sh"
+        if test -r "$rootdir${_packagedir}/${name}/var/lib/qi/${name}.sh"
         then
             echo "=== Running post-install script for \`${name}' ..."
             (
                 # Rely on 'targetdir' if 'rootdir' is empty
                 cd -- "${rootdir:=$targetdir}"/ && \
-                 . "$rootdir${packagedir}/${name}/var/lib/qi/${name}.sh"
+                 . "$rootdir${_packagedir}/${name}/var/lib/qi/${name}.sh"
             )
         fi
 
         # Check if there are declared packages for replacement
-        if test -r "$rootdir${packagedir}/${name}/var/lib/qi/${name}.replace"
+        if test -r "$rootdir${_packagedir}/${name}/var/lib/qi/${name}.replace"
         then
             while read -r line
             do
-                for replace in "$rootdir${packagedir}/$(pkgbase "$line")"_*
+                for replace in "$rootdir${_packagedir}/$(pkgbase "$line")"_*
                 do
                     if ! test -e "$replace"
                     then
@@ -882,9 +884,9 @@ mode_install()
                     graft -d -D -u $graft_r \
                      -t "$targetdir" "$replace" > /dev/null 2>&1
 
-                    rm -rf -- "$rootdir${packagedir}/$replace"
+                    rm -rf -- "$rootdir${_packagedir}/$replace"
                 done
-            done < "$rootdir${packagedir}/${name}/var/lib/qi/${name}.replace"
+            done < "$rootdir${_packagedir}/${name}/var/lib/qi/${name}.replace"
             unset line
         fi
     fi
@@ -893,7 +895,7 @@ mode_install()
     trap - HUP INT QUIT ABRT TERM
 
     # Remove used variables
-    unset name
+    unset name _packagedir
 
     echo ""
 }
@@ -936,7 +938,7 @@ mode_upgrade()
     incoming="$(_basename "$1" .tlz)"
 
     echo ""
-    echo "{%} Upgrading package \"${incoming}\" ..."
+    echo "{%} Upgrading package \`${incoming}' ..."
 
     # Check package pre-existence
     if test "$opt_force" != opt_force && \
@@ -959,8 +961,7 @@ mode_upgrade()
             warn \
              "Package name declared on the blacklist \"${incoming}\"."      \
              ""                                                             \
-             "  This package will be INSTALLED instead of being upgraded."  \
-             ""
+             "  This package will be INSTALLED instead of being upgraded."
              opt_prune=opt_prune mode_install "$1"
              return 0
             ;;
@@ -968,24 +969,15 @@ mode_upgrade()
     done
     unset item
 
-    # Prepare the package to install it in a temporary location
+    # Prepare the package to install it in a temporary but custom location
 
-    # Set random directory using packagedir as prefix and 'incoming' as suffix
+    # Set random directory under 'rootdir/packagedir' using 'incoming' as name
     PRVLOC=$(mktemp -dp "$rootdir${packagedir}" ${incoming}.XXXXXXXXXXXX) || exit 2
 
-    # Pre-install the package in the custom 'packagedir'
-
-    save_packagedir="$rootdir${packagedir}"
-    packagedir="$PRVLOC"
-
-    echo "=== Pre-installing package in a temporary location ..."
+    echo "=== Pre-installing package in temporary location ..."
     opt_prune=opt_prune		# Turn on prune operation.
-    _isUpgrade=_isUpgrade.on mode_install "$1" > /dev/null
+    _isUpgrade=_isUpgrade.on mode_install "$1" "$PRVLOC" > /dev/null
     _isUpgrade=_isUpgrade.off
-
-    # Restore variable before looking for old packages
-    packagedir=$save_packagedir
-    unset save_packagedir
 
     echo "=== Looking for installations under the same name ..."
     for long_name in "$rootdir${packagedir}/$(pkgbase "$incoming")"*
@@ -1060,8 +1052,8 @@ mode_extract()
 
     name="$(_basename "$1" .tlz)"
 
-    # Set random directory using 'name' as prefix
-    PRVDIR="${TMPDIR}/${name}.${RANDOM-0}$$"
+    # Set random directory under 'TMPDIR' using 'name'
+    PRVDIR=$(mktemp -dp "$TMPDIR" ${name}.XXXXXXXXXXXX) || exit 2
 
     # Trap to remove 'PRVDIR' on disruptions
     trap 'rm -rf -- "$PRVDIR"' HUP INT ABRT TERM
@@ -1072,7 +1064,7 @@ mode_extract()
     chmod 700 -- "$PRVDIR"
 
     echo ""
-    echo "--- Extracting package $name ..."
+    echo "--- Extracting package \`${name}' ..."
 
     ( umask 000 ; cd -- "$PRVDIR" && tarlz -xvf - ) < "$1"
     if test $? -ne 0
@@ -1243,7 +1235,7 @@ QI_WORKTREE=$worktree
 QI_TARDIR=$tardir
 QI_OUTDIR=$outdir
 
-### Parse modes and options
+### Parse commands and options
 
 _validate_mode()
 {
@@ -1301,6 +1293,10 @@ _validate_digit()
 while test $# -gt 0
 do
     case $1 in
+    warn)
+        _validate_mode warn
+        mode=mode_warn
+        ;;
     install)
         _validate_mode install
         readconfig
@@ -1595,8 +1591,7 @@ if test -n "$rootdir"
 then
     if test -d "$rootdir" && test "$rootdir" != /
     then
-        # Remove slash from the end
-        rootdir="${rootdir%/}"
+        rootdir="${rootdir%/}"	# Remove slash from the end.
 
         # A workaround for graft-2.13+.  The specified directory is
         # relative to the log file, we prepend it inside 'rootdir'
@@ -1613,6 +1608,7 @@ then
         warn "${PROGRAM}: Root directory \`${rootdir}' is not fully qualified"
         exit 4
     fi
+    readonly rootdir
     export rootdir
 fi
 
@@ -1622,7 +1618,7 @@ if test ! -d "$TMPDIR"
 then
     mkdir -p -- "$TMPDIR" || chkstatus_or_exit
 fi
-readonly TMPDIR
+readonly TMPDIR packagedir targetdir
 
 # Process each package or recipe provided on the command-line
 
