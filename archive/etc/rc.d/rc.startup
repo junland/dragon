@@ -74,7 +74,7 @@ fi
 
 # Initialize the Logical Volume Manager version 2
 
-if type lvm > /dev/null 2>&1
+if command -v lvm > /dev/null
 then
     echo "(LVM2) Scanning for new volume groups ..."
     modprobe -q dm-mod
@@ -114,19 +114,16 @@ then
         else
             if test $status -ge 4
             then
-                printf "%s\\n" \
+                printf '%s\n' \
                  "^ Return status = $status"                  \
                  ""                                           \
                  "A maintenance shell will be started ..."    \
                  "Refer to the file system-specific utility"  \
                  "and manual pages for correction." 1>&2
-                if type sulogin > /dev/null
-                then
-                    sulogin
-                else
+                sulogin || {
                     echo "Executing \`/bin/sh' as emergency shell ..."
                     /bin/sh -
-                fi
+                }
             fi
             echo "The system will be restarted now."
             umount -v -n -a -r
@@ -264,16 +261,16 @@ unset RC_HOSTNAME RC_DOMAINNAME
 
 echo "(Startup) Starting loopback device"
 
-if type ip > /dev/null 2>&1
+if command -v ip > /dev/null
 then
     ip addr del 127.0.0.1/8 dev lo 2> /dev/null
     ip addr add 127.0.0.1/8 dev lo brd + scope host
     ip link set lo up
-elif type ifconfig > /dev/null 2>&1
+elif command -v ifconfig > /dev/null
 then
     ifconfig lo up > /dev/null
 else
-    echo "WARNING: Could not find ip(8) or ifconfig(1)" 1>&2
+    echo "WARNING: Could not find ip(8) or ifconfig(1) commands." 1>&2
 fi
 
 # Initialize the random number generator, see random(4)
@@ -295,7 +292,7 @@ unset size ; chmod 600 -- /etc/random-seed
 
 # Configure ISA Plug-and-Play devices
 
-if type isapnp > /dev/null 2>&1 && type pnpdump > /dev/null 2>&1
+if command -v isapnp > /dev/null && command -v pnpdump > /dev/null
 then
     if test -e /etc/isapnp.conf
     then
