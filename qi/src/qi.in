@@ -149,14 +149,68 @@ fnmatch()
     esac
 }
 
-# A shell replacement for basename(1)
+# Shell replacement for external basename(1), dirname(1):
+# http://lists.gnu.org/archive/html/bug-bash/2002-02/msg00133.html
+
 _basename()
 {
-    _filename="${1##*/}"
+    fn_path=$1
+    fn_suffix=$2
 
-    printf '%s\n' "${_filename%$2}"
+    case $fn_path in
+    "")
+        return 0
+        ;;
+     *)
+        while test "${fn_path#${fn_path%?}}" = "/"
+        do
+            fn_path="${fn_path%/}"
+        done
 
-    unset _filename
+        case $fn_path in
+        "")
+            echo "/"
+            return 0
+            ;;
+         *)
+            fn_path="${fn_path##*/}"
+            ;;
+        esac
+        ;;
+    esac
+
+    if test "$fn_path" = "$fn_suffix"
+    then
+        echo "$fn_path"
+    else
+        echo "${fn_path%$fn_suffix}"
+    fi
+
+    unset fn_path fn_suffix
+}
+
+_dirname()
+{
+    fn_path=$1
+
+    while test "${fn_path%/}" != "$fn_path"
+    do
+        fn_path="${fn_path%/}"
+    done
+
+    case $fn_path in
+    "")
+        echo '/'
+        ;;
+    */*)
+        echo "${fn_path%/*}"
+        ;;
+    *)
+        echo '.'
+        ;;
+    esac
+
+    unset fn_path
 }
 
 chkstatus_or_exit()
@@ -239,7 +293,7 @@ mode_build()
 
     # Get working directory and base name of the recipe
 
-    CWD="$(dirname -- "$recipe")"
+    CWD="$(_dirname "$recipe")"
     recipe="$(_basename "$recipe")"
 
     # Check readability for load the recipe on success
@@ -649,7 +703,7 @@ mode_build()
 
 mode_create()
 {
-    directory="$(dirname -- "$1")"
+    directory="$(_dirname "$1")"
 
     # Perform sanity checks
 
@@ -711,7 +765,7 @@ mode_remove()
     then
         echo "=== Checking for possible conflicts ..."
         if graft -d -n $graft_r -t "$targetdir" "$expunge" 2>&1 | \
-         grep ^CONFLICT
+         grep "^CONFLICT"
         then
             warn "" \
              "    A conflict occurred during uninstallation;"  \
@@ -719,9 +773,6 @@ mode_remove()
             return 6;
         fi
     fi
-
-    # Ignore some signals up to completing the deinstallation
-    trap "" HUP INT QUIT ABRT TERM
 
     # Remove objects (files, links or directories) from the target
     # directory that are in conflict with the package directory
@@ -744,9 +795,6 @@ mode_remove()
             echo "removed directory: '${rootdir}$expunge'"
         fi
     fi
-
-    # Reset given signals
-    trap - HUP INT QUIT ABRT TERM
 
     # Remove used variables
     unset expunge
@@ -781,6 +829,7 @@ mode_install()
     chkstatus_or_exit 3
 
     # To accept random directory from the upgrade mode
+    _packagedir="$2"
     _packagedir="${_packagedir:=$packagedir}"
 
     # Create package directory using 'name'
@@ -795,7 +844,7 @@ mode_install()
     then
         echo "=== Checking for possible conflicts ..."
         if graft -i -n $graft_r -t "$targetdir" "${_packagedir}/$name" 2>&1 | \
-         grep ^CONFLICT
+         grep "^CONFLICT"
         then
             warn "" \
              "    A conflict occurred during installation;"  \
@@ -803,9 +852,6 @@ mode_install()
              return 6;
         fi
     fi
-
-    # Ignore some signals up to completing the installation
-    trap "" HUP INT QUIT ABRT TERM
 
     echo "=== Decompressing package ..."
     ( cd -- "$rootdir${_packagedir}/$name" && tarlz -xf - ) < "$1"
@@ -856,7 +902,7 @@ mode_install()
         then
             while read -r line
             do
-                for replace in "$rootdir${_packagedir}/$(pkgbase "$line")"_*
+                for replace in "$rootdir${_packagedir}/${line%%_*}"_*
                 do
                     if ! test -e "$replace"
                     then
@@ -890,9 +936,6 @@ mode_install()
             unset line
         fi
     fi
-
-    # Reset given signals
-    trap - HUP INT QUIT ABRT TERM
 
     # Remove used variables
     unset name _packagedir
@@ -951,6 +994,9 @@ mode_upgrade()
         return 6;
     fi
 
+    # Ignore some signals until the upgrade process is complete
+    trap "" HUP INT QUIT ABRT TERM
+
     # Check blacklisted packages
 
     echo "=== Checking blacklist ..."
@@ -980,21 +1026,24 @@ mode_upgrade()
     _isUpgrade=_isUpgrade.off
 
     echo "=== Looking for installations under the same name ..."
-    for long_name in "$rootdir${packagedir}/$(pkgbase "$incoming")"*
+    for long_name in "$rootdir${packagedir}/${incoming%%_*}"_*
     do
-        found="${long_name##*/}"
+        test -d "$long_name" || continue;
+        fnmatch "${long_name##*/}*" "$incoming" || continue;
 
         # The search for the package to be deleted
         # cannot be the same to the temporary location
-        test "$long_name" = "$PRVLOC" && continue;
+        if test "$long_name" != "$PRVLOC"
+        then
+            warn "${long_name} has been detected.  Proceeding to remove it..."
 
-        fnmatch "$(pkgbase "$found")*" "$incoming" || continue;
-        echo "${long_name} has been detected."
-
-        # A package directory will be preserved if --keep is given
-        mode_remove "$found" > /dev/null
+            # A package directory will be preserved if --keep is given
+            mode_remove "${long_name##*/}" > /dev/null
+        else
+            continue;
+        fi
     done
-    unset long_name found
+    unset long_name
 
     # Re-install the package removing the temporary location
 
@@ -1011,6 +1060,9 @@ mode_upgrade()
     unset incoming PRVLOC
 
     echo ""
+
+    # Reset given signals
+    trap - HUP INT QUIT ABRT TERM
 }
 
 mode_warn()
@@ -1085,11 +1137,6 @@ mode_extract()
 }
 
 ### Extra functions to be used during the modes
-
-pkgbase()
-{
-    printf '%s' "${1%%_*}"
-}
 
 unpack()
 {
@@ -1506,8 +1553,8 @@ fi
 \unalias -a;		# Unset all possible aliases.
 unset -f command;	# Ensure command is not a user function.
 
-for need in awk chmod cp dirname find fold graft grep mkdir \
-            mktemp rm rmdir sed sha256sum stat tarlz ; \
+for need in awk chmod cp find fold graft grep mkdir mktemp \
+            rm rmdir sed sha256sum stat tarlz ; \
 do
     if ! command -v $need > /dev/null
     then
@@ -1597,7 +1644,7 @@ then
         # relative to the log file, we prepend it inside 'rootdir'
 
         eval "$(graft -L)" ; GRAFT_LOGFILE="${GRAFT_LOGFILE:=/var/log/graft}"
-        mkdir -p -- "$rootdir$(dirname -- "$GRAFT_LOGFILE")" || chkstatus_or_exit
+        mkdir -p -- "$rootdir$(_dirname "$GRAFT_LOGFILE")" || chkstatus_or_exit
 
         # Compose 'rootdir' and log file option to be used with graft(1)
         graft_r="-r $rootdir -l $GRAFT_LOGFILE"
