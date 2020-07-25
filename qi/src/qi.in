@@ -32,78 +32,83 @@ export LC_ALL
 
 ### Functions
 
+# To make sure we print the help, avoiding cat(1)
+dog()
+{
+    while IFS= read -r line
+    do
+        printf '%s\n' "$line"
+    done
+}
+
 usage()
 {
-    printf '%s\n' \
-     "Qi is a simple but well-integrated package manager.  It can create,"                     \
-     "install, remove, and upgrade software packages.  Qi produces binary"                     \
-     "packages using recipes, which are files containing specific instructions"                \
-     "to build each package from source.  Qi can manage multiple packages"                     \
-     "under a single directory hierarchy.  This method allows to maintain a"                   \
-     "set of packages and multiple versions of them.  This means that Qi could"                \
-     "be used as the main package manager or complement the existing one."                     \
-     ""                                                                                        \
-     "Usage: $PROGRAM COMMAND [OPTIONS] [FILE]..."                                             \
-     ""                                                                                        \
-     "Defaults for the options are specified in brackets."                                     \
-     ""                                                                                        \
-     "List of commands:"                                                                       \
-     "  warn                     Warn about files that will be installed"                      \
-     "  install                  Install packages"                                             \
-     "  remove                   Remove packages"                                              \
-     "  upgrade                  Upgrade packages"                                             \
-     "  extract                  Extract packages for debugging purposes"                      \
-     "  create                   Create a .tlz package from directory"                         \
-     "  build                    Build packages using recipe names"                            \
-     "  order                    Resolve build order through .order files"                     \
-     ""                                                                                        \
-     "Options when installing, removing, or upgrading software packages:"                      \
-     "  -f, --force              Force upgrade of pre-existing packages"                       \
-     "  -k, --keep               Keep package directory when remove/upgrade"                   \
-     "  -p, --prune              Prune conflicts"                                              \
-     "  -P, --packagedir=<dir>   Set directory for package installations"                      \
-     "  -t, --targetdir=<dir>    Set target directory for symbolic links"                      \
-     "  -r, --rootdir=<dir>      Use the fully qualified named directory as"                   \
-     "                           the root directory for all qi operations"                     \
-     "                           Note: the target directory and the package"                   \
-     "                           directory will be relative to the specified"                  \
-     "                           directory, excepting the graft log file"                      \
-     ""                                                                                        \
-     "Options when building software packages using recipes:"                                  \
-     "  -a, --architecture       Set architecture name for the package [${arch}]"              \
-     "  -j, --jobs               Parallel jobs for the compiler [${jobs}]"                     \
-     "  -k, --keep               Keep \`\${srcdir}' or \`\${destdir}' when build"              \
-     "  -S, --skip-questions     Skip questions on completed recipes"                          \
-     "  -1, --increment          Increment release number (\`\${release}' + 1)"                \
-     "  -n, --no-package         Do not create a .tlz package"                                 \
-     "  -i, --install            Install package after the build"                              \
-     "  -u, --upgrade            Upgrade package after the build"                              \
-     "  -o, --outdir=<dir>       Where the packages produced will be written [${outdir}]"      \
-     "  -w, --worktree=<dir>     Where archives, patches, recipes are expected [${worktree}]"  \
-     "  -s, --sourcedir=<dir>    Where compressed sources will be found [${tardir}]"           \
-     ""                                                                                        \
-     "Other options:"                                                                          \
-     "  -N, --no-rc              Do not read the configuration file"                           \
-     "  -v, --verbose            Be verbose (an extra -v gives more) [${verbose}]"             \
-     "  -L, --show-location      Print default directory locations and exit"                   \
-     "  -h, --help               Display this help and exit"                                   \
-     "  -V, --version            Output version information and exit"                          \
-     ""                                                                                        \
-     "Some influential environment variables:"                                                 \
-     "  TMPDIR                   Temporary directory for sources [${TMPDIR}]"                  \
-     "  QICFLAGS                 C compiler flags [${QICFLAGS}]"                               \
-     "  QICXXFLAGS               C++ compiler flags [${QICXXFLAGS}]"                           \
-     "  QILDFLAGS                Linker flags [${QILDFLAGS}]"                                  \
-     ""                                                                                        \
-     "When FILE is -, read standard input."                                                    \
-     ""                                                                                        \
-     "Exit status: 0 for a normal exit, 1 for minor common errors (help usage,"                \
-     "support not available, etc), 2 to indicate a command execution error;"                   \
-     "3 for integrity check error on compressed files, 4 for empty, not"                       \
-     "regular, or expected files, 5 for empty or not defined variables,"                       \
-     "6 when a package already exist, 10 for network manager errors."                          \
-     ""                                                                                        \
-     "Qi home page: https://www.dragora.org"
+    dog <<-EOF
+Usage: $PROGRAM COMMAND [OPTIONS] [FILE]...
+A simple but well-integrated package manager.
+
+Defaults for the options are specified in brackets.
+
+List of commands:
+  warn                     Warn about files that will be installed
+  install                  Install packages
+  remove                   Remove packages
+  upgrade                  Upgrade packages
+  extract                  Extract packages for debugging purposes
+  create                   Create a .tlz package from directory
+  build                    Build packages using recipe names
+  order                    Resolve build order through .order files
+
+Options when installing, removing, or upgrading software packages:
+  -f, --force              Force upgrade of pre-existing packages
+  -k, --keep               Keep package directory when remove/upgrade
+  -p, --prune              Prune conflicts
+  -P, --packagedir=<dir>   Set directory for package installations
+  -t, --targetdir=<dir>    Set target directory for symbolic links
+  -r, --rootdir=<dir>      Use the fully qualified named directory as
+                           the root directory for all qi operations
+                           Note: the target directory and the package
+                           directory will be relative to the specified
+                           directory, excepting the graft log file
+
+Options when building software packages using recipes:
+  -a, --architecture       Set architecture name for the package [${arch}]
+  -j, --jobs               Parallel jobs for the compiler [${jobs}]
+  -k, --keep               Keep \${srcdir} or \${destdir} when build
+  -S, --skip-questions     Skip questions on completed recipes
+  -1, --increment          Increment release number (\${release} + 1)
+  -n, --no-package         Do not create a .tlz package
+  -i, --install            Install package after the build
+  -u, --upgrade            Upgrade package after the build
+  -o, --outdir=<dir>       Where the packages produced will be written
+                           [${outdir}]
+  -w, --worktree=<dir>     Where archives, patches, recipes are expected
+                           [${worktree}]
+  -s, --sourcedir=<dir>    Where compressed sources will be found [${tardir}]
+
+Other options:
+  -N, --no-rc              Do not read the configuration file
+  -v, --verbose            Be verbose (an extra -v gives more) [${verbose}]
+  -L, --show-location      Print default directory locations and exit
+  -h, --help               Display this help and exit
+  -V, --version            Output version information and exit
+
+Some influential environment variables:
+  TMPDIR                   Temporary directory for sources [${TMPDIR}]
+  QICFLAGS                 C compiler flags [${QICFLAGS}]
+  QICXXFLAGS               C++ compiler flags [${QICXXFLAGS}]
+  QILDFLAGS                Linker flags [${QILDFLAGS}]
+
+When FILE is -, read standard input.
+
+Exit status: 0 for a normal exit, 1 for minor common errors (help usage,
+support not available, etc), 2 to indicate a command execution error;
+3 for integrity check error on compressed files, 4 for empty, not
+regular, or expected files, 5 for empty or not defined variables,
+6 when a package already exist, 10 for network manager errors.
+
+Qi home page: https://www.dragora.org
+EOF
 }
 
 warn()
@@ -1483,6 +1488,7 @@ then
     usage
     exit 1
 fi
+unset -f dog usage
 
 # Program sanity check
 
