@@ -1,23 +1,52 @@
 # This file is part of the 'dragora-installer'.
 #
-# Purpose: Swap formatter.
+# Purpose: Swap detector, formatter.
 
 # A function to produce the fstab entry for the physical swap partition
 add_fstabEntry()
 {
-    printf "%-43s %-14s %-12s %-16s %-3s %s\\n" \
-     "$device" "swap" "swap" "defaults" "0" "0" > "${SUBTMPDIR}/fstab"
+    printf '%-43s %-14s %-12s %-16s %-3s %s\n' \
+     "$1" "swap" "swap" "defaults" "0" "0" >> "${SUBTMPDIR}/fstab"
 }
 
-list="$(fdisk -l 2> /dev/null | grep -m 1 swap)" || true
-device="${list%% *}"
+# Get and print device size
+get_size()
+{
+    lsblk --noheadings --nodeps --output SIZE "$1"
+}
 
-# Check swap partition
+# Add device names to the checklist (to be shown)
+set_checklist()
+{
+    while read -r line
+    do
+        echo "\"${line}\" \"$(get_size $line)\" ON \\" >> "$2"
+    done < "$1"
 
-if test ! -b "$device"
+    # End of
+    echo " 2> \${SUBTMPDIR}/$3" >> "$2"
+}
+
+slowcmd()
+{
+    $1 2>&1 > "$2"
+    (
+        while read -r text
+        do
+            printf '%s\n' "$text"
+            sleep 1;
+        done < "$2"
+    )
+}
+
+### Detection, addition of active and inactive swap devices
+
+swaplist="$(blkid -s TYPE | awk -F ":" '/swap/{ print $1 }')"
+
+if test -z "$swaplist"
 then
     dialog --colors \
-     --backtitle "\\ZbMaking Swap partition" \
+     --backtitle "\\ZbSwap detection" \
      --title "NO SWAP PARTITION DETECTED" \
      --yesno \
 "No swap partition has been detected.\\n\\n\
@@ -33,109 +62,169 @@ required.\\n\\n\
 
 Would you like to proceed without a swap partition?\\n" 17 57 || \
     {
-        printf "%s\\n" "" \
-         "Please create a swap partition using fdisk(8) or cfdisk(8)." \
-         "Then re-run the installer to give it the proper formatting." \
-         "" \
-         "You can also use mkswap(8) and swapon(8) to format and" \
+        printf '%s\n' "" \
+         "Please create a swap partition using fdisk(8) or cfdisk(8)."  \
+         "Then re-run the installer to give it the proper formatting."  \
+         ""                                                             \
+         "You can also use mkswap(8) and swapon(8) to format and"       \
          "activate the partition in advance."
         exit 99;
     }
+    unset add_fstabEntry get_size set_checklist swaplist
     return 0
 fi
 
-if grep -q "^${device}" /proc/swaps
-then
-    dialog --colors \
-     --backtitle "\\ZbActive swap partition: $device" \
-     --title "SWAP PARTITION $device IS ACTIVE" \
-     --msgbox \
-"An active swap partition has been detected.\\n\\n\
-It will be added to the file system representation table\\n\
-(/etc/fstab) during installation." 9 61 || return $?
-    add_fstabEntry
-else
-    # Offer format possibility
-
-    size="$(echo "$list" | awk '{ print $5 }')"
-    unset list
-
-    dialog --colors \
-     --backtitle "\\ZbPartitions: Swap format" \
-     --title "SWAP PARTITION DETECTED" \
-     --ok-label "Format" \
-     --cancel-label "Ignore & Continue" \
-     --checklist \
-"A swap partition has been detected.\\n\\n\
-We offer the possibility to format it properly,\\n\
-as well as you can simply ignore this part and\\n\
-continue if you previously formatted it:\\n\\n\
-Device name: $device [${size}]" 14 52 1 \
-"$device"    "Check for bad blocks (slow)" off \
-    2> "${SUBTMPDIR}/return-MakeSwap" || \
-    {
-        dialog --colors \
-         --backtitle "\\ZbPartitions: Swap partition activation" \
-         --title "SWAP PARTITION $device" --ok-label "Continue" \
-         --prgbox "Activating swap partition..." "swapon -v -f $device" $(( LINES / 2 )) $COLUMNS
-
-        if swapon -s | grep -q "$device"
-        then
-            add_fstabEntry
-        else
-            dialog --colors \
-             --backtitle "\\ZbPartitions: Swap partition activation" \
-             --title "SWAP PARTITION $device" \
-             --msgbox \
-"An error occurred when trying to activate the swap partition.
-This may require manual intervention of the problem.\\n\\n\
-
-It is safe to continue with the installation if you consider \
-the swap partition non-crucial.  Otherwise press \\Z3[Esc]\\Zn to abort \
-and review the problem.  Once resolved, re-run the installer." 11 66 || return $?
-        fi
-
-        unset add_fstabEntry device size
-        return 0;
-    }
-    unset size	# Next, we're not using it.
-
-    # Give format activating swap partition
-
-    if test -s "${SUBTMPDIR}/return-MakeSwap"
+rm -f "${SUBTMPDIR}/MakeSwap_active.list" \
+      "${SUBTMPDIR}/MakeSwap_inactive.list"
+for device in $swaplist
+do
+    if swapon --noheadings --show=NAME | grep -q "$device"
     then
-        dialog --colors \
-         --backtitle "\\ZbPartitions: Formatting and checking swap partition ${device}" \
-         --title "SWAP PARTITION $device" \
-         --prgbox "mkswap -c $device" $(( LINES / 2 )) $COLUMNS
+        echo "$device" >> "${SUBTMPDIR}/MakeSwap_active.list"
     else
-        dialog --colors \
-         --backtitle "\\ZbPartitions: Formatting swap partition ${device}" \
-         --title "SWAP PARTITION $device" \
-         --prgbox "mkswap $device" $(( LINES / 2 )) $COLUMNS
+        echo "$device" >> "${SUBTMPDIR}/MakeSwap_inactive.list"
     fi
+done
+unset -v device swaplist
 
-    dialog --colors \
-     --backtitle "\\ZbPartitions: Swap partition activation" \
-     --title "SWAP PARTITION $device" --ok-label "Continue" \
-     --prgbox "Activating swap partition..." "swapon -v -f $device" $(( LINES / 2 )) $COLUMNS
+### ^ End of 'Detection, addition of active and inactive swap devices'
 
-    if swapon -s | grep -q "$device"
+
+### Check for active swap devices
+
+if test -s "${SUBTMPDIR}/MakeSwap_active.list"
+then
+    # Compose output file to be shown
+
+    printf '%s\n' \
+     'dialog --colors \'                                           \
+     ' --backtitle "\\ZbActive Swap devices" \'                    \
+     ' --title "ACTIVE SWAP DEVICES" \'                            \
+     ' --nocancel --cr-wrap --checklist \'                         \
+'"The following swap devices have already been activated:'         \
+''                                                                 \
+'By default all partitions are marked to be added to the'          \
+'file system representation table (/etc/fstab) in order to'        \
+'be loaded at boot time.  You can deselect the partition(s)'       \
+'you do not want to add or load at system startup using'           \
+'the \\Z3[Space]\\Zn key, then press \\Z3[Enter]\Zn to continue."  \
+16 65 3 \' > "${SUBTMPDIR}/MakeSwap_active"
+
+    set_checklist "${SUBTMPDIR}/MakeSwap_active.list" \
+     "${SUBTMPDIR}/MakeSwap_active" return-MakeSwap_active
+fi
+
+if test -s "${SUBTMPDIR}/MakeSwap_active"
+then
+    . "${SUBTMPDIR}/MakeSwap_active"
+
+    if test -s "${SUBTMPDIR}/return-MakeSwap_active"
     then
-        add_fstabEntry
-    else
-        dialog --colors \
-         --backtitle "\\ZbPartitions: Swap partition activation" \
-         --title "SWAP PARTITION $device" \
-         --msgbox \
-"An error occurred when trying to activate the swap partition.
-This may require manual intervention of the problem.\\n\\n\
+        # Append new line for reading
+        echo "" >> "${SUBTMPDIR}/return-MakeSwap_active"
 
-It is safe to continue with the installation if you consider \
-the swap partition non-crucial.  Otherwise press \\Z3[Esc]\\Zn to abort \
-and review the problem.  Once resolved, re-run the installer." 11 66
+        IFS= read -r REPLY < "${SUBTMPDIR}/return-MakeSwap_active" || exit 2;
+
+        for device in $REPLY
+        do
+            add_fstabEntry "$device"
+        done
+
+        unset -v REPLY device
     fi
 fi
 
-unset add_fstabEntry list device size
+### ^ End Of 'Check for active swap devices'
+
+
+### Check for inactive swap devices
+
+if test -s "${SUBTMPDIR}/MakeSwap_inactive.list"
+then
+    # Compose output file to be shown
+
+    printf '%s\n' \
+     'dialog --colors \'                                           \
+     ' --backtitle "\\ZbInactive Swap devices" \'                  \
+     ' --title "INACTIVE SWAP DEVICES" \'                          \
+     ' --nocancel --cr-wrap --checklist \'                         \
+'"The following swap partitions has been detected:'                \
+''                                                                 \
+'By default all partitions found will be formatted and added'      \
+'to the file system representation table (/etc/fstab) in order'    \
+'to be loaded at boot time.  You can deselect the partition(s)'    \
+'you do not want to format or load at system startup using'        \
+'the \\Z3[Space]\\Zn key, then press \\Z3[Enter]\Zn to continue."  \
+16 65 3 \' > "${SUBTMPDIR}/MakeSwap_inactive"
+
+    set_checklist "${SUBTMPDIR}/MakeSwap_inactive.list" \
+     "${SUBTMPDIR}/MakeSwap_inactive" return-MakeSwap_inactive
+fi
+
+if test -s "${SUBTMPDIR}/MakeSwap_inactive"
+then
+    . "${SUBTMPDIR}/MakeSwap_inactive"
+
+    if test -s "${SUBTMPDIR}/return-MakeSwap_inactive"
+    then
+        # Append new line for reading
+        echo "" >> "${SUBTMPDIR}/return-MakeSwap_inactive"
+
+        IFS= read -r REPLY < "${SUBTMPDIR}/return-MakeSwap_inactive" || exit 2;
+
+        for device in $REPLY
+        do
+            # Set up temporary random files related to the menu
+            tempfile="${SUBTMPDIR}/return_MakeSwap_format${RANDOM-0}$$"
+            progressfile="${tempfile}.progress"
+
+            dialog --colors \
+             --backtitle "\\ZbInactive Swap device"  \
+             --title "SWAP FORMAT FOR $device"       \
+             --ok-label "Format"                     \
+             --cancel-label "Ignore & Continue"      \
+             --checklist                             \
+"A swap device has been chosen.\\n\\n\
+We offer the possibility to format it properly,\\n\
+as well as you can simply ignore this part and\\n\
+continue if you previously formatted it:\\n\\n\
+Device name: $device [$(get_size $device)]" 14 52 1 \
+"$device"    "Check for bad blocks (slow)" off \
+            2> $tempfile || continue;
+
+            if test -s "$tempfile"
+            then
+                slowcmd "mkswap -c $device" "$progressfile" | \
+                 dialog --colors \
+                  --backtitle "\\ZbSwap format for $device" \
+                  --title "PROGRESS" \
+                  --sleep 3 --progressbox \
+"Formatting $device - Checking for bad blocks..." $(( LINES / 2 )) $COLUMNS
+            else
+                slowcmd "mkswap $device" "$progressfile" | \
+                 dialog --colors \
+                  --backtitle "\\ZbSwap format for $device" \
+                  --title "PROGRESS" \
+                  --sleep 3 --progressbox \
+"Formatting $device - No bad blocks check." $(( LINES / 2 )) $COLUMNS
+            fi
+
+            # Activate device, add entry for fstab
+
+            slowcmd "swapon -v -f $device" "$progressfile" | \
+             dialog --colors \
+              --backtitle "\\ZbSwap activation for $device" \
+              --title "PROGRESS" \
+              --sleep 3 --progressbox \
+"Activating swap device $device ..." $(( LINES / 2 )) $COLUMNS
+            add_fstabEntry "$device"
+        done
+
+        unset -v REPLY device tempfile progressfile
+    fi
+fi
+
+### ^ End of 'Check for inactive swap devices'
+
+unset -f add_fstabEntry get_size set_checklist
 
