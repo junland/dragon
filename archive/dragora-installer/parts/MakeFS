@@ -10,12 +10,17 @@ makeMenu()
     do
         test -n "$line" || continue
 
-        device="${line%% *}"						# Device name.
-        size="$(echo "$line" | tr -d '[*+]' | awk '{ print $5 }')"	# Size field.
+        # Get device name and size
+
+        device="${line%% *}"
+        size="$(lsblk --noheadings --nodeps --output SIZE "$device")"
 
         # Get device mount point and file system type
-        devpoint="$(awk -v patr="$device" '$1 == patr { print $2 }' "${SUBTMPDIR}/fstab" 2> /dev/null)"
-        formatfs="$(awk -v patr="$device" '$1 == patr { print $3 }' "${SUBTMPDIR}/fstab" 2> /dev/null)"
+
+        devpoint="$(awk -v patr="$device" '$1 == patr { print $2 }' \
+                     "${SUBTMPDIR}/fstab" 2> /dev/null)"
+        formatfs="$(awk -v patr="$device" '$1 == patr { print $3 }' \
+                     "${SUBTMPDIR}/fstab" 2> /dev/null)"
 
         if test -z "$formatfs" || test "$formatfs" = defaults
         then
@@ -23,10 +28,13 @@ makeMenu()
         fi
 
         # Write entry to be showed on the MakeFS menu
+
         echo "\"${device}\" \"${formatfs:-Linux} ${size} $devpoint\" \\" \
          >> "${SUBTMPDIR}/MakeFS"
+
     done < "${SUBTMPDIR}/partitions"
 
+    # End of
     echo ' 2> "${SUBTMPDIR}/return-MakeFS" || _code=$?' \
      >> "${SUBTMPDIR}/MakeFS"
 }
@@ -73,7 +81,7 @@ this blank, any previous entries will be deleted:" 19 63 \
 
         # Write fstab entry
 
-        printf "%-43s %-14s %-12s %-16s %-3s %s\\n" \
+        printf '%-43s %-14s %-12s %-16s %-3s %s\n' \
          "$1" "$mntpoint" "$formatfs" "defaults" "1" "${fs_passno}" \
          >> "${SUBTMPDIR}/fstab"
 
