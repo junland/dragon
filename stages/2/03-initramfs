@@ -19,7 +19,8 @@ cd -- "${rootdir}/initrd"
 
 # Create essential directories for the image
 
-mkdir -p -m 755 proc sys dev UP
+mkdir -p proc sys dev UP
+chmod 755 proc sys dev UP
 
 cat << "EOF" > init
 #! /bin/busybox hush
@@ -43,7 +44,8 @@ set -x
      /bin/busybox mount -n -r /dev/disk/by-label/Dragora-@ARCH@ /UP/cdrom
  }
 # Be the system or be dead!
-/bin/busybox mount -n -r -o loop -t squashfs /UP/cdrom/dragora.sfs /UP/squash || /bin/busybox sleep 3323;
+/bin/busybox mount -n -r -o loop -t squashfs \
+ /UP/cdrom/dragora.sfs /UP/squash || /bin/busybox sleep 3323;
 
 # Merge Squashfs with OverlayFS
 /bin/busybox mount -n \
