@@ -15,11 +15,11 @@
 # limitations under the License.
 
 program=tarlz
-version=0.16
+version=0.17
 release=1
 
-# Set 'outdir' for a nice and well-organized output directory
-outdir="${outdir}/${arch}/tools"
+# Define a category for the output of the package name
+pkgcategory=tools
 
 tarname=${program}-${version}.tar.lz
 
@@ -63,12 +63,13 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     ./configure CXXFLAGS+="$QICXXFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --infodir=$infodir \
      --mandir=$mandir \
-     --build="$(cc -dumpmachine)"
+     --build="$(gcc -dumpmachine)"
 
-    make -j${jobs}
+    make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
     # Compress info documents and manual page

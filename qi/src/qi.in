@@ -32,22 +32,11 @@ export LC_ALL
 
 ### Functions
 
-# To make sure we print the help, avoiding cat(1)
-dog()
-{
-    while IFS= read -r line
-    do
-        printf '%s\n' "$line"
-    done
-}
-
 usage()
 {
-    dog <<-EOF
-Usage: $PROGRAM COMMAND [OPTIONS] [FILE]...
-A simple but well-integrated package manager.
-
-Defaults for the options are specified in brackets.
+    printf '%s' \
+"Usage: $PROGRAM COMMAND [OPTIONS] [FILE]...
+"'A simple but well-integrated package manager.
 
 List of commands:
   warn                     Warn about files that will be installed
@@ -72,32 +61,31 @@ Options when installing, removing, or upgrading software packages:
                            directory, excepting the graft log file
 
 Options when building software packages using recipes:
-  -a, --architecture       Set architecture name for the package [${arch}]
-  -j, --jobs               Parallel jobs for the compiler [${jobs}]
-  -k, --keep               Keep \${srcdir} or \${destdir} when build
+  -a, --architecture       Set architecture name for the package
+  -j, --jobs               Parallel jobs for the compiler
+  -k, --keep               Keep ${srcdir} or ${destdir} when build
   -S, --skip-questions     Skip questions on completed recipes
-  -1, --increment          Increment release number (\${release} + 1)
+  -1, --increment          Increment release number (${release} + 1)
   -n, --no-package         Do not create a .tlz package
   -i, --install            Install package after the build
   -u, --upgrade            Upgrade package after the build
   -o, --outdir=<dir>       Where the packages produced will be written
-                           [${outdir}]
   -w, --worktree=<dir>     Where archives, patches, recipes are expected
-                           [${worktree}]
-  -s, --sourcedir=<dir>    Where compressed sources will be found [${tardir}]
+  -s, --sourcedir=<dir>    Where compressed sources will be found
 
 Other options:
   -N, --no-rc              Do not read the configuration file
-  -v, --verbose            Be verbose (an extra -v gives more) [${verbose}]
+  -v, --verbose            Be verbose (an extra -v gives more)
   -L, --show-location      Print default directory locations and exit
   -h, --help               Display this help and exit
   -V, --version            Output version information and exit
 
 Some influential environment variables:
-  TMPDIR                   Temporary directory for sources [${TMPDIR}]
-  QICFLAGS                 C compiler flags [${QICFLAGS}]
-  QICXXFLAGS               C++ compiler flags [${QICXXFLAGS}]
-  QILDFLAGS                Linker flags [${QILDFLAGS}]
+  TMPDIR                   Temporary directory for sources
+  QICFLAGS                 C compiler flags
+  QICXXFLAGS               C++ compiler flags
+  QILDFLAGS                Linker flags
+  SOURCE_DATE_EPOCH        Last modification time for created packages
 
 When FILE is -, read standard input.
 
@@ -108,7 +96,7 @@ regular, or expected files, 5 for empty or not defined variables,
 6 when a package already exist, 10 for network manager errors.
 
 Qi home page: https://www.dragora.org
-EOF
+'
 }
 
 warn()
@@ -164,7 +152,7 @@ chkstatus_or_exit()
         exit "${1-2}";	# If not given, defaults to 2
     fi
 
-    unset status
+    unset -v status
 }
 
 readconfig()
@@ -188,10 +176,10 @@ readconfig()
 
 mode_build()
 {
-    echo ""
-    echo "{@} Building \"${1}\" ..."
-
     recipe=$1
+
+    echo ""
+    echo "{@} Building \"${recipe}\" ..."
 
     # A recipe is any valid regular file.  Qi sets priorities for reading a
     # recipe, the order in which qi looks for a recipe is:
@@ -252,9 +240,10 @@ mode_build()
     # Unset special variables that can only be predefined in
     # the recipe and does not come from '${sysconfdir}/qirc'
 
-    unset srcdir destdir pkgname pkgversion pkgcategory program version release \
-          fetch description homepage license replace full_pkgname \
-          CFLAGS CXXFLAGS LDFLAGS
+    unset -v \
+     srcdir destdir pkgname pkgversion pkgcategory program version release \
+     fetch description homepage license replace full_pkgname \
+     CFLAGS CXXFLAGS LDFLAGS
 
     # The following variables must be restored, later
     save_arch="${save_arch:=$arch}"
@@ -391,10 +380,10 @@ mode_build()
                 case $ANSWER in
                 1*)
                     echo "$ANSWER" > /dev/tty
-                    unset ANSWER
+                    unset -v ANSWER
                     ;;
                 3*)
-                    unset ANSWER
+                    unset -v ANSWER
                     echo "=== Building UNPROCESSED/MODIFIED recipes ..." > /dev/tty
                     echo ""
                     opt_skipqsts=opt_skipqsts
@@ -402,7 +391,7 @@ mode_build()
                     return 0
                     ;;
                 *)
-                    unset ANSWER
+                    unset -v ANSWER
                     echo "Recipe for '${full_pkgname}.tlz':  Cancelled." > /dev/tty
                     echo ""
                     return 0
@@ -462,7 +451,7 @@ mode_build()
                 exit 4
             esac
         done
-        unset origin _source
+        unset -v origin _source
     else
         warn "${recipe}: The variable 'fetch' is empty."
     fi
@@ -517,7 +506,7 @@ mode_build()
 
     echo "=== Running build() function ..."
     build
-    unset build
+    unset -f build
 
     # Turn off possible shell flags coming from the recipe
 
@@ -575,20 +564,20 @@ mode_build()
              "=== The following package names has been declared for replacement:" \
              "$replace"
 
-            rm -f "${destdir}/var/lib/qi/${full_pkgname}.replace"
+            : > "${destdir}/var/lib/qi/${full_pkgname}.replace"
             for item in $replace
             do
                 printf '%s\n' "$replace" >> \
                  "${destdir}/var/lib/qi/${full_pkgname}.replace"
             done
-            unset item
+            unset -v item
         fi
 
         # Create (external) meta file for package information,
         # make a copy of it for the package database
         echo "=== Creating meta file ${full_pkgname}.tlz.txt ..."
         do_meta > "${outdir}/${full_pkgname}.tlz.txt" || chkstatus_or_exit
-        cp -p     "${outdir}/${full_pkgname}.tlz.txt" \
+        cp -p "${outdir}/${full_pkgname}.tlz.txt" \
           "${destdir}/var/lib/qi/${full_pkgname}.txt" || chkstatus_or_exit
 
         # Produce the package
@@ -667,8 +656,16 @@ mode_create()
         exit 4
     fi
 
-    ( umask 022 ; tarlz --solid -9 -cvf - -- * ) > "${directory}/$name"
+    # Pass extra options for tarlz(1)
+    if test -n "$SOURCE_DATE_EPOCH"
+    then
+        tarlz_opts="--mtime=@${SOURCE_DATE_EPOCH}"
+    fi
+
+    ( umask 022 ; tarlz --solid -9 $tarlz_opts -cvf - -- * ) \
+     > "${directory}/$name"
     chkstatus_or_exit 3
+    unset -v tarlz_opts
 
     ( cd -- "$directory" && sha256sum "$name" > "${name}.sha256" )
     chkstatus_or_exit 4
@@ -676,7 +673,7 @@ mode_create()
     echo "{#} Package name \"${name}\" created on \`${directory}'."
 
     # Remove used variables
-    unset directory name
+    unset -v directory name
 
     echo ""
 }
@@ -738,16 +735,13 @@ mode_remove()
     fi
 
     # Remove used variables
-    unset expunge
+    unset -v expunge
 
     echo ""
 }
 
 mode_install()
 {
-    echo ""
-    echo ">>> Installing package \`${1}' ..."
-
     # Complain if the package cannot be well-read
 
     is_readable "$1" || exit 4
@@ -764,6 +758,9 @@ mode_install()
 
     # Get the filename
     name="$(basename -- "$1" .tlz)"
+
+    echo ""
+    echo ">>> Installing package \`${name}' ..."
 
     echo "=== Checking tarball integrity ..."
     tarlz --missing-crc -tf "$1" > /dev/null
@@ -795,7 +792,7 @@ mode_install()
     fi
 
     echo "=== Decompressing package ..."
-    ( cd -- "$rootdir${_packagedir}/$name" && tarlz -xf - ) < "$1"
+    ( cd -- "$rootdir${_packagedir}/$name" && tarlz -xpf - ) < "$1"
     chkstatus_or_exit 3
 
     # Transite package to Graft control
@@ -874,12 +871,11 @@ mode_install()
                     rm -rf -- "$rootdir${_packagedir}/$replace"
                 done
             done < "$rootdir${_packagedir}/${name}/var/lib/qi/${name}.replace"
-            unset line
         fi
     fi
 
     # Remove used variables
-    unset name _packagedir
+    unset -v name _packagedir
 
     echo ""
 }
@@ -954,7 +950,7 @@ mode_upgrade()
             ;;
         esac
     done
-    unset item
+    unset -v item
 
     # Prepare the package to install it in a temporary but custom location
 
@@ -984,7 +980,7 @@ mode_upgrade()
             continue;
         fi
     done
-    unset long_name
+    unset -v long_name
 
     # Re-install the package removing the temporary location
 
@@ -998,7 +994,7 @@ mode_upgrade()
     echo "{%} Upgraded from \"${1}\"."
 
     # Remove remaining variables
-    unset incoming PRVLOC
+    unset -v incoming PRVLOC
 
     echo ""
 
@@ -1074,7 +1070,7 @@ mode_extract()
     trap - HUP INT ABRT TERM
 
     # Remove used variables
-    unset name PRVDIR
+    unset -v name PRVDIR
 }
 
 ### Extra functions to be used during the modes
@@ -1144,7 +1140,7 @@ unpack()
             exit 1
         esac
     done
-    unset file
+    unset -v file
 }
 
 do_meta()
@@ -1155,25 +1151,24 @@ do_meta()
     # the '#' character and a space is added as prefix to conform
     # the 80 columns in total
 
-    cat << EOF
-$(printf '%s\n' "$description" | fold -w 78 | awk '$0="# " $0')
-
-QICFLAGS="$QICFLAGS"
-QICXXFLAGS="$QICXXFLAGS"
-QILDFLAGS="$QILDFLAGS"
+    printf '%s\n' "$description" | fold -w 78 | awk '$0="# " $0'
+    printf '%s' \
+"
+QICFLAGS=\"$QICFLAGS\"
+QICXXFLAGS=\"$QICXXFLAGS\"
+QILDFLAGS=\"$QILDFLAGS\"
 pkgname=$pkgname
 pkgversion=$pkgversion
 arch=$arch
 release=$release
-pkgcategory="${pkgcategory#@*}"
+pkgcategory=\"${pkgcategory#@*}\"
 full_pkgname=$full_pkgname
-blurb="$(echo "$description" | sed -e '/^$/d;2q')"
-homepage="$homepage"
-license="$license"
-fetch="$fetch"
-replace="$replace"
-
-EOF
+blurb=\"$(printf '%s\n' "$description" | sed -e '/^$/d;2q')\"
+homepage=\"$homepage\"
+license=\"$license\"
+fetch=\"$fetch\"
+replace=\"$replace\"
+"
 }
 
 ### Default values
@@ -1202,10 +1197,10 @@ graft_r=""
 _isUpgrade=_isUpgrade.off
 keep_srcdir=""
 keep_destdir=""
-TMPDIR="${TMPDIR:=/usr/src/qi/build}"
-QICFLAGS="${QICFLAGS:=-g0 -Os}"
-QICXXFLAGS="${QICXXFLAGS:=-g0 -Os}"
-QILDFLAGS="${QILDFLAGS:=-s}"
+TMPDIR="${TMPDIR:-/usr/src/qi/build}"
+QICFLAGS="${QICFLAGS:--g0 -Os}"
+QICXXFLAGS="${QICXXFLAGS:--g0 -Os}"
+QILDFLAGS="${QILDFLAGS:--s}"
 worktree=/usr/src/qi
 tardir=${worktree}/sources
 outdir=/var/cache/qi/packages
@@ -1275,7 +1270,7 @@ _validate_digit()
         ;;
     esac
 
-    unset name
+    unset -v name
 }
 
 while test $# -gt 0
@@ -1480,7 +1475,7 @@ do
     esac
     shift
 done
-unset _validate_mode _validate_option _validate_directory _validate_digit
+unset -f _validate_mode _validate_option _validate_directory _validate_digit
 
 # When there are no arguments, show the help
 if test $# -eq 0
@@ -1488,7 +1483,7 @@ then
     usage
     exit 1
 fi
-unset -f dog usage
+unset -f usage
 
 # Program sanity check
 
@@ -1504,7 +1499,7 @@ do
         exit 2
     fi
 done
-unset need
+unset -v need
 
 # Set verbosity level/flag
 
@@ -1539,7 +1534,7 @@ then
         set -- "$@" "$input"
     done
 fi
-unset readstdin
+unset -v readstdin
 
 if test -z "$mode"
 then
@@ -1592,7 +1587,7 @@ then
         graft_r="-r $rootdir -l $GRAFT_LOGFILE"
 
         # Unset variables coming from eval
-        unset GRAFT_PERL GRAFT_LOGFILE GRAFT_TARGETDIR GRAFT_PACKAGEDIR
+        unset -v GRAFT_PERL GRAFT_LOGFILE GRAFT_TARGETDIR GRAFT_PACKAGEDIR
     else
         warn "${PROGRAM}: Root directory \`${rootdir}' is not fully qualified"
         exit 4

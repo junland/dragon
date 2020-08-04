@@ -1,6 +1,6 @@
 # Build recipe for less.
 #
-# Copyright (c) 2016-2018, 2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2019 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@ program=less
 version=551
 release=1
 
-# Set 'outdir' for a nice and well-organized output directory
-outdir="${outdir}/${arch}/tools"
+# Define a category for the output of the package name
+pkgcategory=tools
 
 tarname=${program}-${version}.tar.gz
 
@@ -57,7 +57,7 @@ build()
      --mandir=$mandir \
      --with-regex=pcre \
      --with-secure \
-     --build="$(cc -dumpmachine)"
+     --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
@@ -91,6 +91,10 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
 }
 
