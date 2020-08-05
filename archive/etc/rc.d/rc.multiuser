@@ -21,77 +21,93 @@ IFS='
  	'
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
 
-# X11-related database
+### X11-related database
 
 echo "(Startup) Updating X11 database (X.Org)"
 
 echo "X font index cache, if needed ..."
-if type mkfontscale > /dev/null
+if command -v mkfontscale > /dev/null
 then
     for directory in /usr/share/fonts/X11/*
     do
         if test ! -e "${directory}/fonts.dir"
         then
-            echo "Using \`mkfontscale' for missing fonts.dir at $directory"
+            echo "Using \`mkfontscale' for missing fonts.dir at $directory" 1>&2
             mkfontscale -b -s -l "$directory" && mkfontscale "$directory"
         fi
     done
-    unset directory
+    unset -v directory
 fi
 
-echo "fontconfig cache: renice --priority 19 fc-cache --system-only /usr/share/fonts/X11"
-if type fc-cache > /dev/null
+echo "fontconfig cache: fc-cache --system-only /usr/share/fonts/X11 &"
+if command -v fc-cache > /dev/null
 then
-    renice --priority 19 fc-cache --system-only /usr/share/fonts/X11
+    fc-cache --system-only /usr/share/fonts/X11 &
+else
+    echo "Could not find fc-cache(1)" 1>&2
 fi
 
 echo "GTK+-2.0 module(s) cache: gtk-query-immodules-2.0 --update-cache &"
-if type gtk-query-immodules-2.0 > /dev/null
+if command -v gtk-query-immodules-2.0 > /dev/null
 then
     gtk-query-immodules-2.0 --update-cache &
+else
+    echo "Could not find gtk-query-immodules-2.0" 1>&2
 fi
 echo "GTK+-3.0 module(s) cache: gtk-query-immodules-3.0 --update-cache &"
-if type gtk-query-immodules-3.0 > /dev/null
+if command -v gtk-query-immodules-3.0 > /dev/null
 then
     gtk-query-immodules-3.0 --update-cache &
+else
+    echo "Could not find gtk-query-immodules-3.0" 1>&2
 fi
 
 echo "GDK pixbuffer loaders: gdk-pixbuf-query-loaders --update-cache &"
-if type gdk-pixbuf-query-loaders > /dev/null
+if command -v gdk-pixbuf-query-loaders > /dev/null
 then
     gdk-pixbuf-query-loaders --update-cache &
+else
+    echo "Could not find gdk-pixbuf-query-loaders(1)" 1>&2
 fi
 
-if test -d /usr/lib/gio/modules && type gio-querymodules > /dev/null
+if command -v gio-querymodules > /dev/null
 then
     echo "GIO module(s) cache: gio-querymodules /usr/lib/gio/modules &"
     gio-querymodules /usr/lib/gio/modules &
+else
+    echo "Could not find gio-querymodules(1)" 1>&2
 fi
 
 echo "GLIB schemas: glib-compile-schemas /usr/local/share/glib* /usr/share/glib*"
-if type glib-compile-schemas > /dev/null
+if command -v glib-compile-schemas > /dev/null
 then
     for directory in /usr/local/share/glib* /usr/share/glib*
     do
         test -d "$directory" || continue;
         glib-compile-schemas "${directory}"/schemas
     done
-    unset directory
+    unset -v directory
+else
+    echo "Could not find glib-compile-schemas(1)" 1>&2
 fi
 
 echo "MIME database: update-mime-database /usr/share/mime &"
-if type update-mime-database > /dev/null
+if command -v update-mime-database > /dev/null
 then
     update-mime-database /usr/share/mime &
+else
+    echo "Could not find update-mime-database(1)" 1>&2
 fi
 
 echo "Desktop database: update-desktop-database -q &"
-if type update-desktop-database > /dev/null
+if command -v update-desktop-database > /dev/null
 then
     update-desktop-database -q &
+else
+    echo "Could not find update-desktop-database(1)" 1>&2
 fi
 
-# End of X11-related database.
+### End Of 'X11-related database'.
 
 # Start FUSE filesystem
 
@@ -102,11 +118,11 @@ fi
 
 # Start services through perpd(8) instances
 
-if type perpboot > /dev/null
+if command -v perpboot > /dev/null
 then
     # Check for the running udevd(8) inherited from the rc.startup,
     # preventing to kill the udevd instance started by perp
-    if type perpok > /dev/null && test ! perpok udevd 2> /dev/null
+    if test ! perpok udevd 2> /dev/null
     then
         # The inherited udevd will be started again to be supervised
         udevadm control --exit ; killall udevd 2> /dev/null
@@ -123,18 +139,19 @@ then
     /etc/rc.d/rc.gpm
 fi
 
-# Verify the /etc/fstab file to activate the quota system
+# Verify the /etc/fstab file to activate the quota file system
 
 echo "(Startup) Checking quota availability"
 if grep -E -q -m 1 '(usr|grp)quota' /etc/fstab
 then
-    if type quotacheck > /dev/null && type quotaon > /dev/null
+    if command -v quotacheck > /dev/null && command -v quotaon > /dev/null
     then
         echo "(Startup) Checking /etc/fstab for quota usage"
-        quotacheck -vugcm && {
+        if quotacheck -vugcm
+        then
             echo "(Startup) Turn ON quota file system"
             quotaon -vaug
-        }
+        fi
     fi
 else
     echo "No quota filesystem declared on /etc/fstab." 1>&2

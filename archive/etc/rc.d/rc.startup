@@ -132,12 +132,12 @@ then
             exit 99
         fi
     fi
-    unset status
+    unset -v status
 
     echo "*** Checking local file system(s) ..."
     fsck $forcefsck_flag -A -C -R -T -a
 
-    unset FSCK_MAX_INST forcefsck_flag
+    unset -v FSCK_MAX_INST forcefsck_flag
 else
     echo "WARNING: /fastboot is present: Dodging checks" 1>&2
 fi
@@ -193,7 +193,7 @@ then
 else
     echo "(Startup) The system time was already set to local time" 1>&2
 fi
-unset RC_HWCLOCK
+unset -v RC_HWCLOCK
 
 # Re-mount the root filesystem in *read-write mode*
 echo "(Startup) Remounting root filesystem in read-write mode:"
@@ -229,8 +229,8 @@ fi
 
 # Re-create hierarchy for temporary files (if needed)
 
-mkdir -p -- /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
-chmod 1777 -- /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
+mkdir -p /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
+chmod 1777 /tmp /tmp/.font-unix /tmp/.ICE-unix /tmp/.X11-unix
 
 # Re-create file records for logins and logouts
 touch /var/log/btmp /var/log/lastlog /var/log/faillog /var/log/wtmp \
@@ -255,7 +255,7 @@ sysctl -q --system
 echo "$RC_HOSTNAME"    > /proc/sys/kernel/hostname
 echo "$RC_DOMAINNAME"  > /proc/sys/kernel/domainname
 
-unset RC_HOSTNAME RC_DOMAINNAME
+unset -v RC_HOSTNAME RC_DOMAINNAME
 
 # Start the loopback device
 
@@ -270,7 +270,7 @@ elif command -v ifconfig > /dev/null
 then
     ifconfig lo up > /dev/null
 else
-    echo "WARNING: Could not find ip(8) or ifconfig(1) commands." 1>&2
+    echo "WARNING: Could not find ip(8) or ifconfig(1)" 1>&2
 fi
 
 # Initialize the random number generator, see random(4)
@@ -283,12 +283,13 @@ then
     cat /etc/random-seed > /dev/urandom
 fi
 
-# Read pool size from /proc or assign a default value
-read -r < /proc/sys/kernel/random/poolsize size || size=512
+# Read the pool size from /proc or use a default value
+read -r < /proc/sys/kernel/random/poolsize size
 
 # Save seed file containing the whole entropy pool
-dd if=/dev/urandom of=/etc/random-seed count=1 bs=${size} 2> /dev/null
-unset size ; chmod 600 -- /etc/random-seed
+dd if=/dev/urandom of=/etc/random-seed count=1 bs="${size:-512}"
+chmod 600 /etc/random-seed
+unset -v size
 
 # Configure ISA Plug-and-Play devices
 
@@ -320,17 +321,17 @@ then
     modprobe -q speakup_soft
     espeakup -V "$RC_EVOICE"
 fi
-unset RC_ESPEAKUP RC_EVOICE
+unset -v RC_ESPEAKUP RC_EVOICE
 
 # Load keyboard map
 
 echo "Loading keyboard map: loadkeys $RC_KEYMAP"
 loadkeys "$RC_KEYMAP"
-unset RC_KEYMAP
+unset -v RC_KEYMAP
 
 # Set terminal attributes
 
 echo "Setting screen blanking interval: setterm -blank $RC_BLANKTIME"
 setterm -blank "$RC_BLANKTIME"
-unset RC_BLANKTIME
+unset -v RC_BLANKTIME
 

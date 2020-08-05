@@ -38,7 +38,7 @@ else
     hwclock --systohc --utc
 fi
 
-# Stop any quota system (if needed)
+# Stop any quota file system (if needed)
 
 if grep -E -q -m 1 '(usr|grp)quota' /etc/fstab
 then
@@ -54,12 +54,13 @@ fi
 echo "(Shutdown) Saving random number generator"
 echo "    /dev/urandom <-> /etc/random-seed ..."
 
-# Read pool size from /proc or assign a default value
-read -r < /proc/sys/kernel/random/poolsize size || size=512
+# Read the pool size from /proc or use a default value
+read -r < /proc/sys/kernel/random/poolsize size
 
 # Save seed file containing the whole entropy pool
-dd if=/dev/urandom of=/etc/random-seed count=1 bs=${size} 2> /dev/null
-unset size ; chmod 600 -- /etc/random-seed
+dd if=/dev/urandom of=/etc/random-seed count=1 bs="${size:-512}"
+chmod 600 /etc/random-seed
+unset -v size
 
 # Try to write a login record (at /var/log/wtmp)
 halt -w
