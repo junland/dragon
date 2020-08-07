@@ -18,12 +18,12 @@ get_size()
 # Add device names to the checklist (to be shown)
 set_checklist()
 {
-    while read -r line
+    while IFS= read -r line
     do
         echo "\"${line}\" \"$(get_size $line)\" ON \\" >> "$2"
     done < "$1"
 
-    # End of
+    # End Of
     echo " 2> \${SUBTMPDIR}/$3" >> "$2"
 }
 
@@ -36,26 +36,28 @@ then
     dialog --colors \
      --backtitle "\\ZbSwap detection" \
      --title "NO SWAP PARTITION DETECTED" \
-     --yesno \
-"No swap partition has been detected.\\n\\n\
+     --cr-wrap --yesno \
+"No swap partition has been detected.
 
-Setting up a swap partition is recommended because\\n\
-it will enable the system to use available physical\\n\
-memory (RAM) more efficiently and also provide a\\n\
-safeguard in situations where RAM is exhausted.\\n\\n\
+Setting up a swap partition is recommended because
+it will enable the system to use available physical
+memory (RAM) more efficiently and also provide a
+safeguard in situations where RAM is exhausted.
 
-If you want to make use of hibernation (suspend to\\n\
-disk), a swap partition of sufficient size is\\n\
-required.\\n\\n\
+If you want to make use of hibernation (suspend to
+disk), a swap partition of sufficient size is
+required.
 
-Would you like to proceed without a swap partition?\\n" 17 57 || \
+Would you like to proceed without a swap partition?" 16 55 || \
     {
-        printf '%s\n' "" \
-         "Please create a swap partition using fdisk(8) or cfdisk(8)."  \
-         "Then re-run the installer to give it the proper formatting."  \
-         ""                                                             \
-         "You can also use mkswap(8) and swapon(8) to format and"       \
-         "activate the partition in advance."
+        printf '%s' \
+"
+Please create a swap partition using fdisk(8) or cfdisk(8).
+Then re-run the installer to give it the proper formatting.
+
+You can also use mkswap(8) and swapon(8) to format and
+activate the partition in advance.
+"
         exit 99;
     }
     unset add_fstabEntry get_size set_checklist swaplist
@@ -75,8 +77,7 @@ do
 done
 unset -v device swaplist
 
-### ^ End of 'Detection, addition of active and inactive swap devices'
-
+### ^ End Of 'Detection, addition of active and inactive swap devices'
 
 ### Check for active swap devices
 
@@ -124,7 +125,6 @@ fi
 
 ### ^ End Of 'Check for active swap devices'
 
-
 ### Check for inactive swap devices
 
 if test -s "${SUBTMPDIR}/MakeSwap_inactive.list"
@@ -171,12 +171,14 @@ then
              --title "SWAP FORMAT FOR $device"       \
              --ok-label "Format"                     \
              --cancel-label "Ignore & Continue"      \
-             --checklist                             \
-"A swap device has been chosen.\\n\\n\
-We offer the possibility to format it properly,\\n\
-as well as you can simply ignore this part and\\n\
-continue if you previously formatted it:\\n\\n\
-Device name: $device [$(get_size $device)]" 14 52 1 \
+             --cr-wrap --checklist                   \
+"A swap device has been chosen.
+
+We offer the possibility to format it properly,
+as well as you can simply ignore this part and
+continue if you previously formatted it:
+
+Device name: $device [$(get_size $device)]" 14 51 1 \
 "$device"    "Check for bad blocks (slow)" off \
             2> $tempfile || continue;
 
@@ -197,7 +199,7 @@ Device name: $device [$(get_size $device)]" 14 52 1 \
 "Formatting $device - No bad blocks check." $(( LINES / 2 )) $COLUMNS
             fi
 
-            # Activate device, add entry for fstab
+            # Activate device, adding the entry for the fstab
 
             slowcmd "swapon -v -f $device" "$progressfile" | \
              dialog --colors \
@@ -212,7 +214,7 @@ Device name: $device [$(get_size $device)]" 14 52 1 \
     fi
 fi
 
-### ^ End of 'Check for inactive swap devices'
+### ^ End Of 'Check for inactive swap devices'
 
 unset -f add_fstabEntry get_size set_checklist
 

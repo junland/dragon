@@ -84,7 +84,7 @@ by invoking 'cfdisk' or 'fdisk'." 19 72 2 \
                     xlist[i++]=$partition
                     xlist[i++]=""
                 done
-                unset i partition
+                unset -v i partition
 
                 # Remove possible duplicate elements
                 xlist=( $(printf '%s\n' "${xlist[@]}" | awk '!s[$0]++') )
@@ -101,9 +101,9 @@ Please select the boot loader destination:" 0 0 0 "${xlist[@]}" \
                 BOOT_DEVICE="${array[0]}"
             fi
 
-            unset array xlist
+            unset -v array xlist
         fi
-        unset _submenu_title
+        unset -v _submenu_title
 
         # To fallback if 'BOOT_DEVICE' is not defined, null
         BOOT_DEVICE="${BOOT_DEVICE:=$(cat -- "${SUBTMPDIR}"/root_device)}"
@@ -114,7 +114,7 @@ Please select the boot loader destination:" 0 0 0 "${xlist[@]}" \
         then
             BOOT_DEVICE="${BOOT_DEVICE/[0-9]*/}"
         fi
-        unset answer
+        unset -v answer
 
         # GRUB Installation
 
@@ -134,7 +134,7 @@ Please select the boot loader destination:" 0 0 0 "${xlist[@]}" \
 "chroot /media/dragora-root /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg && \
  echo \"^ Return status = $?\"" $(( LINES - 8 )) $COLUMNS
 
-        unset BOOT_DEVICE
+        unset -v BOOT_DEVICE
 
         _default_button=cancel
         continue;

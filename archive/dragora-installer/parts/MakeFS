@@ -29,12 +29,12 @@ makeMenu()
 
         # Write entry to be showed on the MakeFS menu
 
-        echo "\"${device}\" \"${formatfs:-Linux} ${size} $devpoint\" \\" \
+        echo "\"${device}\" \"${formatfs:-Linux}${size} $devpoint\" \\" \
          >> "${SUBTMPDIR}/MakeFS"
 
     done < "${SUBTMPDIR}/partitions"
 
-    # End of
+    # End Of
     echo ' 2> "${SUBTMPDIR}/return-MakeFS" || _code=$?' \
      >> "${SUBTMPDIR}/MakeFS"
 }
@@ -45,17 +45,21 @@ askMountPoint()
     dialog --colors \
      --backtitle "\\ZbSetting Linux partitions: Mount point for $1" \
      --title "MOUNT POINT" \
-     --no-cancel --ok-label "Continue" --inputbox \
-"A mount point can be assigned to the partition:\\n\\n\
-  Consider declaring a complete path such as \"/storage\".\\n\
-If you declare the single slash \"/\" it will be designated\\n\
-for the (main) root partition.\\n\\n\
+     --no-cancel --ok-label "Continue" \
+     --cr-wrap --inputbox \
+"A mount point can be assigned to the partition.
 
-Note: If you use directory names that contain spaces,\\n\
-the same will be converted using the octal character\\n\
-040, which is interpreted by the file system table.\\n\\n\
-Enter a mount point for '${1}'.  If you leave\\n\
-this blank, any previous entries will be deleted:" 19 63 \
+* Consider declaring a complete path such as \"/storage\".
+* If you declare the single slash \"/\" it will be
+  designated for the (main) system partition.
+
+Note: If you use directory names that contain spaces,
+the same will be converted using the octal character
+040, which is interpreted by the file system table.
+
+Enter a mount point for \"${1}\":
+
+(If you leave this blank, any previous entries will be deleted)." 21 62 \
      2> "${SUBTMPDIR}/return-MakeFS_askMountPoint" || return 0
 
     # We remove possible single/double quotes from the answer.
@@ -85,7 +89,7 @@ this blank, any previous entries will be deleted:" 19 63 \
          "$1" "$mntpoint" "$formatfs" "defaults" "1" "${fs_passno}" \
          >> "${SUBTMPDIR}/fstab"
 
-        unset fs_passno formatfs
+        unset -v fs_passno formatfs
 
         # Remove possible duplicates
         if test "$(grep -c "^$1" "${SUBTMPDIR}"/fstab)" -gt 1
@@ -93,50 +97,69 @@ this blank, any previous entries will be deleted:" 19 63 \
             repeated="$(grep -m 1 -n "^$1" "${SUBTMPDIR}"/fstab)"
             repeated="${repeated%%:*}"
             sed -i "${repeated}d" "${SUBTMPDIR}/fstab"
-            unset repeated
+            unset -v repeated
         fi
     else # Remove the whole fstab entry
         if test -n "$1" && test -s "${SUBTMPDIR}/fstab"
         then
             escape_slash="$(printf '%s' "$1" | sed 's/\//\\\//g')"
             sed -i "/${escape_slash}/d" "${SUBTMPDIR}/fstab"
-            unset escape_slash
+            unset -v escape_slash
         fi
     fi
-    unset mntpoint
+    unset -v mntpoint
 }
 
 _mkfs()
 {
+    helper=$1
+    devname=$2
+
     dialog --colors \
-     --backtitle "\\ZbPartitions: ${2}" \
+     --backtitle "\\ZbPartitions - ${devname}" \
      --title "FILE SYSTEM FORMAT" \
      --ok-label "Format" --cr-wrap --checklist \
-"The following device can be formatted using the \"${1}\" command:\\n\\n\
-$(fdisk -l "$2" | head -n 1)" 13 55 1 \
-"$2"    "Check for bad blocks (slow)" off \
+"The following device can be formatted using the \"${helper}\" helper:
+
+$(fdisk -l "$devname" | head -n 1)" 13 55 1 \
+"$devname"    "Check for bad blocks (slow)" off \
     2> "${SUBTMPDIR}/return-MakeFS_mkfs" || return $?
+
+    progressfile="${SUBTMPDIR}/MakeFS-${helper}.progress.${RANDOM-0}$$"
 
     if test -s "${SUBTMPDIR}/return-MakeFS_mkfs"
     then
-        dialog --colors \
-         --backtitle "\\ZbPartitions: Formatting and checking Linux partition ${2}" \
-         --title "${2}: Formatting & Checking" \
-         --prgbox "$1 -c $2" 30 72
+        slowcmd "$helper -c $devname" "$progressfile" | \
+         dialog --colors \
+          --backtitle "\\ZbPartitions: Formatting and checking partitions" \
+          --title "PROGRESS" \
+          --sleep 3 --progressbox \
+"Formatting $devname - Checking for bad blocks..." $(( LINES / 2 )) $COLUMNS
     else
-        dialog --colors \
-         --backtitle "\\ZbPartitions: Formatting Linux partition ${2}" \
-         --title "${2}: Formatting" \
-         --prgbox "$1 $2" 30 72
+        slowcmd "$helper $devname" "$progressfile" | \
+         dialog --colors \
+          --backtitle "\\ZbPartitions: Formatting partitions" \
+          --title "PROGRESS" \
+          --sleep 3 --progressbox \
+"Formatting $devname - No bad blocks check." $(( LINES / 2 )) $COLUMNS
     fi
+
+    unset -v helper devname progressfile
 }
 
 _mkxfs()
 {
-    dialog --colors \
-     --backtitle "\\ZbPartitions: Formatting Linux partition ${2}" \
-     --title "${2}: Formatting" \
-     --prgbox "$1 -f $2" 30 72
+    devname=$1
+    progressfile="${SUBTMPDIR}/MakeFS-mkfs.xfs.progress.${RANDOM-0}$$"
+
+    slowcmd "mkfs.xfs -f $devname" "$progressfile" | \
+     dialog --colors \
+      --backtitle "\\ZbPartitions: Formatting partitions" \
+      --title "PROGRESS" \
+      --sleep 3 --progressbox \
+"Formatting $devname - No bad blocks support." $(( LINES / 2 )) $COLUMNS
+
+    unset -v devname progressfile
 }
 
 formatMenu()
@@ -158,7 +181,7 @@ formatMenu()
     then
         return "$_status";
     fi
-    unset _status
+    unset -v _status
 
     # Try to unmount the device if it is already mounted
     umount "$1" > /dev/null 2>&1 || true
@@ -169,7 +192,7 @@ formatMenu()
     ext3)  _mkfs  mkfs.ext3 "$1" ;;
     ext4)  _mkfs  mkfs.ext4 "$1" ;;
      jfs)  _mkfs  jfs_mkfs  "$1" ;;
-     xfs)  _mkxfs mkfs.xfs  "$1" ;;
+     xfs)  _mkxfs "$1" ;;
     esac
 }
 
@@ -183,11 +206,12 @@ dialog --colors \\
  --title "Setting Linux partitions" \\
  --ok-button "Establish" --extra-button \\
  --extra-label "Done" \\
- --menu \\
-"The following Linux partitions has been detected:\\n\\n\\
-  Selecting a partition gives you the possibility to set up\\n\\
-a file system or a mount point for the boot stage of the system. \\
-Once this has been established, choose the \\"Done\\" button to \\
+ --cr-wrap --menu \\
+"The following Linux partitions has been detected:
+
+    Selecting a partition gives you the possibility to set up
+a file system or a mount point for the boot stage of the system.
+Once this has been established, choose the \\"Done\\" button to
 continue with the installation." 16 65 5 \\
 EOF
     makeMenu && . "${SUBTMPDIR}/MakeFS"
@@ -206,19 +230,20 @@ EOF
             dialog --colors \
              --backtitle "\\ZbPartitions and mount points" \
              --title "$partition" \
-             --no-cancel --menu \
-"* Selected device already contains a file system *\\n\\n\
-You can assign a mount point for system startup, you also\\n\
-have the ability to re-format the partition.  If you choose\\n\
-the latter, you will lose all your data and will be asked\\n\
-for a mounting point.\\n\\n\
+             --no-cancel --cr-wrap --menu \
+"Selected device already contains a file system!
+
+You can assign a mount point for system startup, you also
+have the ability to re-format the partition.  If you choose
+the latter, you will lose all your data and will be asked
+for a mounting point.
+
 What would you like to do for '${partition}'?" 17 64 3 \
              "0" "Assign a mount point" \
              "1" "Format again (data loss risk)" \
              "<" "Return to previous menu" \
             2> "${SUBTMPDIR}/return-MakeFS_case" || continue;
 
-            # Check for selected options
             case "$(cat -- "${SUBTMPDIR}"/return-MakeFS_case)" in
             0)  askMountPoint "$partition";;
             1)  formatMenu "$partition" && askMountPoint "$partition";;
@@ -228,27 +253,29 @@ What would you like to do for '${partition}'?" 17 64 3 \
         fi
         ;;
     3)
-        # To verify the existence of the designated root mount point
+        # To verify the existence of the designated system mount point
         if grep -qs -m 1 '/ ' "${SUBTMPDIR}/fstab"
         then
             break;
         else
             dialog --colors \
-             --backtitle "\\ZbPartitions and mount points: Unknown mount point for the root partition" \
-             --title "NO MOUNT POINT FOR ROOT" \
-             --ok-label "Return" --msgbox \
-"There is no declared mount point for the root partition.\\n\\n\
-  Please go back and assign a mount point for the\\n\
-root partition.  Remember that the mount point must\\n\
-be declared as \"/\" (without quotes and spaces)." 10 60 || \
-             { unset _code ; continue ; }
+             --backtitle "\\ZbPartitions and mount points: Unknown mount point for root partition" \
+             --title "NO MOUNT POINT FOR MAIN SYSTEM" \
+             --ok-label "Return" --cr-wrap --msgbox \
+"
+There is no declared mount point for the root partition.
+
+    Please go back and assign a mount point for the
+root partition.  Remember that the mount point must
+be declared as \"/\" (without quotes and spaces).
+" 11 60 || { unset -v _code ; continue; }
         fi
         ;;
     *)
         exit "$_code"
         ;;
     esac
-    unset _code;	# To take the value again.
+    unset -v _code;	# To take the value again.
 done
 
 unset makeMenu _mkfs _mkxfs FormatMenu _code

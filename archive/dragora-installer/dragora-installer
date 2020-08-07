@@ -50,7 +50,7 @@ unmountFilesystems()
             fi
         fi
     done
-    unset filesystem
+    unset -v filesystem
 }
 
 chkstatus_or_exit()
@@ -72,7 +72,7 @@ chkstatus_or_exit()
         exit 2;
     fi
 
-    unset status
+    unset -v status
 }
 
 # This will be used to show the progress of a command
@@ -80,10 +80,12 @@ slowcmd()
 {
     $1 2>&1 > "$2"
     (
-        while read -r text
+        while true
         do
-            printf '%s\n' "$text"
-            sleep 1;
+            IFS= read -r text
+            test -z "$text" && break;
+            echo "$text"
+            sleep 1
         done < "$2"
     )
 }
@@ -123,7 +125,8 @@ fi
 
 # Create subdirectory to store the files produced by the installer
 
-SUBTMPDIR="${TMPDIR}/.${PROGRAM}"	# Default sets to "${HOME}/.dragora-installer".
+# Default sets to "${HOME}/.dragora-installer"
+SUBTMPDIR="${TMPDIR}/.${PROGRAM}"
 mkdir -p -- "$SUBTMPDIR"
 chmod 700 -- "$SUBTMPDIR"
 
@@ -136,31 +139,21 @@ then
     fdisk -l | sed -e 's|Linux filesystem|Linux|g' | grep -E 'Linux$' | \
      sort > "${SUBTMPDIR}/partitions"
 else
-    printf '%s\n' \
-     "    Linux partitions were not detected."                               \
-     ""                                                                      \
-     "A Linux partition is required to continue the installation.  You can"  \
-     "use utilities such as fdisk(8), cfdisk(8) or parted(8) to create at"   \
-     "least one Linux partition.  Then run \`${PROGRAM}' again." 1>&2
-     exit 1;
+    cat 1>&2 << EOF
+Linux partitions were not detected.
+
+A Linux partition is required to continue the installation.  You can
+use utilities such as fdisk(8), cfdisk(8) or parted(8) to create at
+least one Linux partition.  Then run \`${PROGRAM}' again.
+EOF
+    exit 1;
 fi
 
-# Determine the maximum size of the terminal to be used on the dialogues.
-# Try using shell variables that set LINES and COLUMNS, first.
+# Determine the maximum size of the terminal to be used on the dialogues
+
 echo "Checking terminal size ..."
-if test -z "$LINES"
-then
-    LINES="$(tput lines)" || \
-     { LINES="$(stty size)" && LINES="${LINES% *}"; }
-fi
-if test -z "$COLUMNS"
-then
-    COLUMNS="$(tput cols)" || \
-     { COLUMNS="$(stty size)" && COLUMNS="${COLUMNS#* }"; }
-fi
-echo "_Terminal settings_"
-echo "LINES = $LINES"
-echo "COLUMNS = $COLUMNS"
+LINES="${LINES:-$(tput lines)}"
+COLUMNS="${COLUMNS:-$(tput cols)}"
 
 export SUBTMPDIR LINES COLUMNS
 
@@ -168,19 +161,20 @@ dialog --colors \
  --backtitle "\\ZbThe installer of Dragora GNU/Linux-Libre 3.0" \
  --title "INSTALLER INFORMATION" \
  --cr-wrap --msgbox \
-"Welcome to \\Z3${PROGRAM}\\Zn.\\n\\n\
-This program will help you install Dragora 3.0 on your computer.
+"Welcome to \\Z3${PROGRAM}\\Zn.
+
+    This program will help you install Dragora 3.0 on your computer.
 
 Use the cursor keys to move around in the installer's menus.
 
 Press \\Z3[Tab]\\Zn to jump to the next option and \
 \\Z3[Shift]\\Zn\\Zb\\Z7+\\Zn\\Z3[Tab]\\Zn to jump to the previous one.
 
-Use \\Z3[Space]\\Zn to select or unselect an item, \\Z3[Enter]\\Zn to confirm \
-or proceed to the next menu.
+Use \\Z3[Space]\\Zn to select or unselect an item, \\Z3[Enter]\\Zn to \
+confirm or proceed to the next menu.
 
-You can use \\Z3[Ctrl]\\Zn\\Zb\\Z7+\\Zn\\Z3[C]\\Zn to abort the installation at \
-any time.
+You can use \\Z3[Ctrl]\\Zn\\Zb\\Z7+\\Zn\\Z3[C]\\Zn to abort the \
+installation at any time.
 
 To quit a dialog (such as the one you are in), press \\Z3[Esc]\\Zn.
 
@@ -196,17 +190,21 @@ then
     dialog --colors \
      --backtitle "\\ZbInstallation Medium" \
      --title "Pendrive/SDCard/CDROM" \
-     --msgbox \
-"Please insert the medium labeled \"Dragora Packages\" and\\n\
-press \\Z3[Enter]\\Zn to continue.  Otherwise, a media selection menu\\n\
-will be displayed." 7 65
+     --cr-wrap --msgbox \
+"
+Please insert the medium labeled \"Dragora Packages\" and
+press \\Z3[Enter]\\Zn to continue.  Otherwise, a media selection
+menu will be displayed.
+" 9 60
     if blkid -t LABEL="Dragora Packages" > /dev/null
     then
         if ! mountpoint -q /media/dragora-packages
         then
-            mount -v -t iso9660 LABEL="Dragora Packages" /media/dragora-packages && \
-             echo "/media/dragora-packages/packages" > "${SUBTMPDIR}/MediumFound"
-            sleep 2
+            mount -v -t iso9660 LABEL="Dragora Packages" \
+             /media/dragora-packages
+            echo '/media/dragora-packages/packages' \
+             > "${SUBTMPDIR}/MediumFound"
+            sleep 1
         fi
     else
         . @PARTS@MenuMedia
@@ -217,7 +215,7 @@ else
         mount -v -t iso9660 LABEL="Dragora Packages" /media/dragora-packages
         sleep 2
     fi
-    echo "/media/dragora-packages/packages" > "${SUBTMPDIR}/MediumFound"
+    echo '/media/dragora-packages/packages' > "${SUBTMPDIR}/MediumFound"
 fi
 
 # Attempt to unmount possible pre-mounted filesystem(s)
@@ -231,29 +229,31 @@ rmdir -- /media/dragora-packages /media/dragora-root 2> /dev/null || true
 # Double-check to see the installation directory
 if test ! -f "${SUBTMPDIR}/MediumFound"
 then
-    dialog --colors \
+   dialog --colors \
      --backtitle "\\ZbInstallation Medium" \
      --title "MEDIUM NOT FOUND" \
-     --sleep 7 --infobox \
-"\\nNo means of installation was found to proceed with\\n\
-the installation of Dragora.  Please check your\\n\
-drives and the directory containing the software\\n\
-packages." 8 55
+     --sleep 7 --cr-wrap --infobox \
+"
+No means of installation was found to proceed
+with the installation of Dragora.
+
+Please check your drives and the directory
+containing the software packages...
+" 9 49
     exit 99;
 fi
 
-. @PARTS@MakeSwap;		# Verify/give format to a Swap partition.
-. @PARTS@MakeFS;		# Verify/give format to Linux partitions.
+. @PARTS@MakeSwap;		# Swap devices.
+. @PARTS@MakeFS;		# Linux partitions.
 . @PARTS@FstabEdit;		# File system table edition (fstab).
 . @PARTS@MountRoot;		# Mount root partition for installation.
 . @PARTS@FstabMounts;		# Mount rest of file systems from fstab.
-. @PARTS@ShowSeries;		# Show software series.
+. @PARTS@ShowSeries;		# Software series.
 . @PARTS@InstallPackages;	# Package installation.
 . @PARTS@PostInstall;		# Post installation.
-. @PARTS@SetPassword;		# Set password for root.
+. @PARTS@SetPassword;		# Password for root.
 . @PARTS@MenuBootloader;	# Boot loader installation.
 . @PARTS@ConfServices;		# Running services.
-
 
 if test -e /media/dragora-root/etc/fstab
 then
@@ -266,8 +266,12 @@ then
         _status=0
         dialog --clear --colors \
          --title "The Setup for Dragora has been completed" \
-         --msgbox \
-"\\nWhen you are ready, you can press \\Z3[Enter]\\Zn to eject\\nthe installation (CDROM) disc...\\n" 8 55 || _status=$?
+         --cr-wrap --msgbox \
+"
+If you are ready, press \\Z3[Enter]\\Zn to eject
+the installation disc...
+" 8 0 || _status=$?
+
         if test $_status -eq 0
         then
             cdrom_device="$(cat -- "${SUBTMPDIR}/CDDevice")"
@@ -282,7 +286,7 @@ then
             # Attempt to use the tray close command
             eject -t "$cdrom_device" > /dev/null 2>&1 || true
         fi
-        unset _status cdrom_device
+        unset -v _status cdrom_device
     fi
 fi
 
@@ -292,17 +296,19 @@ _status=0
 dialog --clear --colors \
  --backtitle "\\ZbSystem restart" \
  --title "The Setup for Dragora has been completed" \
- --yesno \
-"\\nWould you like to reboot the system now?.\\n" 7 46 || _status=$?
+ --cr-wrap --yesno \
+"
+Would you like to reboot the system now?
+" 7 44 || _status=$?
 case $_status in
 0)
-    unset _status
+    unset -v _status
     dialog --clear
     unmountFilesystems
     exec reboot -d -f
     ;;
 *)
-    unset _status
+    unset -v _status
     unmountFilesystems
     echo ""
     echo ""

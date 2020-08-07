@@ -7,8 +7,9 @@ echo ""
 echo "*** Running post-install instructions from the installer ..."
 echo ""
 
-# Copy local config files (keymap, mouse)
+# Copy local config files to the system partition
 
+# Cover keyboard map if it has been changed, previously
 if test -e /etc/rc.conf
 then
     # Assume the local config (from the livecd) has been changed
@@ -23,14 +24,12 @@ then
         cp -f /etc/rc.conf /media/dragora-root/etc/ || true
     fi
 fi
-if test ! -e /media/dragora-root/etc/rc.d/rc.gpm
+
+# Copy GPM run control file
+if test -e /etc/rc.d/rc.gpm && test ! -e /media/dragora-root/etc/rc.d/rc.gpm
 then
-    if test -e /etc/rc.d/rc.gpm
-    then
-        cp -f /etc/rc.d/rc.gpm \
-              /media/dragora-root/etc/rc.d/rc.gpm || true
-    fi
-    chmod 755 /media/dragora-root/etc/rc.d/rc.gpm 2> /dev/null || true
+    cp -f /etc/rc.d/rc.gpm /media/dragora-root/etc/rc.d/rc.gpm && \
+     chmod 755 /media/dragora-root/etc/rc.d/rc.gpm || true
 fi
 
 # Create index of scalable font files for X
@@ -48,7 +47,7 @@ then
         chroot /media/dragora-root /usr/bin/mkfontscale -b -s -l "$directory" || true
         chroot /media/dragora-root /usr/bin/mkfontscale "$directory" || true
     done
-    unset directory
+    unset -v directory
 
     # Build font information cache files
 
@@ -67,10 +66,8 @@ chroot /media/dragora-root \
 
 echo ""
 echo "* Updating database of manual pages, if possible ..."
-if mkdir -p /media/dragora-root/var/cache/man
-then
-    chroot /media/dragora-root /usr/bin/mandb --quiet || true
-fi
+mkdir -p /media/dragora-root/var/cache/man && \
+ chroot /media/dragora-root /usr/bin/mandb --quiet || true
 
 # Delete "lost+found" directory on recent file system creation
 rmdir /media/dragora-root/lost+found 2> /dev/null || true

@@ -23,7 +23,8 @@ addEntry()
         echo "\"${service}\" \"\" $_toggle_flag \"${description}\" \\" \
          >> "${SUBTMPDIR}/ConfServices"
     fi
-    unset service description sticky_bit _toggle_flag
+
+    unset -v service description sticky_bit _toggle_flag
 }
 
 cat << EOF > "${SUBTMPDIR}/ConfServices"
@@ -51,13 +52,13 @@ addEntry socklog "Unix domain datagram socket for listening on /dev/log."
 addEntry sshd "The OpenSSH (SSH) daemon."
 addEntry udevd "Device event managing daemon [REQUIRED]."
 addEntry wpa_supplicant "Wi-Fi Protected Access client and IEEE 802.1X supplicant."
-unset addEntry
+unset -f addEntry
 
-printf '%s\n' ' 2> "${SUBTMPDIR}/return-ConfServices"' \
- >> "${SUBTMPDIR}/ConfServices"
+echo ' 2> "${SUBTMPDIR}/return-ConfServices"' >> "${SUBTMPDIR}/ConfServices"
 
-. "${SUBTMPDIR}/ConfServices";	# Show menu.
+# Show the menu
 
+. "${SUBTMPDIR}/ConfServices"
 test -s "${SUBTMPDIR}/return-ConfServices" || return 0;
 
 # Set sticky bit according to the selection
@@ -66,10 +67,10 @@ for service in acpid crond dbus dhcpcd inetd klog socklog sshd udevd \
 do
     if grep -q -o -m 1 "$service" "${SUBTMPDIR}/return-ConfServices"
     then
-        chmod a+t "/media/dragora-root/etc/perp/${service}"
+        chmod a+t /media/dragora-root/etc/perp/${service}
     else
-        chmod a-t "/media/dragora-root/etc/perp/${service}"
+        chmod a-t /media/dragora-root/etc/perp/${service}
     fi
 done
-unset service
+unset -v service
 

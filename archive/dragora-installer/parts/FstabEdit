@@ -29,8 +29,8 @@ dialog --no-shadow --colors \
  --backtitle "\\ZbFile system table information" \
  --title "FILE SYSTEM TABLE EDITOR" \
  --ok-label "Save/Continue" --no-cancel \
- --defaultno --editbox "${SUBTMPDIR}/fstab" $((LINES - 8)) $COLUMNS \
-2> "${SUBTMPDIR}/fstab.edit"
+ --defaultno --editbox "${SUBTMPDIR}/fstab" \
+ $((LINES - 8)) $COLUMNS 2> "${SUBTMPDIR}/fstab.edit"
 
 # Check for differences and offer menu to view or apply changes
 
@@ -41,18 +41,18 @@ if test -s "${SUBTMPDIR}/fstab.diff"
 then
     while true
     do
-        _status=0
-
         dialog --colors \
          --backtitle "\\ZbFile system table modification" \
-         --title "CURRENT FILE SYSTEM TABLE" \
+         --title "FILE SYSTEM TABLE FROM THE INSTALLER" \
          --help-button --help-label "View Diff" \
-         --yesno \
-"The file system table has been modified.\\n\\n\
-Would you like to apply the changes made?.  If you say \"No\",\\n\
-the installer will continue with the default fstab." 9 65 || _status=$?
+         --cr-wrap --yesno \
+"The file system table has been modified.
 
-        case $_status in
+Would you like to apply the changes made?.  If you choose 'No',
+the installer will continue with the default fstab file.
+" 8 66 || _status=$?
+
+        case ${_status:-0} in
         0) ## Button "Yes"
             cp -f -- "${SUBTMPDIR}/fstab.edit" "${SUBTMPDIR}/fstab"
             break;
@@ -62,17 +62,19 @@ the installer will continue with the default fstab." 9 65 || _status=$?
             ;;
         2) ## Button "View Diff"
             dialog --no-shadow --colors \
-             --backtitle "\\ZbFile system table modification (unified difference)" \
+             --backtitle \
+"\\ZbFile system table modification (unified difference)" \
              --title "FILE SYSTEM TABLE CHANGES" \
              --exit-label "Return" \
-             --cr-wrap --textbox "${SUBTMPDIR}/fstab.diff" $((LINES - 8)) $COLUMNS || continue;
+             --cr-wrap --textbox "${SUBTMPDIR}/fstab.diff" \
+             $((LINES - 8)) $COLUMNS || continue;
             ;;
-        *) ## Any other code
-            return $_status
-            ;;
+        *) ## "Escape from L.A"
+            unset -v _status
+            return 99;
         esac
     done
-fi
 
-unset _status
+    unset -v _status
+fi
 
