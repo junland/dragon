@@ -34,49 +34,50 @@ CWD="$(CDPATH='' cd -P -- "$(dirname -- "$0")" && pwd -P)" || exit $?
 
 ### Functions
 
-usage() {
-    printf '%s\n' \
-     "Builder of custom stages (cross compilers, GNU/Linux distributions)"  \
-     ""                                                                     \
-     "Usage: $PROGRAM [OPTION...] [FILE]..."                                \
-     ""                                                                     \
-     "Defaults for the options are specified in brackets."                  \
-     ""                                                                     \
-     "Options:"                                                             \
-     "  -a          Target architecture [${arch}]"                          \
-     "  -j          Parallel jobs for the compiler [${jobs}]"               \
-     "  -k          Keep (don't delete) source directory"                   \
-     "  -o          Output directory [${output}]"                           \
-     "  -s          Stage number to build [${stage}]"                       \
-     "  -h          Display this help and exit"                             \
-     "  -V          Print version information and exit"                     \
-     ""                                                                     \
-     "Some influential environment variables:"                              \
-     "  TMPDIR      Temporary directory for sources [${TMPDIR}]"            \
-     "  BTCC        C compiler command [${BTCC}]"                           \
-     "  BTCXX       C++ compiler command [${BTCXX}]"                        \
-     "  BTCFLAGS    C compiler flags [${BTCFLAGS}]"                         \
-     "  BTCXXFLAGS  C++ compiler flags [${BTCXXFLAGS}]"                     \
-     "  BTLDFLAGS   Linker flags [${BTLDFLAGS}]"                            \
-     "  VENDOR      Vendor name to reflect on the target triplet"           \
-     ""                                                                     \
-     "Targets from ${CWD}/targets/ ..."
-     for name in "${CWD}/targets"/*
-     do
-         sed -e '2q;d' "$name"
-     done
-     unset name
-    echo ""
+usage()
+{
+    printf '%s' \
+"Usage: $PROGRAM [OPTIONS] [FILE]...
+Builder of custom stages (cross compilers, GNU/Linux distributions).
+
+Defaults for the options are specified in brackets.
+
+Options:
+  -a          Target architecture [${arch}]
+  -j          Parallel jobs for the compiler [${jobs}]
+  -k          Keep (don't delete) source directory
+  -o          Output directory [${output}]
+  -s          Stage number to build [${stage}]
+  -h          Display this help and exit
+  -V          Print version information and exit
+
+Some influential environment variables:
+  TMPDIR      Temporary directory for sources [${TMPDIR}]
+  BTCC        C compiler command [${BTCC}]
+  BTCXX       C++ compiler command [${BTCXX}]
+  BTCFLAGS    C compiler flags [${BTCFLAGS}]
+  BTCXXFLAGS  C++ compiler flags [${BTCXXFLAGS}]
+  BTLDFLAGS   Linker flags [${BTLDFLAGS}]
+  VENDOR      Vendor name to reflect on the target triplet
+
+Targets from ${CWD}/targets/ ..."
+for name in "${CWD}/targets"/*
+do
+    sed -e '2q;d' "$name"
+done
+unset -v name
+echo ""
 }
 
 version()
 {
-    printf '%s\n' \
-     "$PROGRAM 3.23" \
-     "Copyright (C) 2014-2020 Matias Andres Fonzo." \
-     "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>" \
-     "This is free software: you are free to change and redistribute it." \
-     "There is NO WARRANTY, to the extent permitted by law."
+    printf '%s' \
+"$PROGRAM 3.24
+Copyright (C) 2014-2020 Matias Andres Fonzo.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+"
 }
 
 warn()
@@ -94,7 +95,7 @@ chkstatus_or_exit()
         exit "${1-2}";	# If not given, defaults to 2
     fi
 
-    unset status
+    unset -v status
 }
 
 # Function to test and extract compressed files
@@ -163,7 +164,7 @@ unpack()
             exit 1
         esac
     done
-    unset file
+    unset -v file
 }
 
 # Print a warning for good practices.
@@ -187,8 +188,8 @@ warn_flags()
 
 BTCC="${BTCC:=cc}"
 BTCXX="${BTCXX:=c++}"
-BTCFLAGS="${BTCFLAGS:=-g0 -Os -pipe}"
-BTCXXFLAGS="${BTCXXFLAGS:=-g0 -Os -pipe}"
+BTCFLAGS="${BTCFLAGS:=-g0 -O2 -pipe}"
+BTCXXFLAGS="${BTCXXFLAGS:=-g0 -O2 -pipe}"
 BTLDFLAGS="${BTLDFLAGS:=-s}"
 opt_keep=opt_keep.off
 stage=0
@@ -401,7 +402,7 @@ do
         then
             cleanup
             chkstatus_or_exit 2
-            unset cleanup
+            unset -f cleanup
         fi
     fi
 
