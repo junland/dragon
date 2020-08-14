@@ -16,98 +16,60 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+RC="[${0##*/}]" # To reflect the name of the script between [].
 umask 022
 IFS='
  	'
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
+LC_ALL=C
+
+echo ""
+echo "Entering to multi-user mode ..."
 
 ### X11-related database
+echo "${RC}: Updating X11 database (X.Org)"
 
-echo "(Startup) Updating X11 database (X.Org)"
+echo "${RC}: X font index cache, if needed ..."
+for directory in /usr/share/fonts/X11/*
+do
+    if test ! -e "${directory}/fonts.dir"
+    then
+        echo "Using \`mkfontscale' for missing fonts.dir at $directory" 1>&2
+        mkfontscale -b -s -l "$directory" && mkfontscale "$directory"
+    fi
+done
+unset -v directory
 
-echo "X font index cache, if needed ..."
-if command -v mkfontscale > /dev/null
-then
-    for directory in /usr/share/fonts/X11/*
-    do
-        if test ! -e "${directory}/fonts.dir"
-        then
-            echo "Using \`mkfontscale' for missing fonts.dir at $directory" 1>&2
-            mkfontscale -b -s -l "$directory" && mkfontscale "$directory"
-        fi
-    done
-    unset -v directory
-fi
+echo "${RC}: fontconfig cache: fc-cache --system-only /usr/share/fonts/X11 &"
+fc-cache --system-only /usr/share/fonts/X11 &
 
-echo "fontconfig cache: fc-cache --system-only /usr/share/fonts/X11 &"
-if command -v fc-cache > /dev/null
-then
-    fc-cache --system-only /usr/share/fonts/X11 &
-else
-    echo "Could not find fc-cache(1)" 1>&2
-fi
+echo "${RC}: GTK+-2.0 module(s): gtk-query-immodules-2.0 --update-cache &"
+gtk-query-immodules-2.0 --update-cache &
 
-echo "GTK+-2.0 module(s) cache: gtk-query-immodules-2.0 --update-cache &"
-if command -v gtk-query-immodules-2.0 > /dev/null
-then
-    gtk-query-immodules-2.0 --update-cache &
-else
-    echo "Could not find gtk-query-immodules-2.0" 1>&2
-fi
-echo "GTK+-3.0 module(s) cache: gtk-query-immodules-3.0 --update-cache &"
-if command -v gtk-query-immodules-3.0 > /dev/null
-then
-    gtk-query-immodules-3.0 --update-cache &
-else
-    echo "Could not find gtk-query-immodules-3.0" 1>&2
-fi
+echo "${RC}: GTK+-3.0 module(s): gtk-query-immodules-3.0 --update-cache &"
+gtk-query-immodules-3.0 --update-cache &
 
-echo "GDK pixbuffer loaders: gdk-pixbuf-query-loaders --update-cache &"
-if command -v gdk-pixbuf-query-loaders > /dev/null
-then
-    gdk-pixbuf-query-loaders --update-cache &
-else
-    echo "Could not find gdk-pixbuf-query-loaders(1)" 1>&2
-fi
+echo "${RC}: GDK pixbuffer loaders: gdk-pixbuf-query-loaders --update-cache &"
+gdk-pixbuf-query-loaders --update-cache &
 
-if command -v gio-querymodules > /dev/null
-then
-    echo "GIO module(s) cache: gio-querymodules /usr/lib/gio/modules &"
-    gio-querymodules /usr/lib/gio/modules &
-else
-    echo "Could not find gio-querymodules(1)" 1>&2
-fi
+echo "${RC}: GIO module(s): gio-querymodules /usr/lib/gio/modules &"
+gio-querymodules /usr/lib/gio/modules &
 
-echo "GLIB schemas: glib-compile-schemas /usr/local/share/glib* /usr/share/glib*"
-if command -v glib-compile-schemas > /dev/null
-then
-    for directory in /usr/local/share/glib* /usr/share/glib*
-    do
-        test -d "$directory" || continue;
-        glib-compile-schemas "${directory}"/schemas
-    done
-    unset -v directory
-else
-    echo "Could not find glib-compile-schemas(1)" 1>&2
-fi
+echo "${RC}: Glib schemas: glib-compile-schemas /usr/local/share/glib* /usr/share/glib*"
+for directory in /usr/local/share/glib* /usr/share/glib*
+do
+    test -d "$directory" || continue;
+    glib-compile-schemas "${directory}"/schemas
+done
+unset -v directory
 
-echo "MIME database: update-mime-database /usr/share/mime &"
-if command -v update-mime-database > /dev/null
-then
-    update-mime-database /usr/share/mime &
-else
-    echo "Could not find update-mime-database(1)" 1>&2
-fi
+echo "${RC}: MIME database: update-mime-database /usr/share/mime &"
+update-mime-database /usr/share/mime &
 
-echo "Desktop database: update-desktop-database -q &"
-if command -v update-desktop-database > /dev/null
-then
-    update-desktop-database -q &
-else
-    echo "Could not find update-desktop-database(1)" 1>&2
-fi
+echo "${RC}: Desktop database: update-desktop-database -q &"
+update-desktop-database -q &
 
-### End Of 'X11-related database'.
+### ^ End Of 'X11-related database'
 
 # Start FUSE filesystem
 
@@ -118,19 +80,8 @@ fi
 
 # Start services through perpd(8) instances
 
-if command -v perpboot > /dev/null
-then
-    # Check for the running udevd(8) inherited from the rc.startup,
-    # preventing to kill the udevd instance started by perp
-    if test ! perpok udevd 2> /dev/null
-    then
-        # The inherited udevd will be started again to be supervised
-        udevadm control --exit ; killall udevd 2> /dev/null
-    fi
-
-    echo "(Startup) Monitoring services through perpd(8) instances"
-    perpboot -d /etc/perp
-fi
+echo "${RC}: Starting persistent process supervisor for perpd(8) instances"
+perpboot -d /etc/perp
 
 # Start GPM (General Purpose Mouse daemon)
 
@@ -144,24 +95,21 @@ fi
 echo "(Startup) Checking quota availability"
 if grep -E -q -m 1 '(usr|grp)quota' /etc/fstab
 then
-    if command -v quotacheck > /dev/null && command -v quotaon > /dev/null
+    echo "${RC}: Checking /etc/fstab for quota usage"
+    if quotacheck -vugcm
     then
-        echo "(Startup) Checking /etc/fstab for quota usage"
-        if quotacheck -vugcm
-        then
-            echo "(Startup) Turn ON quota file system"
-            quotaon -vaug
-        fi
+        echo "${RC}: Turn ON quota file system"
+        quotaon -vaug
     fi
 else
-    echo "No quota filesystem declared on /etc/fstab." 1>&2
+    echo "${RC}: No quota filesystem declared on /etc/fstab." 1>&2
 fi
 
 # Start user-local instructions
 
 if test -x /etc/rc.d/rc.local
 then
-    echo "(Startup) Running /etc/rc.d/rc.local"
+    echo "${RC}: Running /etc/rc.d/rc.local"
     /etc/rc.d/rc.local
 fi
 

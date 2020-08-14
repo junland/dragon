@@ -2,7 +2,7 @@
 #
 # Single-user mode script
 #
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018, 2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,31 +16,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+RC="[${0##*/}]"	# To reflect the name of the script between [].
 IFS='
  	'
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
+LC_ALL=C
 
+echo ""
 echo "Entering to single-user mode ..."
 
-# Turn off any quota file system
-
-if command -v quotaoff > /dev/null
-then
-    echo "(Single) Setting any quota file system to OFF"
-    quotaoff -a
-fi
-
-# Exit immediately on any error
-set -e
+echo "${RC}: Setting any quota file system to OFF"
+quotaoff -va
 
 # Be immune to the following signals
 trap "" HUP INT QUIT ABRT TERM
 
-echo "(Single) Sending the HUP signal to all the processes"
+echo "${RC}: Sending the HUP signal to all the processes"
 killall5 -1 -o $$
 sleep 7
 
-echo "(Single) Sending the TERM signal to all the processes"
+echo "${RC}: Sending the TERM signal to all the processes"
 killall5 -15 -o $$
 sleep 9
 

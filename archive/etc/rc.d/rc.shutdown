@@ -16,10 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+RC="[${0##*/}]"	# To reflect the name of the script between [].
 umask 022
 IFS='
  	'
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/usr/sbin:/bin:/usr/bin
+LC_ALL=C
 
 # Set linefeed mode to avoid staircase effect
 stty onlcr 0>&1
@@ -31,10 +33,10 @@ trap "" HUP INT QUIT ABRT TERM
 
 if grep -q '^RC_HWCLOCK=local' /etc/rc.conf
 then
-    echo "(Shutdown) Saving hardware clock in local time"
+    echo "${RC}: Saving hardware clock in local time"
     hwclock --systohc --localtime
 else
-    echo "(Shutdown) Saving hardware clock in UTC"
+    echo "${RC}: Saving hardware clock in UTC"
     hwclock --systohc --utc
 fi
 
@@ -42,25 +44,22 @@ fi
 
 if grep -E -q -m 1 '(usr|grp)quota' /etc/fstab
 then
-    if command -v quotaoff > /dev/null
-    then
-        echo "(Shutdown) Setting any quota file system to OFF"
-        quotaoff -va
-    fi
+    echo "${RC}: Setting any quota file system to OFF"
+    quotaoff -va
 fi
 
 # Save the random number generator, see random(4)
 
-echo "(Shutdown) Saving random number generator"
+echo "${RC}: Saving random number generator"
 echo "    /dev/urandom <-> /etc/random-seed ..."
 
 # Read the pool size from /proc or use a default value
-read -r < /proc/sys/kernel/random/poolsize size
+read -r < /proc/sys/kernel/random/poolsize size || size=512
 
 # Save seed file containing the whole entropy pool
-dd if=/dev/urandom of=/etc/random-seed count=1 bs="${size:-512}"
-chmod 600 /etc/random-seed
+dd if=/dev/urandom of=/etc/random-seed count=1 bs=$size
 unset -v size
+chmod 600 /etc/random-seed
 
 # Try to write a login record (at /var/log/wtmp)
 halt -w
@@ -78,16 +77,16 @@ fi
 killall5 -15 -o $$
 sleep 9
 
-echo "(Shutdown) Deactivating swap devices"
+echo "${RC}: Deactivating swap devices"
 swapoff -v -a
 
-echo "(Shutdown) Unmounting local and remote file systems"
+echo "${RC}: Unmounting local and remote file systems"
 umount -v -a -r
 sleep 1
 sync
 
-echo "(Shutdown) Remounting root filesystem in read-only mode"
-mount -n -o remount,ro /
+echo "${RC}: Remounting root filesystem in read-only mode"
+mount -v -n -o remount,ro /
 
 # Wait for completion of all the processes
 wait
