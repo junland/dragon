@@ -196,7 +196,6 @@ fi
 
 RC_HWCLOCK="${RC_HWCLOCK:-utc}"
 RC_HOSTNAME="${RC_HOSTNAME:-dragora}"
-RC_DOMAINNAME="${RC_DOMAINNAME:-example.net}"
 RC_ESPEAKUP="${RC_ESPEAKUP:-0}"
 RC_EVOICE="${RC_EVOICE:-default}"
 RC_KEYMAP="${RC_KEYMAP:-qwerty/us}"
@@ -226,11 +225,6 @@ then
 else
     echo "    The root filesystem is already in read-write mode." 1>&2
 fi
-
-# In modern distributions /etc/mtab is a symbolic link to /proc/mounts
-
-rm -f /etc/mtab
-ln -sf /proc/mounts /etc/mtab
 
 # Mount local file systems only
 
@@ -269,18 +263,16 @@ chmod 600 /var/log/btmp
 
 rm -f /etc/nologin /fastboot /forcefsck
 
+# Set default system host name
+
+echo "$RC_HOSTNAME" > /proc/sys/kernel/hostname
+
+unset -v RC_HOSTNAME
+
 # Set kernel parameters at runtime
 
 echo "${RC}: Setting kernel parameters: sysctl -q --system"
 sysctl -q --system
-
-# Set host name and domain name for the system,
-# overrides any value given in sysctl.conf
-
-echo "$RC_HOSTNAME" > /proc/sys/kernel/hostname
-echo "$RC_DOMAINNAME" > /proc/sys/kernel/domainname
-
-unset -v RC_HOSTNAME RC_DOMAINNAME
 
 # Start the loopback device
 
@@ -306,8 +298,8 @@ then
     cat /etc/random-seed > /dev/urandom
 fi
 
-# Read the pool size from /proc or use a default value
-IFS= read -r < /proc/sys/kernel/random/poolsize size || size=512
+# Get the pool size from /proc or use a default value
+size="$(cat /proc/sys/kernel/random/poolsize)" || size=512
 
 # Save seed file containing the whole entropy pool
 dd if=/dev/urandom of=/etc/random-seed count=1 bs=$size

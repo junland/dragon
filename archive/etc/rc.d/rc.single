@@ -25,8 +25,13 @@ LC_ALL=C
 echo ""
 echo "Entering to single-user mode ..."
 
-echo "${RC}: Setting any quota file system to OFF"
-quotaoff -va
+# Stop any quota file system (if needed)
+
+if grep -E -q -m 1 '(usr|grp)quota' /etc/fstab
+then
+    echo "${RC}: Setting any quota file system to OFF"
+    quotaoff -va
+fi
 
 # Be immune to the following signals
 trap "" HUP INT QUIT ABRT TERM

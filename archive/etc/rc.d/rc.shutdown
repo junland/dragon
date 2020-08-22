@@ -53,8 +53,8 @@ fi
 echo "${RC}: Saving random number generator"
 echo "    /dev/urandom <-> /etc/random-seed ..."
 
-# Read the pool size from /proc or use a default value
-read -r < /proc/sys/kernel/random/poolsize size || size=512
+# Get the pool size from /proc or use a default value
+size="$(cat /proc/sys/kernel/random/poolsize)" || size=512
 
 # Save seed file containing the whole entropy pool
 dd if=/dev/urandom of=/etc/random-seed count=1 bs=$size
@@ -74,6 +74,7 @@ then
 fi
 
 # Kill all processes, except the one that is currently running
+echo "${RC}: Sending the TERM signal to all the processes"
 killall5 -15 -o $$
 sleep 9
 
