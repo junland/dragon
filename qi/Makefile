@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 2.0rc16
+version		= 2.0
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -42,7 +42,7 @@ INSTALL         = install
 INSTALL_PROGRAM = ${INSTALL} -p -m 755
 INSTALL_DATA    = ${INSTALL} -p -m 644
 INSTALL_DIR     = mkdir -p -m 755
-HELP2MAN_OPTS   = --version-string=${version}
+HELP2MAN_OPTS   = --locale=C --version-string=${version}
 
 .PHONY: all \
 	doc info man html \
@@ -103,19 +103,21 @@ doc : info man html
 info : doc/$(project).info
 
 doc/$(project).info : doc/$(project).texi
-	cd doc && LC_ALL=C $(MAKEINFO) $(project).texi
+	cd doc && env LANG=C $(MAKEINFO) $(project).texi
 
 man : doc/qi.1
 
-doc/qi.1 : src/qi
-	LC_ALL=C help2man ${HELP2MAN_OPTS} \
+doc/qi.1 : doc/qi.1.in
+	help2man ${HELP2MAN_OPTS} \
 	 --name="a simple but well-integrated package manager" \
-	 --output=$@ src/qi
+	 --info-page=qi \
+	 --output=$@ doc/qi.1.in
+	 sed -e "s#QI.1.IN#QI#g" -e "s#qi.1.in#qi#g" -i $@
 
 html : doc/$(project).html
 
 doc/$(project).html : doc/$(project).texi
-	cd doc && LC_ALL=C $(MAKEINFO) --html --no-split \
+	cd doc && env LC_ALL=C $(MAKEINFO) --html --no-split \
 	 $(project).texi
 
 dist : doc
@@ -132,6 +134,7 @@ dist : doc
 	  $(DISTNAME)/doc/example.order \
 	  $(DISTNAME)/doc/fdl.txt \
 	  $(DISTNAME)/doc/qi.1 \
+	  $(DISTNAME)/doc/qi.1.in \
 	  $(DISTNAME)/doc/$(project).html \
 	  $(DISTNAME)/doc/$(project).info \
 	  $(DISTNAME)/doc/$(project).texi \

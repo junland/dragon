@@ -20,8 +20,8 @@ terms of the GNU General Public License.  There are only two major
 dependencies for the magic: graft(1) and tarlz(1), the rest is expected
 to be found in any Unix-like system.
 
-RUNTIME REQUIREMENTS
---------------------
+Requirements
+------------
 
 - A POSIX-compliant shell.
 
@@ -42,7 +42,7 @@ If you have not changed the default values used on the graft installation,
 you can avoid these steps, since qi uses the same values of graft for
 PACKAGEDIR and TARGETDIR.
 
-INSTALLATION
+Installation
 ------------
 
 To configure, make and install qi, type:
@@ -59,7 +59,7 @@ To install qi in a different location, type:
 
 This is useful for package distributors.
 
-CONTACT
+Contact
 -------
 
   The Qi home page can be found at https://www.dragora.org.
