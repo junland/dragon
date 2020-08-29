@@ -1,6 +1,6 @@
 # Build recipe for gdbm.
 #
-# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018, 2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 program=gdbm
 version=1.18.1
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=db
@@ -47,6 +47,11 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # Apply a few patches from Debian
+
+    patch -Np1 -i "${worktree}/patches/gdbm/patch-fix-spelling-error-in-gdbm.3.patch"
+    patch -Np1 -i "${worktree}/patches/gdbm/gcc-10-ftbfs.patch"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
