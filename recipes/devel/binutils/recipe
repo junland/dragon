@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=binutils
-version=2.34
-release=3
+version=2.35
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=devel
@@ -42,9 +42,6 @@ license="GPLv2+, GPLv3+, LGPLv2, LGPLv3"
 # Source documentation
 docs="COPYING* README"
 docsdir="${docdir}/${program}-${version}"
-
-# System-dependent
-MACHTYPE="$(gcc -dumpmachine)"
 
 build()
 {
@@ -74,6 +71,9 @@ build()
         ;;
     esac
 
+    # System-dependent
+    MACHINE="$(gcc -dumpmachine)"
+
     ../${program}-${version}/configure \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -87,6 +87,7 @@ build()
      --enable-gold=yes \
      --enable-ld=default \
      --enable-threads=auto \
+     --enable-default-hash-style=gnu \
      --enable-relro \
      --enable-lto \
      --enable-nls \
@@ -98,13 +99,13 @@ build()
      --disable-separate-code \
      --disable-compressed-debug-sections \
      --with-system-zlib \
-     --build=$MACHTYPE \
+     --build=$MACHINE \
      $binutils_targets
 
     unset binutils_targets
-    make -j${jobs} tooldir=/usr/${MACHTYPE}
+    make -j${jobs} tooldir=/usr/${MACHINE}
     #make -k check
-    make -j${jobs} tooldir=/usr/${MACHTYPE} DESTDIR="$destdir" install-strip
+    make -j${jobs} tooldir=/usr/${MACHINE} DESTDIR="$destdir" install-strip
 
     # Back to srcdir
     cd .. && cd "$srcdir"
@@ -115,7 +116,7 @@ build()
         rm -f ld ; ln -sf ld.bfd ld
     )
     (
-        cd "${destdir}/usr/${MACHTYPE}/bin" && \
+        cd "${destdir}/usr/${MACHINE}/bin" && \
         for file in *
         do
             if test -x "../../bin/$file"
@@ -124,6 +125,8 @@ build()
             fi
         done
     )
+
+    unset MACHINE
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"

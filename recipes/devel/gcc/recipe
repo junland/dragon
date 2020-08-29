@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=gcc
-version=9.3.0
-release=2
+version=10-20200822
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=devel
@@ -24,7 +24,7 @@ pkgcategory=devel
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://www.netgull.com/gcc/releases/gcc-${version}/$tarname
+fetch=http://mirror.marwan.ma/gcc/snapshots/${version}/$tarname
 #fetch="
 #  http://www.netgull.com/gcc/snapshots/${version}/$tarname
 #  http://gnu.c3sl.ufpr.br/ftp/gcc/gcc-${version}/$tarname
@@ -49,9 +49,6 @@ For more information about GCC, visit:  $homepage
 docs="COPYING* README"
 docsdir="${docdir}/${program}-${version}"
 
-# System-dependent
-MACHTYPE="$(gcc -dumpmachine)"
-
 build()
 {
     set -e
@@ -64,27 +61,24 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     # Apply specific patches for the support in musl.
-    # http://port70.net/~nsz/musl/gcc-9.1.0/
+    # http://port70.net/~nsz/musl/gcc-10.1.0/
 
-    patch -Np1 -i "${worktree}/patches/gcc/230-musl_libssp.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0002-posix_memalign.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0003-libatomic-test-fix.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0004-libgomp-test-fix.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0005-libitm-test-fix.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0006-libvtv-test-fix.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0007-j2.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0008-s390x-muslldso.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0009-microblaze-pr65649.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0010-ldbl128-config.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0011-m68k.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0012-static-pie.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/0013-invalid-tls-model.patch"
-    patch -Np1 -i "${worktree}/patches/gcc/turn-on-relro-bydefault.patch"
+    patch -Np1 -i "${worktree}/patches/gcc/10/0001-ssp_nonshared.patch"
+    patch -Np1 -i "${worktree}/patches/gcc/10/0002-posix_memalign.patch"
+    patch -Np1 -i "${worktree}/patches/gcc/10/0003-j2.patch"
+    patch -Np1 -i "${worktree}/patches/gcc/10/0004-static-pie.patch"
+
+    # Apply extra patches to increment the security
+    patch -Np1 -i "${worktree}/patches/gcc/10/extra-relro-in-dragora.patch"
+    patch -Np1 -i "${worktree}/patches/gcc/10/extra-musl_libssp.patch"
 
     # Create a separate build directory
     rm -rf ../gcc-build
     mkdir ../gcc-build
     cd ../gcc-build
+
+    # System-dependent
+    MACHINE="$(gcc -dumpmachine)"
 
     ../${program}-${version}/configure SED=sed \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
@@ -115,9 +109,10 @@ build()
      --disable-libsanitizer \
      --disable-libcilkrts \
      --with-system-zlib \
-     --build=$MACHTYPE \
-     --host=$MACHTYPE \
-     --target=$MACHTYPE \
+     --with-linker-hash-style=gnu \
+     --build=$MACHINE \
+     --host=$MACHINE \
+     --target=$MACHINE \
      $multilib_options \
      $gcc_options
 
@@ -153,18 +148,18 @@ build()
         mv gcc gcc-${version}
         ln -sf gcc-${version} gcc
         ln -sf gcc cc
-        ln -sf gcc-${version} ${MACHTYPE}-gcc
-        ln -sf gcc-${version} ${MACHTYPE}-gcc-${version}
+        ln -sf gcc-${version} ${MACHINE}-gcc
+        ln -sf gcc-${version} ${MACHINE}-gcc-${version}
 
         mv g++ g++-gcc-${version}
         ln -sf g++-gcc-${version} g++
         ln -sf g++ c++
-        ln -sf g++-gcc-${version} ${MACHTYPE}-g++
-        ln -sf g++-gcc-${version} ${MACHTYPE}-c++
+        ln -sf g++-gcc-${version} ${MACHINE}-g++
+        ln -sf g++-gcc-${version} ${MACHINE}-c++
 
         mv gfortran gfortran-${version}
         ln -sf gfortran-${version} gfortran
-        ln -sf gfortran-${version} ${MACHTYPE}-gfortran
+        ln -sf gfortran-${version} ${MACHINE}-gfortran
         # Extra symlinks for fortran
         ln -sf gfortran g77
         ln -sf g77 f77
@@ -173,20 +168,22 @@ build()
 
         mv gcc-ar gcc-ar-${version}
         ln -sf gcc-ar-${version} gcc-ar
-        ln -sf gcc-ar-${version} ${MACHTYPE}-gcc-ar
+        ln -sf gcc-ar-${version} ${MACHINE}-gcc-ar
 
         mv gcc-nm gcc-nm-${version}
         ln -sf gcc-nm-${version} gcc-nm
-        ln -sf gcc-nm-${version} ${MACHTYPE}-gcc-nm
+        ln -sf gcc-nm-${version} ${MACHINE}-gcc-nm
 
         mv gcc-ranlib gcc-ranlib-${version}
         ln -sf gcc-ranlib-${version} gcc-ranlib
-        ln -sf gcc-ranlib-${version} ${MACHTYPE}-gcc-ranlib
+        ln -sf gcc-ranlib-${version} ${MACHINE}-gcc-ranlib
     )
     (
         mkdir -p "${destdir}/lib" && \
         cd "${destdir}/lib" && ln -sf ../usr/bin/cpp .
     )
+
+    unset MACHINE
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"

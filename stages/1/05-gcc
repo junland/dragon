@@ -14,19 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version=9.3.0
+version=10-20200822
 
 # Prerequisites
 gmp_version=6.2.0
-mpfr_version=4.0.2
-mpc_version=1.1.0
+mpfr_version=4.1.0
+mpc_version=1.2.0
 isl_version=0.22.1
 
 cd -- "$TMPDIR"
 
 rm -rf gcc-${version} gmp-${gmp_version} \
        mpfr-${mpfr_version} mpc-${mpc_version} isl-${isl_version}
-unpack "${worktree}/sources/gcc-${version}.tar.gz" \
+unpack "${worktree}/sources/gcc-${version}.tar.xz" \
        "${worktree}/sources/gmp-${gmp_version}.tar.lz" \
        "${worktree}/sources/mpfr-${mpfr_version}.tar.bz2" \
        "${worktree}/sources/mpc-${mpc_version}.tar.gz" \
@@ -36,22 +36,15 @@ unpack "${worktree}/sources/gcc-${version}.tar.gz" \
 cd gcc-${version}
 
 # Apply specific patches for the support in musl.
-# http://port70.net/~nsz/musl/gcc-9.1.0/
+# http://port70.net/~nsz/musl/gcc-10.1.0/
 
-patch -Np1 -i "${worktree}/patches/gcc/230-musl_libssp.patch"
-patch -Np1 -i "${worktree}/patches/gcc/0002-posix_memalign.patch"
-patch -Np1 -i "${worktree}/patches/gcc/0003-libatomic-test-fix.patch"
-patch -Np1 -i "${worktree}/patches/gcc/0004-libgomp-test-fix.patch"
-patch -Np1 -i "${worktree}/patches/gcc/0005-libitm-test-fix.patch"
-patch -Np1 -i "${worktree}/patches/gcc/0006-libvtv-test-fix.patch"
-patch -Np1 -i "${worktree}/patches/gcc/0007-j2.patch"
-patch -Np1 -i "${worktree}/patches/gcc/0008-s390x-muslldso.patch"
-patch -Np1 -i "${worktree}/patches/gcc/0009-microblaze-pr65649.patch"
-patch -Np1 -i "${worktree}/patches/gcc/0010-ldbl128-config.patch"
-patch -Np1 -i "${worktree}/patches/gcc/0011-m68k.patch"
-patch -Np1 -i "${worktree}/patches/gcc/0012-static-pie.patch"
-patch -Np1 -i "${worktree}/patches/gcc/0013-invalid-tls-model.patch"
-patch -Np1 -i "${worktree}/patches/gcc/turn-on-relro-bydefault.patch"
+patch -Np1 -i "${worktree}/patches/gcc/10/0002-posix_memalign.patch"
+patch -Np1 -i "${worktree}/patches/gcc/10/0003-j2.patch"
+patch -Np1 -i "${worktree}/patches/gcc/10/0004-static-pie.patch"
+
+# Apply extra patches to increment the security
+patch -Np1 -i "${worktree}/patches/gcc/10/extra-relro-in-dragora.patch"
+patch -Np1 -i "${worktree}/patches/gcc/10/extra-musl_libssp.patch"
 
 # Hard code default paths to look in /tools
 for file in \
@@ -104,12 +97,8 @@ ln -s ../isl-${isl_version} isl
 cp -f "${worktree}/archive/common/config.guess" gmp/configfsf.guess
 cp -f "${worktree}/archive/common/config.sub" gmp/config.sub
 
-for directory in mpfr mpc isl
-do
-    cp -f "${worktree}/archive/common/config.guess" ${directory}/config.guess
-    cp -f "${worktree}/archive/common/config.sub" ${directory}/config.sub
-done
-unset directory
+cp -f "${worktree}/archive/common/config.guess" isl/config.guess
+cp -f "${worktree}/archive/common/config.sub" isl/config.sub
 
 # Build in a separate directory
 rm -rf ../gcc-build
@@ -145,6 +134,7 @@ CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
  --disable-libmudflap \
  --disable-libsanitizer \
  --disable-nls \
+ --with-linker-hash-style=gnu \
  --with-local-prefix=/tools \
  --with-native-system-header-dir=/tools/include \
  $multilib_options \
