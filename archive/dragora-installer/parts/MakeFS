@@ -147,6 +147,21 @@ $(fdisk -l "$devname" | head -n 1)" 13 55 1 \
     unset -v helper devname progressfile
 }
 
+_mkreiser4()
+{
+    devname=$1
+    progressfile="${SUBTMPDIR}/MakeFS-mkfs.reiser4.progress.${RANDOM-0}$$"
+
+    slowcmd "mkfs.reiser4 -yf $devname" "$progressfile" | \
+     dialog --colors \
+      --backtitle "\\ZbPartitions: Formatting partitions" \
+      --title "PROGRESS" \
+      --sleep 3 --progressbox \
+"Formatting $devname - No bad blocks support." $(( LINES / 2 )) $COLUMNS
+
+    unset -v devname progressfile
+}
+
 _mkxfs()
 {
     devname=$1
@@ -170,11 +185,12 @@ formatMenu()
      --default-item "ext3" \
      --item-help --cr-wrap --menu \
 "Choose a file system for '${1}':" 13 58 6 \
-"ext2" "Second extended filesystem"       "ext2 remains the preferred file system for flash-based storage media due to its lack of a journal"  \
-"ext3" "Third  extended filesystem"       "ext3 is suitable for both 32-bit and 64-bit systems"                                                \
-"ext4" "Fourth extended filesystem"       "We suggest using it more for a 64-bit system than for a 32-bit system"                              \
-"jfs"  "A Journaled file system"          "Actual usage of jfs in GNU/Linux is uncommon, as ext4 typically offers better performance"          \
-"xfs"  "A 64-bit journaling file system"  "xfs is a high-performance 64-bit journaling file system suitable for real-time applications"        \
+"ext2"     "Second extended filesystem"       "ext2 remains the preferred file system for flash-based storage media due to its lack of a journal" \
+"ext3"     "Third  extended filesystem"       "ext3 is suitable for both 32-bit and 64-bit systems" \
+"ext4"     "Fourth extended filesystem"       "We suggest using it more for a 64-bit system than for a 32-bit system" \
+"reiser4"  "Reiser4 filesystem"               "Reiser4 is a successor of ReiserFS (a general-purpose, journaling file system)" \
+"jfs"      "JFS filesystem"                   "Actual usage of jfs in GNU/Linux is uncommon, as ext4 typically offers better performance" \
+"xfs"      "XFS filesystem"                   "xfs is a high-performance 64-bit journaling file system suitable for real-time applications" \
     2> "${SUBTMPDIR}/return-MakeFS_formatMenu" || _status=$?
 
     if test -n "$_status" && test $_status -ne 0
@@ -188,11 +204,24 @@ formatMenu()
 
     # Check for selected options to give the proper format
     case "$(cat -- "${SUBTMPDIR}"/return-MakeFS_formatMenu)" in
-    ext2)  _mkfs  mkfs.ext2 "$1" ;;
-    ext3)  _mkfs  mkfs.ext3 "$1" ;;
-    ext4)  _mkfs  mkfs.ext4 "$1" ;;
-     jfs)  _mkfs  jfs_mkfs  "$1" ;;
-     xfs)  _mkxfs "$1" ;;
+    ext2)
+        _mkfs mkfs.ext2 "$1"
+        ;;
+    ext3)
+        _mkfs mkfs.ext3 "$1"
+        ;;
+    ext4)
+        _mkfs mkfs.ext4 "$1"
+        ;;
+    reiser4)
+        _mkreiser4 "$1"
+        ;;
+    jfs)
+        _mkfs jfs_mkfs "$1"
+        ;;
+    xfs)
+        _mkxfs "$1"
+        ;;
     esac
 }
 
