@@ -15,8 +15,8 @@
 # limitations under the License.
 
 program=xfsprogs
-version=5.2.1
-release=2
+version=5.8.0
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -52,17 +52,10 @@ build()
 
     cd "$srcdir"
 
-    # Apply patches against Musl (Thanks to "Alpine Linux")
-    for file in "${worktree}"/patches/xfsprogs/*.patch
-    do
-        patch -Np1 -i "$file"
-    done
-    unset file
-
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure LDFLAGS="$QILDFLAGS" \
     OPTIMIZER="$QICFLAGS" DEBUG="-DNDEBUG" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
@@ -73,8 +66,8 @@ build()
      --enable-shared=yes \
      --enable-blkid=yes \
      --enable-gettext=yes \
-     --enable-readline=yes \
-     --enable-lto=no \
+     --enable-libicu=yes \
+     --enable-lto=yes \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
