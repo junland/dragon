@@ -16,7 +16,7 @@
 
 program=isapnptools
 version=1.27
-release=3
+release=4
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -65,20 +65,13 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     # Fix compilation on musl
-    patch -p0 < "${worktree}/patches/isapnptools/isapnptools-musl.patch"
-
-    # Apply fixes from NetBSD (thanks!)
-    # ftp://ftp.netbsd.org/pub/pkgsrc/current/pkgsrc/sysutils/isapnptools/patches/
-    for file in patch-aa patch-ab patch-ac patch-ad patch-ae
-    do
-        patch -p0 < "${worktree}/patches/isapnptools/$file"
-    done
+    patch -p1 < "${worktree}/patches/isapnptools/isapnptools-musl-2.patch"
 
     # Update for hosts based on musl
     cp -f "${worktree}/archive/common/config.guess" config.guess
     cp -f "${worktree}/archive/common/config.sub" config.sub
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    ./configure CFLAGS="$QICFLAGS -fcommon" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
