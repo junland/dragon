@@ -16,7 +16,7 @@
 
 program=reiser4progs
 version=2.0.3
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -51,7 +51,7 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    ./configure CFLAGS="$QICFLAGS -O3" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --docdir=$docsdir \
@@ -61,7 +61,7 @@ build()
      --disable-Werror \
      --build="$(gcc -dumpmachine)"
 
-    make -j${jobs} V=1 CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static"
+    make -j${jobs} V=1 CFLAGS="$QICFLAGS -O3" LDFLAGS="$QILDFLAGS -static"
     make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Compress and link man pages (if needed)
