@@ -670,7 +670,7 @@ mode_create()
     ( cd -- "$directory" && sha256sum "$name" > "${name}.sha256" )
     chkstatus_or_exit 4
 
-    echo "{#} Package name \"${name}\" created on \`${directory}'."
+    echo "{#} Package \"${name}\" created on ${directory}."
 
     # Remove used variables
     unset -v directory name
@@ -965,20 +965,27 @@ mode_upgrade()
     echo "=== Looking for installations under the same name ..."
     for long_name in "$rootdir${packagedir}/${incoming%%_*}"_*
     do
-        test -d "$long_name" || continue;
-        fnmatch "${long_name##*/}*" "$incoming" || continue;
+        # Check if it is a valid directory and if the incoming
+        # package is not equivalent to a previous installation;
+        # also check if the package to be deleted is equivalent
+        # to the temporary, private location.
 
-        # The search for the package to be deleted
-        # cannot be the same to the temporary location
-        if test "$long_name" != "$PRVLOC"
+        if ! test -d "$long_name"
         then
-            warn "${long_name} has been detected.  Proceeding to remove it..."
-
-            # A package directory will be preserved if --keep is given
-            mode_remove "${long_name##*/}" > /dev/null
-        else
             continue;
         fi
+        if test "${long_name##*/}" = "$incoming"
+        then
+            continue;
+        fi
+        if test "$long_name" = "$PRVLOC"
+        then
+            continue;
+        fi
+
+        warn "Proceeding to the removal of ${long_name} ..."
+        # A package directory will be preserved if --keep is given
+        mode_remove "${long_name##*/}" > /dev/null
     done
     unset -v long_name
 
