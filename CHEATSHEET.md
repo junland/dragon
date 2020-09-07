@@ -16,9 +16,7 @@ Prerequisities:
 
 Bootstrapping from Debian systems:
 
-`apt update`
-
-`apt upgrade`
+`apt update && apt upgrade`
 
 `apt install build-essential flex git lzip genisoimage texinfo unzip zlib1g zlib1g-dev liblz1 liblz-dev`
 
@@ -38,7 +36,7 @@ Enter the temporary system:
 
 Start replacing the temporary system with the final system:
 
-`qi -o /usr/src/qi/recipes/*.order | qi -b -S -p -i - 2>&1 | tee build-log.txt`
+`qi order /usr/src/qi/recipes/*.order | qi build -S -p -i - 2>&1 | tee build-log.txt`
 
 Set custom modifications, like a password for the superuser:
 
@@ -68,4 +66,4 @@ number of processors + 1, for example `-j3`
 Under the terms of the GNU Free Documentation License,
 http://www.gnu.org/licenses/fdl.html
 
-Updated: 2019-03-01
+Updated: 2020-09-07
