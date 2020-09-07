@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Exit immediately on any error
+set -e
+
 program=lua
 version=5.3.5
 short_version="${version%.*}"
@@ -61,8 +64,6 @@ _make_target()
 
 build()
 {
-    set -e
-
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
@@ -90,7 +91,7 @@ build()
     _make_target TO_LIB="liblua.so liblua.so.${short_version} liblua.so.${version}" linux
     _make_target TO_LIB="liblua.so liblua.so.${short_version} liblua.so.${version}" install
 
-    unset make_target
+    unset -v make_target
 
     # Install a pkg-config file
     mkdir -p "${destdir}/usr/lib${libSuffix}/pkgconfig"
@@ -114,7 +115,7 @@ Libs: -L\${libdir} -llua -lm -ldl
 Cflags: -I\${includedir}
 EOF
 
-    unset short_version
+    unset -v short_version
 
     # Compress manual page(s)
     lzip -9 "${destdir}/${mandir}"/man1/*

@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Exit immediately on any error
+set -e
+
 program=ncurses
 version=6.1-20200118
 release=2
@@ -53,8 +56,6 @@ docsdir="${docdir}/${program}-${version}"
 
 build()
 {
-    set -e
-
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
@@ -92,7 +93,7 @@ build()
     mkdir -p "${destdir}/etc"
     zcat "${tardir}/$termcap_file" > "${destdir}/etc/termcap"
     chmod 644 "${destdir}/etc/termcap"
-    unset termcap_file
+    unset -v termcap_file
 
     touch "${destdir}/etc/.graft-config"
 
@@ -123,7 +124,7 @@ build()
         ln -sf libncursesw.so.${major_version} \
          "${destdir}/usr/lib${libSuffix}/lib${name}.so.${major_version}"
     done
-    unset major_version
+    unset -v major_version
 
     # Backward compatibility
     (
@@ -140,7 +141,7 @@ build()
     then
         (
             cd "${destdir}/$mandir"
-            find . -type f -exec lzip -9 '{}' +
+            find . -type f -exec lzip -9 {} +
             find . -type l | while read -r file
             do
                 ln -sf "$(readlink -- "$file").lz" "${file}.lz"

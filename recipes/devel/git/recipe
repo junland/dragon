@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Exit immediately on any error
+set -e
+
 program=git
 version=2.23.0
 release=1
@@ -52,8 +55,6 @@ docsdir="${docdir}/${program}-${version}"
 
 build()
 {
-    set -e
-
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
@@ -92,7 +93,7 @@ EOF
             # Unpack provided man-pages
             tar xf "${tardir}/$tarname_manpages"
 
-            find . -type f -exec lzip -9 '{}' +
+            find . -type f -exec lzip -9 {} +
             find . -type l | while read -r file
             do
                 ln -sf "$(readlink -- "$file").lz" "${file}.lz"
@@ -100,7 +101,7 @@ EOF
             done
         )
     fi
-    unset tarname_manpages
+    unset -v tarname_manpages
 
     # Clean up inventory file for Perl
 

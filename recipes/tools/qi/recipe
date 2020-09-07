@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Exit immediately on any error
+set -e
+
 program=qi
 version=2.0
 arch=noarch
@@ -65,8 +68,6 @@ full_pkgname=$program
 
 build()
 {
-    set -e
-
     # Figure out architecture name for default package names in Dragora 3+
     #
     # See git_tree/targets/ for 'package_arch' on it.
@@ -116,7 +117,7 @@ build()
      --targetdir=/ \
      --arch="${package_arch:-$(uname -m)}"
 
-    unset package_arch
+    unset -v package_arch
     make -j${jobs} DESTDIR="$destdir" install
 
     ln -s qi "${destdir}/usr/bin/dragora-qi"
