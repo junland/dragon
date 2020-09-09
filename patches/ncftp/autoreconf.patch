@@ -1,0 +1,47 @@
+Description: Fix sh/autoconfall.sh
+Author: Helmut Grohne <helmut@subdivi.de>
+Author: Adrian Bunk <bunk@debian.org>
+Bug-Debian: https://bugs.debian.org/874261
+
+--- ncftp-3.2.5.orig/sh/autoconfall.sh
++++ ncftp-3.2.5/sh/autoconfall.sh
+@@ -1,13 +1,5 @@
+ #!/bin/sh
+ 
+-PROJECT_HOME="$HOME/src/ncftp/current"
+-AUTOCONF_BIN="/usr/local/autoconf-2.13/bin"
+-if [ ! -d "$PROJECT_HOME" ] ; then
+-	/bin/ls -ld "$PROJECT_HOME"
+-	exit 1
+-fi
+-cd "$PROJECT_HOME"
+-
+ a=`pwd`
+ first=yes
+ didone=no
+@@ -16,7 +8,6 @@ for f in \
+ 	sio/configure.in \
+ 	Strn/configure.in \
+ 	libncftp/configure.in \
+-	"$HOME"/src/libncftp/current/libncftp/configure.in \
+ ; do
+ 	abs=no
+ 	case "$f" in
+@@ -32,7 +23,7 @@ for f in \
+ 		is_diff=no
+ 
+ 		/bin/mv config.h.in config.h.in.orig 2>/dev/null
+-		"$AUTOCONF_BIN"/autoheader 2>&1 | fgrep -v AC_TRY_RUN
++		autoheader2.13 2>&1 | fgrep -v AC_TRY_RUN
+ 		if [ ! -f config.h.in ] ; then
+ 			echo "* Warning: config.h.in not generated"
+ 			if [ -f config.h.in.orig ] ; then
+@@ -51,7 +42,7 @@ for f in \
+ 		fi
+ 
+ 		/bin/mv configure configure.orig 2>/dev/null
+-		"$AUTOCONF_BIN"/autoconf 2>&1 | fgrep -v AC_TRY_RUN
++		autoconf2.13 -l autoconf_local 2>&1 | fgrep -v AC_TRY_RUN
+ 		if [ ! -f configure ] ; then
+ 			echo "* Warning: configure not generated"
+ 			if [ -f configure.orig ] ; then

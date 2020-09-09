@@ -1,6 +1,6 @@
 # Build recipe for ncftp.
 #
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018, 2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 
 program=ncftp
 version=3.2.6
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=networking
@@ -56,15 +56,31 @@ build()
 
     cd "$srcdir"
 
+    # Apply patches from Debian to refresh this source
+    while read -r line
+    do
+        case $line in
+        *.patch)
+            patch -Np1 -i "${worktree}/patches/ncftp/${line}"
+            ;;
+        esac
+    done < "${worktree}/patches/ncftp/series"
+
+    # Update config detection for hosts
+    cp -f "${worktree}/archive/common/config.guess" .
+    cp -f "${worktree}/archive/common/config.sub" .
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
     # Unfortunately, this build system does
     # not pick up the FLAGS after `configure'
-    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    CFLAGS="$QICFLAGS -DNO_SSLv2 -D_FILE_OFFSET_BITS=64 -Wall" \
+    LDFLAGS="$QILDFLAGS -static" \
     ./configure $configure_args \
      --mandir=$mandir \
      --enable-ssp \
+     --enable-readline \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs}
@@ -73,19 +89,22 @@ build()
     # Replace hard link
     ln -sf ncftpbatch "${destdir}/usr/bin/ncftpspooler"
 
+    # Include missing manpage for ncftpbookmarks
+    # Thanks again to "Debian GNU/Linux" :-)
+
+    install -p -m 0644 "${worktree}/archive/ncftp/ncftpbookmarks.1" \
+     -D "${destdir}/${mandir}/man1/ncftpbookmarks.1"
+
     # Compress and link man pages (if needed)
-    if test -d "${destdir}/$mandir"
-    then
-        (
-            cd "${destdir}/$mandir"
-            find . -type f -exec lzip -9 {} +
-            find . -type l | while read -r file
-            do
-                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
-                rm -- "$file"
-            done
-        )
-    fi
+    (
+        cd "${destdir}/$mandir"
+        find . -type f -exec lzip -9 {} +
+        find . -type l | while read -r file
+        do
+            ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+            rm -- "$file"
+        done
+    )
 
     # Copy documentation
 

@@ -1,0 +1,28 @@
+Author: Bart Martens <bart.martens@advalvas.be>
+Date: 2006-02-11 20:48:08 UTC
+Bug-Debian: https://bugs.debian.org/352425
+
+	fix rmdir fails on trailing slash added by tab completion
+
+diff -ruN orig/ncftp-3.1.9/libncftp/c_rmdir.c ncftp-3.1.9/libncftp/c_rmdir.c
+--- orig/ncftp-3.1.9/libncftp/c_rmdir.c	2005-01-01 22:29:02.000000000 +0100
++++ ncftp-3.1.9/libncftp/c_rmdir.c	2006-02-11 21:50:05.000000000 +0100
+@@ -15,7 +15,7 @@
+ {
+ 	FTPLineList fileList;
+ 	FTPLinePtr filePtr;
+-	char *file;
++	char *file, *tail;
+ 	int onceResult, batchResult;
+ 
+ 	if (cip == NULL)
+@@ -37,6 +37,9 @@
+ 			cip->errNo = kErrBadLineList;
+ 			break;
+ 		}
++		tail = file + strlen( file );
++		while( tail > file + 1 && *(--tail) == '/' )
++			*tail = '\0';
+ 		onceResult = FTPCmd(cip, "RMD %s", file); 	
+ 		if (onceResult < 0) {
+ 			batchResult = onceResult;
