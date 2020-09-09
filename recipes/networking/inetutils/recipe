@@ -1,6 +1,6 @@
 # Build recipe for inetutils.
 #
-# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 
 program=inetutils
 version=1.9.4
-release=3
+release=4
 
 # Define a category for the output of the package name
 pkgcategory=networking
@@ -48,6 +48,16 @@ build()
 
     cd "$srcdir"
 
+    # Apply patches from Debian, upstream to refresh this source
+    while read -r line
+    do
+        case $line in
+        *.patch)
+            patch -Np1 -i "${worktree}/patches/inetutils/${line}"
+            ;;
+        esac
+    done < "${worktree}/patches/inetutils/series"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
@@ -56,6 +66,8 @@ build()
 
     # Note about `--disable-nls':
     # GNU Inetutils does not seem to provide locale files
+
+    autoreconf -vif
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
