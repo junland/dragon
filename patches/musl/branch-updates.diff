@@ -62,6 +62,26 @@ index e689ea21..157e2eae 100644
 -#define TP_ADJ(p) ((char *)(p) + sizeof(struct pthread))
  
  #define MC_PC arm_pc
+diff --git a/arch/generic/bits/fcntl.h b/arch/generic/bits/fcntl.h
+index ae233cc0..730a98cf 100644
+--- a/arch/generic/bits/fcntl.h
++++ b/arch/generic/bits/fcntl.h
+@@ -30,9 +30,15 @@
+ #define F_SETSIG 10
+ #define F_GETSIG 11
+ 
++#if __LONG_MAX == 0x7fffffffL
+ #define F_GETLK 12
+ #define F_SETLK 13
+ #define F_SETLKW 14
++#else
++#define F_GETLK 5
++#define F_SETLK 6
++#define F_SETLKW 7
++#endif
+ 
+ #define F_SETOWN_EX 15
+ #define F_GETOWN_EX 16
 diff --git a/arch/i386/pthread_arch.h b/arch/i386/pthread_arch.h
 index 6f600b9e..a639c382 100644
 --- a/arch/i386/pthread_arch.h
@@ -190,6 +210,19 @@ index 380a94b3..5b7c38de 100644
  #define SO_RCVTIMEO_OLD 0x1006
 +
 +#undef SYS_socketcall
+diff --git a/arch/mips64/bits/fcntl.h b/arch/mips64/bits/fcntl.h
+index 3bcec15e..5da1eef8 100644
+--- a/arch/mips64/bits/fcntl.h
++++ b/arch/mips64/bits/fcntl.h
+@@ -13,7 +13,7 @@
+ 
+ #define O_ASYNC      010000
+ #define O_DIRECT    0100000
+-#define O_LARGEFILE       0
++#define O_LARGEFILE  020000
+ #define O_NOATIME  01000000
+ #define O_PATH    010000000
+ #define O_TMPFILE 020200000
 diff --git a/arch/mips64/pthread_arch.h b/arch/mips64/pthread_arch.h
 index 1e7839ea..c45347ab 100644
 --- a/arch/mips64/pthread_arch.h
@@ -329,6 +362,50 @@ index 79c3ecd8..1b7b9079 100644
  #define MC_PC gp_regs[32]
 -
 -#define CANARY canary_at_end
+diff --git a/arch/riscv64/bits/fcntl.h b/arch/riscv64/bits/fcntl.h
+deleted file mode 100644
+index ecb4d18f..00000000
+--- a/arch/riscv64/bits/fcntl.h
++++ /dev/null
+@@ -1,38 +0,0 @@
+-#define O_CREAT        0100
+-#define O_EXCL         0200
+-#define O_NOCTTY       0400
+-#define O_TRUNC       01000
+-#define O_APPEND      02000
+-#define O_NONBLOCK    04000
+-#define O_DSYNC      010000
+-#define O_SYNC     04010000
+-#define O_RSYNC    04010000
+-#define O_DIRECTORY 0200000
+-#define O_NOFOLLOW  0400000
+-#define O_CLOEXEC  02000000
+-
+-#define O_ASYNC      020000
+-#define O_DIRECT     040000
+-#define O_LARGEFILE 0100000
+-#define O_NOATIME  01000000
+-#define O_PATH    010000000
+-#define O_TMPFILE 020200000
+-#define O_NDELAY O_NONBLOCK
+-
+-#define F_DUPFD  0
+-#define F_GETFD  1
+-#define F_SETFD  2
+-#define F_GETFL  3
+-#define F_SETFL  4
+-#define F_GETLK  5
+-#define F_SETLK  6
+-#define F_SETLKW 7
+-#define F_SETOWN 8
+-#define F_GETOWN 9
+-#define F_SETSIG 10
+-#define F_GETSIG 11
+-
+-#define F_SETOWN_EX 15
+-#define F_GETOWN_EX 16
+-
+-#define F_GETOWNER_UIDS 17
 diff --git a/arch/riscv64/pthread_arch.h b/arch/riscv64/pthread_arch.h
 index db414b17..a20d7fba 100644
 --- a/arch/riscv64/pthread_arch.h
@@ -405,6 +482,19 @@ index 3ee9c1a9..0fcf70d2 100644
  
  #define MC_PC sc_pc
  
+diff --git a/arch/x32/bits/fcntl.h b/arch/x32/bits/fcntl.h
+index 1b88ad39..08627f81 100644
+--- a/arch/x32/bits/fcntl.h
++++ b/arch/x32/bits/fcntl.h
+@@ -13,7 +13,7 @@
+ 
+ #define O_ASYNC      020000
+ #define O_DIRECT     040000
+-#define O_LARGEFILE       0
++#define O_LARGEFILE 0100000
+ #define O_NOATIME  01000000
+ #define O_PATH    010000000
+ #define O_TMPFILE 020200000
 diff --git a/arch/x32/pthread_arch.h b/arch/x32/pthread_arch.h
 index f640a1a1..c1e7716d 100644
 --- a/arch/x32/pthread_arch.h
@@ -429,6 +519,52 @@ index f640a1a1..c1e7716d 100644
 +#define CANARY_PAD
  
  #define tls_mod_off_t unsigned long long
+diff --git a/arch/x86_64/bits/fcntl.h b/arch/x86_64/bits/fcntl.h
+deleted file mode 100644
+index 1b88ad39..00000000
+--- a/arch/x86_64/bits/fcntl.h
++++ /dev/null
+@@ -1,40 +0,0 @@
+-#define O_CREAT        0100
+-#define O_EXCL         0200
+-#define O_NOCTTY       0400
+-#define O_TRUNC       01000
+-#define O_APPEND      02000
+-#define O_NONBLOCK    04000
+-#define O_DSYNC      010000
+-#define O_SYNC     04010000
+-#define O_RSYNC    04010000
+-#define O_DIRECTORY 0200000
+-#define O_NOFOLLOW  0400000
+-#define O_CLOEXEC  02000000
+-
+-#define O_ASYNC      020000
+-#define O_DIRECT     040000
+-#define O_LARGEFILE       0
+-#define O_NOATIME  01000000
+-#define O_PATH    010000000
+-#define O_TMPFILE 020200000
+-#define O_NDELAY O_NONBLOCK
+-
+-#define F_DUPFD  0
+-#define F_GETFD  1
+-#define F_SETFD  2
+-#define F_GETFL  3
+-#define F_SETFL  4
+-
+-#define F_SETOWN 8
+-#define F_GETOWN 9
+-#define F_SETSIG 10
+-#define F_GETSIG 11
+-
+-#define F_GETLK 5
+-#define F_SETLK 6
+-#define F_SETLKW 7
+-
+-#define F_SETOWN_EX 15
+-#define F_GETOWN_EX 16
+-
+-#define F_GETOWNER_UIDS 17
 diff --git a/arch/x86_64/pthread_arch.h b/arch/x86_64/pthread_arch.h
 index 65e880c6..c8c63f2e 100644
 --- a/arch/x86_64/pthread_arch.h
@@ -1645,6 +1781,17 @@ index 4f700cea..638f7718 100644
 -	return &h_errno;
 +	if (!__pthread_self()->stack) return &h_errno;
 +	return &__pthread_self()->h_errno_val;
+ }
+diff --git a/src/network/herror.c b/src/network/herror.c
+index 65f25ff3..87f8cff4 100644
+--- a/src/network/herror.c
++++ b/src/network/herror.c
+@@ -4,5 +4,5 @@
+ 
+ void herror(const char *msg)
+ {
+-	fprintf(stderr, "%s%s%s", msg?msg:"", msg?": ":"", hstrerror(h_errno));
++	fprintf(stderr, "%s%s%s\n", msg?msg:"", msg?": ":"", hstrerror(h_errno));
  }
 diff --git a/src/network/lookup_name.c b/src/network/lookup_name.c
 index aae0d95a..aa558c19 100644
