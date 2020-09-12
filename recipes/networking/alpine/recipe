@@ -1,6 +1,6 @@
 # Build recipe for alpine (suite).
 #
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018, 2020 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 set -e
 
 program=alpine
-version=2.21
-release=3
+version=2.23
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=networking
@@ -67,6 +67,7 @@ build()
      --mandir=$mandir \
      --without-krb5 \
      --with-interactive-spellcheck=aspell \
+     --enable-quotas \
      --enable-debug=no
 
     make -j${jobs} V=1
@@ -75,19 +76,16 @@ build()
     # Make symlink to invoke alpine as "pine" :-)
     ln -s alpine "${destdir}/usr/bin/pine"
 
-    # Include additional utilities
-
-    mkdir -p "${destdir}/usr/sbin"
-    cp -p imap/mlock/mlock "${destdir}/usr/sbin/"
-    chmod 2755 "${destdir}/usr/sbin/mlock"
-    strip --strip-unneeded "${destdir}/usr/sbin/mlock"
-
-    cp -p imap/mailutil/mailutil "${destdir}/usr/bin/"
-    chmod 755 "${destdir}/usr/bin/mailutil"
-
-    mkdir -p "${destdir}/${mandir}/man1"
-    cp -p imap/src/mailutil/mailutil.1 "${destdir}/${mandir}/man1/"
-    chmod 644 "${destdir}/${mandir}/man1/mailutil.1"
+    # Build and install additional utilities
+    (
+        cd imap/mlock || exit 1
+        mkdir -p "${destdir}/usr/sbin"
+        make -j${jobs} V=1 CFLAGS="$QICFLAGS"
+        chgrp mail mlock
+        chmod 3711 mlock
+        cp -p mlock "${destdir}/usr/sbin"
+        strip --strip-unneeded "${destdir}/usr/sbin/mlock"
+    )
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
