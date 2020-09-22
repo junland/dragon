@@ -157,19 +157,13 @@ chkstatus_or_exit()
 
 readconfig()
 {
-    if test "$readconfig" = readconfig
+    if test "${_readconfig:-readconfig}" = readconfig
     then
         is_readable "$HOME/.qirc" 2> /dev/null && _rcfile="$HOME/.qirc";
-
-        echo "Importing configuration file \`${_rcfile}' ..."
-
-        test -f "$_rcfile" || {
-            warn "$_rcfile is not a regular file."
-            return 1;
-        }
-
-        . "$_rcfile"
+        echo "Importing configuration file from \`${_rcfile}' ..."
+        . "$_rcfile" || chkstatus_or_exit 5
     fi
+    unset -v _readconfig
 }
 
 ### Mode functions
@@ -1183,7 +1177,6 @@ replace=\"$replace\"
 packagedir=@PACKAGEDIR@
 targetdir=@TARGETDIR@
 blacklist="perl5 graft tarlz plzip musl glibc coreutils bash mksh"
-readconfig=readconfig
 _rcfile=@SYSCONFDIR@/qirc
 opt_install=opt_install.off
 opt_upgrade=opt_upgrade.off
@@ -1198,7 +1191,7 @@ rootdir=""
 arch=@ARCH@
 jobs=1
 mode=""
-readstdin=""
+_readstdin=""
 graft_v=""
 graft_r=""
 _isUpgrade=_isUpgrade.off
@@ -1227,7 +1220,7 @@ QI_OUTDIR=$outdir
 
 ### Parse commands and options
 
-_validate_mode()
+validate_mode()
 {
     if test -n "$mode"
     then
@@ -1237,7 +1230,7 @@ _validate_mode()
     fi
 }
 
-_validate_option()
+validate_option()
 {
     if test -z "$2"
     then
@@ -1247,7 +1240,7 @@ _validate_option()
     fi
 }
 
-_validate_directory()
+validate_directory()
 {
     if test ! -d "$2"
     then
@@ -1256,7 +1249,7 @@ _validate_directory()
     fi
 }
 
-_validate_digit()
+validate_digit()
 {
     name="$1"
     shift
@@ -1284,46 +1277,46 @@ while test $# -gt 0
 do
     case $1 in
     warn)
-        _validate_mode warn
+        validate_mode warn
         mode=mode_warn
         ;;
     install)
-        _validate_mode install
+        validate_mode install
         readconfig
         mode=mode_install
         ;;
     remove)
-        _validate_mode remove
+        validate_mode remove
         readconfig
         mode=mode_remove
         ;;
     upgrade)
-        _validate_mode upgrade
+        validate_mode upgrade
         readconfig
         mode=mode_upgrade
         ;;
     extract)
-        _validate_mode extract
+        validate_mode extract
         readconfig
         mode=mode_extract
         ;;
     create)
-        _validate_mode create
+        validate_mode create
         readconfig
         mode=mode_create
         ;;
     order)
-        _validate_mode order
+        validate_mode order
         readconfig
         mode=mode_order
         ;;
     build)
-        _validate_mode build
+        validate_mode build
         readconfig
         mode=mode_build
         ;;
     --no-rc | -N )
-        readconfig=readconfig.off
+        _readconfig=readconfig.off
         ;;
     --install | -i )
         opt_install=opt_install
@@ -1341,92 +1334,92 @@ do
         opt_prune=opt_prune
         ;;
     --packagedir | -P )
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         packagedir="$2"
-        _validate_directory "$1" "$packagedir"
+        validate_directory "$1" "$packagedir"
         shift
         ;;
     --packagedir=*)
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         packagedir="${1#*=}"
-        _validate_directory "$1" "$packagedir"
+        validate_directory "$1" "$packagedir"
         ;;
     --targetdir | -t )
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         targetdir="$2"
-        _validate_directory "$1" "$targetdir"
+        validate_directory "$1" "$targetdir"
         shift
         ;;
     --targetdir=*)
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         targetdir="${1#*=}"
-        _validate_directory "$1" "$targetdir"
+        validate_directory "$1" "$targetdir"
         ;;
     --rootdir | -r )
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         rootdir="$2"
-        _validate_directory "$1" "$rootdir"
+        validate_directory "$1" "$rootdir"
         shift
         ;;
     --rootdir=*)
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         rootdir="${1#*=}"
-        _validate_directory "$1" "$rootdir"
+        validate_directory "$1" "$rootdir"
         ;;
     --outdir | -o )
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         outdir="$2"
-        _validate_directory "$1" "$outdir"
+        validate_directory "$1" "$outdir"
         shift
         ;;
     --outdir=*)
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         outdir="${1#*=}"
-        _validate_directory "$1" "$outdir"
+        validate_directory "$1" "$outdir"
         ;;
     --worktree | -w )
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         worktree="$2"
-        _validate_directory "$1" "$worktree"
+        validate_directory "$1" "$worktree"
         shift
         ;;
     --worktree=*)
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         worktree="${1#*=}"
-        _validate_directory "$1" "$worktree"
+        validate_directory "$1" "$worktree"
         ;;
     --sourcedir | -s )
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         tardir="$2"
-        _validate_directory "$1" "$tardir"
+        validate_directory "$1" "$tardir"
         shift
         ;;
     --sourcedir=*)
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         tardir="${1#*=}"
-        _validate_directory "$1" "$tardir"
+        validate_directory "$1" "$tardir"
         ;;
     --architecture | -a )
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         arch="$2"
         shift
         ;;
     --arch=*)
-        _validate_option "$1" "$2"
+        validate_option "$1" "$2"
         arch="${1#*=}"
         ;;
     --jobs | -j )
         jobs="$2"
-        _validate_digit "$1" "$jobs"
+        validate_digit "$1" "$jobs"
         shift
         ;;
     -j[0-9]*)
         jobs="${1#-j*}"
-        _validate_digit '-j' "$jobs"
+        validate_digit '-j' "$jobs"
         ;;
     --jobs=*)
         jobs="${1#*=}"
-        _validate_digit '--jobs=' "$jobs"
+        validate_digit '--jobs=' "$jobs"
         ;;
     --no-package | -n )
         opt_nopkg=opt_nopkg
@@ -1464,7 +1457,7 @@ do
         exit 0
         ;;
     '-')
-        readstdin=readstdin
+        _readstdin=readstdin
         break
         ;;
     --)
@@ -1482,7 +1475,8 @@ do
     esac
     shift
 done
-unset -f _validate_mode _validate_option _validate_directory _validate_digit
+unset -f \
+ readconfig validate_mode validate_option validate_directory validate_digit
 
 # When there are no arguments, show the help
 if test $# -eq 0
@@ -1520,7 +1514,7 @@ fi
 # Read standard input if FILE is -, or when
 # FILE is not connected to a terminal
 
-if test "$readstdin" = readstdin
+if test "$_readstdin" = readstdin
 then
     if test -t 0
     then
@@ -1538,7 +1532,7 @@ then
         set -- "$@" "$input"
     done
 fi
-unset -v readstdin
+unset -v _readstdin
 
 if test -z "$mode"
 then
