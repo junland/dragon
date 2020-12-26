@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 2.2
+version		= 2.3
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -102,12 +102,12 @@ doc : info man html
 
 info : doc/$(project).info
 
-doc/$(project).info : doc/$(project).texi
-	cd doc && env LANG=C $(MAKEINFO) $(project).texi
+doc/$(project).info : doc/$(project)-header.texi doc/$(project)-content.texi
+	cd doc && env LANG=C $(MAKEINFO) $(project)-header.texi -o $(project).info
 
 man : doc/qi.1
 
-doc/qi.1 : doc/qi.1.in
+doc/qi.1 : doc/qi.1.in src/qi.in
 	help2man ${HELP2MAN_OPTS} \
 	 --name="a simple but well-integrated package manager" \
 	 --info-page=qi \
@@ -116,9 +116,9 @@ doc/qi.1 : doc/qi.1.in
 
 html : doc/$(project).html
 
-doc/$(project).html : doc/$(project).texi
-	cd doc && env LC_ALL=C $(MAKEINFO) --html --no-split \
-	 $(project).texi
+doc/$(project).html : doc/$(project)-header.texi doc/$(project)-content.texi
+	cd doc && env LANG=C $(MAKEINFO) --html --no-split \
+	 $(project)-header.texi -o $(project).html
 
 dist : doc
 	rm -f $(DISTNAME)
@@ -137,7 +137,8 @@ dist : doc
 	  $(DISTNAME)/doc/qi.1.in \
 	  $(DISTNAME)/doc/$(project).html \
 	  $(DISTNAME)/doc/$(project).info \
-	  $(DISTNAME)/doc/$(project).texi \
+	  $(DISTNAME)/doc/$(project)-header.texi \
+	  $(DISTNAME)/doc/$(project)-content.texi \
 	  $(DISTNAME)/doc/recipe1 \
 	  $(DISTNAME)/doc/recipe2 \
 	  $(DISTNAME)/doc/recipe3 \
