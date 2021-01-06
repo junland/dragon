@@ -1,0 +1,144 @@
+# Build recipe for llvm.
+#
+# Copyright (c) 2021 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Exit immediately on any error
+set -e
+
+program=llvm
+version=11.0.0
+release=1
+
+# Define a category for the output of the package name
+pkgcategory=devel
+
+tarname=${program}-${version}.src.tar.xz
+tarname_clang=clang-${version}.src.tar.xz
+tarname_compilerrt=compiler-rt-${version}.src.tar.xz
+
+# Remote source(s)
+fetch="
+ http://github.com/llvm/llvm-project/releases/download/llvmorg-${version}/$tarname
+ http://github.com/llvm/llvm-project/releases/download/llvmorg-${version}/$tarname_clang
+ http://github.com/llvm/llvm-project/releases/download/llvmorg-${version}/$tarname_compilerrt
+"
+
+homepage=http://llvm.org
+license="Apachev2 + LLVM exceptions"
+
+description="
+The LLVM compiler.
+
+The LLVM Project is a collection of modular and reusable compiler and
+toolchain technologies. Despite its name, LLVM has little to do with
+traditional virtual machines.  The name \"LLVM\" itself is not an
+acronym; it is the full name of the project.
+
+For more information, visit: $homepage
+"
+
+# Source documentation
+docs="CREDITS.TXT LICENSE.TXT README.txt"
+docsdir="${docdir}/${program}-${version}"
+
+# Source directory used by this software
+srcdir=${program}-${version}.src
+
+build()
+{
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    cd tools
+
+    unpack "${tardir}/$tarname_clang"
+    mv clang-${version}.src clang
+
+    cd ../projects
+
+    unpack "${tardir}/$tarname_compilerrt"
+    mv compiler-rt-${version}.src compiler-rt
+
+    cd ..
+    unset -v tarname_clang tarname_compilerrt
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    # Make sure to point to Python version 3 (Thanks to BLFS!)
+    grep -rl '#!.*python' | xargs sed -i '1s/python$/python3/'
+
+    # Set the SANITIZER flag to TRUE for Musl
+    patch -p0 < "${worktree}/patches/llvm/compiler_rt_sanitizer.diff"
+
+    mkdir BUILD
+    cd BUILD
+
+    cmake CC=gcc CXX=g++ \
+     -DCMAKE_C_FLAGS_RELEASE:STRING="$QICFLAGS"                            \
+     -DCMAKE_CXX_FLAGS_RELEASE:STRING="$QICXXFLAGS"                        \
+     -DCMAKE_EXE_LINKER_FLAGS:STRING="$QILDFLAGS -Wl,--no-keep-memory"     \
+     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$QILDFLAGS -Wl,--no-keep-memory"  \
+     -DCMAKE_INSTALL_PREFIX=/usr                                           \
+     -DLLVM_LIBDIR_SUFFIX=${libSuffix}                                     \
+     -DLLVM_BINUTILS_INCDIR=/usr/include                                   \
+     -DCMAKE_INSTALL_MANDIR=$mandir                                        \
+     -DCMAKE_INSTALL_DOCDIR=$docsdir                                       \
+     -DCMAKE_BUILD_TYPE=Release                                            \
+     -DLLVM_BUILD_LLVM_DYLIB=ON                                            \
+     -DLLVM_LINK_LLVM_DYLIB=ON                                             \
+     -DLLVM_ENABLE_FFI=ON                                                  \
+     -DLLVM_ENABLE_RTTI=ON                                                 \
+     -DLLVM_ENABLE_ZLIB=ON                                                 \
+     -DLLVM_INSTALL_UTILS=ON                                               \
+     -DLLVM_ENABLE_ASSERTIONS=OFF                                          \
+     -DLLVM_APPEND_VC_REV=OFF                                              \
+     -DLLVM_TARGETS_TO_BUILD="host;AMDGPU;BPF"                             \
+     -DLLVM_PARALLEL_COMPILE_JOBS=$jobs                                    \
+     -G Ninja ..
+
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja install
+
+    # Strip ELF executables only excluding shared objects
+    find "$destdir" -type f | xargs file | awk '/ELF/ && /executable/' | \
+     cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
+
+    # Strip static libraries in order to reduce the package size
+    find "$destdir" -type f | xargs file | awk '/current ar archive/' | \
+     cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 {} +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    cd ../
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
