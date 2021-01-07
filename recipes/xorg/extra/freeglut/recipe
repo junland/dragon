@@ -1,6 +1,6 @@
 # Build recipe for freeglut.
 #
-# Copyright (c) 2018-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 
 program=freeglut
 version=3.2.1
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=xorg_extra
@@ -53,6 +53,9 @@ build()
 
     cd "$srcdir"
 
+    # Thanks to "Beyond Linux From Scratch"
+    patch -p1 < "${worktree}/patches/freeglut/freeglut-3.2.1-gcc10_fix-1.patch"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
@@ -71,10 +74,10 @@ build()
      -DCMAKE_VERBOSE_MAKEFILE=ON                      \
      -DFREEGLUT_BUILD_DEMOS=OFF                       \
      -DFREEGLUT_BUILD_STATIC_LIBS=OFF                 \
-     ..
+     -G Ninja ..
 
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
 
     cd ..
 
