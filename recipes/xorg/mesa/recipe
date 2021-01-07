@@ -1,7 +1,7 @@
 # Build recipe for mesa.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2020 Matias Fonzo <selk@dragora.org>.
+# Copyright (c) 2017-2021 Matias Fonzo <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,16 +19,16 @@
 set -e
 
 program=mesa
-version=19.0.8
-release=2
+version=20.3.2
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=xorg_mesa
 
-tarname=${program}-${version}.tar.gz
+tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
-fetch=http://mesa.freedesktop.org/archive/$tarname
+fetch=http://archive.mesa3d.org/$tarname
 
 description="
 Mesa is an OpenGL compatible 3-D graphics library.
@@ -53,49 +53,54 @@ build()
     # To increment compatibility with Musl (Thanks to "Alpine Linux")
     patch -p1 < "${worktree}/patches/mesa/adjust-cache-deflate-buffer.patch"
     patch -p1 < "${worktree}/patches/mesa/musl-fix-includes.patch"
-    patch -p1 < "${worktree}/patches/mesa/add-glx-use-tls.patch"
+
+    # To provide a few xdemos (Thanks to BLFS!)
+    patch -p1 < "${worktree}/patches/mesa/mesa-20.3.2-add_xdemos-1.patch"
+
+    MESA_GIT_SHA1_OVERRIDE='53b2b224dc2de982c37915a0ad218e33365ff75e'
+    export MESA_GIT_SHA1_OVERRIDE
+    python3 bin/git_sha1_gen.py --output include/git_sha1.h
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    case $arch in
-    i?86 | amd64 | x32 )
-        extra_options="--enable-glx-read-only-text --disable-asm"
-        ;;
-    esac
+    mkdir BUILD
+    cd BUILD
 
-    ./configure CPPFLAGS="-D_XOPEN_SOURCE=700" \
-    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args --enable-autotools \
-     --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
-     --mandir=$mandir \
-     --docdir=$docsdir \
-     --disable-debug \
-     --disable-llvm \
-     --disable-gallium-llvm \
-     --disable-gles1 \
-     --enable-gles2 \
-     --disable-glx-tls \
-     --enable-glx="dri" \
-     --enable-gbm \
-     --enable-shared-glapi \
-     --enable-gallium-extra-hud \
-     --enable-dri \
-     --enable-dri3 \
-     --enable-gallium-osmesa \
-     --enable-xa \
-     --enable-nine \
-     --enable-lmsensors \
-     --with-gallium-drivers="i915,nouveau,r600,svga,swrast" \
-     --with-platforms="drm,x11" \
-     --with-dri-driverdir=/usr/lib${libSuffix}/xorg/modules/dri \
-     --build="$(gcc -dumpmachine)" \
-     $extra_options
+    CPPFLAGS="-D_XOPEN_SOURCE=700" \
+    CFLAGS="$QICFLAGS" \
+    CXXFLAGS="$QICXXFLAGS" \
+    LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     -Dplatforms=x11 \
+     -Ddri-drivers="i915,i965,r100,r200,nouveau" \
+     -Dgallium-drivers="nouveau,r300,r600,svga,radeonsi,swrast,virgl,iris,virgl" \
+     -Dglx=dri \
+     -Dosmesa=gallium \
+     -Dllvm=true \
+     -Dshared-llvm=enabled \
+     -Dgallium-xvmc=enabled \
+     -Dgallium-va=enabled \
+     -Dgallium-xa=enabled \
+     -Dgallium-vdpau=enabled \
+     -Dgles1=enabled \
+     -Dgles2=enabled \
+     -Dopengl=true \
+     -Dlmsensors=true \
+     -Dgallium-nine=false \
+     -Dvalgrind=false \
+     -Dlibunwind=false \
+     -Dzstd=false \
+     ..
 
-    unset -v extra_options
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja install
+
+    unset -v MESA_GIT_SHA1_OVERRIDE
+    cd ../
 
     # Handle .new files via graft(1), if any
     if test -d "${destdir}/etc"
@@ -124,8 +129,8 @@ build()
         )
     fi
 
-    # Copy documentation
-    mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"/
+##    # Copy documentation
+##    mkdir -p "${destdir}${docsdir}"
+##    cp -p $docs "${destdir}${docsdir}"/
 }
 
