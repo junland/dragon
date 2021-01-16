@@ -1,7 +1,7 @@
 # Build recipe for liepoxy.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues, <mprodrigues@dragora.org>.
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 
 program=libepoxy
 version=1.5.3
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -55,8 +55,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    mkdir -p build
-    cd build
+    mkdir BUILD
+    cd BUILD
 
     CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     meson setup $configure_args \
@@ -68,8 +68,8 @@ build()
      -Dx11=true \
      ..
 
-    ninja
-    DESTDIR="$destdir" ninja install
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
 
     cd ..
 
