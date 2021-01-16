@@ -1,6 +1,6 @@
 # Build recipe for xf86-video-amdgpu.
 #
-# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=xf86-video-amdgpu
-version=19.0.1
+version=19.1.0
 release=1
 
 # Define a category for the output of the package name
@@ -51,11 +51,12 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -Wl,-z,lazy" \
+    ./configure CFLAGS="$QICFLAGS -fcommon" LDFLAGS="$QILDFLAGS -Wl,-z,lazy" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --enable-glamor \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1

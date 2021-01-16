@@ -1,7 +1,7 @@
 # Build recipe for libjpeg-turbo.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (C) 2018-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2018-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 set -e
 
 program=libjpeg-turbo
-version=2.0.3
-release=2
+version=2.0.6
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -49,6 +49,7 @@ docsdir="${docdir}/${program}-${version}"
 
 build()
 {
+    unpack "${tardir}/$tarname"
 
     cd "$srcdir"
 
@@ -68,10 +69,10 @@ build()
      -DCMAKE_INSTALL_DOCDIR=$docsdir                  \
      -DCMAKE_BUILD_TYPE=Release                       \
      -DCMAKE_VERBOSE_MAKEFILE=ON                      \
-     ..
+     -G Ninja ..
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
 
     cd ..
 

@@ -1,7 +1,7 @@
 # Build recipe for libxcb.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,13 +19,13 @@
 set -e
 
 program=libxcb
-version=1.13.1
+version=1.14
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=xorg_xcb
 
-tarname=${program}-${version}.tar.bz2
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
 fetch=http://www.x.org/releases/individual/xcb/$tarname
@@ -41,7 +41,7 @@ homepage=http://www.x.org
 license="MIT X Consortium"
 
 # Source documentation
-docs="COPYING ChangeLog NEWS README"
+docs="COPYING ChangeLog NEWS README.md"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -53,7 +53,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CFLAGS="$QICFLAGS -Wno-error=format-extra-args" \
+    LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \

@@ -1,7 +1,7 @@
 # Build recipe for findutils.
 #
 # Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
-# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 set -e
 
 program=findutils
-version=4.7.0
-release=2
+version=4.8.0
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -49,11 +49,6 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
-
-    # Fix minor memory leak in sharefile handling.
-    #
-    # http://git.savannah.gnu.org/cgit/findutils.git/commit/?id=9ad78c90c77636b5491f63470ed241123ca85cf6
-    patch -Np1 -i "${worktree}/patches/findutils/9ad78c90c77636b5491f63470ed241123ca85cf6"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -108,10 +103,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
