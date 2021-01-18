@@ -1,7 +1,7 @@
 # Build recipe for GTK+2.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (C) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 set -e
 
 program=gtk+
-version=2.24.32
-release=4
+version=2.24.33
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=x-libs
@@ -31,7 +31,7 @@ pkgname=gtk2
 tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
-fetch=http://ftp.gnome.org/pub/gnome/sources/gtk+/2.24/$tarname
+fetch="http://download.gnome.org/sources/gtk+/${version%.*}/$tarname"
 
 description="
 A multi-platform toolkit for creating graphical user interfaces.
@@ -49,18 +49,9 @@ docsdir="${docdir}/${pkgname}-${version}"
 
 build()
 {
+    unpack "${tardir}/$tarname"
 
     cd "$srcdir"
-
-    # Apply patch series from Debian
-    while read -r line
-    do
-        line="$(echo $line)"
-        echo "Patching with ${worktree}/patches/gtk2/$line ..."
-        patch -Np1 -i "${worktree}/patches/gtk2/$line"
-    done < "${worktree}"/patches/gtk2/series
-
-    autoreconf -vif
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
