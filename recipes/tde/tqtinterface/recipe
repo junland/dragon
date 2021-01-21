@@ -1,6 +1,6 @@
-# Build recipe for jasper.
+# Build recipe for tqtinterface.
 #
-# Copyright (c) 2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2020-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,7 @@
 set -e
 
 program=tqtinterface-trinity
-pkgname=tqtinterface
-version=14.0.7
+version=14.0.9
 release=1
 
 # Define a category for the output of the package name
@@ -49,7 +48,7 @@ license=GPLv2+
 
 # Source documentation
 docs="AUTHORS COPYING README qtinterface/TODO"
-docsdir="${docdir}/${pkgname}-${version}"
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
@@ -80,10 +79,10 @@ build()
      -DQT_VERSION=3                                   \
      -DWITH_QT3=ON                                    \
      -DWITH_QT4=OFF                                   \
-     ..
+     -G Ninja ..
 
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"

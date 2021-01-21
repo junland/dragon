@@ -1,6 +1,6 @@
 # Build recipe for guile.
 #
-# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=guile
-version=2.2.6
+version=3.0.5
 release=1
 
 # Define a category for the output of the package name
@@ -70,14 +70,10 @@ build()
      --with-threads \
      --build="$(gcc -dumpmachine)"
 
-    # Uncomment the following (two) commented lines if you want to
-    # build the documentation.  We do not build it by default in
-    # order to save 9M, approx.
-
     make -j${jobs} V=1
-    #make V=1 html
+    make V=1 html
     make -j${jobs} DESTDIR="$destdir" install-strip
-    #make -j${jobs} DESTDIR="$destdir" install-html
+    make -j${jobs} DESTDIR="$destdir" install-html
 
     # Delete generated charset.alias
     rm -f "${destdir}/usr/lib${libSuffix}/charset.alias"

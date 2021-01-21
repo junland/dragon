@@ -1,6 +1,6 @@
 # Build recipe for gdb.
 #
-# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=gdb
-version=8.3.1
+version=9.2
 release=1
 
 # Define a category for the output of the package name
@@ -53,10 +53,14 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # The GUILE support is pending (--with-guile=guile-2.2)
-    # It does not work for GDB 8.2, 8.3 ...
+    # Create a separate build directory
+    mkdir BUILD
+    cd BUILD
 
-    ./configure \
+    # The GUILE support is pending (--with-guile=guile-3.0)
+    # It does not work for GDB 8.2, 8.3, 9.2, ... ?
+
+    ../configure \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
@@ -71,6 +75,8 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
+
+    cd ../
 
     # Delete generated charset.alias
     rm -f "${destdir}/usr/lib${libSuffix}/charset.alias"

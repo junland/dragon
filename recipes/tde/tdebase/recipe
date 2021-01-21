@@ -1,6 +1,6 @@
 # Build recipe for tdebase.
 #
-# Copyright (c) 2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2020-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,8 @@
 set -e
 
 program=tdebase-trinity
-pkgname=tdebase
-version=14.0.7
-release=4
+version=14.0.9
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=tde
@@ -43,16 +42,13 @@ license="GPLv2+, GFDLv1.2"
 
 # Source documentation
 docs="AUTHORS COPYING* README*"
-docsdir="${docdir}/${pkgname}-${version}"
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
-
-    patch -Np1 -i \
-     "${worktree}/patches/tdebase/branch-updates_e37f480d1f2bc9786bdc578a37f657ca65052613.diff"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -77,7 +73,7 @@ build()
      -DWITH_SUDO_KONSOLE_SUPER_USER_COMMAND=OFF             \
      -DWITH_USBIDS=/usr/share/hwdata/usb.ids                \
      -DHTDIG_SEARCH_BINARY=/usr/bin/hlsearch                \
-     -DWITH_TDEHWLIB=ON                                    \
+     -DWITH_TDEHWLIB=ON                                     \
      -DWITH_ARTS=OFF                                        \
      -DWITH_PAM=OFF                                         \
      -DWITH_LIBCONFIG=OFF                                   \
@@ -91,10 +87,10 @@ build()
      -DWITH_OPENEXR=OFF                                     \
      -DWITH_LDAP=OFF                                        \
      -DWITH_SAMBA=OFF                                       \
-     ..
+     -G Ninja ..
 
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
 
     # Strip remaining binaries and libraries
     find "$destdir" -type f -print0 | xargs -0 file | \

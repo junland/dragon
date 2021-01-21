@@ -1,6 +1,6 @@
 # Build recipe for tk (Tcl/Tk).
 #
-# Copyright (c) 2018-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@
 set -e
 
 program=tk
-version=8.6.9.1
-series_version=8.6
-release=3
+version=8.6.11
+series_version="${version%.*}"
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=devel
@@ -44,11 +44,11 @@ $homepage
 license=Custom
 
 # Source documentation
-docs="ChangeLog README changes license.terms"
+docs="ChangeLog README.md changes license.terms"
 docsdir="${docdir}/${program}-${version}"
 
 # Custom source directory
-srcdir=${program}8.6.9
+srcdir=${program}${version}
 
 build()
 {
@@ -59,14 +59,14 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    cd unix
-
     # Determine whether to use 64 bit support
     case $arch in
     amd64 | x32 )
         bit_flags=--enable-64bit
         ;;
     esac
+
+    cd unix
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -82,22 +82,17 @@ build()
      $bit_flags
 
     unset -v bit_flags
-    make -j${jobs} V=1 TK_LIBRARY=/usr/lib${libSuffix}/tcl${series_version}
-
-    # Clean up build-directory references/traces
+    make -j${jobs} V=1
 
     # Thanks to "Beyond of Linux From Scratch"
     sed -e "s@^\(TK_SRC_DIR='\).*@\1/usr/include'@" \
         -e "/TK_B/s@='\(-L\)\?.*unix@='\1/usr/lib${libSuffix}@" \
         -i tkConfig.sh
 
-    make -j${jobs} \
-     TK_LIBRARY=/usr/lib${libSuffix}/tcl${series_version} \
-     DESTDIR="$destdir" install
-
+    make -j${jobs} DESTDIR="$destdir" install
     make -j${jobs} INSTALL_ROOT="$destdir" install-private-headers
 
-    # Make symlinks for compatibility
+    # Make symlink(s) for compatibility
     ln -s wish${series_version} "${destdir}/usr/bin/wish"
     ln -s libtk${series_version}.so "${destdir}/usr/lib${libSuffix}/libtk.so"
     ln -s libtkstub${series_version}.a "${destdir}/usr/lib${libSuffix}/libtkstub.a"

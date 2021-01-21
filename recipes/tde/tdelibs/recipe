@@ -1,6 +1,6 @@
 # Build recipe for tdelibs.
 #
-# Copyright (c) 2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2020-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,8 @@
 set -e
 
 program=tdelibs-trinity
-pkgname=tdelibs
-version=14.0.7
-release=3
+version=14.0.9
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=tde
@@ -44,16 +43,13 @@ license="GPLv2+, LGPLv2+ | BSD 2-clause"
 
 # Source documentation
 docs="AUTHORS COPYING* DEBUG NAMING README TODO KDE?PORTING.html"
-docsdir="${docdir}/${pkgname}-${version}"
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
-
-    patch -Np1 -i \
-     "${worktree}/patches/tdelibs/branch-updates_93e9da4a7494abd7c516a6246d0089e80fa78d84.diff"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -76,8 +72,8 @@ build()
      -DBUILD_ALL=ON                                         \
      -DWITH_ALL_OPTIONS=ON                                  \
      -DWITH_SUDO_TDESU_BACKEND=ON                           \
-     -DWITH_TDEHWLIB=ON                                    \
-     -DWITH_TDEHWLIB_DAEMONS=ON                            \
+     -DWITH_TDEHWLIB=ON                                     \
+     -DWITH_TDEHWLIB_DAEMONS=ON                             \
      -DWITH_ALSA=ON                                         \
      -DWITH_ARTS=OFF                                        \
      -DWITH_AVAHI=OFF                                       \
@@ -94,10 +90,10 @@ build()
      -DWITH_UDISKS=OFF                                      \
      -DWITH_UDISKS2=OFF                                     \
      -DWITH_CONSOLEKIT=OFF                                  \
-     ..
+     -G Ninja ..
 
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
 
     # Strip remaining binaries and libraries
     find "$destdir" -type f -print0 | xargs -0 file | \

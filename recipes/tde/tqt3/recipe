@@ -1,6 +1,6 @@
 # Build recipe for tqt3 (trinity).
 #
-# Copyright (c) 2019-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,8 @@
 set -e
 
 program=tqt3-trinity
-pkgname=tqt3
-version=14.0.7
-release=2
+version=14.0.9
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=tde
@@ -45,7 +44,7 @@ license="GPLv2+, GPLv3+ | The Q Public License"
 
 # Source documentation
 docs="FAQ LICENSE* README*"
-docsdir="${docdir}/${pkgname}-${version}"
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
@@ -82,8 +81,8 @@ build()
     export QTDIR LD_LIBRARY_PATH PATH
 
     echo yes | ./configure -L/usr/lib${libSuffix} \
-     -prefix /opt/trinity/lib${libSuffix}/${pkgname}-${version} \
-     -plugindir /opt/trinity/lib${libSuffix}/${pkgname}-${version}/plugins \
+     -prefix /opt/trinity/lib${libSuffix}/${program}-${version} \
+     -plugindir /opt/trinity/lib${libSuffix}/${program}-${version}/plugins \
      -sysconfdir /opt/etc \
      -sysshare /usr/share \
      -docdir $docsdir \
@@ -139,7 +138,7 @@ build()
 test -n "$libSuffix" && ( cd opt/trinity && ln -sf lib${libSuffix} lib );
 
 # Link package name
-cd opt/trinity/lib && ln -sf ${pkgname}-${version} $pkgname
+cd opt/trinity/lib && ln -sf ${program}-${version} $program
 
 echo "Updating desktop database: update-desktop-database -q usr/share/applications"
 update-desktop-database -q usr/share/applications
@@ -151,24 +150,24 @@ EOF
     # Link tqt3's pkg-config files at /opt/trinity/lib/pkgconfig
 
     mkdir -p "${destdir}/opt/trinity/lib${libSuffix}/pkgconfig"
-    cd "${destdir}/opt/trinity/lib${libSuffix}/${pkgname}-${version}"/lib/pkgconfig/
+    cd "${destdir}/opt/trinity/lib${libSuffix}/${program}-${version}"/lib/pkgconfig/
     for file in *.pc
     do
         ln -sf \
-         "/opt/trinity/lib${libSuffix}/${pkgname}-${version}/lib/pkgconfig/${file}" \
+         "/opt/trinity/lib${libSuffix}/${program}-${version}/lib/pkgconfig/${file}" \
          "${destdir}/opt/trinity/lib${libSuffix}/pkgconfig/${file}"
     done
 
     # Link tqt3's programs at /opt/trinity/bin
 
     mkdir -p "${destdir}/opt/trinity/bin"
-    cd "${destdir}/opt/trinity/lib${libSuffix}/${pkgname}-${version}"/bin/
+    cd "${destdir}/opt/trinity/lib${libSuffix}/${program}-${version}"/bin/
     for file in *
     do
         test -x "$file" || continue;
 
         ln -sf \
-         "/opt/trinity/lib${libSuffix}/${pkgname}-${version}/bin/${file}" \
+         "/opt/trinity/lib${libSuffix}/${program}-${version}/bin/${file}" \
          "${destdir}/opt/trinity/bin/${file}"
     done
 

@@ -1,6 +1,6 @@
 # Build recipe for tcl.
 #
-# Copyright (c) 2018, 2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018, 2020-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@
 set -e
 
 program=tcl
-version=8.6.9
-series_version=8.6
-release=2
+version=8.6.11
+series_version="${version%.*}"
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=devel
@@ -49,7 +49,7 @@ $homepage
 license=Custom
 
 # Source documentation
-docs="ChangeLog README changes license.terms"
+docs="ChangeLog README.md changes license.terms"
 docsdir="${docdir}/${program}-${version}"
 
 # Custom source directory
@@ -66,14 +66,14 @@ build()
 
     WD="$(pwd)"
 
-    cd unix
-
     # Determine whether to use 64 bit support
     case $arch in
     amd64 | x32 )
         bit_flags=--enable-64bit
         ;;
     esac
+
+    cd unix
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -89,17 +89,21 @@ build()
      $bit_flags
 
     unset -v bit_flags
-    make -j${jobs} V=1 TCL_LIBRARY=/usr/lib${libSuffix}/tcl${series_version}
-
-    # Clean up build-directory references/traces
+    make -j${jobs} V=1
 
     # Current versions provided on this release
-    tdbc_version=1.1.0
-    itcl_version=4.1.2
+    tdbc_version=1.1.2
+    itcl_version=4.2.1
 
-    sed -e "s#${WD}/unix#/usr/lib${libSuffix}#"                                                   \
-        -e "s#${WD}#/usr/include#"                                                                \
+    # Fix header and library paths
+    sed -e "s@^\(TCL_SRC_DIR='\).*@\1/usr/include'@" \
+        -e "/TCL_B/s@='\(-L\)\?.*unix@='\1/usr/lib${libSuffix}@" \
         -i tclConfig.sh
+
+    sed -e "s#${WD}/unix/pkgs/itcl${itcl_version}#/usr/lib${libSuffix}/itcl${itcl_version}#"      \
+        -e "s#${WD}/pkgs/itcl${itcl_version}/generic#/usr/include#"                               \
+        -e "s#${WD}/pkgs/itcl${itcl_version}#/usr/include#"                                       \
+        -i pkgs/itcl${itcl_version}/itclConfig.sh
 
     sed -e "s#${WD}/unix/pkgs/tdbc${tdbc_version}#/usr/lib${libSuffix}/tdbc${tdbc_version}#"      \
         -e "s#${WD}/pkgs/tdbc${tdbc_version}/generic#/usr/include#"                               \
@@ -107,20 +111,12 @@ build()
         -e "s#${WD}/pkgs/tdbc${tdbc_version}#/usr/include#"                                       \
         -i pkgs/tdbc${tdbc_version}/tdbcConfig.sh
 
-    sed -e "s#${WD}/unix/pkgs/itcl${itcl_version}#/usr/lib${libSuffix}/itcl${itcl_version}#"      \
-        -e "s#${WD}/pkgs/itcl${itcl_version}/generic#/usr/include#"                               \
-        -e "s#${WD}/pkgs/itcl${itcl_version}#/usr/include#"                                       \
-        -i pkgs/itcl${itcl_version}/itclConfig.sh
-
     unset -v WD tdbc_version itcl_version
 
-    make -j${jobs} \
-     TCL_LIBRARY=/usr/lib${libSuffix}/tcl${series_version} \
-     DESTDIR="$destdir" install
-
+    make -j${jobs} DESTDIR="$destdir" install
     make -j${jobs} INSTALL_ROOT="$destdir" install-private-headers
 
-    # Make symlinks for compatibility
+    # Make symlink(s) for compatibility
     ln -s tclsh${series_version} "${destdir}/usr/bin/tclsh"
     ln -s libtcl${series_version}.so "${destdir}/usr/lib${libSuffix}/libtcl.so"
     ln -s libtclstub${series_version}.a "${destdir}/usr/lib${libSuffix}/libtclstub.a"
