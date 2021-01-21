@@ -1,7 +1,7 @@
 # Build recipe for lua.
 #
 # Copyright (C) 2020 Kevin "The Nuclear" Bloom, <kevin.bloom@posteo.net>.
-# Copyright (c) 2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2020-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@
 set -e
 
 program=lua
-version=5.3.5
+version=5.4.2
 short_version="${version%.*}"
-release=5
+release=1
 
 # Set custom package name to avoid conflicts on package upgrades
 pkgname="lua${short_version%.*}"
@@ -71,14 +71,13 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    patch -Np1 -i "${worktree}/patches/lua/lua-5.4.2-shared_library-1.patch"
+
     # Adjust Lua search path
     sed \
      -e 's#/usr/local/#/usr/#' \
      -e "s#lib/lua#lib${libSuffix}/lua#" \
      -i src/luaconf.h
-
-    # Fix release number
-    sed -i "/R= /s|\$V\.4|${version}|" Makefile
 
     _make_target linux
     _make_target install
@@ -86,12 +85,16 @@ build()
     # Now build the shared library
 
     make clean
-    patch -Np1 -i "${worktree}/patches/lua/lua-5.3.5-shared_library-1.patch"
 
     _make_target TO_LIB="liblua.so liblua.so.${short_version} liblua.so.${version}" linux
     _make_target TO_LIB="liblua.so liblua.so.${short_version} liblua.so.${version}" install
 
     unset -v make_target
+
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f | xargs file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
 
     # Install a pkg-config file
     mkdir -p "${destdir}/usr/lib${libSuffix}/pkgconfig"
