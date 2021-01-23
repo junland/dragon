@@ -1,6 +1,6 @@
 # Build recipe for libao.
 #
-# Copyright (c) 2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 20200-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=libao
-version=20181229_20dc8ed
+version=20190728_cafce90
 release=1
 
 # Define a category for the output of the package name
@@ -32,8 +32,8 @@ fetch=http://rsync.dragora.org/v3/sources/$tarname
 description="
 Audio output portability library.
 
-The libao package contains a cross-platform audio library.  This is useful
-to output audio on a wide variety of platforms.
+The libao package contains a cross-platform audio library.
+This is useful to output audio on a wide variety of platforms.
 "
 
 homepage=http://xiph.org/ao
@@ -50,6 +50,7 @@ build()
     cd "$srcdir"
 
     sh ./autogen.sh
+    sed -i "s,-O20 -ffast-math,," configure
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -61,8 +62,6 @@ build()
      --docdir=$docsdir \
      --enable-shared=yes \
      --enable-static=no \
-     --enable-alsa \
-     --enable-alsa-mmap \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1

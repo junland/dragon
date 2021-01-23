@@ -1,0 +1,117 @@
+# Build recipe for fftw.
+#
+# Copyright (c) 2021 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Exit immediately on any error
+set -e
+
+program=fftw
+version=3.3.9
+release=1
+
+# Define a category for the output of the package name
+pkgcategory=libs
+
+description="
+A fast C library for computing the discrete Fourier transform.
+
+FFTW is a C subroutine library for computing the discrete Fourier
+transform (DFT) in one or more dimensions, of arbitrary input size,
+and of both real and complex data (as well as of even/odd data, i.e.
+the discrete cosine/sine transforms or DCT/DST).
+"
+
+homepage=http://fftw.org
+license=GPLv2+
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://www.fftw.org/$tarname
+
+# Source documentation
+docs="AUTHORS CONVENTIONS COPYING COPYRIGHT NEWS README* TODO"
+docsdir="${docdir}/${program}-${version}"
+
+_configure_argv()
+{
+    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --libdir=/usr/lib${libSuffix} \
+    --infodir=$infodir \
+    --mandir=$mandir \
+    --docdir=$docsdir \
+    --enable-static=no \
+    --enable-shared=yes \
+    --enable-threads=yes \
+    --build="$(gcc -dumpmachine)" "$@"
+}
+
+build()
+{
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    # Build with double precision arithmetic support
+
+    _configure_argv
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Build with single precision support
+
+    make clean
+    _configure_argv --enable-float
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Build with long double support
+
+    make clean
+    _configure_argv --enable-long-double
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    unset -f _configure_argv
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
+
+    # Compress manual pages
+    if [ -d "${destdir}/$mandir" ] ; then
+	(
+            cd "${destdir}/$mandir"
+	    find . -type f -exec lzip -9 {} +
+	    find . -type l | while read -r file
+	    do
+		ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+		rm -- "$file"
+	    done
+	)
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}/"
+}
+
