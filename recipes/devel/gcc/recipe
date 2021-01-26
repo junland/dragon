@@ -73,14 +73,13 @@ build()
     patch -Np1 -i "${worktree}/patches/gcc/10/extra-musl_libssp.patch"
 
     # Create a separate build directory
-    rm -rf ../gcc-build
-    mkdir ../gcc-build
-    cd ../gcc-build
+    mkdir BUILD
+    cd BUILD
 
     # System-dependent
     MACHINE="$(gcc -dumpmachine)"
 
-    ../${program}-${version}/configure SED=sed \
+    ../configure SED=sed \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
@@ -134,8 +133,7 @@ build()
     find "$destdir" -type f | xargs file | awk '/current ar archive/' | \
      cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
 
-    # Back to source dir
-    cd .. && cd "$srcdir"
+    cd ../
 
     # Move misplaced file(s) for GDB
     mkdir -p "${destdir}/usr/share/gdb/auto-load/usr/lib${libSuffix}"
@@ -209,12 +207,5 @@ build()
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}/"
-
-    # Delete temporary build directory
-    cd -- "$TMPDIR"
-    if test -d ./gcc-build
-    then
-        rm -rf ./gcc-build
-    fi
 }
 
