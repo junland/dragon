@@ -1,6 +1,6 @@
 # Build recipe for ruby.
 #
-# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,17 +18,17 @@
 set -e
 
 program=ruby
-pkgname=ruby2
-version=2.6.5
+version=3.0.0
+pkgname=ruby3
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=ruby
 
-tarname=${program}-${version}.tar.bz2
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch="http://ftp.ruby-lang.org/pub/ruby/${version%.*}/$tarname"
+fetch="http://cache.ruby-lang.org/pub/ruby/${version%.*}/$tarname"
 
 description="
 Ruby programming language.
@@ -44,7 +44,7 @@ license="GPLv2+ | BSD + Custom declared files (see LEGAL)"
 # Source documentation
 docs="
   BSDL CONTRIBUTING.md COPYING* ChangeLog GPL KNOWNBUGS.rb
-  LEGAL NEWS README*
+  LEGAL NEWS.md README*
 "
 docsdir="${docdir}/${pkgname}-${version}"
 
@@ -60,11 +60,6 @@ build()
 
     patch -Np1 -i "${worktree}/patches/ruby/fix-get_main_stack.patch"
     patch -Np1 -i "${worktree}/patches/ruby/test_insns-lower-recursion-depth.patch"
-    patch -Np1 -i "${worktree}/patches/ruby/avoid-rdoc-hook-when-its-failed-to-load-rdoc-library.patch"
-
-    # Update for hosts based on musl
-    cp -f "${worktree}/archive/common/config.guess" tool/config.guess
-    cp -f "${worktree}/archive/common/config.sub" tool/config.sub
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
