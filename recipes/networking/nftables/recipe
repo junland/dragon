@@ -1,6 +1,6 @@
 # Build recipe for nftables.
 #
-# Copyright (c) 2017-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=nftables
-version=0.9.6
+version=0.9.8
 release=1
 
 # Define a category for the output of the package name
@@ -55,12 +55,11 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # TODO: --disable-man-doc requires docbook2x/docbook-utils
-
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --disable-debug \
-     --disable-man-doc \
+     --enable-python \
+     --with-xtables \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1

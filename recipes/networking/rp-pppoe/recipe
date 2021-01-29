@@ -1,6 +1,6 @@
 # Build recipe for rp-pppoe.
 #
-# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 set -e
 
 program=rp-pppoe
-version=3.13
-release=2
+version=3.14
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=networking
@@ -53,12 +53,6 @@ build()
     # Apply a patch from "Alpine Linux"
     patch -Np1 -i "${worktree}/patches/rp-pppoe/musl-fix.patch"
 
-    # Apply patches from "Fedora" to make it more reliable
-    patch -Np1 -i "${worktree}/patches/rp-pppoe/rp-pppoe-3.12-ip-allocation.patch"
-    patch -Np1 -i "${worktree}/patches/rp-pppoe/rp-pppoe-3.12-plugin.patch"
-    patch -Np1 -i "${worktree}/patches/rp-pppoe/rp-pppoe-3.12-pluginpath.patch"
-    patch -Np1 -i "${worktree}/patches/rp-pppoe/rp-pppoe-manpages.patch"
-
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
@@ -80,6 +74,12 @@ build()
 
     # To manage .new configs via graft(1)
     touch "${destdir}/etc/ppp/.graft-config"
+
+    # Make happy tutorials that point this out
+    ln -s pppoe-stop "${destdir}/usr/sbin/adsl-stop"
+    ln -s pppoe-start "${destdir}/usr/sbin/adsl-start"
+    ln -s pppoe-start.8 "${destdir}/${mandir}/man8/adsl-start.8"
+    ln -s pppoe-stop.8 "${destdir}/${mandir}/man8/adsl-stop.8"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"

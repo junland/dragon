@@ -1,6 +1,6 @@
 # Build recipe for net-tools.
 #
-# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,19 +18,16 @@
 set -e
 
 program=net-tools
-version=20181103_0eebece
-release=2
+version=2.10
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=networking
 
-tarname=${program}-${version}.tar.lz
+tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
-fetch="
- http://rsync.dragora.org/current/sources/$tarname
- http://mirror.cedia.org.ec/dragora/current/sources/$tarname
-"
+fetch=http://downloads.sourceforge.net/project/net-tools/$tarname
 
 description="
 Collection of basic networking programs.
@@ -64,12 +61,14 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    sed -i "s#-O2 -g#${QICFLAGS}#" Makefile
+
     yes "" | make config
     make -j${jobs} V=1 \
      BINDIR=/usr/bin SBINDIR=/usr/sbin \
      DESTDIR="$destdir" install
 
-    # Delete included programs on the inetutils packages
+    # Delete included programs coming from the inetutils package
     for program in hostname dnsdomainname ifconfig \
                    domainname nisdomainname ypdomainname
     do

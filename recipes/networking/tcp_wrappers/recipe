@@ -1,6 +1,6 @@
 # Build recipe for tcp_wrappers.
 #
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,8 @@
 set -e
 
 program=tcp_wrappers
-version=7.6-ipv6.4
-pkgversion=7.6
-release=1
+version=7.6
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=networking
@@ -28,7 +27,7 @@ pkgcategory=networking
 tarname=${program}_${version}.tar.gz
 
 # Remote source(s)
-fetch=ftp://ftp.porcupine.org/pub/security/$tarname
+fetch=http://ftp.porcupine.org/pub/security/$tarname
 
 description="
 Monitor of incoming TCP connections.
@@ -61,10 +60,24 @@ build()
 
     cd "$srcdir"
 
+    # Refresh old source code plus security issues via patches
+
+    # Apply patches from Debian (Thanks!)
+    while read -r line
+    do
+        patch -p1 < "${worktree}/patches/tcp_wrappers/${line}"
+    done < "${worktree}/patches/tcp_wrappers/series"
+
+    # Apply extras patches from "musl development overlay" (Thanks to "Gentoo Linux")
+    patch -p1 < "${worktree}/patches/tcp_wrappers/tcp-wrappers-7.6.22-remove-DECLS.patch"
+    patch -p1 < "${worktree}/patches/tcp_wrappers/tcp-wrappers-7.6-redhat-bug11881.patch"
+    patch -p1 < "${worktree}/patches/tcp_wrappers/0001-Remove-fgets-extern-declaration.patch"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    make -j${jobs} STYLE="-DPROCESS_OPTIONS" REAL_DAEMON_DIR=/usr/sbin linux
+    make -j${jobs} COPTS="$QICFLAGS" LDOPTS="$QILDFLAGS" \
+     STYLE="-DPROCESS_OPTIONS" REAL_DAEMON_DIR=/usr/sbin musl
 
     # Install manually
 
@@ -76,6 +89,7 @@ build()
         cp -p $file "${destdir}/usr/sbin/"
         chmod 755   "${destdir}/usr/sbin/${file}"
     done
+    unset -v file
 
     cp -p libwrap.a "${destdir}/usr/lib${libSuffix}/"
     chmod 644 "${destdir}/usr/lib${libSuffix}/libwrap.a"
