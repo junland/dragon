@@ -1,4 +1,4 @@
-# Build recipe for freetype (pass1).
+# Build recipe for fontconfig (pass1).
 #
 # Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
 #
@@ -17,29 +17,29 @@
 # Exit immediately on any error
 set -e
 
-program=freetype
-version=2.9.1
-release=1
+program=fontconfig
+version=2.13.1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=x-libs
 
-pkgname=freetype_pass1
+pkgname=fontconfig-pass1
+
+description="
+Temporary installation of fontconfig.
+
+This is a temporary installation to satisfy the requirements of Xorg.
+Later, this will be replaced with the fully \"fontconfig\" package.
+"
+
+homepage=http://www.freedesktop.org/wiki/Software/fontconfig/
+license=Custom
 
 tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch=http://download.savannah.gnu.org/releases/freetype/$tarname
-
-description="
-Temporary installation of freetype.
-
-This is a temporary installation to satisfy the requirements of Xorg.
-Later, this will be replaced with the fully \"freetype\" package.
-"
-
-homepage=http://www.freetype.org/
-license="GPLv2 | FreeType License (FTL)"
+fetch=http://www.freedesktop.org/software/fontconfig/release/$tarname
 
 # Source documentation
 docsdir="${docdir}/${pkgname}-${version}"
@@ -52,6 +52,9 @@ build() {
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # Make sure the system regenerates src/fcobjshash.h (Thanks to BLFS!)
+    rm -f src/fcobjshash.h
+
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
@@ -59,20 +62,11 @@ build() {
      --docdir=$docsdir \
      --disable-static \
      --enable-shared \
-     --with-bzip2=yes \
-     --with-zlib=yes \
-     --with-png=yes \
-     --with-harfbuzz=no \
-     --build="$(gcc -dumpmachine)" \
-     ac_cv_prog_RC= ac_cv_prog_ac_ct_RC=
+     --disable-docs \
+     --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
-
-    # Strip remaining binaries and libraries
-    find "$destdir" -type f | xargs file | \
-     awk '/ELF/ && /executable/ || /shared object/' | \
-      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
+    make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Compress manual pages
     if [ -d "${destdir}/$mandir" ] ; then

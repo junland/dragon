@@ -1,6 +1,6 @@
-# Build recipe for util-linux (pass 1).
+# Build recipe for Cairo (pass1).
 #
-# Copyright (c) 2016-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2018, Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,63 +17,59 @@
 # Exit immediately on any error
 set -e
 
-program=util-linux
-version=2.36.1
+program=cairo
+version=1.16.0
 release=1
 
+pkgname=cairo-pass1
+
 # Define a category for the output of the package name
-pkgcategory=tools
+pkgcategory=x-libs
 
-pkgname=util-linux_pass1
-
-tarname=${program}-${version}.tar.gz
+tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
-fetch="http://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v${version%.*}/$tarname"
+fetch=http://www.cairographics.org/releases/$tarname
 
 description="
-Suite of essential utilities.
+Temporary installation of cairo.
 
-The util-linux package contains miscellaneous utility programs for
-handling file systems, consoles, partitions, and messages.
+This is a temporary installation that is replaced with additional
+support included in the final cairo package.
 "
 
-homepage=http://github.com/karelzak/util-linux
-license="GPLv2+, LGPLv2.1 | Public domain, BSD with advertising"
+homepage=http://www.cairographics.org/
+license="LGPLv2.1 | MPLv1.1"
 
-# Source documentation
-docs="AUTHORS COPYING ChangeLog NEWS README*"
-docsdir="${docdir}/${program}-${version}"
+# Copy documentation
+docsdir="${docdir}/${pkgname}-${version}"
 
 build()
 {
     unpack "${tardir}/$tarname"
-
+    
     cd "$srcdir"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
-
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    
+    ./configure \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
-     --docdir=$docsdir \
-     --enable-usrdir-path \
      --enable-static=no \
      --enable-shared=yes \
-     --enable-sulogin-emergency-mount \
-     --enable-use-tty-group \
-     --enable-wall \
-     --enable-write \
-     --enable-libblkid \
-     --enable-libmount \
-     --enable-libuuid \
-     --without-btrfs \
-     --without-python \
-     --without-systemd \
-     --without-readline \
+     --enable-tee \
+     --enable-xlib \
+     --enable-xcb \
+     --enable-ft \
+     --disable-trace \
+     --disable-trace \
+     --disable-xcb-shm \
+     --disable-xlib-xcb \
+     --disable-gtk-doc \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
@@ -99,9 +95,5 @@ build()
             done
         )
     fi
-
-    # Copy documentation
-    mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"/
 }
 
