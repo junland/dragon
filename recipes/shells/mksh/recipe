@@ -1,6 +1,6 @@
-# Build recipe for mksh and lksh.
+# Build recipe for mksh (and lksh).
 #
-# Copyright (c) 2017-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=mksh
-version=R59b
+version=R59c
 release=1
 
 # Define a category for the output of the package name
@@ -67,19 +67,18 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     # Create a separate build directory
-    rm -rf ../mksh-build ../lksh-build
-    mkdir ../mksh-build ../lksh-build
+    mkdir mksh-build lksh-build
 
     # Build and install mksh
 
-    cd ../mksh-build
+    cd mksh-build
     (
         # Build and ignore tests for now in this version of mksh-r57
         # (../mksh/check.t:xxx-stat-1 needs further work)
-        #sh ../${srcdir}/Build.sh -r && ./test.sh
+        #sh ../Build.sh -r && ./test.sh
 
         env CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" LDSTATIC=-static \
-        sh ../${srcdir}/Build.sh -r
+        sh ../Build.sh -r
     )
 
     cp -p mksh "${destdir}/usr/bin/"
@@ -92,26 +91,30 @@ build()
     # To manage (dot new) config file
     touch "${destdir}/etc/skel/.graft-config"
 
-    cp -p ../${srcdir}/mksh.1 "${destdir}/${mandir}/man1/"
+    cd ..
+
+    cp -p mksh.1 "${destdir}/${mandir}/man1/"
     chmod 644 "${destdir}/${mandir}/man1/mksh.1"
 
     # Build and install lksh (legacy)
 
-    cd ../lksh-build
+    cd lksh-build
     (
         # Build and ignore tests for now in this version of mksh-r57
         # (../mksh/check.t:xxx-stat-1 needs further work)
-        #sh ../${srcdir}/Build.sh -L -r && ./test.sh
+        #sh ../Build.sh -L -r && ./test.sh
 
         env CPPFLAGS="$CPPFLAGS -DMKSH_BINSHPOSIX" \
             CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" LDSTATIC=-static \
-        sh ../${srcdir}/Build.sh -L -r
+        sh ../Build.sh -L -r
     )
 
     cp -p lksh "${destdir}/usr/bin/"
     chmod 755 "${destdir}/usr/bin/lksh"
 
-    cp -p ../${srcdir}/lksh.1 "${destdir}/${mandir}/man1/"
+    cd ..
+
+    cp -p lksh.1 "${destdir}/${mandir}/man1/"
     chmod 644 "${destdir}/${mandir}/man1/lksh.1"
 
     # Make symlink to compose the default shell
@@ -123,8 +126,9 @@ build()
         lzip -9 "${destdir}/${mandir}"/man?/*
     fi
 
-    # Delete temporary build directories
-    cd -- "$TMPDIR"
-    rm -rf ./mksh-build ./lksh-build
+    # Build and copy documentation
+    sh FAQ2HTML.sh
+    mkdir -p "${destdir}${docsdir}"
+    cp -p FAQ.htm "${destdir}${docsdir}"
 }
 
