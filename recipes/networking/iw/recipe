@@ -1,0 +1,75 @@
+# Build recipe for iw.
+#
+# Copyright (c) 2021 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Exit immediately on any error
+set -e
+
+program=iw
+version=5.9
+release=1
+
+# Define a category for the output of the package name
+pkgcategory=networking
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://mirrors.edge.kernel.org/pub/software/network/iw/$tarname
+
+description="
+nl80211 userspace tool.
+
+iw is a new nl80211 based CLI configuration utility for wireless
+devices.  It supports all new drivers that have been added to the
+kernel recently.  The old tool iwconfig, which uses Wireless
+Extensions interface, is deprecated and it's strongly recommended to
+switch to iw and nl80211.
+"
+
+homepage=http://wireless.wiki.kernel.org/en/users/documentation/iw
+license=Custom
+
+# Source documentation
+docs="CONTRIBUTING COPYING README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    # To install uncompressed manual pages
+    # (Thanks to "Beyond Linux From Scratch")
+    sed -i "/INSTALL.*gz/s/.gz//" Makefile
+
+    sed -i "s#-O2 -g#${QICFLAGS}#" Makefile
+    make -j${jobs} V=1 \
+      SBINDIR=/usr/sbin \
+      MANDIR=$mandir \
+      DESTDIR="$destdir" install
+
+    strip --strip-unneeded "${destdir}/usr/sbin/iw"
+    lzip -9 "${destdir}/${mandir}/man8/iw.8"
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
