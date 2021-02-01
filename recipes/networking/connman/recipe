@@ -1,6 +1,6 @@
 # Build recipe for connman.
 #
-# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 set -e
 
 program=connman
-version=1.37
-release=2
+version=1.38
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=networking
@@ -55,9 +55,7 @@ build()
     # A patch to compile under Musl (Thanks to "Alpine Linux")
     patch -Np1 -i "${worktree}/patches/connman/libresolv.patch"
 
-    # Update for hosts based on musl
-    cp -f "${worktree}/archive/common/config.guess" config.guess
-    cp -f "${worktree}/archive/common/config.sub" config.sub
+    autoreconf -vif
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -67,9 +65,10 @@ build()
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --enable-pie \
      --enable-static=no \
      --enable-shared=yes \
+     --enable-pie \
+     --enable-iwd \
      --disable-wispr \
      --with-firewall=iptables \
      --with-dns-backend=internal \
@@ -77,6 +76,11 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # No systemd, please
+    rm -rf \
+     "${destdir}/usr/share/dbus-1/system.d" \
+     "${destdir}/usr/share/dbus-1/system-services"
 
     # Install perp service for connman
 
