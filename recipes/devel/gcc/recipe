@@ -19,7 +19,7 @@ set -e
 
 program=gcc
 version=10-20201226
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=devel
@@ -182,6 +182,11 @@ build()
     )
 
     unset -v MACHINE
+
+    # Insert wrapper scripts for handling C89 and C99 invocations
+    cat "${worktree}/archive/gcc/c89" > "${destdir}/usr/bin/c89"
+    cat "${worktree}/archive/gcc/c99" > "${destdir}/usr/bin/c99"
+    chmod 755 "${destdir}"/usr/bin/c?9
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
