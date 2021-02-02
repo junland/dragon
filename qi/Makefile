@@ -1,6 +1,6 @@
 # Makefile for Qi.
 #
-# Copyright (c) 2015-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2015-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 2.3
+version		= 2.4-rc1
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -105,13 +105,13 @@ info : doc/$(project).info
 doc/$(project).info : doc/$(project)-header.texi doc/$(project)-content.texi
 	cd doc && env LANG=C $(MAKEINFO) $(project)-header.texi -o $(project).info
 
-man : doc/qi.1
+man : doc/$(project).1
 
-doc/qi.1 : doc/qi.1.in src/qi.in
+doc/qi.1 : doc/$(project).1.in src/$(project).in
 	help2man ${HELP2MAN_OPTS} \
 	 --name="a simple but well-integrated package manager" \
 	 --info-page=qi \
-	 --output=$@ doc/qi.1.in
+	 --output=$@ doc/$(project).1.in
 	 sed -e "s#QI.1.IN#QI#g" -e "s#qi.1.in#qi#g" -i $@
 
 html : doc/$(project).html
@@ -205,7 +205,7 @@ install-man :
 	    $(INSTALL_DIR) "$(DESTDIR)${mandir}/man1" ; \
 	fi                  
 
-	$(INSTALL_DATA) doc/qi.1 "$(DESTDIR)${mandir}/man1"
+	$(INSTALL_DATA) doc/$(project).1 "$(DESTDIR)${mandir}/man1"
 
 uninstall : uninstall-info uninstall-man
 
@@ -225,5 +225,5 @@ uninstall-info :
 
 uninstall-man :
 
-	-rm -f "$(DESTDIR)${mandir}/man1/qi.1"
+	-rm -f "$(DESTDIR)${mandir}/man1/$(project).1"
 
