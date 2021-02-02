@@ -1,7 +1,7 @@
 # Build recipe for moe.
 #
 # Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
-# Copyright (c) 2019-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 set -e
 
 program=moe
-version=1.11-rc1
+version=1.11
 release=1
 
 # Define a category for the output of the package name
@@ -61,13 +61,13 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CXXFLAGS="-Wall -W $QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CXXFLAGS="$QICXXFLAGS -Wall -W" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --infodir=$infodir \
      --mandir=$mandir \
      --build="$(gcc -dumpmachine)"
 
-    make -j${jobs}
+    make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
     # To manage dot new config file
@@ -82,10 +82,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 

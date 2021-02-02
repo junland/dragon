@@ -1,6 +1,6 @@
 # Build recipe for shadow.
 #
-# Copyright (c) 2016-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=shadow
-version=4.7
+version=4.8.1
 release=1
 
 # Define a category for the output of the package name
@@ -54,17 +54,20 @@ build()
 
     # Apply patches
 
-    # Disable the installation of the groups program and its man pages,
-    # as coreutils provides a better version.  Also prevent the
-    # installation of manual pages that were already installed by the
-    # man pages package (thanks to "Linux From Scratch")
-    patch -Np0 -i "${worktree}/patches/shadow/shadow-manpages"
-
     # ruserok(3) is missing from musl
     patch -Np0 -i "${worktree}/patches/shadow/shadow-no_rlogin"
 
     # Apply to use our custom definitions
     patch -Np0 -i "${worktree}/patches/shadow/shadow-login.defs.diff"
+
+    # Disable the installation of the groups program and its man pages,
+    # as Coreutils provides a better version.  Also, prevent the
+    # installation of manual pages that were already installed in the
+    # man-pages package (Thanks to "Linux From Scratch" :-)
+    sed -i 's/groups$(EXEEXT) //' src/Makefile.in
+    find man -type f -name Makefile.in -exec sed -i 's/groups\.1 / /'   {} \;
+    find man -type f -name Makefile.in -exec sed -i 's/getspnam\.3 / /' {} \;
+    find man -type f -name Makefile.in -exec sed -i 's/passwd\.5 / /'   {} \;
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -79,8 +82,8 @@ build()
      --without-nscd \
      --build="$(gcc -dumpmachine)"
 
-    make -j${jobs}
-    make -j${jobs} check
+    make -j${jobs} V=1
+    make -j${jobs} V=1 check
     make -j${jobs} DESTDIR="$destdir" install
 
     # Include Dragora version of "shadowconfig.sh"
@@ -121,10 +124,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 

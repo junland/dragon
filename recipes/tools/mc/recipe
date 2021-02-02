@@ -1,6 +1,6 @@
 # Build recipe for mc (Midnight Commander).
 #
-# Copyright (c) 2017-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=mc
-version=4.8.25
+version=4.8.26
 release=1
 
 # Define a category for the output of the package name
@@ -51,6 +51,10 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # Apply a patch in order to build against Musl
+    # (Thanks to "Alpine Linux")
+    patch -p1 < "${worktree}/patches/mc/fix-cchar_t.patch"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .

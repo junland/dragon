@@ -1,6 +1,6 @@
 # Build recipe for kbd.
 #
-# Copyright (c) 2016-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 set -e
 
 program=kbd
-version=2.2.0
-release=3
+version=2.4.0
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -53,13 +53,13 @@ build()
 
     # Fix inconsistent behaviour of Backspace and Delete keys
     # for i386 keymaps (Thanks to "Linux From Scratch")
-    patch -Np1 -i "${worktree}/patches/kbd/kbd-2.2.0-backspace-1.patch"
+    patch -Np1 -i "${worktree}/patches/kbd/kbd-2.4.0-backspace-1.patch"
 
     # Remove the redundant resizecons program (it requires the defunct
     # svgalib to provide the video mode files - for normal use setfont
     # sizes the console appropriately) together with its manpage.
     # (Thanks again to "Linux From Scratch")
-    sed -i 's/\(RESIZECONS_PROGS=\)yes/\1no/g' configure
+    sed -i '/RESIZECONS_PROGS=/s/yes/no/' configure
     sed -i 's/resizecons.8 //' docs/man/man8/Makefile.in
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
@@ -97,10 +97,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
