@@ -1,6 +1,6 @@
 # Build recipe for libwnck.
 #
-# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=libwnck
-version=3.32.0
+version=3.36.0
 release=1
 
 # Define a category for the output of the package name
@@ -51,8 +51,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    mkdir -p build
-    cd build
+    mkdir BUILD
+    cd BUILD
 
     CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     meson setup $configure_args \
@@ -65,11 +65,6 @@ build()
     DESTDIR="$destdir" ninja -j${jobs} install
 
     cd ..
-
-    # Move locale files to the corresponding location
-
-#    mv "${destdir}/usr/lib/locale/" "${destdir}/usr/lib${libSuffix}/"
-#    rmdir "${destdir}/usr/lib" || true
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"

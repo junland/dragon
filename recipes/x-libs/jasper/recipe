@@ -1,6 +1,6 @@
 # Build recipe for jasper.
 #
-# Copyright (c) 2018-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 set -e
 
 program=jasper
-version=2.0.16
-release=2
+version=20210129_c8f622d
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=x-libs
@@ -71,10 +71,10 @@ build()
      -DCMAKE_VERBOSE_MAKEFILE=ON                      \
      -DCMAKE_SKIP_INSTALL_RPATH=YES                   \
      -DJAS_ENABLE_DOC=NO                              \
-     ..
+     -G Ninja ..
 
-    make -j${jobs}
-    make -j${jobs} DESTDIR="$destdir" install
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"

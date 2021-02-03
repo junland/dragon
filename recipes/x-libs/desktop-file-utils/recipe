@@ -1,6 +1,6 @@
 # Build recipe for desktop-file-utils.
 #
-# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=desktop-file-utils
-version=0.24
+version=0.26
 release=1
 
 # Define a category for the output of the package name
@@ -32,8 +32,8 @@ fetch=http://www.freedesktop.org/software/desktop-file-utils/releases/$tarname
 description="
 Utilities for manipulating desktop files.
 
-desktop-file-utils contains a few command line utilities for working
-with desktop entries.
+desktop-file-utils contains a few command line utilities for
+working with desktop entries.
 "
 
 homepage=http://www.freedesktop.org/wiki/Software/desktop-file-utils/
@@ -52,13 +52,23 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --mandir=$mandir \
-     --build="$(gcc -dumpmachine)"
+    mkdir BUILD
+    cd BUILD
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     ..
+
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
+
+    cd ..
+
+    # To meet the XDG Base Directory specification
+    mkdir -p "${destdir}/usr/share/applications"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"

@@ -1,7 +1,7 @@
 # Build recipe for giblib.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 
 program=giblib
 version=1.2.4
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=x-libs
@@ -40,7 +40,7 @@ doubly-linked list and some string functions.
 "
 
 homepage=http://freecode.com/projects/giblib
-license=BSD
+license=Expat
 
 # Source documentation
 docs="AUTHORS COPYING ChangeLog README"
@@ -55,6 +55,11 @@ build()
     # Update for hosts based on musl
     cp -f "${worktree}/archive/common/config.guess" config.guess
     cp -f "${worktree}/archive/common/config.sub" config.sub
+
+    # Apply a patch from Debian in order to detect correctly Imlib2
+    patch -p1 < "${worktree}/patches/giblib/01-fix-configure-ac.diff"
+
+    autoreconf -vif
 
     ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \

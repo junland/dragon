@@ -1,6 +1,6 @@
 # Build recipe for libnotify.
 #
-# Copyright (C) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=libnotify
-version=0.7.8
+version=0.7.9
 release=1
 
 # Define a category for the output of the package name
@@ -42,7 +42,7 @@ getting in the user's way.
 homepage=http://www.gnome.org
 license=LGPLv2.1
 
-docs="AUTHORS ChangeLog COPYING NEWS README SPECIFICATION"
+docs="AUTHORS COPYING NEWS SPECIFICATION"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -54,8 +54,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    mkdir -p build
-    cd build
+    mkdir BUILD
+    cd BUILD
 
     CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     meson setup $configure_args \
@@ -63,6 +63,7 @@ build()
      --buildtype=release \
      --strip \
      -Dgtk_doc=false \
+     -Dman=false \
      ..
 
     ninja -j${jobs}

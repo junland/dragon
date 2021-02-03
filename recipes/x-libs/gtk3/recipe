@@ -1,7 +1,7 @@
 # Build recipe for GTK+3.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (C) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 set -e
 
 program=gtk+
-version=3.24.12
+version=3.24.24
 release=1
 
 # Define a category for the output of the package name
@@ -31,7 +31,10 @@ pkgname=gtk3
 tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
-fetch="http://ftp.gnome.org/pub/gnome/sources/gtk+/${version%.*}/$tarname"
+fetch="
+  http://ftp.gnome.org/pub/gnome/sources/gtk+/${version%.*}/$tarname
+  ftp://ftp.acc.umu.se/pub/gnome/sources/gtk+/${version%.*}/$tarname
+"
 
 description="
 The version 3 of the GTK+ toolkit.
@@ -56,8 +59,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    mkdir -p build
-    cd build
+    mkdir BUILD
+    cd BUILD
 
     # TODO: cups: -Dprint_backends="file,lpr,cups"
 
@@ -70,8 +73,10 @@ build()
      -Dcolord=no \
      -Dgtk_doc=false \
      -Dman=true \
+     -Dx11_backend=true \
      -Dbroadway_backend=true \
      -Dwayland_backend=false \
+     -Dxinerama=yes \
      ..
 
     ninja -j${jobs}

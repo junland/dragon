@@ -1,7 +1,7 @@
 # Build recipe for Shared Mime Info.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (C) 2018-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2018-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,13 +19,13 @@
 set -e
 
 program=shared-mime-info
-version=1.15
-release=2
+version=2.1
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=x-libs
 
-tarname=${program}-${version}.tar.xz
+tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
 fetch=http://gitlab.freedesktop.org/xdg/shared-mime-info/uploads/b27eb88e4155d8fccb8bb3cd12025d5b/$tarname
@@ -43,7 +43,7 @@ homepage=http://www.freedesktop.org/wiki/Specifications/shared-mime-info-spec/
 license=GPLv2+
 
 # Source documentation
-docs="COPYING ChangeLog HACKING NEWS README"
+docs="COPYING HACKING.md MAINTAINERS NEWS README.md"
 docsdir="${docdir}/${program}-${version}"
 
 # Limit parallel jobs for this build
@@ -58,16 +58,22 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --mandir=$mandir \
-     --disable-update-mimedb \
-     --build="$(gcc -dumpmachine)" \
-     ac_cv_func_fdatasync=no
+    mkdir BUILD
+    cd BUILD
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --mandir $mandir \
+     --buildtype=release \
+     --strip \
+     -Dupdate-mimedb=false \
+     ..
+
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
+
+    cd ..
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
