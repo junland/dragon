@@ -82,9 +82,10 @@ Other options:
 
 Some influential environment variables:
   TMPDIR                   Temporary directory for sources
-  QICFLAGS                 C compiler flags
-  QICXXFLAGS               C++ compiler flags
-  QILDFLAGS                Linker flags
+  QICFLAGS                 C compiler flags (to be used on CFLAGS)
+  QICXXFLAGS               C++ compiler flags (to be used on CXXFLAGS)
+  QILDFLAGS                Flags for the linker (to be used on LDFLAGS)
+  QICPPFLAGS               C/C++ preprocessor flags (to be used on CPPFLAGS)
   SOURCE_DATE_EPOCH        Last modification time for created packages
 
 When FILE is -, read standard input.
@@ -237,7 +238,7 @@ mode_build()
     unset -v \
      srcdir destdir pkgname pkgversion pkgcategory program version release \
      fetch description homepage license replace full_pkgname docs docsdir \
-     CFLAGS CXXFLAGS LDFLAGS
+     CFLAGS CXXFLAGS LDFLAGS CPPFLAGS
 
     # The following variables must be restored, later
     save_arch="${save_arch:=$arch}"
@@ -1158,6 +1159,7 @@ do_meta()
 QICFLAGS=\"$QICFLAGS\"
 QICXXFLAGS=\"$QICXXFLAGS\"
 QILDFLAGS=\"$QILDFLAGS\"
+QICPPFLAGS=\"$QICPPFLAGS\"
 pkgname=$pkgname
 pkgversion=$pkgversion
 arch=$arch
@@ -1199,9 +1201,10 @@ _isUpgrade=_isUpgrade.off
 keep_srcdir=""
 keep_destdir=""
 TMPDIR="${TMPDIR:-/usr/src/qi/build}"
-QICFLAGS="${QICFLAGS:--g0 -O2}"
-QICXXFLAGS="${QICXXFLAGS:--g0 -O2}"
-QILDFLAGS="${QILDFLAGS:--s}"
+QICFLAGS="${QICFLAGS:--O2}"
+QICXXFLAGS="${QICXXFLAGS:--O2}"
+QILDFLAGS="${QILDFLAGS:-}"
+QICPPFLAGS="${QICPPFLAGS:-}"
 worktree=/usr/src/qi
 tardir=${worktree}/sources
 outdir=/var/cache/qi/packages
