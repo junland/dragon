@@ -1,6 +1,6 @@
 # Build recipe for perp.
 #
-# Copyright (c) 2016-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 
 program=perp
 version=2.07
-release=7
+release=8
 
 # Define a category for the output of the package name
 pkgcategory=boot
@@ -77,8 +77,9 @@ build()
     patch -Np1 -i "${worktree}/patches/perp/runchoom-use-oom_score_adj"
     patch -Np0 -i "${worktree}/patches/perp/flags-conf.mk.diff"
 
-    make -j${jobs} CC="cc -static" QICFLAGS="$QICFLAGS"
-    make strip
+    make -j${jobs} CC="cc -static" \
+     CPPFLAGS="$QICPPFLAGS" QICFLAGS="$QICFLAGS"
+    make -j${jobs} V=1 strip
     make -j${jobs} DESTDIR="$destdir" install
 
     # Automatic installation setup
