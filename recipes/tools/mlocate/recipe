@@ -1,7 +1,7 @@
 # Build recipe for mlocate.
 #
 # Copyright (c) 2017 Alan Beadle, <ab.beadle@gmail.com>.
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 
 program=mlocate
 version=0.26
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -53,6 +53,8 @@ build()
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
+
+    patch -Np1 -i "${worktree}/patches/mlocate/01-fortify-source-compat.patch"
 
     # Update for hosts based on musl
     cp -f "${worktree}/archive/common/config.guess" admin/config.guess
@@ -100,10 +102,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 

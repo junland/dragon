@@ -1,0 +1,26 @@
+From c5924988157b27b60c28d20d971179bbacbd2ae3 Mon Sep 17 00:00:00 2001
+From: Ariadne Conill <ariadne@dereferenced.org>
+Date: Fri, 21 Aug 2020 06:46:22 +0000
+Subject: [PATCH] Turn on -D_FORTIFY_SOURCE=2 by default for C, C++, ObjC,
+ ObjC++, if the optimization level is > 0
+
+---
+ gcc/c-family/c-cppbuiltin.c | 4 ++++
+ gcc/doc/invoke.texi         | 6 ++++++
+ 2 files changed, 10 insertions(+)
+
+diff --git a/gcc/c-family/c-cppbuiltin.c b/gcc/c-family/c-cppbuiltin.c
+index db91a36794a..ed976c71404 100644
+--- a/gcc/c-family/c-cppbuiltin.c
++++ b/gcc/c-family/c-cppbuiltin.c
+@@ -1385,6 +1385,10 @@ c_cpp_builtins (cpp_reader *pfile)
+   builtin_define_with_value ("__REGISTER_PREFIX__", REGISTER_PREFIX, 0);
+   builtin_define_with_value ("__USER_LABEL_PREFIX__", user_label_prefix, 0);
+ 
++  /* Fortify Source enabled by default for optimization levels > 0 */
++  if (optimize)
++    builtin_define_with_int_value ("_FORTIFY_SOURCE", 2);
++
+   /* Misc.  */
+   if (flag_gnu89_inline)
+     cpp_define (pfile, "__GNUC_GNU_INLINE__");

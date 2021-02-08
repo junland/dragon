@@ -21,7 +21,7 @@ set -e
 program=lua
 version=5.4.2
 short_version="${version%.*}"
-release=1
+release=2
 
 # Set custom package name to avoid conflicts on package upgrades
 pkgname="lua${short_version%.*}"
@@ -52,7 +52,7 @@ docsdir="${docdir}/${pkgname}-${version}"
 _make_target()
 {
     make -j${jobs} \
-     MYCPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS -DLUA_COMPAT_5_2 -DLUA_COMPAT_5_1" \
+     MYCFLAGS="$QICFLAGS -DLUA_COMPAT_5_2 -DLUA_COMPAT_5_1 -fPIC" \
      MYLDFLAGS="$QILDFLAGS" \
      INSTALL_LIB="${destdir}/usr/lib${libSuffix}" \
      INSTALL_LMOD="${destdir}/usr/share/lua/${short_version}" \
@@ -74,10 +74,9 @@ build()
     patch -Np1 -i "${worktree}/patches/lua/lua-5.4.2-shared_library-1.patch"
 
     # Adjust Lua search path
-    sed \
-     -e 's#/usr/local/#/usr/#' \
-     -e "s#lib/lua#lib${libSuffix}/lua#" \
-     -i src/luaconf.h
+    sed -e 's#/usr/local/#/usr/#' \
+        -e "s#lib/lua#lib${libSuffix}/lua#" \
+        -i src/luaconf.h
 
     _make_target linux
     _make_target install

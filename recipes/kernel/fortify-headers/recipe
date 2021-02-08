@@ -1,6 +1,6 @@
-# Build recipe for linux (libre) headers.
+# Build recipe for fortify-headers.
 #
-# Copyright (c) 2015-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,28 +17,35 @@
 # Exit immediately on any error
 set -e
 
-program=linux
-version=5.4.61
+program=fortify-headers
+version=1.1
+arch=noarch
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=kernel
 
-pkgname=kernel-headers
-
-tarname=${program}-libre-${version}-gnu.tar.lz
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://linux-libre.fsfla.org/pub/linux-libre/releases/${version}-gnu/$tarname
+fetch=http://dl.2f30.org/releases/$tarname
 
 description="
-The Linux kernel headers.
+Standalone fortify source implementation.
 
-The Linux kernel headers from the GNU Linux-libre project.
+This is a standalone implementation of fortify source.  It provides
+compile time buffer checks.  It is libc-agnostic and simply overlays
+the system headers by using the #include_next extension found in GCC.
+It was initially intended to be used on musl based GNU/Linux
+distributions.
 "
 
-homepage=http://www.gnu.org/software/linux-libre
-license="GPLv2 only"
+homepage=http://git.2f30.org/fortify-headers/
+license=BSD
+
+# Source documentation
+docs="README LICENSE"
+docsdir="${docdir}/${program}-${version}"
 
 # Limit parallel jobs for the compiler
 jobs=1
@@ -52,17 +59,10 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    make -j${jobs} mrproper
-    make -j${jobs} headers
+    make -j${jobs} PREFIX=/usr DESTDIR="$destdir" install
 
-    # Holy molly... the 'headers_install' target cannot be used
-    # because it requires rsync(1), which is not available early.
-
-    mkdir -p "${destdir}/usr/include"
-    cp -Rp usr/include/* "${destdir}/usr/include/"
-
-    # Remove cruft
-    find "${destdir}/usr/include" -name '.*' -exec rm -rf {} +
-    rm -f "${destdir}/usr/include/Makefile"
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
 }
 
