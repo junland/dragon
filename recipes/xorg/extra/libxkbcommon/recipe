@@ -1,7 +1,7 @@
 # Build recipe for libxkbcommon.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
-# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 set -e
 
 program=libxkbcommon
-version=0.8.4
+version=1.0.3
 release=1
 
 # Define a category for the output of the package name
@@ -28,7 +28,7 @@ pkgcategory=xorg_extra
 tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
-fetch=http://xkbcommon.org/download/"$tarname"
+fetch=http://xkbcommon.org/download/$tarname
 
 description="
 xkbcommon is a library to handle keyboard descriptions.
@@ -52,25 +52,22 @@ build()
 	
     cd "$srcdir"
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
-     --mandir=$mandir \
-     --docdir=$docsdir \
-     --enable-static=no \
-     --enable-shared=yes \
-     --build="$(gcc -dumpmachine)"
+    mkdir BUILD
+    cd BUILD
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     -Denable-docs=false \
+     -Denable-wayland=false \
+     ..
 
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
+
+    cd ..
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"

@@ -1,7 +1,7 @@
 # Build recipe for pixman.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2020 Matias Fonzo <selk@dragora.org>.
+# Copyright (c) 2017-2021 Matias Fonzo <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,13 +19,13 @@
 set -e
 
 program=pixman
-version=0.38.4
-release=2
+version=0.40.0
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=xorg_lib
 
-tarname=${program}-${version}.tar.bz2
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
 fetch=http://www.x.org/releases/individual/lib/$tarname
@@ -64,7 +64,8 @@ build()
 
     # Note `--disable-gtk' means "disable tests using GTK+".
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
@@ -73,7 +74,6 @@ build()
      --enable-static=no \
      --enable-libpng=yes \
      --disable-gtk \
-     --disable-vmx \
      --build="$(gcc -dumpmachine)" \
      $extra_options
 
