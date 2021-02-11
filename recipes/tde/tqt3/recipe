@@ -18,6 +18,7 @@
 set -e
 
 program=tqt3-trinity
+pkgname=tqt3
 version=14.0.9
 release=1
 
@@ -44,7 +45,7 @@ license="GPLv2+, GPLv3+ | The Q Public License"
 
 # Source documentation
 docs="FAQ LICENSE* README*"
-docsdir="${docdir}/${program}-${version}"
+docsdir="${docdir}/${pkgname}-${version}"
 
 build()
 {
@@ -81,8 +82,8 @@ build()
     export QTDIR LD_LIBRARY_PATH PATH
 
     echo yes | ./configure -L/usr/lib${libSuffix} -I/usr/include/tirpc \
-     -prefix /opt/trinity/lib${libSuffix}/${program}-${version} \
-     -plugindir /opt/trinity/lib${libSuffix}/${program}-${version}/plugins \
+     -prefix /opt/trinity/lib${libSuffix}/${pkgname}-${version} \
+     -plugindir /opt/trinity/lib${libSuffix}/${pkgname}-${version}/plugins \
      -sysconfdir /opt/etc \
      -sysshare /usr/share \
      -docdir $docsdir \
@@ -138,7 +139,7 @@ build()
 test -n "$libSuffix" && ( cd opt/trinity && ln -sf lib${libSuffix} lib );
 
 # Link package name
-cd opt/trinity/lib && ln -sf ${program}-${version} $program
+cd opt/trinity/lib && ln -sf ${pkgname}-${version} $pkgname
 
 echo "Updating desktop database: update-desktop-database -q usr/share/applications"
 update-desktop-database -q usr/share/applications
@@ -150,24 +151,24 @@ EOF
     # Link tqt3's pkg-config files at /opt/trinity/lib/pkgconfig
 
     mkdir -p "${destdir}/opt/trinity/lib${libSuffix}/pkgconfig"
-    cd "${destdir}/opt/trinity/lib${libSuffix}/${program}-${version}"/lib/pkgconfig/
+    cd "${destdir}/opt/trinity/lib${libSuffix}/${pkgname}-${version}"/lib/pkgconfig/
     for file in *.pc
     do
         ln -sf \
-         "/opt/trinity/lib${libSuffix}/${program}-${version}/lib/pkgconfig/${file}" \
+         "/opt/trinity/lib${libSuffix}/${pkgname}-${version}/lib/pkgconfig/${file}" \
          "${destdir}/opt/trinity/lib${libSuffix}/pkgconfig/${file}"
     done
 
     # Link tqt3's programs at /opt/trinity/bin
 
     mkdir -p "${destdir}/opt/trinity/bin"
-    cd "${destdir}/opt/trinity/lib${libSuffix}/${program}-${version}"/bin/
+    cd "${destdir}/opt/trinity/lib${libSuffix}/${pkgname}-${version}"/bin/
     for file in *
     do
         test -x "$file" || continue;
 
         ln -sf \
-         "/opt/trinity/lib${libSuffix}/${program}-${version}/bin/${file}" \
+         "/opt/trinity/lib${libSuffix}/${pkgname}-${version}/bin/${file}" \
          "${destdir}/opt/trinity/bin/${file}"
     done
 
