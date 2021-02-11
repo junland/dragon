@@ -19,7 +19,7 @@ set -e
 
 program=musl
 version=1.2.2
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -111,6 +111,17 @@ build()
 /lib
 /usr/local/lib
 /usr/lib
+EOF
+        # Include path for 'libSuffix'
+        if test -n "$libSuffix"
+        then
+            cat << EOF >> "${destdir}"/etc/$ld_path
+/usr/lib${libSuffix}
+EOF
+        fi
+
+        # Now the rest of the path(s)
+        cat << EOF >> "${destdir}"/etc/$ld_path
 /usr/$(gcc -dumpmachine)/lib
 /opt/trinity/lib
 /opt/trinity/lib/tqt3/lib
@@ -120,6 +131,7 @@ EOF
     else
         echo "WARNING: \$ld_path is empty." 1>&2
     fi
+
     unset -v ld_path
 
     mkdir -p "${destdir}"/usr/sbin
