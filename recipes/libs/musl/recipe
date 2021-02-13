@@ -132,6 +132,27 @@ EOF
         echo "WARNING: \$ld_path is empty." 1>&2
     fi
 
+    # Add to the post-install script a symlink for compatibility,
+    # as some scripts (./configure) still have the Glibc name
+    # "ld.so.conf".
+
+    mkdir -p "${destdir}/var/lib/qi"
+    cat << EOF > "${destdir}/var/lib/qi/${full_pkgname}.sh"
+
+# Adjust the toolchain only once (as needed)
+if test -x /tools/bin/adjust-toolchain
+then
+    /tools/bin/adjust-toolchain && chmod 644 /tools/bin/adjust-toolchain
+fi
+
+# A symlink for compatibility
+if test ! -e "\${rootdir}/etc/ld.so.conf"
+then
+    ( cd -- "\${rootdir}/etc" && ln -sf $ld_path ld.so.conf )
+fi
+
+EOF
+
     unset -v ld_path
 
     mkdir -p "${destdir}"/usr/sbin
