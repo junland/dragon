@@ -1,6 +1,6 @@
 # Build recipe for eudev.
 #
-# Copyright (c) 2016-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 set -e
 
 program=eudev
-version=3.2.9
-release=2
+version=3.2.10
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=boot
@@ -63,28 +63,28 @@ build()
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --enable-static=yes \
+     --enable-static=no \
      --enable-shared=yes \
      --enable-hwdb \
      --enable-manpages \
      --enable-rule-generator \
-     --disable-selinux \
+     --enable-split-usr \
      --disable-introspection \
-     --build="$(gcc -dumpmachine)"
+     --disable-selinux \
+     --with-rootprefix="" \
+     --with-rootlibdir=/lib \
+     --build="$(gcc -dumpmachine)" \
+     cc_cv_CFLAGS__flto=no \
+     ac_cv_search_cap_init='' \
+     ac_cv_header_sys_capability_h=yes \
+     DBUS_CFLAGS=' ' \
+     DBUS_LIBS=' '
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
-    # Move installed hwdb files under /lib
-    # Reported on http://github.com/gentoo/eudev/pull/127
-    mkdir -p "${destdir}/lib/udev/hwdb.d"
-    mv "${destdir}/etc/udev/hwdb.d"/* "${destdir}/lib/udev/hwdb.d"
-
     # Make symlink for multipath
-    (
-        cd "${destdir}/usr/sbin" && \
-        ln -sf /usr/lib${libSuffix}/udev/scsi_id .
-    )
+    ( cd "${destdir}/usr/sbin" && ln -sf /lib/udev/scsi_id . )
 
     # To handle config file(s)
     touch "${destdir}/etc/udev/.graft-config"
