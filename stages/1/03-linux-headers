@@ -1,6 +1,6 @@
 # Build script for linux-libre (headers).
 #
-# Copyright (c) 2014-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2014-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,10 @@ unpack "${worktree}/sources/linux-libre-${version}-gnu.tar.lz"
 
 # Build instructions
 cd linux-${version}
+
+patch -p1 < "${worktree}/patches/linux-headers/revert-broken-uapi.patch"
+patch -p1 < "${worktree}/patches/linux-headers/0003-remove-inclusion-of-sysinfo.h-in-kernel.h.patch"
+patch -p1 < "${worktree}/patches/linux-headers/include-uapi-linux-swab-Fix-potentially-missing-__always_inline.patch"
 
 make -j1 mrproper
 make -j1 headers ARCH="$kernel_arch"
