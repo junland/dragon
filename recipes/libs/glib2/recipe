@@ -57,6 +57,10 @@ build()
 
     cd "$srcdir"
 
+    # Apply patch from "Beyond Linux From Scratch" to support 'GLIB_LOG_LEVEL'
+    # which enables several warnings levels (Thank you!)
+    patch -Np1 -i "${worktree}/patches/glib2/glib-2.66.7-skip_warnings-1.patch"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
@@ -84,6 +88,15 @@ build()
 
     # Delete generated charset.alias
     rm -f "${destdir}/usr/lib${libSuffix}/charset.alias"
+
+    # Include profile file
+    mkdir -p "${destdir}/etc/profile.d"
+    cp -p "${worktree}/archive/glib2/etc/profile.d/glib2.sh" \
+           "${destdir}/etc/profile.d/"
+    chmod 644 "${destdir}/etc/profile.d/glib2.sh"
+
+    # To handle config file(s)
+    touch "${destdir}/etc/profile.d/.graft-config"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
