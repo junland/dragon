@@ -1,0 +1,37 @@
+#! /bin/sh -
+#
+# syslogd/rc.main
+#
+# Log systems messages.
+#
+
+# Redirects the standard error to the standard output
+exec 2>&1
+
+TARGET="$1"
+SVNAME="${2:-syslogd}"
+
+start()
+{
+    echo "*** ${SVNAME}: Starting syslogd ..."
+    exec /usr/sbin/syslogd -F -s
+}
+
+reset()
+{
+    case $3 in
+    exit)
+        echo "*** ${SVNAME}: Exited status $4"
+        ;;
+    signal)
+        echo "*** ${SVNAME}: Killed on signal $5"
+        ;;
+    *)
+        echo "*** ${SVNAME}: Stopped (${3})"
+        ;;
+    esac
+}
+
+# Branch to target
+eval ${TARGET} "$@"
+
