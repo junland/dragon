@@ -1,7 +1,7 @@
 # Build recipe for popt.
 #
 # Copyright (C) 2017 Alan Beadle, ab.beadle@gmail.com.
-# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 set -e
 
 program=popt
-version=1.16
-release=2
+version=1.18
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -29,8 +29,8 @@ tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
 fetch="
+  https://ftp.rpm.org/popt/releases/popt-1.x/$tarname
   ftp://anduin.linuxfromscratch.org/BLFS/popt/$tarname
-  https://rsync.dragora.org/current/sources/$tarname
 "
 
 description="
@@ -57,11 +57,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Update for hosts based on musl
-    cp -f "${worktree}/archive/common/config.guess" ./config.guess
-    cp -f "${worktree}/archive/common/config.sub" ./config.sub
-
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
