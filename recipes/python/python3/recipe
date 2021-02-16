@@ -21,7 +21,7 @@ set -e
 program=Python
 version=3.9.1
 short_version="${version%.*}"
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=python
@@ -63,8 +63,7 @@ build()
     # Use system libraries instead of the bundle ones
     rm -rf Modules/expat Modules/zlib Modules/_ctypes/libffi*
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" OPT="" \
-     $configure_args \
+    ./configure $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --docdir=$docsdir \
@@ -72,11 +71,12 @@ build()
      --enable-shared \
      --enable-loadable-sqlite-extensions \
      --enable-ipv6 \
-     --with-ensurepip=yes \
      --with-threads \
-     --with-valgrind \
      --with-system-expat \
-     --with-system-ffi
+     --with-system-ffi \
+     --with-ensurepip=yes \
+     --with-dbmliborder=gdbm:ndbm \
+     --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
