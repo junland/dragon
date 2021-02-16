@@ -1,4 +1,4 @@
-# Build recipe for dbus (Use 'dbus_x11' instead for X11 support).
+# Build recipe for dbus (Use 'dbus-x11' instead for the X11 support).
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
 # Copyright (c) 2018-2021 Matias Fonzo, <selk@dragora.org>.
@@ -20,7 +20,7 @@ set -e
 
 program=dbus
 version=1.12.20
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=daemons
@@ -58,26 +58,27 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
     
-    ./configure \
-    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --runstatedir=/run \
      --enable-static=no \
      --enable-shared=yes \
      --enable-debug=no \
      --enable-inotify \
+     --enable-user-session \
      --disable-x11-autolaunch \
      --disable-systemd \
      --disable-selinux \
      --disable-doxygen-docs \
+     --with-systemduserunitdir=no \
+     --with-systemdsystemunitdir=no \
      --with-xml=expat \
      --with-dbus-user=messagebus \
-     --with-console-auth-dir=/run/console \
-     --with-system-pid-file=/run/dbus/pid \
-     --with-system-socket=/run/dbus/system_bus_socket \
+     --with-system-socket=/var/run/system_bus_socket \
+     --with-system-pid-file=/var/run/dbus/dbus.pid \
      --without-x \
      --build="$(gcc -dumpmachine)"
     
@@ -89,6 +90,8 @@ build()
 
     mkdir -p "${destdir}/var/lib/dbus"
     chown messagebus "${destdir}/var/lib/dbus"
+
+    mkdir -p "${destdir}/etc/dbus-1/system.d"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -106,12 +109,11 @@ build()
     
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}/"
+    cp -p $docs "${destdir}${docsdir}"
 
     # Install perp service for dbus
 
     mkdir -p "${destdir}/etc/perp/dbus"
-
     cp -p "${worktree}/archive/dbus/rc.log" \
           "${worktree}/archive/dbus/rc.main" \
           "${destdir}/etc/perp/dbus/"
