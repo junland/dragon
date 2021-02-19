@@ -105,7 +105,16 @@ build()
     unset -v binutils_targets
     make -j${jobs} tooldir=/usr/${MACHINE}
     #make -j${jobs} check
-    make -j${jobs} tooldir=/usr/${MACHINE} DESTDIR="$destdir" install-strip
+    make -j${jobs} tooldir=/usr/${MACHINE} DESTDIR="$destdir" install
+
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f -print0 | xargs -0 file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
+
+    find "$destdir" -type f -print0 | xargs -0 file | \
+     awk '/current ar archive/' | \
+      cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
 
     cd ../
 
