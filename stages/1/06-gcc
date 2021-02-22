@@ -55,25 +55,15 @@ patch -Np1 -i "${worktree}/patches/gcc/0008-Disable-ssp-on-nostdlib-nodefaultlib
 patch -Np1 -i "${worktree}/patches/gcc/0020-add-fortify-headers-paths.patch"
 patch -Np1 -i "${worktree}/patches/gcc/0022-DP-Use-push-state-pop-state-for-gold-as-well-when-li.patch"
 
-# Hard code default paths to look in /tools
-for file in \
- gcc/config/linux.h gcc/config/i386/linux.h gcc/config/i386/linux64.h \
- gcc/config/arm/linux-eabi.h gcc/config/arm/linux-elf.h \
- gcc/config/mips/linux.h \
- gcc/config/rs6000/linux64.h gcc/config/rs6000/sysv4.h \
- gcc/config/aarch64/aarch64-linux.h \
- gcc/config/microblaze/linux.h \
- gcc/config/sh/linux.h \
- gcc/config/riscv/linux.h ; \
+# Hard code default ld path to look at /tools
+
+find . -type f -name '*.h' -exec grep -l "/lib/ld-" {} + | while read -r file
 do
-    if test ! -f "$file"
-    then
-        echo "WARNING: ${0}: Non-existent file: $file" 1>&2
-        continue;
-    fi
-    sed -i \
-     -e 's@/lib\(64\)\{0,1\}\(32\)\{0,1\}/ld@/tools&@g' \
-     -e 's@/usr@/tools@g' "$file"
+    test -f "$file" || continue;
+    cp -f "$file" "${file}.orig"
+
+    sed -e 's@/lib\(64\)\{0,1\}\(32\)\{0,1\}/ld@/tools&@g' \
+        -e 's@/usr@/tools@g' "${file}.orig" > "$file"
     echo '
 #undef STANDARD_STARTFILE_PREFIX_1
 #undef STANDARD_STARTFILE_PREFIX_2
@@ -129,9 +119,9 @@ CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
  --enable-languages=c,c++ \
  --enable-clocale=generic \
  --enable-cet=auto \
+ --enable-initfini-array \
  --enable-tls \
  --enable-libstdcxx-time \
- --enable-install-libiberty \
  --enable-fully-dynamic-string \
  --enable-default-ssp \
  --enable-default-pie \
@@ -143,6 +133,7 @@ CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
  --disable-libmudflap \
  --disable-libsanitizer \
  --disable-nls \
+ --disable-install-libiberty \
  --with-linker-hash-style=gnu \
  --with-local-prefix=/tools \
  --with-native-system-header-dir=/tools/include \

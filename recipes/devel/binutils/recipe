@@ -19,7 +19,7 @@ set -e
 
 program=binutils
 version=2.35.2
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=devel
@@ -55,6 +55,12 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # Apply patches from Fedora (Nick Clifton)
+    patch -Np1 -i "${worktree}/patches/binutils/binutils-export-demangle.h.patch"
+    patch -Np1 -i "${worktree}/patches/binutils/binutils-no-config-h-check.patch"
+    patch -Np1 -i "${worktree}/patches/binutils/binutils-gold-warn-unsupported.patch"
+    patch -Np1 -i "${worktree}/patches/binutils/binutils-use-long-long.patch"
+
     #patch -Np1 -i "${worktree}/patches/binutils/branch-updates.diff"
 
     # Create a separate build directory
@@ -75,7 +81,8 @@ build()
     MACHINE="$(gcc -dumpmachine)"
 
     ../configure CPPFLAGS="$QICPPFLAGS" \
-    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" \
+    LDFLAGS="$(echo $QILDFLAGS | sed 's/-s//')" \
      $configure_args \
      $multilib_options \
      --libdir=/usr/lib${libSuffix} \
@@ -94,9 +101,7 @@ build()
      --enable-plugins \
      --enable-64-bit-bfd \
      --enable-install-libiberty \
-     --enable-initfini-array \
      --disable-werror \
-     --disable-separate-code \
      --disable-compressed-debug-sections \
      --with-system-zlib \
      --build=$MACHINE \
@@ -107,14 +112,10 @@ build()
     #make -j${jobs} check
     make -j${jobs} tooldir=/usr/${MACHINE} DESTDIR="$destdir" install
 
-    # Strip remaining binaries and libraries
     find "$destdir" -type f -print0 | xargs -0 file | \
      awk '/ELF/ && /executable/ || /shared object/' | \
-      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
-
-    find "$destdir" -type f -print0 | xargs -0 file | \
-     awk '/current ar archive/' | \
-      cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
+      cut -f 1 -d : | xargs -0 strip --remove-section=.comment \
+       --remove-section=.note 2> /dev/null || true
 
     cd ../
 
@@ -151,6 +152,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}/"
+    cp -p $docs "${destdir}${docsdir}"
 }
 

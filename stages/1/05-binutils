@@ -23,6 +23,12 @@ unpack "${worktree}/sources/binutils-${version}.tar.lz"
 # Build instructions
 cd binutils-${version}
 
+# Apply patches from Fedora (Nick Clifton)
+patch -Np1 -i "${worktree}/patches/binutils/binutils-export-demangle.h.patch"
+patch -Np1 -i "${worktree}/patches/binutils/binutils-no-config-h-check.patch"
+patch -Np1 -i "${worktree}/patches/binutils/binutils-gold-warn-unsupported.patch"
+patch -Np1 -i "${worktree}/patches/binutils/binutils-use-long-long.patch"
+
 #patch -Np1 -i "${worktree}/patches/binutils/branch-updates.diff"
 
 # Build in a separate directory
@@ -47,8 +53,7 @@ CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
  --enable-threads=auto \
  --enable-default-hash-style=gnu \
  --enable-64-bit-bfd \
- --enable-initfini-array \
- --disable-separate-code \
+ --enable-install-libiberty \
  --disable-compressed-debug-sections \
  --disable-nls \
  --disable-werror \
