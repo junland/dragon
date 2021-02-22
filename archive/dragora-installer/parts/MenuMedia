@@ -29,27 +29,26 @@ to install Dragora:" 10 54 2 \
                           sonycd optcd sjcd mcdx0 mcdx1 sbpcd cm205cd \
                           cm206cd mcd ; \
         do
-            test -n "$name" || continue
+            name=/dev/${name};	# Prepend path for device files.
 
             dialog --colors \
              --backtitle "\\ZbCDROM: Discovering drive name" \
              --title "Searching CDROM drive" --sleep 1 \
-             --infobox "Checking device: /dev/${name}" 3 34
+             --infobox "Checking device: $name" 3 34
 
             test -b "$name" || continue
 
             dialog --colors \
-             --backtitle "\\ZbCDROM: /dev/${name}" \
+             --backtitle "\\ZbCDROM: ${name}" \
              --title "Checking device content" --sleep 1 \
-             --infobox "Mounting /dev/${name} under /media/dragora-packages" 3 52
+             --infobox "Mounting ${name} under /media/dragora-packages" 3 52
 
             if mountpoint -q /media/dragora-packages
             then
                 umount /media/dragora-packages
             fi
 
-            if mount -t iso9660 \
-             "/dev/${name}" /media/dragora-packages > /dev/null 2>&1
+            if mount -t iso9660 $name /media/dragora-packages > /dev/null 2>&1
             then
                 if test -d /media/dragora-packages/packages
                 then
@@ -57,7 +56,7 @@ to install Dragora:" 10 54 2 \
                      > "${SUBTMPDIR}/MediumFound"
 
                     # Save device name to eject later
-                    echo "/dev/${name}" > "${SUBTMPDIR}/CDDevice"
+                    echo "$name" > "${SUBTMPDIR}/CDDevice"
 
                     break 2;
                 else
@@ -65,7 +64,7 @@ to install Dragora:" 10 54 2 \
                      --backtitle "\\ZbCDROM: Dragora packages" \
                      --title "CD/DVD content" \
                      --msgbox \
-"The /dev/${name} device was successfully mounted under the\\n\
+"The ${name} device was successfully mounted under the\\n\
 /media/dragora-packages directory.  However, the contents\\n\
 for the Dragora packages were not found.  They are\\n\
 searched through /media/dragora-packages/packages.\\n\
