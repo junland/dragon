@@ -20,7 +20,7 @@ set -e
 
 program=dbus
 version=1.12.20
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=daemons
@@ -51,7 +51,7 @@ build()
     
     cd "$srcdir"
 
-    # Apply a patch to allow root to do anything (thanks to "Slackware Linux").
+    # Apply a patch to allow root to do anything (Thanks to "Slackware Linux").
     patch -Np1 \
      -i "${worktree}/patches/dbus/dbus-1.12.x-allow_root_globally.diff"
 
@@ -68,17 +68,14 @@ build()
      --enable-shared=yes \
      --enable-debug=no \
      --enable-inotify \
-     --enable-user-session \
      --disable-x11-autolaunch \
      --disable-systemd \
      --disable-selinux \
      --disable-doxygen-docs \
-     --with-systemduserunitdir=no \
-     --with-systemdsystemunitdir=no \
      --with-xml=expat \
-     --with-dbus-user=messagebus \
-     --with-system-socket=/var/run/system_bus_socket \
+     --with-system-socket=/var/run/dbus/system_bus_socket \
      --with-system-pid-file=/var/run/dbus/dbus.pid \
+     --with-console-auth-dir=/dev/console \
      --without-x \
      --build="$(gcc -dumpmachine)"
     
@@ -87,9 +84,6 @@ build()
 
     chown root:messagebus "${destdir}/usr/libexec/dbus-daemon-launch-helper"
     chmod 4750 "${destdir}/usr/libexec/dbus-daemon-launch-helper"
-
-    mkdir -p "${destdir}/var/lib/dbus"
-    chown messagebus "${destdir}/var/lib/dbus"
 
     mkdir -p "${destdir}/etc/dbus-1/system.d"
 

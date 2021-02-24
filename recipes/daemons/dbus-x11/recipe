@@ -56,7 +56,7 @@ build()
     
     cd "$srcdir"
 
-    # Apply a patch to allow root to do anything (thanks to "Slackware Linux").
+    # Apply a patch to allow root to do anything (Thanks to "Slackware Linux").
     patch -Np1 \
      -i "${worktree}/patches/dbus/dbus-1.12.x-allow_root_globally.diff"
 
@@ -74,15 +74,12 @@ build()
      --enable-debug=no \
      --enable-inotify \
      --enable-x11-autolaunch \
-     --enable-user-session \
      --disable-selinux \
      --disable-doxygen-docs \
-     --with-systemduserunitdir=no \
-     --with-systemdsystemunitdir=no \
      --with-xml=expat \
-     --with-dbus-user=messagebus \
-     --with-system-socket=/var/run/system_bus_socket \
+     --with-system-socket=/var/run/dbus/system_bus_socket \
      --with-system-pid-file=/var/run/dbus/dbus.pid \
+     --with-console-auth-dir=/dev/console \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
@@ -90,9 +87,6 @@ build()
 
     chown root:messagebus "${destdir}/usr/libexec/dbus-daemon-launch-helper"
     chmod 4750 "${destdir}/usr/libexec/dbus-daemon-launch-helper"
-
-    mkdir -p "${destdir}/var/lib/dbus"
-    chown messagebus "${destdir}/var/lib/dbus"
 
     mkdir -p "${destdir}/etc/dbus-1/system.d"
 
