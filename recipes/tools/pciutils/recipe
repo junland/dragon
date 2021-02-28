@@ -19,7 +19,7 @@ set -e
 
 program=pciutils
 version=3.7.0
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -52,34 +52,29 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Provide both, the static and the dynamic library
+    # Make
 
-    make -j${jobs} V=1 OPT="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    make -j${jobs} V=1 CPPFLAGS="$QICPPFLAGS" \
+    OPT="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      PREFIX=/usr \
      LIBDIR=/usr/lib${libSuffix} \
-     SHAREDIR=/usr/share/hwdata \
-     SHARED=no \
+     IDSDIR=/usr/share/hwdata \
+     SHARED=yes \
+     LIBKMOD=yes \
+     PCI_IDS=pci.ids \
+     PCI_COMPRESSED_IDS=0 \
      ZLIB=no
 
-    mkdir -p "${destdir}/usr/lib${libSuffix}"
-    cp -p lib/libpci.a "${destdir}/usr/lib${libSuffix}/"
-
-    make clean
+    # Install
 
     make -j${jobs} V=1 OPT="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      PREFIX=/usr \
      LIBDIR=/usr/lib${libSuffix} \
-     SHAREDIR=/usr/share/hwdata \
+     IDSDIR=/usr/share/hwdata \
      SHARED=yes \
-     ZLIB=no
-
-    # Make the installation
-
-    make -j${jobs} V=1 OPT="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     PREFIX=/usr \
-     LIBDIR=/usr/lib${libSuffix} \
-     SHAREDIR=/usr/share/hwdata \
-     SHARED=yes \
+     LIBKMOD=yes \
+     PCI_IDS=pci.ids \
+     PCI_COMPRESSED_IDS=0 \
      ZLIB=no \
      DESTDIR="$destdir" install install-lib
 

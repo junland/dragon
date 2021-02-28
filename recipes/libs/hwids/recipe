@@ -20,7 +20,7 @@ set -e
 program=hwids
 version=20201207
 arch=noarch
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -58,13 +58,15 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    mkdir -p "${destdir}/usr/share/hwdata"
+    # Do not run `udevadm hwdb` when installing
+    sed -i -e '/udevadm hwdb/d' Makefile
 
-    for file in *.ids
-    do
-        cp -p $file "${destdir}/usr/share/hwdata/"
-        chmod 644 "${destdir}/usr/share/hwdata/${file}"
-    done
+    make -j${jobs} install \
+     MISCDIR=/usr/share/hwdata \
+     HWDBDIR=/etc/udev/hwdb.d \
+     UDEV=yes \
+     DOCDIR="$docsdir" \
+     DESTDIR="$destdir"
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
