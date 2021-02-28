@@ -19,7 +19,7 @@ set -e
 
 program=file
 version=5.39
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -52,11 +52,11 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --sysconfdir=/etc/file \
-     --datadir=/etc/file \
      --infodir=$infodir \
      --mandir=$mandir \
      --enable-fsect-man5 \
@@ -64,7 +64,7 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} check
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    make -j${jobs} DESTDIR="$destdir" install
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
