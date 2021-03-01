@@ -18,7 +18,7 @@ Bootstrapping from Debian systems:
 
 `apt update && apt upgrade`
 
-`apt install build-essential flex git lzip genisoimage texinfo unzip zlib1g zlib1g-dev liblz1 liblz-dev`
+`apt install build-essential file flex git lzip genisoimage texinfo unzip zlib1g zlib1g-dev liblz1 liblz-dev`
 
 ### Instructions:
 
@@ -66,4 +66,4 @@ number of processors + 1, for example `-j3`
 Under the terms of the GNU Free Documentation License,
 http://www.gnu.org/licenses/fdl.html
 
-Updated: 2020-09-07
+Updated: 2021-03-01
