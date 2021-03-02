@@ -1,6 +1,6 @@
 # Build recipe for wpa_supplicant.
 #
-# Copyright (c) 2018-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 
 program=wpa_supplicant
 version=2.9
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=networking
@@ -88,24 +88,10 @@ build()
     chmod 644 "${destdir}/etc/dbus-1/system.d/dbus-wpa_supplicant.conf"
     chown root:root "${destdir}/etc/dbus-1/system.d/dbus-wpa_supplicant.conf"
 
-    # Install a perp service
-
-    mkdir -p "${destdir}/etc/perp/wpa_supplicant"
-
-    cp -p "${worktree}/archive/wpa_supplicant/rc.log" \
-          "${worktree}/archive/wpa_supplicant/rc.main" \
-          "${destdir}/etc/perp/wpa_supplicant/"
-
-    chmod 755 "${destdir}"/etc/perp/wpa_supplicant/rc.*
-
-    # Be an active service by default
-    chmod +t "${destdir}/etc/perp/wpa_supplicant"
-
     # To manage dot (new) files via graft(1)
 
     touch "${destdir}/etc/.graft-config" \
-          "${destdir}/etc/dbus-1/system.d/.graft-config" \
-          "${destdir}/etc/perp/wpa_supplicant/.graft-config"
+          "${destdir}/etc/dbus-1/system.d/.graft-config"
 
     # Install (missing) manpages
 
