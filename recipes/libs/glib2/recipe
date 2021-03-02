@@ -19,7 +19,7 @@ set -e
 
 program=glib
 version=2.66.7
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -64,10 +64,11 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    mkdir -p build
-    cd build
+    mkdir BUILD
+    cd BUILD
 
-    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -Wl,--no-keep-memory" \
+    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" \
+    LDFLAGS="$QILDFLAGS -Wl,-z,defs -Wl,--no-as-needed -Wl,-O1" \
     meson setup $configure_args \
      --libdir /usr/lib${libSuffix} \
      --buildtype=release \
