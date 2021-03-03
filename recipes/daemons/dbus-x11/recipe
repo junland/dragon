@@ -20,7 +20,7 @@ set -e
 
 program=dbus
 version=1.12.20
-release=3
+release=4
 
 pkgname=dbus-x11
 
@@ -77,13 +77,13 @@ build()
      --disable-selinux \
      --disable-doxygen-docs \
      --with-xml=expat \
-     --with-system-socket=/var/run/dbus/system_bus_socket \
-     --with-system-pid-file=/var/run/dbus/dbus.pid \
+     --with-system-socket=/run/system_bus_socket \
+     --with-system-pid-file=/run/dbus.pid \
      --with-console-auth-dir=/dev/console \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    make -j${jobs} DESTDIR="$destdir" install
 
     chown root:messagebus "${destdir}/usr/libexec/dbus-daemon-launch-helper"
     chmod 4750 "${destdir}/usr/libexec/dbus-daemon-launch-helper"
