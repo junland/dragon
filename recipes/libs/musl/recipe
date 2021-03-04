@@ -108,23 +108,13 @@ build()
     then
         mkdir -p "${destdir}/etc"
         cat << EOF > "${destdir}"/etc/$ld_path
-/lib
-/usr/local/lib
-/usr/lib
-EOF
-        # Include path for 'libSuffix'
-        if test -n "$libSuffix"
-        then
-            cat << EOF >> "${destdir}"/etc/$ld_path
+/lib${libSuffix}
+/usr/local/lib${libSuffix}
 /usr/lib${libSuffix}
-EOF
-        fi
-
-        # Now the rest of the path(s)
-        cat << EOF >> "${destdir}"/etc/$ld_path
 /usr/$(gcc -dumpmachine)/lib
-/opt/trinity/lib
-/opt/trinity/lib/tqt3/lib
+/opt/trinity/lib${libSuffix}/tqt3/lib
+/opt/trinity/lib${libSuffix}
+/opt/trinity/lib${libSuffix}/trinity
 EOF
         chmod 644 "${destdir}"/etc/$ld_path
         touch "${destdir}/etc/.graft-config"
@@ -133,8 +123,7 @@ EOF
     fi
 
     # Add to the post-install script a symlink for compatibility,
-    # as some scripts (./configure) still have the Glibc name
-    # "ld.so.conf".
+    # as some 'configure' scripts still have the Glibc name "ld.so.conf".
 
     mkdir -p "${destdir}/var/lib/qi"
     cat << EOF > "${destdir}/var/lib/qi/${full_pkgname}.sh"
