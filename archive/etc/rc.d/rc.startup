@@ -2,7 +2,7 @@
 #
 # Boot-time system initialization script
 #
-# Copyright (c) 2017-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,13 +28,16 @@ LC_ALL=C
 echo "${RC}: Mounting kernel based file systems"
 mount -v -n -o nosuid,noexec,nodev -t proc proc /proc
 mount -v -n -o nosuid,noexec,nodev -t sysfs sysfs /sys
-mount -v -n -t devtmpfs devtmpfs /dev
-
+if ! mountpoint -q /dev
+then
+    mount -v -n -t devtmpfs devtmpfs /dev
+fi
 mkdir -p /dev/pts /dev/shm /run
 mount -v -n -o mode=0620,gid=5 -t devpts devpts /dev/pts
 mount -v -n -o defaults -t tmpfs none /dev/shm
 mount -v -n -o defaults -t tmpfs tmpfs /run
 mkdir -p /run/lock
+chmod 1777 /run/lock /dev/shm
 
 ### ^ End Of 'Mount virtual file systems'
 
@@ -53,8 +56,8 @@ udevadm trigger --type=subsystems --action=add
 udevadm trigger --type=devices    --action=add
 udevadm trigger --type=devices    --action=change
 
-echo "${RC}: Waiting for event queue: udevadm settle --timeout=120"
-udevadm settle --timeout=120
+echo "${RC}: Waiting for event queue: udevadm settle --timeout=0"
+udevadm settle --timeout=0
 
 ### ^ End Of 'Start the dynamic device management'
 
@@ -266,7 +269,6 @@ rm -f /etc/nologin /fastboot /forcefsck
 # Set default system host name
 
 echo "$RC_HOSTNAME" > /proc/sys/kernel/hostname
-
 unset -v RC_HOSTNAME
 
 # Set kernel parameters at runtime
@@ -303,8 +305,7 @@ size="$(cat /proc/sys/kernel/random/poolsize)" || size=512
 
 # Save seed file containing the whole entropy pool
 dd if=/dev/urandom of=/etc/random-seed count=1 bs=$size
-unset -v size
-chmod 600 /etc/random-seed
+chmod 600 /etc/random-seed; unset -v size
 
 ### Configure ISA Plug-and-Play devices (legacy)
 
