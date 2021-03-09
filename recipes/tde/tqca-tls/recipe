@@ -18,8 +18,9 @@
 set -e
 
 program=tqca-tls-trinity
+pkgname=tqca-tls
 version=14.0.9
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tde
@@ -41,16 +42,10 @@ license=LGPLv2.1
 
 # Source documentation
 docs="COPYING README"
-docsdir="${docdir}/${program}-${version}"
+docsdir="${docdir}/${pkgname}-${version}"
 
 build()
 {
-    if test -z "$QTDIR"
-    then
-        echo "WARNING: Required QTDIR variable is empty." 1>&2
-        exit 1;
-    fi
-
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
@@ -58,22 +53,27 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Hard-code path to look for headers
+    mkdir BUILD
+    cd BUILD
 
-    if test ! -d /usr/include/tqt
-    then
-        sed -e 's#/usr/include/tqt#/opt/trinity/include/tqt#g' \
-            -i configure
-    fi
+    cmake \
+     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON                     \
+     -DCMAKE_BUILD_TYPE=RelWithDebInfo                      \
+     -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING="$QICFLAGS"      \
+     -DCMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING="$QICXXFLAGS"  \
+     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$(echo $QILDFLAGS | sed 's/-s//')" \
+     -DCMAKE_INSTALL_PREFIX=/usr                            \
+     -DLIB_SUFFIX=${libSuffix}                              \
+     -DCONFIG_INSTALL_DIR=/etc/trinity                      \
+     -DSYSCONF_INSTALL_DIR=/etc/trinity                     \
+     -DXDG_MENU_INSTALL_DIR=/etc/xdg/menus                  \
+     -DCMAKE_VERBOSE_MAKEFILE=ON                            \
+     -DCMAKE_SKIP_RPATH=OFF                                 \
+     -DWITH_ALL_OPTIONS=ON                                  \
+     -G Ninja ..
 
-    ./configure --tqtdir=$QTDIR
-
-    make -j${jobs}
-    #make -j${jobs} DESTDIR="$destdir" install -- not supported!
-
-    # Install "tqca-tls" manually
-    install -m 755 libtqca-tls.so \
-     -D "${destdir}${QTDIR}/plugins/crypto/libtqca-tls.so"
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -88,6 +88,8 @@ build()
             done
         )
     fi
+
+    cd ..
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"

@@ -20,7 +20,7 @@ set -e
 program=tqt3-trinity
 pkgname=tqt3
 version=14.0.9
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tde
@@ -69,9 +69,9 @@ build()
 
     SAVED_QTDIR="$QTDIR"
     QTDIR="$PWD"
-    LD_LIBRARY_PATH="${PWD}/lib:${LD_LIBRARY_PATH}"
+    LD_LIBRARY_PATH="${QTDIR}/lib:${LD_LIBRARY_PATH}"
     SAVED_PATH="$PATH"
-    PATH="${PWD}/bin:${PATH}"
+    PATH="${QTDIR}/bin:${PATH}"
 
     echo ""
     echo "New QTDIR: $QTDIR"
@@ -81,38 +81,35 @@ build()
 
     export QTDIR LD_LIBRARY_PATH PATH
 
-    echo yes | ./configure -L/usr/lib${libSuffix} -I/usr/include/tirpc \
-     -prefix /opt/trinity/lib${libSuffix}/${pkgname}-${version} \
-     -plugindir /opt/trinity/lib${libSuffix}/${pkgname}-${version}/plugins \
-     -sysconfdir /opt/etc \
-     -sysshare /usr/share \
-     -docdir $docsdir \
+    echo yes | ./configure \
+     -L/usr/lib${libSuffix} \
+     -I/usr/include/freetype2 \
+     -I/usr/include/tirpc \
+     -prefix "/usr" \
+     -libdir "/usr/lib${libSuffix}" \
+     -sysconfdir "/etc/tqt3" \
+     -headerdir "/usr/include/tqt3" \
+     -plugindir "/usr/lib${libSuffix}/tqt3/plugins" \
+     -datadir "/usr/share/tqt3" \
+     -translationdir "/usr/share/tqt3/translations" \
+     -docdir "$docsdir" \
      -no-exceptions \
-     -stl \
-     -largefile \
      -qt-gif \
      -system-zlib \
      -system-libpng \
      -system-libjpeg \
      -system-libmng \
-     -plugin-imgfmt-png \
-     -plugin-imgfmt-jpeg \
+     -qt-imgfmt-mng \
+     -qt-imgfmt-png \
+     -qt-imgfmt-jpeg \
      -plugin-imgfmt-mng \
      -thread \
-     -xinerama \
-     -xcursor \
-     -xrandr \
-     -xrender \
-     -xft \
+     -shared \
+     -fast \
+     -glibmainloop \
      -tablet \
-     -xkb \
-     -plugin-style-cde \
-     -plugin-style-compact \
-     -plugin-style-motif \
-     -plugin-style-motifplus \
-     -plugin-style-platinum \
-     -plugin-style-sgi \
-     -plugin-style-windows \
+     -enable-opengl \
+     -dlopen-opengl \
      -release
 
     make -i -j${jobs} sub-tools
@@ -127,61 +124,6 @@ build()
     find "$destdir" -type f | xargs file | \
      awk '/ELF/ && /executable/ || /shared object/' | \
       cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
-
-    # Make symlinks in order to have canonical path(s)
-
-    mkdir -p "${destdir}/var/lib/qi"
-    cat << EOF > "${destdir}/var/lib/qi/${full_pkgname}.sh"
-
-# Make symlink for canonical path at /opt/trinity/lib
-
-# Link using \$libSuffix if it was present (recipe)
-test -n "$libSuffix" && ( cd opt/trinity && ln -sf lib${libSuffix} lib );
-
-# Link package name
-cd opt/trinity/lib && ln -sf ${pkgname}-${version} $pkgname
-
-echo "Updating desktop database: update-desktop-database -q usr/share/applications"
-update-desktop-database -q usr/share/applications
-
-EOF
-
-    cd "${destdir}/opt/trinity" || exit 1
-
-    # Link tqt3's pkg-config files at /opt/trinity/lib/pkgconfig
-
-    mkdir -p "${destdir}/opt/trinity/lib${libSuffix}/pkgconfig"
-    cd "${destdir}/opt/trinity/lib${libSuffix}/${pkgname}-${version}"/lib/pkgconfig/
-    for file in *.pc
-    do
-        ln -sf \
-         "/opt/trinity/lib${libSuffix}/${pkgname}-${version}/lib/pkgconfig/${file}" \
-         "${destdir}/opt/trinity/lib${libSuffix}/pkgconfig/${file}"
-    done
-
-    # Link tqt3's programs at /opt/trinity/bin
-
-    mkdir -p "${destdir}/opt/trinity/bin"
-    cd "${destdir}/opt/trinity/lib${libSuffix}/${pkgname}-${version}"/bin/
-    for file in *
-    do
-        test -x "$file" || continue;
-
-        ln -sf \
-         "/opt/trinity/lib${libSuffix}/${pkgname}-${version}/bin/${file}" \
-         "${destdir}/opt/trinity/bin/${file}"
-    done
-
-    cd -- "${TMPDIR}/$srcdir"
-
-    # Include profile file
-    mkdir -p "${destdir}/etc/profile.d"
-    cp -p "${worktree}/archive/tqt3/etc/profile.d/tqt3.sh" \
-           "${destdir}/etc/profile.d/"
-    chmod 644 "${destdir}/etc/profile.d/tqt3.sh"
-
-    # To handle config file(s)
-    touch "${destdir}/etc/profile.d/.graft-config"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"

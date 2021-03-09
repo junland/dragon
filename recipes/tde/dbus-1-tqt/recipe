@@ -18,8 +18,9 @@
 set -e
 
 program=dbus-1-tqt-trinity
+pkgname=dbus-1-tqt
 version=14.0.9
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tde
@@ -46,7 +47,7 @@ license="Academic Free License version 2.1 | MIT Expat Variant, GPLv2+"
 
 # Source documentation
 docs="AUTHORS COPYING* ChangeLog NEWS README TODO"
-docsdir="${docdir}/${program}-${version}"
+docsdir="${docdir}/${pkgname}-${version}"
 
 build()
 {
@@ -61,14 +62,13 @@ build()
     cd BUILD
 
     cmake \
-     -DCMAKE_CXX_FLAGS_RELEASE:STRING="$QICXXFLAGS"   \
-     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$QILDFLAGS"  \
-     -DCMAKE_INSTALL_PREFIX=/opt/trinity              \
-     -DLIB_SUFFIX=${libSuffix}                        \
-     -DCMAKE_VERBOSE_MAKEFILE=ON                      \
-     -DCMAKE_BUILD_TYPE=Release                       \
-     -DCMAKE_SKIP_INSTALL_RPATH=YES                   \
-     -DWITH_ALL_OPTIONS=ON                            \
+     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON                     \
+     -DCMAKE_BUILD_TYPE=RelWithDebInfo                      \
+     -DCMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING="$QICXXFLAGS"  \
+     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$(echo $QILDFLAGS | sed 's/-s//')" \
+     -DCMAKE_INSTALL_PREFIX=/usr                            \
+     -DLIB_SUFFIX=${libSuffix}                              \
+     -DCMAKE_VERBOSE_MAKEFILE=ON                            \
      -G Ninja ..
 
     ninja -j${jobs}

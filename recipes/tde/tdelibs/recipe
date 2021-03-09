@@ -19,7 +19,7 @@ set -e
 
 program=tdelibs-trinity
 version=14.0.9
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tde
@@ -60,50 +60,55 @@ build()
     cd BUILD
 
     cmake \
-     -DCMAKE_C_FLAGS_RELEASE:STRING="$QICFLAGS"             \
-     -DCMAKE_CXX_FLAGS_RELEASE:STRING="$QICXXFLAGS"         \
-     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$QILDFLAGS"        \
-     -DCMAKE_INSTALL_PREFIX=/opt/trinity                    \
+     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON                     \
+     -DCMAKE_BUILD_TYPE=RelWithDebInfo                      \
+     -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING="$QICFLAGS"      \
+     -DCMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING="$QICXXFLAGS"  \
+     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$(echo $QILDFLAGS | sed 's/-s//')" \
+     -DCMAKE_INSTALL_PREFIX=/usr                            \
      -DLIB_SUFFIX=${libSuffix}                              \
+     -DCMAKE_VERBOSE_MAKEFILE=ON                            \
+     -DCMAKE_SKIP_RPATH=OFF                                 \
+     -DCMAKE_INSTALL_PREFIX=/opt/trinity                    \
      -DCONFIG_INSTALL_DIR=/etc/trinity                      \
      -DSYSCONF_INSTALL_DIR=/etc/trinity                     \
-     -DXDG_MENU_INSTALL_DIR=/etc/xdg/menus                  \
-     -DCMAKE_VERBOSE_MAKEFILE=ON                            \
-     -DCMAKE_BUILD_TYPE=Release                             \
-     -DCMAKE_SKIP_INSTALL_RPATH=YES                         \
-     -DWITH_ALL_OPTIONS=ON                                  \
-     -DWITH_SUDO_TDESU_BACKEND=ON                           \
+     -DCMAKE_LIBRARY_PATH=/opt/trinity/lib${libSuffix}      \
+     -DCMAKE_INCLUDE_PATH=/opt/trinity/include              \
+     -DWITH_GCC_VISIBILITY=ON                               \
+     -DWITH_CUPS=OFF                                        \
+     -DWITH_ARTS=OFF                                        \
+     -DWITH_LIBART=ON                                       \
+     -DWITH_LIBIDN=OFF                                      \
+     -DWITH_TIFF=ON                                         \
+     -DWITH_JASPER=ON                                       \
+     -DWITH_OPENEXR=OFF                                     \
+     -DWITH_AVAHI=OFF                                       \
+     -DWITH_ISPELL=OFF                                      \
+     -DWITH_ASPELL=ON                                       \
+     -DWITH_HSPELL=OFF                                      \
+     -DDEFAULT_SPELL_CHECKER=ASPELL                         \
+     -DWITH_ELFICON=OFF                                     \
      -DWITH_TDEHWLIB=ON                                     \
      -DWITH_TDEHWLIB_DAEMONS=ON                             \
-     -DWITH_ALSA=ON                                         \
-     -DWITH_ARTS=OFF                                        \
-     -DWITH_AVAHI=OFF                                       \
-     -DWITH_OPENEXR=OFF                                     \
-     -DWITH_CUPS=OFF                                        \
-     -DWITH_UTEMPTER=OFF                                    \
-     -DWITH_LIBIDN=OFF                                      \
-     -DWITH_LUA=OFF                                         \
-     -DWITH_ELFICON=OFF                                     \
-     -DWITH_GAMIN=OFF                                       \
-     -DWITH_HSPELL=OFF                                      \
-     -DWITH_HAL=OFF                                         \
+     -DWITH_LOGINDPOWER=ON                                  \
      -DWITH_UPOWER=OFF                                      \
      -DWITH_UDISKS=OFF                                      \
      -DWITH_UDISKS2=OFF                                     \
+     -DWITH_UDEVIL=ON                                       \
      -DWITH_CONSOLEKIT=OFF                                  \
+     -DWITH_NETWORK_MANAGER_BACKEND=OFF                     \
+     -DWITH_LZMA=ON                                         \
+     -DWITH_XRANDR=ON                                       \
+     -DWITH_XCOMPOSITE=ON                                   \
+     -DWITH_MITSHM=ON                                       \
+     -DWITH_PCSC=ON                                         \
+     -DWITH_PKCS=ON                                         \
+     -DWITH_CRYPTSETUP=ON                                   \
+     -DWITH_IMAGETOPS_BINARY=ON                             \
      -G Ninja ..
 
     ninja -j${jobs}
     DESTDIR="$destdir" ninja -j${jobs} install
-
-    # Strip remaining binaries and libraries
-    find "$destdir" -type f -print0 | xargs -0 file | \
-     awk '/ELF/ && /executable/ || /shared object/' | \
-      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null || true
-
-    find "$destdir" -type f -print0 | xargs -0 file | \
-     awk '/current ar archive/' | \
-      cut -f 1 -d : | xargs strip --strip-debug 2> /dev/null || true
 
     # To handle (dot) .new files via graft(1)
 

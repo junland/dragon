@@ -19,7 +19,7 @@ set -e
 
 program=tqtinterface-trinity
 version=14.0.9
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tde
@@ -63,21 +63,16 @@ build()
     cd BUILD
 
     cmake \
-     -DCMAKE_CXX_FLAGS_RELEASE:STRING="$QICXXFLAGS"   \
-     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$QILDFLAGS"  \
-     -DCMAKE_INSTALL_PREFIX=/opt/trinity              \
-     -DLIB_SUFFIX=${libSuffix}                        \
-     -DCMAKE_VERBOSE_MAKEFILE=ON                      \
-     -DCMAKE_BUILD_TYPE=Release                       \
-     -DCMAKE_SKIP_INSTALL_RPATH=YES                   \
-     -DWITH_ALL_OPTIONS=ON                            \
-     -DQT_PREFIX_DIR=/opt/trinity                     \
-     -DQT_INCLUDE_DIR=${QTDIR}/include                \
-     -DQT_LIBRARY_DIR=${QTDIR}/lib                    \
-     -DQT_BINARY_DIR=${QTDIR}/bin                     \
-     -DQT_VERSION=3                                   \
-     -DWITH_QT3=ON                                    \
-     -DWITH_QT4=OFF                                   \
+     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON                     \
+     -DCMAKE_BUILD_TYPE=RelWithDebInfo                      \
+     -DCMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING="$QICXXFLAGS"  \
+     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$(echo $QILDFLAGS | sed 's/-s//')" \
+     -DCMAKE_INSTALL_PREFIX=/usr                            \
+     -DLIB_SUFFIX=${libSuffix}                              \
+     -DCMAKE_VERBOSE_MAKEFILE=ON                            \
+     -DQT_VERSION=3                                         \
+     -DWITH_QT3=ON                                          \
+     -DWITH_QT4=OFF                                         \
      -G Ninja ..
 
     ninja -j${jobs}
