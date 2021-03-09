@@ -20,7 +20,7 @@ set -e
 
 program=xorg-server
 version=1.20.10
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=xorg_xserver
@@ -57,7 +57,9 @@ build()
     sed -i '/^#include <asm\/page.h>/d' Xext/xf86bigfont.c
     sed -i 's#termio.h#termios.h#' hw/xfree86/os-support/xf86_OSlib.h
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -Wl,-z,lazy" \
+    ./configure \
+    CPPFLAGS="$QICPPFLAGS -D_GNU_SOURCE -D__gid_t=gid_t -D__uid_t=uid_t" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -Wl,-z,lazy" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
@@ -71,6 +73,8 @@ build()
      --enable-dri2 \
      --enable-dri3 \
      --enable-ipv6 \
+     --enable-unix-transport \
+     --enable-local-transport \
      --enable-suid-wrapper \
      --disable-systemd-logind \
      --with-pic \
