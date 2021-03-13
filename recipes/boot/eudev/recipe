@@ -19,7 +19,7 @@ set -e
 
 program=eudev
 version=3.2.10
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=boot
@@ -58,7 +58,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
@@ -73,18 +74,30 @@ build()
      --disable-selinux \
      --with-rootprefix="" \
      --with-rootlibdir=/lib \
-     --build="$(gcc -dumpmachine)" \
-     cc_cv_CFLAGS__flto=no \
-     ac_cv_search_cap_init='' \
-     ac_cv_header_sys_capability_h=yes \
-     DBUS_CFLAGS=' ' \
-     DBUS_LIBS=' '
+     --build="$(gcc -dumpmachine)"
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    # http://github.com/gentoo/eudev/pull/127
+    make -j${jobs} V=1 udevhwdbdir=/lib/udev/hwdb.d
+    make -j${jobs} udevhwdbdir=/lib/udev/hwdb.d \
+                   DESTDIR="$destdir" install-strip
 
     # Make symlink for multipath
     ( cd "${destdir}/usr/sbin" && ln -sf /lib/udev/scsi_id . )
+
+    # Insert custom rules
+
+    mkdir -p "${destdir}/etc/udev/rules.d"
+    for file in "${worktree}"/archive/eudev/etc/udev/rules.d/*
+    do
+        install -p -m 644 -o root -g root "$file" "${destdir}/etc/udev/rules.d"
+    done
+
+    mkdir -p "${destdir}/lib/udev"
+    for file in "${worktree}"/archive/eudev/lib/udev/*
+    do
+        install -p -m 755 -o root -g root "$file" "${destdir}/lib/udev"
+    done
+    unset -v file
 
     # To handle config file(s)
     touch "${destdir}/etc/udev/.graft-config"
