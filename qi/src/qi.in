@@ -889,14 +889,16 @@ mode_order()
         return 4
     fi
 
-    # Get a clean list of the file while printing its contents in reverse
-    # order. The last `awk 'in the pipeline eliminates the non-consecutive
-    # lines, the duplicates. Blank lines, colons and parentheses are
-    # simply ignored, comment lines beginning with '#' are allowed
+    # Get a clean list of the file while printing its contents in
+    # reverse order.  Last awk(1) in the pipeline eliminates
+    # non-consecutive lines: duplicates, blank lines, and colons.
+    # Comment lines beginning with '#' are allowed; parentheses
+    # are simply ignored
 
-    awk \
-    '{ gsub( /:|^#(.*)$|\([^)]*)|^$/,"" ); for( i=NF; i > 0; i-- ) print $i }' \
-     "$1" | awk '!s[$0]++'
+    awk '{
+     gsub( /:|^#(.*)$|\([^)]*)|^$/,"" );
+      for( i=NF; i > 0; i-- ) print $i
+    }' "$1" | awk '!s[$0]++'
 }
 
 mode_upgrade()
@@ -1259,7 +1261,7 @@ validate_digit()
     shift
 
     # Taken from https://mywiki.wooledge.org/BashFAQ/054
-    case ${1#[-+]} in
+    case "${1#[-+]}" in
     '')
         warn "${PROGRAM}: The '${name}' option has no defined value"
         exit 1

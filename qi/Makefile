@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 2.4-rc3
+version		= 2.4-rc4
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -108,7 +108,7 @@ doc/$(project).info : doc/$(project)-header.texi doc/$(project)-content.texi
 man : doc/$(project).1
 
 doc/qi.1 : doc/$(project).1.in src/$(project).in
-	help2man ${HELP2MAN_OPTS} \
+	env LANG=C help2man ${HELP2MAN_OPTS} \
 	 --name="a simple but well-integrated package manager" \
 	 --info-page=qi \
 	 --output=$@ doc/$(project).1.in
