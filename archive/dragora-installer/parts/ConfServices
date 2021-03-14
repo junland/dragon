@@ -42,15 +42,16 @@ and control as persistent processes from system startup." 12 71 0 \\
 EOF
 
 addEntry acpid "Advanced Configuration and Power Interface event daemon."
-addEntry connmand "ConnMan is a daemon for managing Internet connections."
-addEntry crond "Cron daemon."
+addEntry connmand "A daemon for managing Internet connections."
+addEntry crond "Cron daemon. [required]"
 addEntry dbus "D-Bus daemon."
-addEntry dhcpcd "DHCP client."
+addEntry devmon "Device monitor (udevil)."
+addEntry dhcpcd "DHCP client, daemon."
 addEntry inetd "Internet super-server."
-addEntry klog "Simple kernel log daemon."
-addEntry socklog "Unix domain datagram socket for listening on /dev/log."
 addEntry sshd "The OpenSSH (SSH) daemon."
-addEntry wpa_supplicant "Wi-Fi Protected Access client and IEEE 802.1X supplicant."
+addEntry syslogd "Log systems messages. [required]"
+addEntry udevd "Device event managing daemon. [required]"
+
 unset -f addEntry
 
 echo ' 2> "${SUBTMPDIR}/return-ConfServices"' >> "${SUBTMPDIR}/ConfServices"
@@ -61,8 +62,8 @@ echo ' 2> "${SUBTMPDIR}/return-ConfServices"' >> "${SUBTMPDIR}/ConfServices"
 test -s "${SUBTMPDIR}/return-ConfServices" || return 0;
 
 # Set sticky bit according to the selection
-for service in acpid crond dbus dhcpcd inetd klog socklog sshd \
-               wpa_supplicant ; \
+for service in acpid connmand crond dbus devmon dhcpcd inetd \
+               sshd syslogd udevd ; \
 do
     if grep -q -o -m 1 "$service" "${SUBTMPDIR}/return-ConfServices"
     then
