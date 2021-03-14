@@ -19,7 +19,7 @@ set -e
 
 program=eudev
 version=3.2.10
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=boot
@@ -99,8 +99,22 @@ build()
     done
     unset -v file
 
+    # Install UDEVD perp service
+
+    mkdir -p "${destdir}/etc/perp/udevd"
+
+    cp -p "${worktree}/archive/eudev/etc/perp/rc.log" \
+          "${worktree}/archive/eudev/etc/perp/rc.main" \
+          "${destdir}/etc/perp/udevd/"
+
+    chmod 755 "${destdir}"/etc/perp/udevd/rc.*
+
+    # Be an active service by default
+    chmod +t "${destdir}/etc/perp/udevd"
+
     # To handle config file(s)
-    touch "${destdir}/etc/udev/.graft-config"
+    touch "${destdir}/etc/udev/.graft-config" \
+          "${destdir}/etc/perp/udevd/.graft-config"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"

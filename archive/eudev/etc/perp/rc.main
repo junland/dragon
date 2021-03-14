@@ -1,0 +1,38 @@
+#! /bin/sh -
+#
+# udevd/rc.main
+#
+# Device event managing daemon.
+#
+
+# Redirects the standard error to the standard output
+exec 2>&1
+
+TARGET="$1"
+SVNAME="${2:-udevd}"
+
+start()
+{
+    echo "*** ${SVNAME}: Starting udevd ..."
+    udevadm control --exit
+    exec /usr/sbin/udevd --debug
+}
+
+reset()
+{
+    case $3 in
+    exit)
+        echo "*** ${SVNAME}: Exited status $4"
+        ;;
+    signal)
+        echo "*** ${SVNAME}: Killed on signal $5"
+        ;;
+    *)
+        echo "*** ${SVNAME}: Stopped (${3})"
+        ;;
+    esac
+}
+
+# Branch to target
+eval ${TARGET} "$@"
+
