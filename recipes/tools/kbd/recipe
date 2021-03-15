@@ -19,7 +19,7 @@ set -e
 
 program=kbd
 version=2.4.0
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -51,6 +51,11 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # Use patches from Fedora to improve kbd
+    patch -Np1 -i "${worktree}/patches/kbd/kbd-1.15-keycodes-man.patch"
+    patch -Np1 -i "${worktree}/patches/kbd/kbd-1.15-unicode_start.patch"
+    patch -Np1 -i "${worktree}/patches/kbd/kbd-2.0.4-covscan-fixes.patch"
+
     # Fix inconsistent behaviour of Backspace and Delete keys
     # for i386 keymaps (Thanks to "Linux From Scratch")
     patch -Np1 -i "${worktree}/patches/kbd/kbd-2.4.0-backspace-1.patch"
@@ -62,7 +67,8 @@ build()
     sed -i '/RESIZECONS_PROGS=/s/yes/no/' configure
     sed -i 's/resizecons.8 //' docs/man/man8/Makefile.in
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
