@@ -20,7 +20,7 @@ set -e
 program=jack-audio-connection-kit
 pkgname=jack1
 version=0.125.0
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -62,21 +62,28 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Note about `--enable-portaudio': troubles on compilation.
+    # Note about `--enable-portaudio': it gives problems in the compilation.
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --enable-alsa \
      --disable-portaudio \
      --disable-oss \
-     --enable-posix-shm \
-     --enable-sse=no \
+     --enable-posix-shm=yes \
+     --enable-sse=auto \
+     --with-default-tmpdir=/tmp \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
+
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f -print0 | xargs -0 file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
