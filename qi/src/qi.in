@@ -503,6 +503,21 @@ mode_build()
     build
     unset -f build
 
+    # Check recipe to run defined functions by the packager
+    for _definition in \
+     $(awk '!/^build[ (]/ && /^[^ {}]+ *\(\)/{ gsub(/[()]/, "", $1); print $1 }' "${CWD}/$recipe")
+    do
+        # Check if it is a shell function
+        case $(LC_ALL=C type $_definition) in
+        *function*)
+            # Call and undo the function after executing it
+            $_definition
+            unset -f $_definition
+            ;;
+        esac
+    done
+    unset -v _definition
+
     # Turn off possible shell flags coming from the recipe
 
     set +e
