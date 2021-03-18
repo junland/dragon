@@ -18,7 +18,7 @@
 set -e
 
 program=dialog
-version=1.3-20210117
+version=1.3-20210306
 release=1
 
 # Define a category for the output of the package name
@@ -56,12 +56,15 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --with-ncursesw \
+     --enable-nls \
      --disable-rpath-hack \
+     --without-x \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs}
@@ -76,7 +79,7 @@ build()
     # To manage .new (config) files via graft(8)
     touch "${destdir}/etc/.graft-config"
 
-    # Compress man page and copy documentation
+    # Compress man page and copy the documentation
 
     lzip -9 "${destdir}/${mandir}/man1/dialog.1"
 
