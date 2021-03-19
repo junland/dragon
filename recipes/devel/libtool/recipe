@@ -1,6 +1,6 @@
 # Build recipe for libtool.
 #
-# Copyright (c) 2016-2017, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2017 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 
 program=libtool
 version=2.4.6
-release=2
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=devel
@@ -53,26 +53,16 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Update this software version using the following
-    # patches from Fedora (Thank you!)
-
-    patch -Np1 -i "${worktree}/patches/libtool/libtool-2.4.6-am-1.16-test.patch"
-    patch -Np1 -i "${worktree}/patches/libtool/libtool-2.4.6-fatal-handler.patch"
-    patch -Np1 -i "${worktree}/patches/libtool/libtool-2.4.6-hardening.patch"
-    patch -Np1 -i "${worktree}/patches/libtool/libtool-2.4.6-specs.patch"
-    patch -Np1 -i "${worktree}/patches/libtool/libtool-nodocs.patch"
-
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="" LDFLAGS="" \
+    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
+     --enable-static \
+     --enable-shared \
      --build="$(gcc -dumpmachine)"
 
-    make -j${jobs} V=1 \
-     CUSTOM_LTDL_CFLAGS="$QICFLAGS" \
-     CUSTOM_LTDL_LDFLAGS="$QILDFLAGS"
-
+    make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Compress info documents deleting index file for the package
@@ -98,6 +88,10 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"
+
+    for file in $docs
+    do
+        cp -p $file "${destdir}${docsdir}"
+    done
 }
 
