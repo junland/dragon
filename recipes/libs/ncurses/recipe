@@ -18,7 +18,7 @@
 set -e
 
 program=ncurses
-version=6.2-20210116
+version=6.2-20210313
 release=1
 
 # Define a category for the output of the package name
@@ -63,20 +63,18 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure \
-    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --enable-widec \
      --enable-symlinks \
-     --enable-hard-tabs \
-     --enable-xmc-glitch \
-     --enable-colorfgbg \
      --enable-termcap \
      --enable-pc-files \
-     --disable-rpath-hack \
+     --enable-xmc-glitch \
      --disable-stripping \
+     --disable-relink \
      --with-pkg-config-libdir=/usr/lib${libSuffix}/pkgconfig \
      --with-shared \
      --with-gpm \
@@ -89,7 +87,7 @@ build()
     mkdir -p "${destdir}/usr/lib${libSuffix}/pkgconfig"
     make -j${jobs} DESTDIR="$destdir" install
 
-    # Insert termcap file provided by Thomas E. Dickey
+    # Insert termcap file provided by "Thomas E. Dickey"
     mkdir -p "${destdir}/etc"
     zcat "${tardir}/$termcap_file" > "${destdir}/etc/termcap"
     chmod 644 "${destdir}/etc/termcap"
