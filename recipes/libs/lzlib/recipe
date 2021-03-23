@@ -19,7 +19,7 @@ set -e
 
 program=lzlib
 version=1.12
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -57,19 +57,19 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     ./configure CPPFLAGS="$QICPPFLAGS" \
-    CFLAGS="-Wall -W $QICFLAGS -fPIC" LDFLAGS="$QILDFLAGS" \
+    CFLAGS="-Wall -W $QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
-     --disable-shared \
+     --enable-shared \
      --disable-ldconfig \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs}
     make -j${jobs} DESTDIR="$destdir" install
 
-    # To install minilzip
+    # Install "minilzip"
     make -j${jobs} DESTDIR="$destdir" install-bin
 
     # Compress info documents
