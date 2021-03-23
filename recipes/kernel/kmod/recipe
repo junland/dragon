@@ -19,7 +19,7 @@
 set -e
 
 program=kmod
-version=27
+version=28
 release=1
 
 # Define a category for the output of the package name
@@ -28,7 +28,7 @@ pkgcategory=kernel
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=https://www.kernel.org/pub/linux/utils/kernel/kmod/$tarname
+fetch=https://mirrors.edge.kernel.org/pub/linux/utils/kernel/kmod/$tarname
 
 description="
 Linux kernel module handling.
@@ -55,13 +55,14 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     # Add support for kernel modules compressed with LZIP
-    patch -p1 < "${worktree}/patches/kmod/kmod-27_lzip-0.diff"
+    patch -p1 < "${worktree}/patches/kmod/kmod-28_lzip-0.diff"
 
     autoreconf -vif
 
     # --enable-static is not supported by kmod
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      lzlib_LIBS="-llz" lzlib_CFLAGS="-llz" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \

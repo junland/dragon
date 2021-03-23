@@ -1,6 +1,6 @@
-diff -urdN kmod-27.orig/Makefile.am kmod-27/Makefile.am
---- kmod-27.orig/Makefile.am	2020-02-19 00:20:13.000000000 +0100
-+++ kmod-27/Makefile.am	2020-09-17 19:36:55.000000000 +0200
+diff -urdN kmod-28.orig/Makefile.am kmod-28/Makefile.am
+--- kmod-28.orig/Makefile.am	2021-01-07 19:29:12.000000000 +0100
++++ kmod-28/Makefile.am	2021-03-21 01:23:51.000000000 +0100
 @@ -19,7 +19,7 @@
  	-include $(top_builddir)/config.h \
  	-I$(top_srcdir) \
@@ -10,8 +10,8 @@ diff -urdN kmod-27.orig/Makefile.am kmod-27/Makefile.am
  
  AM_CFLAGS = $(OUR_CFLAGS)
  AM_LDFLAGS = $(OUR_LDFLAGS)
-@@ -33,6 +33,8 @@
- 	-e 's,@includedir\@,$(includedir),g' \
+@@ -35,6 +35,8 @@
+ 	-e 's,@libzstd_LIBS\@,${libzstd_LIBS},g' \
  	-e 's,@liblzma_CFLAGS\@,${liblzma_CFLAGS},g' \
  	-e 's,@liblzma_LIBS\@,${liblzma_LIBS},g' \
 +	-e 's,@lzlib_CFLAGS\@,${lzlib_CFLAGS},g' \
@@ -19,20 +19,20 @@ diff -urdN kmod-27.orig/Makefile.am kmod-27/Makefile.am
  	-e 's,@zlib_CFLAGS\@,${zlib_CFLAGS},g' \
  	-e 's,@zlib_LIBS\@,${zlib_LIBS},g' \
  	-e 's,@libcrypto_CFLAGS\@,${libcrypto_CFLAGS},g' \
-@@ -90,7 +92,7 @@
+@@ -105,7 +107,7 @@
  	${top_srcdir}/libkmod/libkmod.sym
  libkmod_libkmod_la_LIBADD = \
  	shared/libshared.la \
--	${liblzma_LIBS} ${zlib_LIBS} ${libcrypto_LIBS}
-+	${liblzma_LIBS} ${lzlib_LIBS} ${zlib_LIBS} ${libcrypto_LIBS}
+-	${libzstd_LIBS} ${liblzma_LIBS} ${zlib_LIBS} ${libcrypto_LIBS}
++	${libzstd_LIBS} ${liblzma_LIBS} ${lzlib_LIBS} ${zlib_LIBS} ${libcrypto_LIBS}
  
  noinst_LTLIBRARIES += libkmod/libkmod-internal.la
  libkmod_libkmod_internal_la_SOURCES = $(libkmod_libkmod_la_SOURCES)
-diff -urdN kmod-27.orig/Makefile.in kmod-27/Makefile.in
---- kmod-27.orig/Makefile.in	2020-02-19 00:43:03.000000000 +0100
-+++ kmod-27/Makefile.in	2020-09-17 19:36:55.000000000 +0200
-@@ -904,6 +904,8 @@
- liblzma_LIBS = @liblzma_LIBS@
+diff -urdN kmod-28.orig/Makefile.in kmod-28/Makefile.in
+--- kmod-28.orig/Makefile.in	2021-01-07 19:39:30.000000000 +0100
++++ kmod-28/Makefile.in	2021-03-21 01:23:51.000000000 +0100
+@@ -907,6 +907,8 @@
+ libzstd_LIBS = @libzstd_LIBS@
  localedir = @localedir@
  localstatedir = @localstatedir@
 +lzlib_CFLAGS = @lzlib_CFLAGS@
@@ -40,7 +40,7 @@ diff -urdN kmod-27.orig/Makefile.in kmod-27/Makefile.in
  mandir = @mandir@
  mkdir_p = @mkdir_p@
  oldincludedir = @oldincludedir@
-@@ -974,7 +976,7 @@
+@@ -977,7 +979,7 @@
  	-include $(top_builddir)/config.h \
  	-I$(top_srcdir) \
  	-DSYSCONFDIR=\""$(sysconfdir)"\" \
@@ -49,8 +49,8 @@ diff -urdN kmod-27.orig/Makefile.in kmod-27/Makefile.in
  
  AM_CFLAGS = $(OUR_CFLAGS)
  AM_LDFLAGS = $(OUR_LDFLAGS)
-@@ -987,6 +989,8 @@
- 	-e 's,@includedir\@,$(includedir),g' \
+@@ -992,6 +994,8 @@
+ 	-e 's,@libzstd_LIBS\@,${libzstd_LIBS},g' \
  	-e 's,@liblzma_CFLAGS\@,${liblzma_CFLAGS},g' \
  	-e 's,@liblzma_LIBS\@,${liblzma_LIBS},g' \
 +	-e 's,@lzlib_CFLAGS\@,${lzlib_CFLAGS},g' \
@@ -58,18 +58,18 @@ diff -urdN kmod-27.orig/Makefile.in kmod-27/Makefile.in
  	-e 's,@zlib_CFLAGS\@,${zlib_CFLAGS},g' \
  	-e 's,@zlib_LIBS\@,${zlib_LIBS},g' \
  	-e 's,@libcrypto_CFLAGS\@,${libcrypto_CFLAGS},g' \
-@@ -1037,7 +1041,7 @@
+@@ -1056,7 +1060,7 @@
  
  libkmod_libkmod_la_LIBADD = \
  	shared/libshared.la \
--	${liblzma_LIBS} ${zlib_LIBS} ${libcrypto_LIBS}
-+	${liblzma_LIBS} ${lzlib_LIBS} ${zlib_LIBS} ${libcrypto_LIBS}
+-	${libzstd_LIBS} ${liblzma_LIBS} ${zlib_LIBS} ${libcrypto_LIBS}
++	${libzstd_LIBS} ${liblzma_LIBS} ${lzlib_LIBS} ${zlib_LIBS} ${libcrypto_LIBS}
  
  libkmod_libkmod_internal_la_SOURCES = $(libkmod_libkmod_la_SOURCES)
  libkmod_libkmod_internal_la_LDFLAGS = $(AM_LDFLAGS) \
-diff -urdN kmod-27.orig/README kmod-27/README
---- kmod-27.orig/README	2019-01-04 19:04:40.000000000 +0100
-+++ kmod-27/README	2020-09-17 19:03:14.000000000 +0200
+diff -urdN kmod-28.orig/README kmod-28/README
+--- kmod-28.orig/README	2019-01-04 19:04:40.000000000 +0100
++++ kmod-28/README	2021-03-21 00:39:33.000000000 +0100
 @@ -52,6 +52,7 @@
  
  Optional dependencies:
@@ -78,9 +78,9 @@ diff -urdN kmod-27.orig/README kmod-27/README
  	- LZMA library
  
  Typical configuration:
-diff -urdN kmod-27.orig/config.h.in kmod-27/config.h.in
---- kmod-27.orig/config.h.in	2020-02-19 00:43:13.000000000 +0100
-+++ kmod-27/config.h.in	2020-09-17 19:03:14.000000000 +0200
+diff -urdN kmod-28.orig/config.h.in kmod-28/config.h.in
+--- kmod-28.orig/config.h.in	2021-01-07 19:39:38.000000000 +0100
++++ kmod-28/config.h.in	2021-03-21 00:39:33.000000000 +0100
 @@ -15,6 +15,9 @@
  /* Enable Xz for modules. */
  #undef ENABLE_XZ
@@ -91,9 +91,9 @@ diff -urdN kmod-27.orig/config.h.in kmod-27/config.h.in
  /* Enable zlib for modules. */
  #undef ENABLE_ZLIB
  
-diff -urdN kmod-27.orig/configure kmod-27/configure
---- kmod-27.orig/configure	2020-02-19 00:43:04.000000000 +0100
-+++ kmod-27/configure	2020-09-17 19:36:55.000000000 +0200
+diff -urdN kmod-28.orig/configure kmod-28/configure
+--- kmod-28.orig/configure	2021-01-07 19:39:30.000000000 +0100
++++ kmod-28/configure	2021-03-21 01:23:51.000000000 +0100
 @@ -673,6 +673,8 @@
  libcrypto_CFLAGS
  zlib_LIBS
@@ -102,17 +102,17 @@ diff -urdN kmod-27.orig/configure kmod-27/configure
 +lzlib_CFLAGS
  liblzma_LIBS
  liblzma_CFLAGS
- rootlibdir
-@@ -814,6 +816,7 @@
- enable_libtool_lock
+ libzstd_LIBS
+@@ -817,6 +819,7 @@
  with_rootlibdir
+ with_zstd
  with_xz
 +with_lzlib
  with_zlib
  with_openssl
  with_bashcompletiondir
-@@ -841,6 +844,8 @@
- PKG_CONFIG_LIBDIR
+@@ -846,6 +849,8 @@
+ libzstd_LIBS
  liblzma_CFLAGS
  liblzma_LIBS
 +lzlib_CFLAGS
@@ -120,15 +120,15 @@ diff -urdN kmod-27.orig/configure kmod-27/configure
  zlib_CFLAGS
  zlib_LIBS
  libcrypto_CFLAGS
-@@ -1507,6 +1512,7 @@
-                           compiler's sysroot if not specified).
-   --with-rootlibdir=DIR   rootfs directory to install shared libraries
+@@ -1514,6 +1519,7 @@
+   --with-zstd             handle Zstandard-compressed modules
+                           [default=disabled]
    --with-xz               handle Xz-compressed modules [default=disabled]
 +  --with-lzlib            handle lzipped modules [default=disabled]
    --with-zlib             handle gzipped modules [default=disabled]
    --with-openssl          handle PKCS7 signatures [default=disabled]
    --with-bashcompletiondir=DIR
-@@ -1532,6 +1538,9 @@
+@@ -1543,6 +1549,9 @@
                C compiler flags for liblzma, overriding pkg-config
    liblzma_LIBS
                linker flags for liblzma, overriding pkg-config
@@ -138,7 +138,7 @@ diff -urdN kmod-27.orig/configure kmod-27/configure
    zlib_CFLAGS C compiler flags for zlib, overriding pkg-config
    zlib_LIBS   linker flags for zlib, overriding pkg-config
    libcrypto_CFLAGS
-@@ -13511,6 +13520,142 @@
+@@ -13658,6 +13667,142 @@
  
  
  
@@ -281,28 +281,28 @@ diff -urdN kmod-27.orig/configure kmod-27/configure
  # Check whether --with-zlib was given.
  if test "${with_zlib+set}" = set; then :
    withval=$with_zlib;
-@@ -17013,7 +17158,7 @@
+@@ -17162,7 +17307,7 @@
  	tools:			${enable_tools}
  	python bindings:	${enable_python}
  	logging:		${enable_logging}
--	compression:		xz=${with_xz}  zlib=${with_zlib}
-+	compression:		xz=${with_xz}  lzlib=${with_lzlib}  zlib=${with_zlib}
+-	compression:		zstd=${with_zstd}  xz=${with_xz}  zlib=${with_zlib}
++	compression:		zstd=${with_zstd}  xz=${with_xz}  lzlib=${with_lzlib}  zlib=${with_zlib}
  	debug:			${enable_debug}
  	coverage:		${enable_coverage}
  	doc:			${enable_gtk_doc}
-@@ -17042,7 +17187,7 @@
+@@ -17191,7 +17336,7 @@
  	tools:			${enable_tools}
  	python bindings:	${enable_python}
  	logging:		${enable_logging}
--	compression:		xz=${with_xz}  zlib=${with_zlib}
-+	compression:		xz=${with_xz}  lzlib=${with_lzlib}  zlib=${with_zlib}
+-	compression:		zstd=${with_zstd}  xz=${with_xz}  zlib=${with_zlib}
++	compression:		zstd=${with_zstd}  xz=${with_xz}  lzlib=${with_lzlib}  zlib=${with_zlib}
  	debug:			${enable_debug}
  	coverage:		${enable_coverage}
  	doc:			${enable_gtk_doc}
-diff -urdN kmod-27.orig/configure.ac kmod-27/configure.ac
---- kmod-27.orig/configure.ac	2020-02-19 00:40:36.000000000 +0100
-+++ kmod-27/configure.ac	2020-09-17 19:03:14.000000000 +0200
-@@ -94,6 +94,17 @@
+diff -urdN kmod-28.orig/configure.ac kmod-28/configure.ac
+--- kmod-28.orig/configure.ac	2021-01-07 19:37:42.000000000 +0100
++++ kmod-28/configure.ac	2021-03-21 01:23:51.000000000 +0100
+@@ -105,6 +105,17 @@
  ])
  CC_FEATURE_APPEND([with_features], [with_xz], [XZ])
  
@@ -320,20 +320,20 @@ diff -urdN kmod-27.orig/configure.ac kmod-27/configure.ac
  AC_ARG_WITH([zlib],
  	AS_HELP_STRING([--with-zlib], [handle gzipped modules @<:@default=disabled@:>@]),
  	[], [with_zlib=no])
-@@ -307,7 +318,7 @@
+@@ -318,7 +329,7 @@
  	tools:			${enable_tools}
  	python bindings:	${enable_python}
  	logging:		${enable_logging}
--	compression:		xz=${with_xz}  zlib=${with_zlib}
-+	compression:		xz=${with_xz}  lzlib=${with_lzlib}  zlib=${with_zlib}
+-	compression:		zstd=${with_zstd}  xz=${with_xz}  zlib=${with_zlib}
++	compression:		zstd=${with_zstd}  xz=${with_xz}  lzlib=${with_lzlib}  zlib=${with_zlib}
  	debug:			${enable_debug}
  	coverage:		${enable_coverage}
  	doc:			${enable_gtk_doc}
-diff -urdN kmod-27.orig/libkmod/docs/Makefile.in kmod-27/libkmod/docs/Makefile.in
---- kmod-27.orig/libkmod/docs/Makefile.in	2020-02-19 00:43:03.000000000 +0100
-+++ kmod-27/libkmod/docs/Makefile.in	2020-09-17 19:03:14.000000000 +0200
-@@ -247,6 +247,8 @@
- liblzma_LIBS = @liblzma_LIBS@
+diff -urdN kmod-28.orig/libkmod/docs/Makefile.in kmod-28/libkmod/docs/Makefile.in
+--- kmod-28.orig/libkmod/docs/Makefile.in	2021-01-07 19:39:30.000000000 +0100
++++ kmod-28/libkmod/docs/Makefile.in	2021-03-21 00:39:33.000000000 +0100
+@@ -249,6 +249,8 @@
+ libzstd_LIBS = @libzstd_LIBS@
  localedir = @localedir@
  localstatedir = @localstatedir@
 +lzlib_CFLAGS = @lzlib_CFLAGS@
@@ -341,10 +341,10 @@ diff -urdN kmod-27.orig/libkmod/docs/Makefile.in kmod-27/libkmod/docs/Makefile.i
  mandir = @mandir@
  mkdir_p = @mkdir_p@
  oldincludedir = @oldincludedir@
-diff -urdN kmod-27.orig/libkmod/libkmod-file.c kmod-27/libkmod/libkmod-file.c
---- kmod-27.orig/libkmod/libkmod-file.c	2017-12-07 23:05:47.000000000 +0100
-+++ kmod-27/libkmod/libkmod-file.c	2020-09-17 19:03:14.000000000 +0200
-@@ -34,6 +34,9 @@
+diff -urdN kmod-28.orig/libkmod/libkmod-file.c kmod-28/libkmod/libkmod-file.c
+--- kmod-28.orig/libkmod/libkmod-file.c	2020-09-11 06:55:01.000000000 +0200
++++ kmod-28/libkmod/libkmod-file.c	2021-03-21 00:39:33.000000000 +0100
+@@ -37,6 +37,9 @@
  #endif
  
  #include <shared/util.h>
@@ -354,7 +354,7 @@ diff -urdN kmod-27.orig/libkmod/libkmod-file.c kmod-27/libkmod/libkmod-file.c
  
  #include "libkmod.h"
  #include "libkmod-internal.h"
-@@ -48,6 +51,9 @@
+@@ -54,6 +57,9 @@
  #ifdef ENABLE_XZ
  	bool xz_used;
  #endif
@@ -364,7 +364,7 @@ diff -urdN kmod-27.orig/libkmod/libkmod-file.c kmod-27/libkmod/libkmod-file.c
  #ifdef ENABLE_ZLIB
  	gzFile gzf;
  #endif
-@@ -169,6 +175,88 @@
+@@ -310,6 +316,88 @@
  static const char magic_xz[] = {0xfd, '7', 'z', 'X', 'Z', 0};
  #endif
  
@@ -453,7 +453,7 @@ diff -urdN kmod-27.orig/libkmod/libkmod-file.c kmod-27/libkmod/libkmod-file.c
  #ifdef ENABLE_ZLIB
  #define READ_STEP (4 * 1024 * 1024)
  static int load_zlib(struct kmod_file *file)
-@@ -241,6 +329,9 @@
+@@ -385,6 +473,9 @@
  #ifdef ENABLE_XZ
  	{sizeof(magic_xz), magic_xz, {load_xz, unload_xz}},
  #endif
@@ -463,21 +463,21 @@ diff -urdN kmod-27.orig/libkmod/libkmod-file.c kmod-27/libkmod/libkmod-file.c
  #ifdef ENABLE_ZLIB
  	{sizeof(magic_zlib), magic_zlib, {load_zlib, unload_zlib}},
  #endif
-diff -urdN kmod-27.orig/libkmod/libkmod.pc.in kmod-27/libkmod/libkmod.pc.in
---- kmod-27.orig/libkmod/libkmod.pc.in	2013-04-24 22:02:37.000000000 +0200
-+++ kmod-27/libkmod/libkmod.pc.in	2020-09-17 19:03:14.000000000 +0200
+diff -urdN kmod-28.orig/libkmod/libkmod.pc.in kmod-28/libkmod/libkmod.pc.in
+--- kmod-28.orig/libkmod/libkmod.pc.in	2020-09-11 06:55:01.000000000 +0200
++++ kmod-28/libkmod/libkmod.pc.in	2021-03-21 01:23:51.000000000 +0100
 @@ -7,5 +7,5 @@
  Description: Library to deal with kernel modules
  Version: @VERSION@
  Libs: -L${libdir} -lkmod
--Libs.private: @liblzma_LIBS@ @zlib_LIBS@
-+Libs.private: @liblzma_LIBS@ @lzlib_LIBS@ @zlib_LIBS@
+-Libs.private: @libzstd_LIBS@ @liblzma_LIBS@ @zlib_LIBS@
++Libs.private: @libzstd_LIBS@ @liblzma_LIBS@ @lzlib_LIBS@ @zlib_LIBS@
  Cflags: -I${includedir}
-diff -urdN kmod-27.orig/man/Makefile.in kmod-27/man/Makefile.in
---- kmod-27.orig/man/Makefile.in	2020-02-19 00:43:03.000000000 +0100
-+++ kmod-27/man/Makefile.in	2020-09-17 19:03:14.000000000 +0200
-@@ -277,6 +277,8 @@
- liblzma_LIBS = @liblzma_LIBS@
+diff -urdN kmod-28.orig/man/Makefile.in kmod-28/man/Makefile.in
+--- kmod-28.orig/man/Makefile.in	2021-01-07 19:39:30.000000000 +0100
++++ kmod-28/man/Makefile.in	2021-03-21 00:39:33.000000000 +0100
+@@ -279,6 +279,8 @@
+ libzstd_LIBS = @libzstd_LIBS@
  localedir = @localedir@
  localstatedir = @localstatedir@
 +lzlib_CFLAGS = @lzlib_CFLAGS@
@@ -485,9 +485,9 @@ diff -urdN kmod-27.orig/man/Makefile.in kmod-27/man/Makefile.in
  mandir = @mandir@
  mkdir_p = @mkdir_p@
  oldincludedir = @oldincludedir@
-diff -urdN kmod-27.orig/shared/util.c kmod-27/shared/util.c
---- kmod-27.orig/shared/util.c	2018-01-31 18:10:59.000000000 +0100
-+++ kmod-27/shared/util.c	2020-09-17 19:03:14.000000000 +0200
+diff -urdN kmod-28.orig/shared/util.c kmod-28/shared/util.c
+--- kmod-28.orig/shared/util.c	2020-09-11 06:55:01.000000000 +0200
++++ kmod-28/shared/util.c	2021-03-21 00:39:33.000000000 +0100
 @@ -43,6 +43,9 @@
  #ifdef ENABLE_ZLIB
  	{".ko.gz", sizeof(".ko.gz") - 1},
@@ -498,9 +498,9 @@ diff -urdN kmod-27.orig/shared/util.c kmod-27/shared/util.c
  #ifdef ENABLE_XZ
  	{".ko.xz", sizeof(".ko.xz") - 1},
  #endif
-diff -urdN kmod-27.orig/testsuite/test-util.c kmod-27/testsuite/test-util.c
---- kmod-27.orig/testsuite/test-util.c	2017-12-07 23:05:47.000000000 +0100
-+++ kmod-27/testsuite/test-util.c	2020-09-17 19:03:14.000000000 +0200
+diff -urdN kmod-28.orig/testsuite/test-util.c kmod-28/testsuite/test-util.c
+--- kmod-28.orig/testsuite/test-util.c	2020-09-11 06:55:01.000000000 +0200
++++ kmod-28/testsuite/test-util.c	2021-03-21 00:39:33.000000000 +0100
 @@ -154,6 +154,9 @@
  #ifdef ENABLE_ZLIB
  		{ "/bla.ko.gz", true },
