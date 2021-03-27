@@ -1,6 +1,6 @@
 # This file is part of the 'dragora-installer'.
 #
-# Purpose: Show detected series from medium to be chosen.
+# Purpose: Search to show the detected series of the found medium.
 
 MEDIUM_SOURCE="$(cat -- ${SUBTMPDIR}/MediumFound)"
 export MEDIUM_SOURCE
@@ -8,123 +8,121 @@ export MEDIUM_SOURCE
 cat << EOF > ${SUBTMPDIR}/ShowSeries
 dialog --colors \\
  --backtitle "\ZbChoosing the series" \\
- --title "SOFTWARE SERIES" --no-cancel \\
- --item-help --checklist \\
+ --title "SOFTWARE SERIES" \\
+ --no-cancel --item-help --checklist \\
 "The following series of software were found for installation.\n\\
 Use the cursor keys and the space bar to select the series\n\\
 you want to install.  Finally, press \Zb\Z7ENTER\Zn to continue." 20 65 12 \\
 EOF
 
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/boot
-then
-    echo '"boot" "" on "Necessary software to boot the system." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/compressors
-then
-    echo '"compressors" "" on "Several compressors at user-level." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/daemons
-then
-    echo '"daemons" "" on "System-related daemons." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/data
-then
-    echo '"data" "" on "Essential configuration files." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/db
-then
-    echo '"db" "" on "Databases: berkeley-db, gdbm, tzdb." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/devel
-then
-    echo '"devel" "" on "Compilers, programming languages, and debuggers." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/dict
-then
-    echo '"dict" "" on "Spell checker and dictionaries." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/docbook
-then
-    echo '"docbook" "" on "SGML and XML support for DocBook documents." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/gnupg
-then
-    echo '"gnupg" "" on "The GNU privacy guard." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/kernel
-then
-    echo '"kernel" "" on "The Linux-libre kernel: images, headers, and modules." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/libs
-then
-    echo '"libs" "" on "System libraries." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/networking
-then
-    echo '"networking" "" on "Clients and servers for networking." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/perl
-then
-    echo '"perl" "" on "Perl programming language plus modules." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/python
-then
-    echo '"python" "" on "Python programming language Python plus modules." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/ruby
-then
-    echo '"ruby" "" on "Ruby programming language plus modules." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/shells
-then
-    echo '"shells" "" on "Command interpreters." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/tools
-then
-    echo '"tools" "" on "Tools and complements of the base system." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/xorg
-then
-    echo '"xorg" "" on "The X Window System." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/x-apps
-then
-    echo '"x-apps" "" on "A collection of applications for the X Window System." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/x-libs
-then
-    echo '"x-libs" "" on "A collection of libraries for the X Window System." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
-if test -d "${MEDIUM_SOURCE}"/@ARCH@/xfce
-then
-    echo '"xfce" "" on "Xfce is a lightweight desktop environment." \' \
-     >> ${SUBTMPDIR}/ShowSeries
-fi
+find "$MEDIUM_SOURCE" -type f -name '*@*.tlz' -exec \
+ sh -c 'name="${1##*@}"; name="${name%.tlz}"; echo "$name"' _ {} \; | \
+  LC_ALL=C sort -u | while read -r line
+do
+    case $line in
+    boot*)
+        echo '"boot" "" ON "Necessary software to boot the system." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    compressors*)
+        echo '"compressors" "" ON "Several compressors at user-level." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    daemons*)
+        echo '"daemons" "" ON "System-related daemons." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    data*)
+        echo '"data" "" ON "Essential configuration files." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    db*)
+        echo '"db" "" ON "Databases: berkeley-db, gdbm, tzdb." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    devel*)
+        echo '"devel" "" ON "Compilers, programming languages, and debuggers." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    dict*)
+        echo '"dict" "" ON "Spell checker software and dictionaries." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    docbook*)
+        echo '"docbook" "" ON "SGML and XML support for DocBook documents." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    gnupg*)
+        echo '"gnupg" "" ON "The GNU privacy guard." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    kernel*)
+        echo '"kernel" "" ON "The Linux-libre kernel: images, headers, and modules." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    libs*)
+        echo '"libs" "" ON "System libraries." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    lua*)
+        echo '"lua" "" ON "Lua programming language and modules." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    networking*)
+        echo '"networking" "" ON "Clients and servers for networking." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    perl*)
+        echo '"perl" "" ON "Perl programming language and modules." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    python*)
+        echo '"python" "" ON "Python programming language and modules." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    ruby*)
+        echo '"ruby" "" ON "Ruby programming language and modules." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    shells*)
+        echo '"shells" "" ON "Command interpreters for the system." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    tools*)
+        echo '"tools" "" ON "Tools and complements of the core system." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    x-apps*)
+        echo '"x-apps" "" ON "A collection of applications for the X Window System." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    x-libs*)
+        echo '"x-libs" "" ON "A collection of libraries for the X Window System." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    xorg_app*)
+        echo '"xorg_app" "" ON "The X Window System applications." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    xorg_data*)
+        echo '"xorg_data" "" ON "Bitmaps, cursor themes and configuration files." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    xorg_doc*)
+        echo '"xorg_doc" "" ON "The X Window System documentation." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    xorg_driver*)
+        echo '"xorg_driver" "" ON "Video and input drivers for the X Window System." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    xorg_extra*)
+        echo '"xorg_extra" "" ON "Extra libraries and essential utilities for the X Window System." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    xorg_font*)
+        echo '"xorg_font" "" ON "The X Window System font files." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    xorg_lib*)
+        echo '"xorg_lib" "" ON "The X Window System libraries." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    xorg_mesa*)
+        echo '"xorg_mesa" "" ON "The Mesa 3D graphics library." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    xorg_proto*)
+        echo '"xorg_proto" "" ON "The X Window System header(s) for development." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    xorg_util*)
+        echo '"xorg_util" "" ON "The X Window System utilities." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    xorg_xcb*)
+        echo '"xorg_xcb" "" ON "The XCB protocol." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    xorg_xserver*)
+        echo '"xorg_xserver" "" ON "The X Window System server." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    esac
+done
 
 # Check if there are any detected series
 if test ! -f ${SUBTMPDIR}/ShowSeries || test ! -s ${SUBTMPDIR}/ShowSeries
 then
-    echo "${PROGRAM}: Error no series was detected.  Aborting..." 1>&2
+    echo "${PROGRAM}: Error no series found.  Aborting..." 1>&2
     exit 99;
 fi
 echo ' 2> ${SUBTMPDIR}/return-ShowSeries' >> ${SUBTMPDIR}/ShowSeries
@@ -132,10 +130,9 @@ echo ' 2> ${SUBTMPDIR}/return-ShowSeries' >> ${SUBTMPDIR}/ShowSeries
 touch ${SUBTMPDIR}/return-ShowSeries
 
 . ${SUBTMPDIR}/ShowSeries;	# Show menu.
-
 if test ! -f ${SUBTMPDIR}/return-ShowSeries || test ! -s ${SUBTMPDIR}/return-ShowSeries
 then
-    echo "${PROGRAM}: Error no series was selected.  Aborting..." 1>&2
+    echo "${PROGRAM}: No series were selected.  Aborting..." 1>&2
     exit 99;
 fi
 
