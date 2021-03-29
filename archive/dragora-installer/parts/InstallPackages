@@ -5,21 +5,21 @@
 # Show menu
 
 dialog --colors \
- --backtitle "\ZbInstallation mode" \
+ --backtitle "\ZbPackage installation" \
  --title "SELECT THE INSTALLATION MODE" \
  --no-cancel --menu "" 7 66 0 \
-"All"     "Install packages from selected series" \
-"Expert"  "Select packages from chosen series" \
+"All"     "Install all packages from chosen series"
+"Expert"  "Select packages individually" \
  2> ${SUBTMPDIR}/return-InstallPackages
 
 # Check menu options
 
 case "$(cat -- ${SUBTMPDIR}/return-InstallPackages)" in
-All)
+All )
     # Clean for subsequent filling
     : > ${SUBTMPDIR}/return-InstallPackages_All
 
-    # Read selected series
+    # Read (selected) series
     IFS= read -r REPLY < ${SUBTMPDIR}/return-ShowSeries
 
     for serie in $REPLY
@@ -46,11 +46,93 @@ EOF
          --targetdir=/ \
          --prune - < ${SUBTMPDIR}/return-InstallPackages_All
     else
-        echo "${PROGRAM}: Error the package list is empty." 1>&2
+        echo "${PROGRAM}: All: Error the package list is empty." 1>&2
         exit 99;
     fi
     ;;
-Expert)
+Expert )
+    # Clean for subsequent filling
+    : > ${SUBTMPDIR}/search-InstallPackages_Expert
+
+    # Read (selected) series
+    IFS= read -r REPLY < ${SUBTMPDIR}/return-ShowSeries
+
+    for serie in $REPLY
+    do
+        find -- "${MEDIUM_SOURCE}"/noarch "${MEDIUM_SOURCE}"/@ARCH@ \
+         -type f \( -name "*@${serie}.tlz" -a ! -name "*-pass*" \) -print | \
+          sort >> ${SUBTMPDIR}/search-InstallPackages_Expert 2> /dev/null || true
+    done
+    unset -v REPLY serie
+
+    if test -s ${SUBTMPDIR}/search-InstallPackages_Expert
+    then
+        true
+    else
+        echo "${PROGRAM}: Expert: The package list is empty." 1>&2
+        exit 99;
+    fi
+
+    # Dialog, package checklist composition
+
+    cat << EOF > ${SUBTMPDIR}/InstallPackages_Expert
+dialog --colors --no-shadow \\
+ --backtitle "\ZbPackage selection from chosen series" \\
+ --title "SOFTWARE PACKAGES" \\
+ --no-cancel --item-help --checklist \\
+"The following packages have been found according to the series.\n\n\\
+Please use the cursor keys and \\Z3[Space]\\Zn to deselect the packages\n\\
+you do not want to install.  By default, all packages are selected." \\
+$(( LINES - 6 )) $COLUMNS 16 \\
+EOF
+
+    # Populate checklist item using information from meta files
+    while read -r meta
+    do
+        . "${meta}.txt" || {
+            echo "${PROGRAM}: Error no meta file(s) available." 1>&2
+            exit 99;
+        }
+
+        echo "\"${full_pkgname%%@*}\" \"@${pkgcategory}\" ON \"${blurb}\" \\" \
+         >> ${SUBTMPDIR}/InstallPackages_Expert
+    done < ${SUBTMPDIR}/search-InstallPackages_Expert
+
+    # Add tail to get the answers
+    echo ' 2> ${SUBTMPDIR}/return-InstallPackages_Expert' \
+     >> ${SUBTMPDIR}/InstallPackages_Expert
+
+    touch ${SUBTMPDIR}/return-InstallPackages_Expert
+    . ${SUBTMPDIR}/InstallPackages_Expert;	# Show menu.
+
+    # Proceed to install the chosen packages
+
+    if test -s ${SUBTMPDIR}/return-InstallPackages_Expert
+    then
+        # Join the answers by turning blank spaces into a new line
+        sed -e 's/[[:blank:]]/\n/g' \
+            -i ${SUBTMPDIR}/return-InstallPackages_Expert
+
+        # Set some packages at the top of the list to give priority
+        ed -l -s ${SUBTMPDIR}/return-InstallPackages_Expert << EOF
+/etc_/m0
+/hierarchyfs_/m1
+w
+EOF
+        # Proceed to install if there is a match in the search list
+        while read -r line
+        do
+            grep -F -s -w -m 1 "$line" \
+             ${SUBTMPDIR}/search-InstallPackages_Expert | qi install \
+               --rootdir=/media/dragora-root \
+               --packagedir=/usr/pkg \
+               --targetdir=/ \
+               --prune -
+        done < ${SUBTMPDIR}/return-InstallPackages_Expert
+    else
+        echo "${PROGRAM}: Expert: Error the package list is empty." 1>&2
+        exit 99;
+    fi
     ;;
 esac
 
