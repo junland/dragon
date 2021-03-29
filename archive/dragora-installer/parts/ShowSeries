@@ -12,12 +12,12 @@ dialog --colors \\
  --no-cancel --item-help --checklist \\
 "The following series of software were found for installation.\n\\
 Use the cursor keys and the space bar to select the series\n\\
-you want to install.  Finally, press \Zb\Z7ENTER\Zn to continue." 20 65 12 \\
+you want to install.  Finally, press \\Z3[Enter]\Zn to continue." 20 65 12 \\
 EOF
 
-find "$MEDIUM_SOURCE" -type f -name '*@*.tlz' -exec \
- sh -c 'name="${1##*@}"; name="${name%.tlz}"; echo "$name"' _ {} \; | \
-  LC_ALL=C sort -u | while read -r category
+find -- "$MEDIUM_SOURCE" -type f \( -name '*@*.tlz' -a ! -name '*-pass*' \) \
+ -exec sh -c 'name="${1##*@}"; name="${name%.tlz}"; echo "$name"' _ {} \; | \
+  sort -u | while read -r category
 do
     case $category in
     boot*)
@@ -117,7 +117,7 @@ do
         echo '"xorg_xserver" "" ON "The X Window System server." \' >> ${SUBTMPDIR}/ShowSeries
         ;;
     *)
-        echo '"unknown" "" ON "Unknown package category detected." \' >> ${SUBTMPDIR}/ShowSeries
+        echo "\"${category}\" \"\" ON \"Package category detected.\" \\" >> ${SUBTMPDIR}/ShowSeries
         ;;
     esac
 done
