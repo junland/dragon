@@ -17,9 +17,9 @@ EOF
 
 find "$MEDIUM_SOURCE" -type f -name '*@*.tlz' -exec \
  sh -c 'name="${1##*@}"; name="${name%.tlz}"; echo "$name"' _ {} \; | \
-  LC_ALL=C sort -u | while read -r line
+  LC_ALL=C sort -u | while read -r category
 do
-    case $line in
+    case $category in
     boot*)
         echo '"boot" "" ON "Necessary software to boot the system." \' >> ${SUBTMPDIR}/ShowSeries
         ;;
@@ -115,6 +115,9 @@ do
         ;;
     xorg_xserver*)
         echo '"xorg_xserver" "" ON "The X Window System server." \' >> ${SUBTMPDIR}/ShowSeries
+        ;;
+    *)
+        echo '"unknown" "" ON "Unknown package category detected." \' >> ${SUBTMPDIR}/ShowSeries
         ;;
     esac
 done
