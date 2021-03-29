@@ -1169,14 +1169,22 @@ do_meta()
     # The package description is pre-formatted in 78 columns,
     # the '#' character and a space is added as prefix to conform
     # the 80 columns in total
-
     printf '%s\n' "$description" | fold -w 78 | awk '$0="# " $0'
-    printf '%s' \
+
+    # Include build flags only if it is a real architecture
+    if test "$arch" != noarch
+    then
+        printf '%s' \
 "
 QICFLAGS=\"$QICFLAGS\"
 QICXXFLAGS=\"$QICXXFLAGS\"
 QILDFLAGS=\"$QILDFLAGS\"
-QICPPFLAGS=\"$QICPPFLAGS\"
+QICPPFLAGS=\"$QICPPFLAGS\""
+    fi
+
+    # Print saving the rest of the package information
+    printf '%s' \
+"
 pkgname=$pkgname
 pkgversion=$pkgversion
 arch=$arch

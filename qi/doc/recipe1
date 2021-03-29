@@ -1,6 +1,6 @@
 # Build recipe for tarlz.
 #
-# Copyright (c) 2019-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019-2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=tarlz
-version=0.17
+version=0.19
 release=2
 
 # Define a category for the output of the package name
@@ -27,9 +27,9 @@ pkgcategory=tools
 tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
-fetch=http://download-mirror.savannah.gnu.org/releases/lzip/tarlz/$tarname
+fetch=https://download-mirror.savannah.gnu.org/releases/lzip/tarlz/$tarname
 
-homepage=http://lzip.nongnu.org/tarlz.html
+homepage=https://lzip.nongnu.org/tarlz.html
 license=GPLv2+
 
 description="
@@ -48,7 +48,7 @@ compressed archives.
 "
 
 # Limit package name to the program name
-full_pkgname=$program
+full_pkgname="${program}@${pkgcategory}"
 
 # Source documentation
 docs="AUTHORS COPYING ChangeLog NEWS README"
@@ -63,7 +63,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CXXFLAGS+="$QICXXFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CXXFLAGS="-Wall -W $QICXXFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --infodir=$infodir \
      --mandir=$mandir \

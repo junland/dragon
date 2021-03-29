@@ -1,6 +1,6 @@
 # Build recipe for less.
 #
-# Copyright (c) 2016-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=less
-version=551
+version=563
 release=1
 
 # Define a category for the output of the package name
@@ -27,7 +27,7 @@ pkgcategory=tools
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=http://ftp.gnu.org/gnu/less/$tarname
+fetch=https://ftp.gnu.org/gnu/less/$tarname
 
 description="
 A text file viewer.
@@ -37,7 +37,7 @@ Less is a pager.  A pager is a program that displays text files.
 This package also includes the 'lesspipe.sh' script.
 "
 
-homepage=http://www.gnu.org/software/less
+homepage=https://www.gnu.org/software/less
 license=GPLv3+
 
 # Source documentation
@@ -53,7 +53,7 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --mandir=$mandir \
      --with-regex=pcre \
@@ -92,10 +92,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}${docsdir}"
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
