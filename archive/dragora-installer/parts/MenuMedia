@@ -20,16 +20,14 @@ to install Dragora:" 10 54 2 \
     case "$(cat -- "${SUBTMPDIR}"/return-MenuMedia)" in
     0) ## CDROM
 
-        # Try to detect the device name via /proc
-        list="$(awk '/drive name:/{sub(/drive name:/,""); for (i=1; i<=NF; i++) print $i}' /proc/sys/dev/cdrom/info 2> /dev/null)" || true
-
-        # Scan device name(s) containing the packages for Dragora
-        for name in $list cdrom dvd hda hdb hdc hdd hde hdf hdh sr0 sr1 \
-                          sr2 sr3 pcd0 pcd1 pcd2 pcd3 aztcd cdu535 gscd0 \
-                          sonycd optcd sjcd mcdx0 mcdx1 sbpcd cm205cd \
-                          cm206cd mcd ; \
+        # Scan device name(s) containing the packages to install Dragora
+        for name in hda hdb hdc hdd hde hdf hdh sr0 sr1 sr2 sr3 \
+                    pcd0 pcd1 pcd2 pcd3 aztcd cdu535 gscd0 \
+                    sonycd optcd sjcd mcdx0 mcdx1 sbpcd cm205cd \
+                    cm206cd mcd dvd cdrom ; \
         do
-            name=/dev/${name};	# Prepend path for device files.
+            # Prepend path for device files
+            name=/dev/${name}
 
             dialog --colors \
              --backtitle "\\ZbCDROM: Discovering drive name" \
@@ -38,45 +36,47 @@ to install Dragora:" 10 54 2 \
 
             test -b "$name" || continue
 
-            dialog --colors \
-             --backtitle "\\ZbCDROM: ${name}" \
-             --title "Checking device content" --sleep 1 \
-             --infobox "Mounting ${name} under /media/dragora-packages" 3 52
+            # Prepare to mount and check the package directory
 
             if mountpoint -q /media/dragora-packages
             then
                 umount /media/dragora-packages
             fi
-
+            dialog --colors \
+             --backtitle "\\ZbCDROM: ${name}" \
+             --title "Checking device content" --sleep 2 \
+             --infobox "Mounting ${name} under /media/dragora-packages" 3 55
             if mount -t iso9660 $name /media/dragora-packages > /dev/null 2>&1
             then
-                if test -d /media/dragora-packages/packages
+                if test ! -e /media/dragora-packages/packages
                 then
-                    echo "/media/dragora-packages/packages" \
-                     > "${SUBTMPDIR}/MediumFound"
-
-                    # Save device name to eject later
-                    echo "$name" > "${SUBTMPDIR}/CDDevice"
-
-                    break 2;
-                else
                     dialog --colors \
                      --backtitle "\\ZbCDROM: Dragora packages" \
-                     --title "CD/DVD content" \
+                     --title "CD/DVD Content" \
                      --msgbox \
 "The ${name} device was successfully mounted under the\\n\
 /media/dragora-packages directory.  However, the contents\\n\
 for the Dragora packages were not found.  They are\\n\
 searched through /media/dragora-packages/packages.\\n\
 \\n\
-The installer can proceed with another device (such as a
-secondary CDROM drive) looking for the package directory
-to install Dragora." 14 63
+The installer can check for another device name (such as\\n\
+a secondary CDROM drive) looking for the package directory\\n\
+in order to install Dragora.\\n\
+\\n\
+Press \\Z3[Enter]\Zn to proceed..." 14 63
+                continue
+                else
+                    # Save reference directory
+                    echo "/media/dragora-packages/packages" \
+                     > "${SUBTMPDIR}/MediumFound"
+
+                    # Save device name to eject later
+                    echo "$name" > "${SUBTMPDIR}/CDDevice"
+                    break 2;
                 fi
             fi
-            continue
         done
-        unset -v name list
+        unset -v name
 
         dialog --colors \
          --backtitle "\\ZbSelecting the installation medium: CDROM (medium not found)" \
