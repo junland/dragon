@@ -24,9 +24,10 @@ All )
 
     for serie in $REPLY
     do
-        find -- "${MEDIUM_SOURCE}"/noarch "${MEDIUM_SOURCE}"/@ARCH@ \
-         -type f \( -name "*@${serie}.tlz" -a ! -name "*-pass*" \) -print | \
-          sort >> ${SUBTMPDIR}/return-InstallPackages_All 2> /dev/null || true
+        find -- "${MEDIUM_SOURCE}"/@ARCH@ "${MEDIUM_SOURCE}"/noarch \
+         -type f \( -name "*@${serie}.tlz" -a ! -name "*-pass*" \) \
+          -printf '%p\n' >> ${SUBTMPDIR}/return-InstallPackages_All \
+           2> /dev/null || true
     done
     unset -v REPLY serie
 
@@ -34,8 +35,11 @@ All )
 
     if test -s ${SUBTMPDIR}/return-InstallPackages_All
     then
+       sort ${SUBTMPDIR}/return-InstallPackages_All \
+        > ${SUBTMPDIR}/return-InstallPackages_All.sorted
+
         # Set some packages at the top of the list to give priority
-        ed -l -s ${SUBTMPDIR}/return-InstallPackages_All << EOF
+        ed -l -s ${SUBTMPDIR}/return-InstallPackages_All.sorted << EOF
 /etc_/m0
 /hierarchyfs_/m1
 w
@@ -44,7 +48,7 @@ EOF
          --rootdir=/media/dragora-root \
          --packagedir=/usr/pkg \
          --targetdir=/ \
-         --prune - < ${SUBTMPDIR}/return-InstallPackages_All
+         --prune - < ${SUBTMPDIR}/return-InstallPackages_All.sorted
     else
         echo "${PROGRAM}: All: Error the package list is empty." 1>&2
         exit 99;
@@ -59,15 +63,17 @@ Expert )
 
     for serie in $REPLY
     do
-        find -- "${MEDIUM_SOURCE}"/noarch "${MEDIUM_SOURCE}"/@ARCH@ \
-         -type f \( -name "*@${serie}.tlz" -a ! -name "*-pass*" \) -print | \
-          sort >> ${SUBTMPDIR}/search-InstallPackages_Expert 2> /dev/null || true
+        find -- "${MEDIUM_SOURCE}"/@ARCH@ "${MEDIUM_SOURCE}"/noarch \
+         -type f \( -name "*@${serie}.tlz" -a ! -name "*-pass*" \) \
+          -printf '%p\n' >> ${SUBTMPDIR}/search-InstallPackages_Expert \
+           2> /dev/null || true
     done
     unset -v REPLY serie
 
     if test -s ${SUBTMPDIR}/search-InstallPackages_Expert
     then
-        true
+       sort ${SUBTMPDIR}/search-InstallPackages_Expert \
+        > ${SUBTMPDIR}/search-InstallPackages_Expert.sorted
     else
         echo "${PROGRAM}: Expert: The package list is empty." 1>&2
         exit 99;
@@ -96,23 +102,21 @@ EOF
 
         echo "\"${full_pkgname%%@*}\" \"@${pkgcategory}\" ON \"${blurb}\" \\" \
          >> ${SUBTMPDIR}/InstallPackages_Expert
-    done < ${SUBTMPDIR}/search-InstallPackages_Expert
+    done < ${SUBTMPDIR}/search-InstallPackages_Expert.sorted
 
     # Add tail to get the answers
     echo ' 2> ${SUBTMPDIR}/return-InstallPackages_Expert' \
      >> ${SUBTMPDIR}/InstallPackages_Expert
 
     touch ${SUBTMPDIR}/return-InstallPackages_Expert
-    . ${SUBTMPDIR}/InstallPackages_Expert;	# Show menu.
+
+    # Show the menu
+    . ${SUBTMPDIR}/InstallPackages_Expert
 
     # Proceed to install the chosen packages
 
     if test -s ${SUBTMPDIR}/return-InstallPackages_Expert
     then
-        # Join the answers by turning blank spaces into a new line
-        sed -e 's/[[:blank:]]/\n/g' \
-            -i ${SUBTMPDIR}/return-InstallPackages_Expert
-
         # Set some packages at the top of the list to give priority
         ed -l -s ${SUBTMPDIR}/return-InstallPackages_Expert << EOF
 /etc_/m0
@@ -123,7 +127,8 @@ EOF
         while read -r line
         do
             grep -F -s -w -m 1 "$line" \
-             ${SUBTMPDIR}/search-InstallPackages_Expert | qi install \
+             ${SUBTMPDIR}/search-InstallPackages_Expert.sorted | \
+              qi install \
                --rootdir=/media/dragora-root \
                --packagedir=/usr/pkg \
                --targetdir=/ \
