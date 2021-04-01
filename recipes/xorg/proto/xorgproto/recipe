@@ -20,7 +20,7 @@ set -e
 
 program=xorgproto
 version=2021.3
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=xorg_proto
@@ -57,24 +57,20 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    rm -rf BUILD
-    mkdir BUILD
-    cd BUILD
+    ./configure $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-legacy \
+     --without-xmlto \
+     || true
 
-    meson setup $configure_args \
-     --libdir /usr/lib${libSuffix} \
-     --mandir $mandir \
-     --buildtype=release \
-     -Dlegacy=true \
-     ..
-
-    ninja -j${jobs}
-    DESTDIR="$destdir" ninja -j${jobs} install
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
 
     # This is provided by 'xorg/lib/libXvMC' currently
     rm "${destdir}/usr/include/X11/extensions/vldXvMC.h"
-
-    cd ..
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"

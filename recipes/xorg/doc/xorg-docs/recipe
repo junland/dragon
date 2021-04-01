@@ -1,7 +1,7 @@
 # Build recipe for xorg-docs.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ set -e
 program=xorg-docs
 version=1.7.1
 arch=noarch
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=xorg_doc
@@ -53,12 +53,12 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
+    ./configure $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --without-xmlto \
      || true
 
     make -j${jobs} V=1
@@ -87,13 +87,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}${docsdir}"
-        fi
-    done
+    cp -p $docs "${destdir}${docsdir}"
 }
 
