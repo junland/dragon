@@ -58,8 +58,7 @@ the same will be converted using the octal character
 040, which is interpreted by the file system table.
 
 Enter a mount point for \"${1}\":
-
-(If you leave this blank, any previous entries will be deleted)." 21 62 \
+(If you leave this blank, any previous entries will be deleted)." 20 62 \
      2> "${SUBTMPDIR}/return-MakeFS_askMountPoint" || return 0
 
     # We remove possible single/double quotes from the answer.
@@ -150,9 +149,10 @@ $(fdisk -l "$devname" | head -n 1)" 13 55 1 \
 _mkreiser4()
 {
     devname=$1
+
     progressfile="${SUBTMPDIR}/MakeFS-mkfs.reiser4.progress.${RANDOM-0}$$"
 
-    slowcmd "mkfs.reiser4 -yf $devname" "$progressfile" | \
+    slowcmd "mkfs.reiser4 --yes --force $devname" "$progressfile" | \
      dialog --colors \
       --backtitle "\\ZbPartitions: Formatting partitions" \
       --title "STATUS" \
@@ -240,8 +240,8 @@ dialog --colors \\
 
     Selecting a partition gives you the possibility to set up
 a file system or a mount point for the boot stage of the system.
-Once this has been established, choose the \\"Done\\" button to
-continue with the installation." 16 65 5 \\
+Once this has been established, choose the \\"Done\\" button
+to continue with the installation." 16 65 5 \\
 EOF
     makeMenu && . "${SUBTMPDIR}/MakeFS"
     case "${_code:-$?}" in
