@@ -1,7 +1,7 @@
-diff -urdN linux-5.4.18/Documentation/lzip.txt linux-5.4.18.new/Documentation/lzip.txt
---- linux-5.4.18/Documentation/lzip.txt	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.18.new/Documentation/lzip.txt	2020-02-10 15:55:57.000000000 +0100
-@@ -0,0 +1,59 @@
+diff -urdN linux-5.10.25/Documentation/lzip.txt linux-5.10.25.new/Documentation/lzip.txt
+--- linux-5.10.25/Documentation/lzip.txt	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.25.new/Documentation/lzip.txt	2021-03-22 22:27:03.000000000 +0100
+@@ -0,0 +1,58 @@
 +==============================
 +Lzip data compression in Linux
 +==============================
@@ -9,85 +9,91 @@ diff -urdN linux-5.4.18/Documentation/lzip.txt linux-5.4.18.new/Documentation/lz
 +Introduction
 +============
 +
-+Lzip is a lossless data compressor with a user interface similar to the
-+one of gzip or bzip2. Lzip can compress about as fast as gzip (lzip -0)
-+or compress most files more than bzip2 (lzip -9). Decompression speed is
-+intermediate between gzip and bzip2. Lzip implements the LZMA algorithm.
-+
-+Lzip has been designed, written and tested with great care to be the
-+standard general-purpose compressor for unix-like systems. The lzip
-+format is as simple as possible (but not simpler). It provides accurate
-+and robust 3 factor integrity checking.
++Lzip is a lossless data compressor with a user interface similar to the one
++of gzip or bzip2. Lzip uses a simplified form of the 'Lempel-Ziv-Markov
++chain-Algorithm' (LZMA) stream format, chosen to maximize safety and
++interoperability. Lzip can compress about as fast as gzip (lzip -0) or
++compress most files more than bzip2 (lzip -9). Decompression speed is
++intermediate between gzip and bzip2. Lzip is better than gzip and bzip2 from
++a data recovery perspective. Lzip has been designed, written, and tested
++with great care to replace gzip and bzip2 as the standard general-purpose
++compressed format for unix-like systems, especially for long-term archiving.
 +
 +Learn more about lzip at http://www.nongnu.org/lzip/lzip.html
 +
 +Lzip related components in the kernel
 +=====================================
 +
-+The lzip_decompress module in lib/lzip_decompress.c provides a versatile
-+lzip decompression function able to do buffer to buffer decompression or
-+stream decompression with fill and flush callback functions. The usage
-+of the function is documented in include/linux/lzip.h.
++The lzip_decompress module in lib/lzip_decompress.c provides a versatile lzip
++decompression function able to do buffer to buffer decompression or stream
++decompression with fill and flush callback functions. The usage of the
++function is documented in include/linux/lzip.h.
 +
-+For decompressing the kernel image, initramfs, and initrd, there is a
-+wrapper function in lib/decompress_lunzip.c providing the same common
-+interface as the other decompress_*.c files, which is defined in
++For decompressing the kernel image, initramfs, and initrd, there is a wrapper
++function in lib/decompress_lunzip.c providing the same common interface as the
++other decompress_*.c files, which is defined in
 +include/linux/decompress/generic.h.
 +
-+For kernel makefiles, two commands are provided in scripts/Makefile.lib
-+for use with $(call if_changed). The kernel image must be compressed
-+with $(call if_changed,klzip) which will append a four-byte trailer
-+containing the size of the uncompressed data, which is needed by the
-+boot code. Other things should be compressed with $(call if_changed,lzip).
++For kernel makefiles, two commands are provided in scripts/Makefile.lib for
++use with $(call if_changed). The kernel image must be compressed with
++$(call if_changed,klzip) which will append a four-byte trailer containing the
++size of the uncompressed data needed by the boot code. Other things should be
++compressed with $(call if_changed,lzip).
 +
 +Testing
 +=======
 +
-+Lzip-compressed kernel images of multiple linux versions since 2.6.30.10
-+have been built and tested, even on machines as modest as an AMD 486-DX2
-+at 66 MHz with 64 MiB of RAM. In the worst case (on the slow machine
-+above), lzip just increased the boot time a 15% compared with gzip. On
-+more modern machines, lzip may boot slightly faster than gzip. It just
-+takes 0.2 seconds for lzip to decompress vmlinuz-4.4.16 on my machine.
++Lzip-compressed kernel images of multiple linux versions since 2.6.30.10 have
++been built and tested, even on machines as modest as an AMD 486-DX2 at 66 MHz
++with 64 MiB of RAM. In the worst case (on the slow machine above), lzip just
++increased the boot time a 15% compared with gzip. On more modern machines,
++lzip may boot slightly faster than gzip. It just takes 0.2 seconds for lzip to
++decompress vmlinuz-4.4.16 on my machine.
 +
-+Decompression time is usually a small fraction of the total boot time.
-+For example, using lz4 on a desktop machine in order to save 0.05
-+seconds of a total boot time of 20 seconds is probably not worth the
-+increased image size.
++Decompression time is usually a small fraction of the total boot time. For
++example, using lz4 on a desktop machine in order to save 0.05 seconds of a
++total boot time of 20 seconds is probably not worth the increased image size.
 +
 +Xlunzip is a test tool for the lzip_decompress module. It is similar to
-+lunzip, but it uses the lzip_decompress module as a backend. The xlunzip
-+home page is at http://www.nongnu.org/lzip/xlunzip.html
++lunzip, but it uses the lzip_decompress module as a backend. The xlunzip home
++page is at http://www.nongnu.org/lzip/xlunzip.html
 +
 +Author: Antonio Diaz Diaz
-+Updated: 2018-12-09
-diff -urdN linux-5.4.18/Makefile linux-5.4.18.new/Makefile
---- linux-5.4.18/Makefile	2020-02-05 23:18:13.000000000 +0100
-+++ linux-5.4.18.new/Makefile	2020-02-10 15:55:57.000000000 +0100
-@@ -972,14 +972,17 @@
- export mod_strip_cmd
++Updated: 2021-03-22
+diff -urdN linux-5.10.25/Makefile linux-5.10.25.new/Makefile
+--- linux-5.10.25/Makefile	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/Makefile	2021-03-22 18:24:18.000000000 +0100
+@@ -458,6 +458,7 @@
+ BASH		= bash
+ KGZIP		= gzip
+ KBZIP2		= bzip2
++KLZIP		= lzip
+ KLZOP		= lzop
+ LZMA		= lzma
+ LZ4		= lz4c
+@@ -509,7 +510,7 @@
+ export ARCH SRCARCH CONFIG_SHELL BASH HOSTCC KBUILD_HOSTCFLAGS CROSS_COMPILE LD CC
+ export CPP AR NM STRIP OBJCOPY OBJDUMP READELF PAHOLE RESOLVE_BTFIDS LEX YACC AWK INSTALLKERNEL
+ export PERL PYTHON PYTHON3 CHECK CHECKFLAGS MAKE UTS_MACHINE HOSTCXX
+-export KGZIP KBZIP2 KLZOP LZMA LZ4 XZ ZSTD
++export KGZIP KBZIP2 KLZIP KLZOP LZMA LZ4 XZ ZSTD
+ export KBUILD_HOSTCXXFLAGS KBUILD_HOSTLDFLAGS KBUILD_HOSTLDLIBS LDFLAGS_MODULE
  
- # CONFIG_MODULE_COMPRESS, if defined, will cause module to be compressed
--# after they are installed in agreement with CONFIG_MODULE_COMPRESS_GZIP
--# or CONFIG_MODULE_COMPRESS_XZ.
-+# after they are installed in agreement with CONFIG_MODULE_COMPRESS_GZIP,
-+# CONFIG_MODULE_COMPRESS_LZIP or CONFIG_MODULE_COMPRESS_XZ.
- 
- mod_compress_cmd = true
- ifdef CONFIG_MODULE_COMPRESS
+ export KBUILD_CPPFLAGS NOSTDINC_FLAGS LINUXINCLUDE OBJCOPYFLAGS KBUILD_LDFLAGS
+@@ -1053,6 +1054,9 @@
    ifdef CONFIG_MODULE_COMPRESS_GZIP
-     mod_compress_cmd = gzip -n -f
+     mod_compress_cmd = $(KGZIP) -n -f
    endif # CONFIG_MODULE_COMPRESS_GZIP
 +  ifdef CONFIG_MODULE_COMPRESS_LZIP
-+    mod_compress_cmd = lzip -f
++    mod_compress_cmd = $(KLZIP) -f
 +  endif # CONFIG_MODULE_COMPRESS_LZIP
    ifdef CONFIG_MODULE_COMPRESS_XZ
-     mod_compress_cmd = xz -f
+     mod_compress_cmd = $(XZ) -f
    endif # CONFIG_MODULE_COMPRESS_XZ
-diff -urdN linux-5.4.18/arch/arm/Kconfig linux-5.4.18.new/arch/arm/Kconfig
---- linux-5.4.18/arch/arm/Kconfig	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/arch/arm/Kconfig	2020-02-10 15:55:57.000000000 +0100
-@@ -91,6 +91,7 @@
+diff -urdN linux-5.10.25/arch/arm/Kconfig linux-5.10.25.new/arch/arm/Kconfig
+--- linux-5.10.25/arch/arm/Kconfig	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/arch/arm/Kconfig	2021-03-22 12:47:54.000000000 +0100
+@@ -93,6 +93,7 @@
  	select HAVE_IRQ_TIME_ACCOUNTING
  	select HAVE_KERNEL_GZIP
  	select HAVE_KERNEL_LZ4
@@ -95,20 +101,20 @@ diff -urdN linux-5.4.18/arch/arm/Kconfig linux-5.4.18.new/arch/arm/Kconfig
  	select HAVE_KERNEL_LZMA
  	select HAVE_KERNEL_LZO
  	select HAVE_KERNEL_XZ
-diff -urdN linux-5.4.18/arch/arm/boot/compressed/Makefile linux-5.4.18.new/arch/arm/boot/compressed/Makefile
---- linux-5.4.18/arch/arm/boot/compressed/Makefile	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/arch/arm/boot/compressed/Makefile	2020-02-10 15:55:57.000000000 +0100
-@@ -71,6 +71,7 @@
- CPPFLAGS_vmlinux.lds := -DTEXT_START="$(ZTEXTADDR)" -DBSS_START="$(ZBSSADDR)"
+diff -urdN linux-5.10.25/arch/arm/boot/compressed/Makefile linux-5.10.25.new/arch/arm/boot/compressed/Makefile
+--- linux-5.10.25/arch/arm/boot/compressed/Makefile	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/arch/arm/boot/compressed/Makefile	2021-03-22 12:47:54.000000000 +0100
+@@ -76,6 +76,7 @@
+ CPPFLAGS_vmlinux.lds += -DMALLOC_SIZE="$(MALLOC_SIZE)"
  
  compress-$(CONFIG_KERNEL_GZIP) = gzip
 +compress-$(CONFIG_KERNEL_LZIP) = klzip
  compress-$(CONFIG_KERNEL_LZO)  = lzo
  compress-$(CONFIG_KERNEL_LZMA) = lzma
  compress-$(CONFIG_KERNEL_XZ)   = xzkern
-diff -urdN linux-5.4.18/arch/arm/boot/compressed/decompress.c linux-5.4.18.new/arch/arm/boot/compressed/decompress.c
---- linux-5.4.18/arch/arm/boot/compressed/decompress.c	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/arch/arm/boot/compressed/decompress.c	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/arch/arm/boot/compressed/decompress.c linux-5.10.25.new/arch/arm/boot/compressed/decompress.c
+--- linux-5.10.25/arch/arm/boot/compressed/decompress.c	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/arch/arm/boot/compressed/decompress.c	2021-03-22 12:47:54.000000000 +0100
 @@ -38,6 +38,10 @@
  #include "../../../../lib/decompress_inflate.c"
  #endif
@@ -120,127 +126,10 @@ diff -urdN linux-5.4.18/arch/arm/boot/compressed/decompress.c linux-5.4.18.new/a
  #ifdef CONFIG_KERNEL_LZO
  #include "../../../../lib/decompress_unlzo.c"
  #endif
-diff -urdN linux-5.4.18/arch/sh/Kconfig linux-5.4.18.new/arch/sh/Kconfig
---- linux-5.4.18/arch/sh/Kconfig	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/arch/sh/Kconfig	2020-02-10 15:55:57.000000000 +0100
-@@ -23,6 +23,7 @@
- 	select HAVE_KERNEL_GZIP
- 	select CPU_NO_EFFICIENT_FFS
- 	select HAVE_KERNEL_BZIP2
-+	select HAVE_KERNEL_LZIP
- 	select HAVE_KERNEL_LZMA
- 	select HAVE_KERNEL_XZ
- 	select HAVE_KERNEL_LZO
-diff -urdN linux-5.4.18/arch/sh/Makefile linux-5.4.18.new/arch/sh/Makefile
---- linux-5.4.18/arch/sh/Makefile	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/arch/sh/Makefile	2020-02-10 15:55:57.000000000 +0100
-@@ -209,9 +209,9 @@
- libs-$(CONFIG_SUPERH32)		:= arch/sh/lib/	$(libs-y)
- libs-$(CONFIG_SUPERH64)		:= arch/sh/lib64/ $(libs-y)
- 
--BOOT_TARGETS = uImage uImage.bz2 uImage.gz uImage.lzma uImage.xz uImage.lzo \
--	       uImage.srec uImage.bin zImage vmlinux.bin vmlinux.srec \
--	       romImage
-+BOOT_TARGETS = uImage uImage.bz2 uImage.gz uImage.lz uImage.lzma uImage.xz \
-+	       uImage.lzo uImage.srec uImage.bin zImage vmlinux.bin \
-+	       vmlinux.srec romImage
- PHONY += $(BOOT_TARGETS)
- 
- all: $(notdir $(KBUILD_IMAGE))
-@@ -241,6 +241,7 @@
- 	@echo '  uImage.bin	           - Kernel-only image for U-Boot (bin)'
- 	@echo '* uImage.gz	           - Kernel-only image for U-Boot (gzip)'
- 	@echo '  uImage.bz2	           - Kernel-only image for U-Boot (bzip2)'
-+	@echo '  uImage.lz	           - Kernel-only image for U-Boot (lzip)'
- 	@echo '  uImage.lzma	           - Kernel-only image for U-Boot (lzma)'
- 	@echo '  uImage.xz	           - Kernel-only image for U-Boot (xz)'
- 	@echo '  uImage.lzo	           - Kernel-only image for U-Boot (lzo)'
-diff -urdN linux-5.4.18/arch/sh/boot/Makefile linux-5.4.18.new/arch/sh/boot/Makefile
---- linux-5.4.18/arch/sh/boot/Makefile	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/arch/sh/boot/Makefile	2020-02-10 15:55:57.000000000 +0100
-@@ -22,14 +22,15 @@
- suffix-y := bin
- suffix-$(CONFIG_KERNEL_GZIP)	:= gz
- suffix-$(CONFIG_KERNEL_BZIP2)	:= bz2
-+suffix-$(CONFIG_KERNEL_LZIP)	:= lz
- suffix-$(CONFIG_KERNEL_LZMA)	:= lzma
- suffix-$(CONFIG_KERNEL_XZ)	:= xz
- suffix-$(CONFIG_KERNEL_LZO)	:= lzo
- 
- targets := zImage vmlinux.srec romImage uImage uImage.srec uImage.gz \
--	   uImage.bz2 uImage.lzma uImage.xz uImage.lzo uImage.bin
--extra-y += vmlinux.bin vmlinux.bin.gz vmlinux.bin.bz2 vmlinux.bin.lzma \
--	   vmlinux.bin.xz vmlinux.bin.lzo
-+	   uImage.bz2 uImage.lz uImage.lzma uImage.xz uImage.lzo uImage.bin
-+extra-y += vmlinux.bin vmlinux.bin.gz vmlinux.bin.bz2 vmlinux.bin.lz \
-+	   vmlinux.bin.lzma vmlinux.bin.xz vmlinux.bin.lzo
- subdir- := compressed romimage
- 
- $(obj)/zImage: $(obj)/compressed/vmlinux FORCE
-@@ -71,6 +72,9 @@
- $(obj)/vmlinux.bin.bz2: $(obj)/vmlinux.bin FORCE
- 	$(call if_changed,bzip2)
- 
-+$(obj)/vmlinux.bin.lz: $(obj)/vmlinux.bin FORCE
-+	$(call if_changed,klzip)
-+
- $(obj)/vmlinux.bin.lzma: $(obj)/vmlinux.bin FORCE
- 	$(call if_changed,lzma)
- 
-@@ -86,6 +90,9 @@
- $(obj)/uImage.gz: $(obj)/vmlinux.bin.gz
- 	$(call if_changed,uimage,gzip)
- 
-+$(obj)/uImage.lz: $(obj)/vmlinux.bin.lz
-+	$(call if_changed,uimage,lzip)
-+
- $(obj)/uImage.lzma: $(obj)/vmlinux.bin.lzma
- 	$(call if_changed,uimage,lzma)
- 
-diff -urdN linux-5.4.18/arch/sh/boot/compressed/Makefile linux-5.4.18.new/arch/sh/boot/compressed/Makefile
---- linux-5.4.18/arch/sh/boot/compressed/Makefile	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/arch/sh/boot/compressed/Makefile	2020-02-10 15:55:57.000000000 +0100
-@@ -5,10 +5,9 @@
- # create a compressed vmlinux image from the original vmlinux
- #
- 
--targets		:= vmlinux vmlinux.bin vmlinux.bin.gz \
--		   vmlinux.bin.bz2 vmlinux.bin.lzma \
--		   vmlinux.bin.xz vmlinux.bin.lzo \
--		   head_$(BITS).o misc.o piggy.o
-+targets := vmlinux vmlinux.bin vmlinux.bin.gz vmlinux.bin.bz2 \
-+	   vmlinux.bin.lz vmlinux.bin.lzma vmlinux.bin.xz vmlinux.bin.lzo \
-+	   head_$(BITS).o misc.o piggy.o
- 
- OBJECTS = $(obj)/head_$(BITS).o $(obj)/misc.o $(obj)/cache.o
- 
-@@ -66,6 +65,8 @@
- 	$(call if_changed,gzip)
- $(obj)/vmlinux.bin.bz2: $(vmlinux.bin.all-y) FORCE
- 	$(call if_changed,bzip2)
-+$(obj)/vmlinux.bin.lz: $(vmlinux.bin.all-y) FORCE
-+	$(call if_changed,klzip)
- $(obj)/vmlinux.bin.lzma: $(vmlinux.bin.all-y) FORCE
- 	$(call if_changed,lzma)
- $(obj)/vmlinux.bin.xz: $(vmlinux.bin.all-y) FORCE
-diff -urdN linux-5.4.18/arch/sh/boot/compressed/misc.c linux-5.4.18.new/arch/sh/boot/compressed/misc.c
---- linux-5.4.18/arch/sh/boot/compressed/misc.c	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/arch/sh/boot/compressed/misc.c	2020-02-10 15:55:57.000000000 +0100
-@@ -58,6 +58,10 @@
- #include "../../../../lib/decompress_bunzip2.c"
- #endif
- 
-+#ifdef CONFIG_KERNEL_LZIP
-+#include "../../../../lib/decompress_lunzip.c"
-+#endif
-+
- #ifdef CONFIG_KERNEL_LZMA
- #include "../../../../lib/decompress_unlzma.c"
- #endif
-diff -urdN linux-5.4.18/arch/x86/Kconfig linux-5.4.18.new/arch/x86/Kconfig
---- linux-5.4.18/arch/x86/Kconfig	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/arch/x86/Kconfig	2020-02-10 15:55:57.000000000 +0100
-@@ -176,6 +176,7 @@
+diff -urdN linux-5.10.25/arch/x86/Kconfig linux-5.10.25.new/arch/x86/Kconfig
+--- linux-5.10.25/arch/x86/Kconfig	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/arch/x86/Kconfig	2021-03-22 12:47:54.000000000 +0100
+@@ -187,6 +187,7 @@
  	select HAVE_KERNEL_BZIP2
  	select HAVE_KERNEL_GZIP
  	select HAVE_KERNEL_LZ4
@@ -248,21 +137,18 @@ diff -urdN linux-5.4.18/arch/x86/Kconfig linux-5.4.18.new/arch/x86/Kconfig
  	select HAVE_KERNEL_LZMA
  	select HAVE_KERNEL_LZO
  	select HAVE_KERNEL_XZ
-diff -urdN linux-5.4.18/arch/x86/boot/compressed/Makefile linux-5.4.18.new/arch/x86/boot/compressed/Makefile
---- linux-5.4.18/arch/x86/boot/compressed/Makefile	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/arch/x86/boot/compressed/Makefile	2020-02-10 15:55:57.000000000 +0100
-@@ -23,8 +23,8 @@
- # Prevents link failures: __sanitizer_cov_trace_pc() is not linked in.
+diff -urdN linux-5.10.25/arch/x86/boot/compressed/Makefile linux-5.10.25.new/arch/x86/boot/compressed/Makefile
+--- linux-5.10.25/arch/x86/boot/compressed/Makefile	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/arch/x86/boot/compressed/Makefile	2021-03-22 18:24:18.000000000 +0100
+@@ -26,6 +26,7 @@
  KCOV_INSTRUMENT		:= n
  
--targets := vmlinux vmlinux.bin vmlinux.bin.gz vmlinux.bin.bz2 vmlinux.bin.lzma \
--	vmlinux.bin.xz vmlinux.bin.lzo vmlinux.bin.lz4
-+targets := vmlinux vmlinux.bin vmlinux.bin.gz vmlinux.bin.bz2 vmlinux.bin.lz \
-+	   vmlinux.bin.lzma vmlinux.bin.xz vmlinux.bin.lzo vmlinux.bin.lz4
+ targets := vmlinux vmlinux.bin vmlinux.bin.gz vmlinux.bin.bz2 vmlinux.bin.lzma \
++	vmlinux.bin.lz \
+ 	vmlinux.bin.xz vmlinux.bin.lzo vmlinux.bin.lz4 vmlinux.bin.zst
  
  KBUILD_CFLAGS := -m$(BITS) -O2
- KBUILD_CFLAGS += -fno-strict-aliasing $(call cc-option, -fPIE, -fPIC)
-@@ -136,6 +136,8 @@
+@@ -122,6 +123,8 @@
  	$(call if_changed,gzip)
  $(obj)/vmlinux.bin.bz2: $(vmlinux.bin.all-y) FORCE
  	$(call if_changed,bzip2)
@@ -271,7 +157,7 @@ diff -urdN linux-5.4.18/arch/x86/boot/compressed/Makefile linux-5.4.18.new/arch/
  $(obj)/vmlinux.bin.lzma: $(vmlinux.bin.all-y) FORCE
  	$(call if_changed,lzma)
  $(obj)/vmlinux.bin.xz: $(vmlinux.bin.all-y) FORCE
-@@ -147,6 +149,7 @@
+@@ -135,6 +138,7 @@
  
  suffix-$(CONFIG_KERNEL_GZIP)	:= gz
  suffix-$(CONFIG_KERNEL_BZIP2)	:= bz2
@@ -279,10 +165,10 @@ diff -urdN linux-5.4.18/arch/x86/boot/compressed/Makefile linux-5.4.18.new/arch/
  suffix-$(CONFIG_KERNEL_LZMA)	:= lzma
  suffix-$(CONFIG_KERNEL_XZ)	:= xz
  suffix-$(CONFIG_KERNEL_LZO) 	:= lzo
-diff -urdN linux-5.4.18/arch/x86/boot/compressed/misc.c linux-5.4.18.new/arch/x86/boot/compressed/misc.c
---- linux-5.4.18/arch/x86/boot/compressed/misc.c	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/arch/x86/boot/compressed/misc.c	2020-02-10 15:55:57.000000000 +0100
-@@ -62,6 +62,10 @@
+diff -urdN linux-5.10.25/arch/x86/boot/compressed/misc.c linux-5.10.25.new/arch/x86/boot/compressed/misc.c
+--- linux-5.10.25/arch/x86/boot/compressed/misc.c	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/arch/x86/boot/compressed/misc.c	2021-03-22 12:47:54.000000000 +0100
+@@ -59,6 +59,10 @@
  #include "../../../../lib/decompress_bunzip2.c"
  #endif
  
@@ -293,23 +179,13 @@ diff -urdN linux-5.4.18/arch/x86/boot/compressed/misc.c linux-5.4.18.new/arch/x8
  #ifdef CONFIG_KERNEL_LZMA
  #include "../../../../lib/decompress_unlzma.c"
  #endif
-diff -urdN linux-5.4.18/fs/squashfs/Kconfig linux-5.4.18.new/fs/squashfs/Kconfig
---- linux-5.4.18/fs/squashfs/Kconfig	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/fs/squashfs/Kconfig	2020-02-10 15:55:57.000000000 +0100
-@@ -5,7 +5,7 @@
- 	help
- 	  Saying Y here includes support for SquashFS 4.0 (a Compressed
- 	  Read-Only File System).  Squashfs is a highly compressed read-only
--	  filesystem for Linux.  It uses zlib, lzo or xz compression to
-+	  filesystem for Linux.  It uses zlib, lzip, lzo or xz compression to
- 	  compress both files, inodes and directories.  Inodes in the system
- 	  are very small and all blocks are packed to minimise data overhead.
- 	  Block sizes greater than 4K are supported up to a maximum of 1 Mbytes
-@@ -135,6 +135,21 @@
- 	  file systems will be readable without selecting this option.
+diff -urdN linux-5.10.25/fs/squashfs/Kconfig linux-5.10.25.new/fs/squashfs/Kconfig
+--- linux-5.10.25/fs/squashfs/Kconfig	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/fs/squashfs/Kconfig	2021-03-22 22:47:06.000000000 +0100
+@@ -136,6 +136,21 @@
  
  	  If unsure, say N.
-+
+ 
 +config SQUASHFS_LZIP
 +	bool "Include support for LZIP compressed file systems"
 +	depends on SQUASHFS
@@ -324,12 +200,13 @@ diff -urdN linux-5.4.18/fs/squashfs/Kconfig linux-5.4.18.new/fs/squashfs/Kconfig
 +	  file systems will be readable without selecting this option.
 +
 +	  If unsure, say N.
- 
++
  config SQUASHFS_LZO
  	bool "Include support for LZO compressed file systems"
-diff -urdN linux-5.4.18/fs/squashfs/Makefile linux-5.4.18.new/fs/squashfs/Makefile
---- linux-5.4.18/fs/squashfs/Makefile	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/fs/squashfs/Makefile	2020-02-10 15:55:57.000000000 +0100
+ 	depends on SQUASHFS
+diff -urdN linux-5.10.25/fs/squashfs/Makefile linux-5.10.25.new/fs/squashfs/Makefile
+--- linux-5.10.25/fs/squashfs/Makefile	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/fs/squashfs/Makefile	2021-03-22 12:47:54.000000000 +0100
 @@ -13,6 +13,7 @@
  squashfs-$(CONFIG_SQUASHFS_DECOMP_MULTI_PERCPU) += decompressor_multi_percpu.o
  squashfs-$(CONFIG_SQUASHFS_XATTR) += xattr.o xattr_id.o
@@ -338,9 +215,9 @@ diff -urdN linux-5.4.18/fs/squashfs/Makefile linux-5.4.18.new/fs/squashfs/Makefi
  squashfs-$(CONFIG_SQUASHFS_LZO) += lzo_wrapper.o
  squashfs-$(CONFIG_SQUASHFS_XZ) += xz_wrapper.o
  squashfs-$(CONFIG_SQUASHFS_ZLIB) += zlib_wrapper.o
-diff -urdN linux-5.4.18/fs/squashfs/decompressor.c linux-5.4.18.new/fs/squashfs/decompressor.c
---- linux-5.4.18/fs/squashfs/decompressor.c	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/fs/squashfs/decompressor.c	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/fs/squashfs/decompressor.c linux-5.10.25.new/fs/squashfs/decompressor.c
+--- linux-5.10.25/fs/squashfs/decompressor.c	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/fs/squashfs/decompressor.c	2021-03-22 12:47:54.000000000 +0100
 @@ -34,6 +34,12 @@
  };
  #endif
@@ -362,10 +239,10 @@ diff -urdN linux-5.4.18/fs/squashfs/decompressor.c linux-5.4.18.new/fs/squashfs/
  	&squashfs_lzo_comp_ops,
  	&squashfs_xz_comp_ops,
  	&squashfs_lzma_unsupported_comp_ops,
-diff -urdN linux-5.4.18/fs/squashfs/decompressor.h linux-5.4.18.new/fs/squashfs/decompressor.h
---- linux-5.4.18/fs/squashfs/decompressor.h	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/fs/squashfs/decompressor.h	2020-02-10 15:55:57.000000000 +0100
-@@ -37,6 +37,10 @@
+diff -urdN linux-5.10.25/fs/squashfs/decompressor.h linux-5.10.25.new/fs/squashfs/decompressor.h
+--- linux-5.10.25/fs/squashfs/decompressor.h	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/fs/squashfs/decompressor.h	2021-03-22 12:47:54.000000000 +0100
+@@ -38,6 +38,10 @@
  extern const struct squashfs_decompressor squashfs_lz4_comp_ops;
  #endif
  
@@ -376,16 +253,16 @@ diff -urdN linux-5.4.18/fs/squashfs/decompressor.h linux-5.4.18.new/fs/squashfs/
  #ifdef CONFIG_SQUASHFS_LZO
  extern const struct squashfs_decompressor squashfs_lzo_comp_ops;
  #endif
-diff -urdN linux-5.4.18/fs/squashfs/lzip_wrapper.c linux-5.4.18.new/fs/squashfs/lzip_wrapper.c
---- linux-5.4.18/fs/squashfs/lzip_wrapper.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.18.new/fs/squashfs/lzip_wrapper.c	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/fs/squashfs/lzip_wrapper.c linux-5.10.25.new/fs/squashfs/lzip_wrapper.c
+--- linux-5.10.25/fs/squashfs/lzip_wrapper.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.25.new/fs/squashfs/lzip_wrapper.c	2021-03-23 17:42:05.000000000 +0100
 @@ -0,0 +1,129 @@
 +/*
 + * Squashfs - a compressed read only filesystem for Linux
 + *
 + * Copyright (c) 2014
 + * Phillip Lougher <phillip@squashfs.org.uk>
-+ * Copyright (C) 2018-2020 Antonio Diaz Diaz
++ * Copyright (C) 2018-2021 Antonio Diaz Diaz
 + *
 + * This program is free software; you can redistribute it and/or
 + * modify it under the terms of the GNU General Public License
@@ -403,7 +280,7 @@ diff -urdN linux-5.4.18/fs/squashfs/lzip_wrapper.c linux-5.4.18.new/fs/squashfs/
 + * lzip_wrapper.c
 + */
 +
-+#include <linux/buffer_head.h>
++#include <linux/bio.h>
 +#include <linux/mutex.h>
 +#include <linux/slab.h>
 +#include <linux/vmalloc.h>
@@ -431,12 +308,9 @@ diff -urdN linux-5.4.18/fs/squashfs/lzip_wrapper.c linux-5.4.18.new/fs/squashfs/
 +	if (stream->input == NULL)
 +		goto failed2;
 +	stream->output = vmalloc(block_size);
-+	if (stream->output == NULL)
-+		goto failed3;
++	if (stream->output != NULL)
++		return stream;
 +
-+	return stream;
-+
-+failed3:
 +	vfree(stream->input);
 +failed2:
 +	kfree(stream);
@@ -459,21 +333,24 @@ diff -urdN linux-5.4.18/fs/squashfs/lzip_wrapper.c linux-5.4.18.new/fs/squashfs/
 +
 +
 +static int lzip_uncompress(struct squashfs_sb_info *msblk, void *strm,
-+	struct buffer_head **bh, int b, int offset, int length,
++	struct bio *bio, int offset, int length,
 +	struct squashfs_page_actor *output)
 +{
++	struct bvec_iter_all iter_all = {};
++	struct bio_vec *bvec = bvec_init_iter_all(&iter_all);
 +	struct squashfs_lzip *stream = strm;
 +	void *buff = stream->input, *data;
 +	long out_pos;
-+	int avail, i, bytes = length, res;
++	int bytes = length, res;
 +
-+	for (i = 0; i < b; i++) {
-+		avail = min(bytes, msblk->devblksize - offset);
-+		memcpy(buff, bh[i]->b_data + offset, avail);
++	while (bio_next_segment(bio, &iter_all)) {
++		int avail = min(bytes, ((int)bvec->bv_len) - offset);
++
++		data = page_address(bvec->bv_page) + bvec->bv_offset;
++		memcpy(buff, data + offset, avail);
 +		buff += avail;
 +		bytes -= avail;
 +		offset = 0;
-+		put_bh(bh[i]);
 +	}
 +
 +	res = lzip_decompress(stream->input, length, 0, 0, stream->output,
@@ -509,9 +386,9 @@ diff -urdN linux-5.4.18/fs/squashfs/lzip_wrapper.c linux-5.4.18.new/fs/squashfs/
 +	.name = "lzip",
 +	.supported = 1
 +};
-diff -urdN linux-5.4.18/fs/squashfs/squashfs_fs.h linux-5.4.18.new/fs/squashfs/squashfs_fs.h
---- linux-5.4.18/fs/squashfs/squashfs_fs.h	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/fs/squashfs/squashfs_fs.h	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/fs/squashfs/squashfs_fs.h linux-5.10.25.new/fs/squashfs/squashfs_fs.h
+--- linux-5.10.25/fs/squashfs/squashfs_fs.h	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/fs/squashfs/squashfs_fs.h	2021-03-22 12:47:54.000000000 +0100
 @@ -235,6 +235,7 @@
  #define XZ_COMPRESSION		4
  #define LZ4_COMPRESSION		5
@@ -520,9 +397,9 @@ diff -urdN linux-5.4.18/fs/squashfs/squashfs_fs.h linux-5.4.18.new/fs/squashfs/s
  
  struct squashfs_super_block {
  	__le32			s_magic;
-diff -urdN linux-5.4.18/include/linux/decompress/lunzip.h linux-5.4.18.new/include/linux/decompress/lunzip.h
---- linux-5.4.18/include/linux/decompress/lunzip.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.18.new/include/linux/decompress/lunzip.h	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/include/linux/decompress/lunzip.h linux-5.10.25.new/include/linux/decompress/lunzip.h
+--- linux-5.10.25/include/linux/decompress/lunzip.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.25.new/include/linux/decompress/lunzip.h	2021-03-22 12:47:54.000000000 +0100
 @@ -0,0 +1,11 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef LINUX_DECOMPRESS_LUNZIP_H
@@ -535,9 +412,9 @@ diff -urdN linux-5.4.18/include/linux/decompress/lunzip.h linux-5.4.18.new/inclu
 +	   long *in_posp,
 +	   void (*error)(char *x));
 +#endif
-diff -urdN linux-5.4.18/include/linux/lzip.h linux-5.4.18.new/include/linux/lzip.h
---- linux-5.4.18/include/linux/lzip.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.18.new/include/linux/lzip.h	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/include/linux/lzip.h linux-5.10.25.new/include/linux/lzip.h
+--- linux-5.10.25/include/linux/lzip.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.25.new/include/linux/lzip.h	2021-03-22 19:13:44.000000000 +0100
 @@ -0,0 +1,53 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef __LZIP_H__
@@ -545,7 +422,7 @@ diff -urdN linux-5.4.18/include/linux/lzip.h linux-5.4.18.new/include/linux/lzip
 +/*
 + * LZIP decompressor
 + *
-+ * Copyright (C) 2016-2020 Antonio Diaz Diaz.
++ * Copyright (C) 2016-2021 Antonio Diaz Diaz.
 + */
 +
 +/* Return values (< 0 = Error) */
@@ -592,10 +469,10 @@ diff -urdN linux-5.4.18/include/linux/lzip.h linux-5.4.18.new/include/linux/lzip
 + */
 +
 +#endif
-diff -urdN linux-5.4.18/init/Kconfig linux-5.4.18.new/init/Kconfig
---- linux-5.4.18/init/Kconfig	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/init/Kconfig	2020-02-10 15:55:57.000000000 +0100
-@@ -181,6 +181,9 @@
+diff -urdN linux-5.10.25/init/Kconfig linux-5.10.25.new/init/Kconfig
+--- linux-5.10.25/init/Kconfig	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/init/Kconfig	2021-03-22 18:58:04.000000000 +0100
+@@ -183,6 +183,9 @@
  config HAVE_KERNEL_BZIP2
  	bool
  
@@ -605,16 +482,16 @@ diff -urdN linux-5.4.18/init/Kconfig linux-5.4.18.new/init/Kconfig
  config HAVE_KERNEL_LZMA
  	bool
  
-@@ -199,7 +202,7 @@
+@@ -204,7 +207,7 @@
  choice
  	prompt "Kernel compression mode"
  	default KERNEL_GZIP
--	depends on HAVE_KERNEL_GZIP || HAVE_KERNEL_BZIP2 || HAVE_KERNEL_LZMA || HAVE_KERNEL_XZ || HAVE_KERNEL_LZO || HAVE_KERNEL_LZ4 || HAVE_KERNEL_UNCOMPRESSED
-+	depends on HAVE_KERNEL_GZIP || HAVE_KERNEL_BZIP2 || HAVE_KERNEL_LZIP || HAVE_KERNEL_LZMA || HAVE_KERNEL_XZ || HAVE_KERNEL_LZO || HAVE_KERNEL_LZ4 || HAVE_KERNEL_UNCOMPRESSED
+-	depends on HAVE_KERNEL_GZIP || HAVE_KERNEL_BZIP2 || HAVE_KERNEL_LZMA || HAVE_KERNEL_XZ || HAVE_KERNEL_LZO || HAVE_KERNEL_LZ4 || HAVE_KERNEL_ZSTD || HAVE_KERNEL_UNCOMPRESSED
++	depends on HAVE_KERNEL_GZIP || HAVE_KERNEL_BZIP2 || HAVE_KERNEL_LZIP || HAVE_KERNEL_LZMA || HAVE_KERNEL_XZ || HAVE_KERNEL_LZO || HAVE_KERNEL_LZ4 || HAVE_KERNEL_ZSTD || HAVE_KERNEL_UNCOMPRESSED
  	help
  	  The linux kernel is a kind of self-extracting executable.
  	  Several compression algorithms are available, which differ
-@@ -235,6 +238,15 @@
+@@ -240,6 +243,15 @@
  	  Bzip2 uses a large amount of memory. For modern kernels you
  	  will need at least 8MB RAM or more for booting.
  
@@ -623,14 +500,14 @@ diff -urdN linux-5.4.18/init/Kconfig linux-5.4.18.new/init/Kconfig
 +	depends on HAVE_KERNEL_LZIP
 +	help
 +	  Lzip's compression ratio is better than that of gzip and bzip2.
-+	  Decompression speed is between gzip and bzip2.  Compression can
-+	  be as fast as gzip or slower than bzip2 depending on compression
-+	  level.  Lzip can produce a kernel about a 16% smaller than gzip.
++	  Decompression speed is between gzip and bzip2. Compression can be
++	  as fast as gzip or slower than bzip2 depending on compression level.
++	  Lzip can produce a kernel about a 16% smaller than gzip.
 +
  config KERNEL_LZMA
  	bool "LZMA"
  	depends on HAVE_KERNEL_LZMA
-@@ -2135,8 +2147,8 @@
+@@ -2227,8 +2239,8 @@
  	bool "Compress modules on installation"
  	help
  
@@ -641,7 +518,7 @@ diff -urdN linux-5.4.18/init/Kconfig linux-5.4.18.new/init/Kconfig
  
  	  module-init-tools MAY support gzip, and kmod MAY support gzip and xz.
  
-@@ -2158,11 +2170,14 @@
+@@ -2250,11 +2262,14 @@
  	  This determines which sort of compression will be used during
  	  'make modules_install'.
  
@@ -657,9 +534,9 @@ diff -urdN linux-5.4.18/init/Kconfig linux-5.4.18.new/init/Kconfig
  config MODULE_COMPRESS_XZ
  	bool "XZ"
  
-diff -urdN linux-5.4.18/init/do_mounts_rd.c linux-5.4.18.new/init/do_mounts_rd.c
---- linux-5.4.18/init/do_mounts_rd.c	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/init/do_mounts_rd.c	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/init/do_mounts_rd.c linux-5.10.25.new/init/do_mounts_rd.c
+--- linux-5.10.25/init/do_mounts_rd.c	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/init/do_mounts_rd.c	2021-03-22 12:47:54.000000000 +0100
 @@ -49,6 +49,7 @@
   *	squashfs
   *	gzip
@@ -668,23 +545,20 @@ diff -urdN linux-5.4.18/init/do_mounts_rd.c linux-5.4.18.new/init/do_mounts_rd.c
   *	lzma
   *	xz
   *	lzo
-diff -urdN linux-5.4.18/lib/Kconfig linux-5.4.18.new/lib/Kconfig
---- linux-5.4.18/lib/Kconfig	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/lib/Kconfig	2020-02-10 15:55:57.000000000 +0100
-@@ -278,6 +278,12 @@
- 	tristate
- 	select BITREVERSE
+diff -urdN linux-5.10.25/lib/Kconfig linux-5.10.25.new/lib/Kconfig
+--- linux-5.10.25/lib/Kconfig	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/lib/Kconfig	2021-03-22 23:04:29.000000000 +0100
+@@ -291,6 +291,9 @@
+ 	help
+ 	 Enable s390x hardware support for zlib in the kernel.
  
 +config LZIP_DECOMPRESS
-+	tristate "LZIP decompression support"
-+	help
-+	  LZMA compression algorithm is supported using the .lz file format.
-+	  See Documentation/lzip.txt for more information.
++	tristate
 +
  config LZO_COMPRESS
  	tristate
  
-@@ -314,6 +320,10 @@
+@@ -327,6 +330,10 @@
  config DECOMPRESS_BZIP2
  	tristate
  
@@ -695,18 +569,18 @@ diff -urdN linux-5.4.18/lib/Kconfig linux-5.4.18.new/lib/Kconfig
  config DECOMPRESS_LZMA
  	tristate
  
-diff -urdN linux-5.4.18/lib/Makefile linux-5.4.18.new/lib/Makefile
---- linux-5.4.18/lib/Makefile	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/lib/Makefile	2020-02-10 15:55:57.000000000 +0100
-@@ -141,6 +141,7 @@
- obj-$(CONFIG_ZLIB_DEFLATE) += zlib_deflate/
+diff -urdN linux-5.10.25/lib/Makefile linux-5.10.25.new/lib/Makefile
+--- linux-5.10.25/lib/Makefile	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/lib/Makefile	2021-03-22 12:47:54.000000000 +0100
+@@ -182,6 +182,7 @@
+ obj-$(CONFIG_ZLIB_DFLTCC) += zlib_dfltcc/
  obj-$(CONFIG_REED_SOLOMON) += reed_solomon/
  obj-$(CONFIG_BCH) += bch.o
 +obj-$(CONFIG_LZIP_DECOMPRESS) += lzip_decompress.o
  obj-$(CONFIG_LZO_COMPRESS) += lzo/
  obj-$(CONFIG_LZO_DECOMPRESS) += lzo/
  obj-$(CONFIG_LZ4_COMPRESS) += lz4/
-@@ -153,6 +154,7 @@
+@@ -194,6 +195,7 @@
  
  lib-$(CONFIG_DECOMPRESS_GZIP) += decompress_inflate.o
  lib-$(CONFIG_DECOMPRESS_BZIP2) += decompress_bunzip2.o
@@ -714,9 +588,9 @@ diff -urdN linux-5.4.18/lib/Makefile linux-5.4.18.new/lib/Makefile
  lib-$(CONFIG_DECOMPRESS_LZMA) += decompress_unlzma.o
  lib-$(CONFIG_DECOMPRESS_XZ) += decompress_unxz.o
  lib-$(CONFIG_DECOMPRESS_LZO) += decompress_unlzo.o
-diff -urdN linux-5.4.18/lib/decompress.c linux-5.4.18.new/lib/decompress.c
---- linux-5.4.18/lib/decompress.c	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/lib/decompress.c	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/lib/decompress.c linux-5.10.25.new/lib/decompress.c
+--- linux-5.10.25/lib/decompress.c	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/lib/decompress.c	2021-03-22 12:47:54.000000000 +0100
 @@ -8,6 +8,7 @@
  #include <linux/decompress/generic.h>
  
@@ -725,7 +599,7 @@ diff -urdN linux-5.4.18/lib/decompress.c linux-5.4.18.new/lib/decompress.c
  #include <linux/decompress/unlzma.h>
  #include <linux/decompress/unxz.h>
  #include <linux/decompress/inflate.h>
-@@ -25,6 +26,9 @@
+@@ -26,6 +27,9 @@
  #ifndef CONFIG_DECOMPRESS_BZIP2
  # define bunzip2 NULL
  #endif
@@ -735,7 +609,7 @@ diff -urdN linux-5.4.18/lib/decompress.c linux-5.4.18.new/lib/decompress.c
  #ifndef CONFIG_DECOMPRESS_LZMA
  # define unlzma NULL
  #endif
-@@ -48,6 +52,7 @@
+@@ -52,6 +56,7 @@
  	{ {0x1f, 0x8b}, "gzip", gunzip },
  	{ {0x1f, 0x9e}, "gzip", gunzip },
  	{ {0x42, 0x5a}, "bzip2", bunzip2 },
@@ -743,14 +617,14 @@ diff -urdN linux-5.4.18/lib/decompress.c linux-5.4.18.new/lib/decompress.c
  	{ {0x5d, 0x00}, "lzma", unlzma },
  	{ {0xfd, 0x37}, "xz", unxz },
  	{ {0x89, 0x4c}, "lzo", unlzo },
-diff -urdN linux-5.4.18/lib/decompress_lunzip.c linux-5.4.18.new/lib/decompress_lunzip.c
---- linux-5.4.18/lib/decompress_lunzip.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.18.new/lib/decompress_lunzip.c	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/lib/decompress_lunzip.c linux-5.10.25.new/lib/decompress_lunzip.c
+--- linux-5.10.25/lib/decompress_lunzip.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.25.new/lib/decompress_lunzip.c	2021-03-22 19:13:44.000000000 +0100
 @@ -0,0 +1,100 @@
 +/*
 + * Wrapper for decompressing LZIP-compressed kernel, initramfs, and initrd
 + *
-+ * Copyright (C) 2016-2020 Antonio Diaz Diaz.
++ * Copyright (C) 2016-2021 Antonio Diaz Diaz.
 + *
 + * Licensed under GPLv2 or later, see file LICENSE in this source tree.
 + */
@@ -847,14 +721,14 @@ diff -urdN linux-5.4.18/lib/decompress_lunzip.c linux-5.4.18.new/lib/decompress_
 +			out_size ? out_size : LONG_MAX, in_posp, 0, error);
 +}
 +#endif
-diff -urdN linux-5.4.18/lib/lzip_decompress.c linux-5.4.18.new/lib/lzip_decompress.c
---- linux-5.4.18/lib/lzip_decompress.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.18.new/lib/lzip_decompress.c	2020-02-10 16:58:14.000000000 +0100
+diff -urdN linux-5.10.25/lib/lzip_decompress.c linux-5.10.25.new/lib/lzip_decompress.c
+--- linux-5.10.25/lib/lzip_decompress.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.25.new/lib/lzip_decompress.c	2021-03-22 19:13:44.000000000 +0100
 @@ -0,0 +1,877 @@
 +/*
 + * LZIP decompressor
 + *
-+ * Copyright (C) 2016-2020 Antonio Diaz Diaz.
++ * Copyright (C) 2016-2021 Antonio Diaz Diaz.
 + *
 + * Licensed under GPLv2 or later, see file LICENSE in this source tree.
 + */
@@ -901,7 +775,7 @@ diff -urdN linux-5.4.18/lib/lzip_decompress.c linux-5.4.18.new/lib/lzip_decompre
 +
 +enum {
 +	min_dictionary_bits = 12,
-+	min_dictionary_size = 1 << min_dictionary_bits,
++	min_dictionary_size = 1 << min_dictionary_bits,	/* >= modeled_distances */
 +	max_dictionary_bits = 29,
 +	max_dictionary_size = 1 << max_dictionary_bits,
 +	literal_context_bits = 3,
@@ -1044,7 +918,7 @@ diff -urdN linux-5.4.18/lib/lzip_decompress.c linux-5.4.18.new/lib/lzip_decompre
 +
 +typedef uint8_t Lzip_header[6];		/* 0-3 magic bytes */
 +					/*   4 version */
-+					/*   5 coded_dict_size */
++					/*   5 coded dictionary size */
 +enum { Lh_size = 6 };
 +
 +static inline bool Lh_verify_magic(const Lzip_header data)
@@ -1325,9 +1199,9 @@ diff -urdN linux-5.4.18/lib/lzip_decompress.c linux-5.4.18.new/lib/lzip_decompre
 +{
 +	unsigned symbol = Rd_decode_bit(rdec, &bm[1]);
 +
-+	symbol += Rd_decode_bit( rdec, &bm[2+symbol] ) << 1;
-+	symbol += Rd_decode_bit( rdec, &bm[4+symbol] ) << 2;
-+	symbol += Rd_decode_bit( rdec, &bm[8+symbol] ) << 3;
++	symbol += Rd_decode_bit(rdec, &bm[2+symbol]) << 1;
++	symbol += Rd_decode_bit(rdec, &bm[4+symbol]) << 2;
++	symbol += Rd_decode_bit(rdec, &bm[8+symbol]) << 3;
 +	return symbol;
 +}
 +
@@ -1728,12 +1602,12 @@ diff -urdN linux-5.4.18/lib/lzip_decompress.c linux-5.4.18.new/lib/lzip_decompre
 +MODULE_DESCRIPTION("LZIP Decompressor");
 +MODULE_AUTHOR("Antonio Diaz Diaz <antonio@gnu.org>");
 +MODULE_LICENSE("GPL");
-diff -urdN linux-5.4.18/scripts/Makefile.lib linux-5.4.18.new/scripts/Makefile.lib
---- linux-5.4.18/scripts/Makefile.lib	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/scripts/Makefile.lib	2020-02-10 15:55:57.000000000 +0100
-@@ -338,6 +338,18 @@
+diff -urdN linux-5.10.25/scripts/Makefile.lib linux-5.10.25.new/scripts/Makefile.lib
+--- linux-5.10.25/scripts/Makefile.lib	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/scripts/Makefile.lib	2021-03-22 18:24:18.000000000 +0100
+@@ -366,6 +366,18 @@
  quiet_cmd_bzip2 = BZIP2   $@
-       cmd_bzip2 = { cat $(real-prereqs) | bzip2 -9; $(size_append); } > $@
+       cmd_bzip2 = { cat $(real-prereqs) | $(KBZIP2) -9; $(size_append); } > $@
  
 +# Lzip
 +# ---------------------------------------------------------------------------
@@ -1742,17 +1616,17 @@ diff -urdN linux-5.4.18/scripts/Makefile.lib linux-5.4.18.new/scripts/Makefile.l
 +# Use klzip to compress the kernel image and lzip to compress other things.
 +
 +quiet_cmd_klzip = LZIP    $@
-+      cmd_klzip = { cat $(real-prereqs) | lzip -9; $(size_append); } > $@
++      cmd_klzip = { cat $(real-prereqs) | $(KLZIP) -9; $(size_append); } > $@
 +
 +quiet_cmd_lzip = LZIP    $@
-+      cmd_lzip = cat $(real-prereqs) | lzip -9 > $@
++      cmd_lzip = cat $(real-prereqs) | $(KLZIP) -9 > $@
 +
  # Lzma
  # ---------------------------------------------------------------------------
  
-diff -urdN linux-5.4.18/scripts/extract-ikconfig linux-5.4.18.new/scripts/extract-ikconfig
---- linux-5.4.18/scripts/extract-ikconfig	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/scripts/extract-ikconfig	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/scripts/extract-ikconfig linux-5.10.25.new/scripts/extract-ikconfig
+--- linux-5.10.25/scripts/extract-ikconfig	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/scripts/extract-ikconfig	2021-03-22 12:47:54.000000000 +0100
 @@ -59,6 +59,7 @@
  try_decompress '\037\213\010' xy    gunzip
  try_decompress '\3757zXZ\000' abcde unxz
@@ -1761,9 +1635,9 @@ diff -urdN linux-5.4.18/scripts/extract-ikconfig linux-5.4.18.new/scripts/extrac
  try_decompress '\135\0\0\0'   xxx   unlzma
  try_decompress '\211\114\132' xy    'lzop -d'
  try_decompress '\002\041\114\030' xyy 'lz4 -d -l'
-diff -urdN linux-5.4.18/scripts/extract-vmlinux linux-5.4.18.new/scripts/extract-vmlinux
---- linux-5.4.18/scripts/extract-vmlinux	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/scripts/extract-vmlinux	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/scripts/extract-vmlinux linux-5.10.25.new/scripts/extract-vmlinux
+--- linux-5.10.25/scripts/extract-vmlinux	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/scripts/extract-vmlinux	2021-03-22 12:47:54.000000000 +0100
 @@ -52,6 +52,7 @@
  try_decompress '\037\213\010' xy    gunzip
  try_decompress '\3757zXZ\000' abcde unxz
@@ -1772,23 +1646,23 @@ diff -urdN linux-5.4.18/scripts/extract-vmlinux linux-5.4.18.new/scripts/extract
  try_decompress '\135\0\0\0'   xxx   unlzma
  try_decompress '\211\114\132' xy    'lzop -d'
  try_decompress '\002!L\030'   xxx   'lz4 -d'
-diff -urdN linux-5.4.18/scripts/package/buildtar linux-5.4.18.new/scripts/package/buildtar
---- linux-5.4.18/scripts/package/buildtar	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/scripts/package/buildtar	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/scripts/package/buildtar linux-5.10.25.new/scripts/package/buildtar
+--- linux-5.10.25/scripts/package/buildtar	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/scripts/package/buildtar	2021-03-22 18:24:18.000000000 +0100
 @@ -35,6 +35,10 @@
- 		opts=--bzip2
+ 		opts="-I ${KBZIP2}"
  		tarball=${tarball}.bz2
  		;;
 +	tarlz-pkg)
-+		opts=--lzip
++		opts="-I ${KLZIP}"
 +		tarball=${tarball}.lz
 +		;;
  	tarxz-pkg)
- 		opts=--xz
+ 		opts="-I ${XZ}"
  		tarball=${tarball}.xz
-diff -urdN linux-5.4.18/scripts/patch-kernel linux-5.4.18.new/scripts/patch-kernel
---- linux-5.4.18/scripts/patch-kernel	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/scripts/patch-kernel	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/scripts/patch-kernel linux-5.10.25.new/scripts/patch-kernel
+--- linux-5.10.25/scripts/patch-kernel	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/scripts/patch-kernel	2021-03-22 12:47:54.000000000 +0100
 @@ -117,6 +117,10 @@
  		ext=".bz2"
  		name="bzip2"
@@ -1800,9 +1674,9 @@ diff -urdN linux-5.4.18/scripts/patch-kernel linux-5.4.18.new/scripts/patch-kern
    elif [ -r ${filebase}.xz ]; then
                  ext=".xz"
                  name="xz"
-diff -urdN linux-5.4.18/tools/testing/selftests/gen_kselftest_tar.sh linux-5.4.18.new/tools/testing/selftests/gen_kselftest_tar.sh
---- linux-5.4.18/tools/testing/selftests/gen_kselftest_tar.sh	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/tools/testing/selftests/gen_kselftest_tar.sh	2020-02-10 15:55:57.000000000 +0100
+diff -urdN linux-5.10.25/tools/testing/selftests/gen_kselftest_tar.sh linux-5.10.25.new/tools/testing/selftests/gen_kselftest_tar.sh
+--- linux-5.10.25/tools/testing/selftests/gen_kselftest_tar.sh	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/tools/testing/selftests/gen_kselftest_tar.sh	2021-03-22 12:47:54.000000000 +0100
 @@ -27,6 +27,10 @@
  				copts="cvjf"
  				ext=".tar.bz2"
@@ -1814,20 +1688,10 @@ diff -urdN linux-5.4.18/tools/testing/selftests/gen_kselftest_tar.sh linux-5.4.1
  			tarxz)
  				copts="cvJf"
  				ext=".tar.xz"
-diff -urdN linux-5.4.18/usr/.gitignore linux-5.4.18.new/usr/.gitignore
---- linux-5.4.18/usr/.gitignore	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/usr/.gitignore	2020-02-10 15:55:57.000000000 +0100
-@@ -5,5 +5,6 @@
- initramfs_data.cpio
- initramfs_data.cpio.gz
- initramfs_data.cpio.bz2
-+initramfs_data.cpio.lz
- initramfs_data.cpio.lzma
- initramfs_list
-diff -urdN linux-5.4.18/usr/Kconfig linux-5.4.18.new/usr/Kconfig
---- linux-5.4.18/usr/Kconfig	2020-02-05 22:22:53.000000000 +0100
-+++ linux-5.4.18.new/usr/Kconfig	2020-02-10 15:55:57.000000000 +0100
-@@ -70,6 +70,15 @@
+diff -urdN linux-5.10.25/usr/Kconfig linux-5.10.25.new/usr/Kconfig
+--- linux-5.10.25/usr/Kconfig	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/usr/Kconfig	2021-03-22 18:24:18.000000000 +0100
+@@ -68,6 +68,15 @@
  	  Support loading of a bzip2 encoded initial ramdisk or cpio buffer
  	  If unsure, say N.
  
@@ -1843,7 +1707,7 @@ diff -urdN linux-5.4.18/usr/Kconfig linux-5.4.18.new/usr/Kconfig
  config RD_LZMA
  	bool "Support initial ramdisk/ramfs compressed using LZMA"
  	default y
-@@ -165,6 +174,18 @@
+@@ -156,6 +165,18 @@
  	  If you choose this, keep in mind that you need to have the bzip2 tool
  	  available to be able to compress the initram.
  
@@ -1852,9 +1716,9 @@ diff -urdN linux-5.4.18/usr/Kconfig linux-5.4.18.new/usr/Kconfig
 +	depends on RD_LZIP
 +	help
 +	  Lzip's compression ratio is better than that of gzip and bzip2.
-+	  Decompression speed is between gzip and bzip2.  Compression can
-+	  be as fast as gzip or slower than bzip2 depending on compression
-+	  level.  Lzip can produce a initramfs about a 16% smaller than gzip.
++	  Decompression speed is between gzip and bzip2. Compression can be
++	  as fast as gzip or slower than bzip2 depending on compression level.
++	  Lzip can produce a initramfs about a 16% smaller than gzip.
 +
 +	  If you choose this, keep in mind that you need to have the lzip tool
 +	  available to be able to compress the initram.
@@ -1862,18 +1726,14 @@ diff -urdN linux-5.4.18/usr/Kconfig linux-5.4.18.new/usr/Kconfig
  config INITRAMFS_COMPRESSION_LZMA
  	bool "LZMA"
  	depends on RD_LZMA
-@@ -222,12 +243,14 @@
- 	default ""      if INITRAMFS_COMPRESSION_NONE
- 	default ".gz"   if INITRAMFS_COMPRESSION_GZIP
- 	default ".bz2"  if INITRAMFS_COMPRESSION_BZIP2
-+	default ".lz"   if INITRAMFS_COMPRESSION_LZIP
- 	default ".lzma" if INITRAMFS_COMPRESSION_LZMA
- 	default ".xz"   if INITRAMFS_COMPRESSION_XZ
- 	default ".lzo"  if INITRAMFS_COMPRESSION_LZO
- 	default ".lz4"  if INITRAMFS_COMPRESSION_LZ4
- 	default ".gz"   if RD_GZIP
- 	default ".lz4"  if RD_LZ4
-+	default ".lz"   if RD_LZIP
- 	default ".lzo"  if RD_LZO
- 	default ".xz"   if RD_XZ
- 	default ".lzma" if RD_LZMA
+diff -urdN linux-5.10.25/usr/Makefile linux-5.10.25.new/usr/Makefile
+--- linux-5.10.25/usr/Makefile	2021-03-20 16:54:32.000000000 +0100
++++ linux-5.10.25.new/usr/Makefile	2021-03-22 19:50:16.000000000 +0100
+@@ -11,6 +11,7 @@
+ compress-y					:= shipped
+ compress-$(CONFIG_INITRAMFS_COMPRESSION_GZIP)	:= gzip
+ compress-$(CONFIG_INITRAMFS_COMPRESSION_BZIP2)	:= bzip2
++compress-$(CONFIG_INITRAMFS_COMPRESSION_LZIP)	:= lzip
+ compress-$(CONFIG_INITRAMFS_COMPRESSION_LZMA)	:= lzma
+ compress-$(CONFIG_INITRAMFS_COMPRESSION_XZ)	:= xzmisc
+ compress-$(CONFIG_INITRAMFS_COMPRESSION_LZO)	:= lzo

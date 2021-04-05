@@ -1,6 +1,6 @@
-diff -urN --no-dereference linux-5.4.21.orig/Documentation/filesystems/reiser4.txt linux-5.4.21/Documentation/filesystems/reiser4.txt
---- linux-5.4.21.orig/Documentation/filesystems/reiser4.txt	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/Documentation/filesystems/reiser4.txt	2020-02-22 13:44:51.291993234 +0100
+diff -urN --no-dereference linux-5.10.2.orig/Documentation/filesystems/reiser4.txt linux-5.10.2/Documentation/filesystems/reiser4.txt
+--- linux-5.10.2.orig/Documentation/filesystems/reiser4.txt	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/Documentation/filesystems/reiser4.txt	2020-12-23 00:43:23.501683318 +0100
 @@ -0,0 +1,75 @@
 +Reiser4 filesystem
 +==================
@@ -77,10 +77,10 @@ diff -urN --no-dereference linux-5.4.21.orig/Documentation/filesystems/reiser4.t
 +dont_load_bitmap
 +	Don't load all bitmap blocks at mount time, it is useful for
 +	machines with tiny RAM and large disks.
-diff -urN --no-dereference linux-5.4.21.orig/Documentation/process/changes.rst linux-5.4.21/Documentation/process/changes.rst
---- linux-5.4.21.orig/Documentation/process/changes.rst	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/Documentation/process/changes.rst	2020-02-22 13:44:51.291993234 +0100
-@@ -194,6 +194,13 @@
+diff -urN --no-dereference linux-5.10.2.orig/Documentation/process/changes.rst linux-5.10.2/Documentation/process/changes.rst
+--- linux-5.10.2.orig/Documentation/process/changes.rst	2020-12-21 13:30:08.000000000 +0100
++++ linux-5.10.2/Documentation/process/changes.rst	2020-12-23 00:43:23.501683318 +0100
+@@ -204,6 +204,13 @@
  versions of ``mkreiserfs``, ``resize_reiserfs``, ``debugreiserfs`` and
  ``reiserfsck``. These utils work on both i386 and alpha platforms.
  
@@ -94,9 +94,9 @@ diff -urN --no-dereference linux-5.4.21.orig/Documentation/process/changes.rst l
  Xfsprogs
  --------
  
-@@ -395,6 +402,11 @@
+@@ -411,6 +418,11 @@
  
- - <http://www.kernel.org/pub/linux/utils/fs/reiserfs/>
+ - <https://git.kernel.org/pub/scm/linux/kernel/git/jeffm/reiserfsprogs.git/>
  
 +Reiser4progs
 +------------
@@ -106,10 +106,10 @@ diff -urN --no-dereference linux-5.4.21.orig/Documentation/process/changes.rst l
  Xfsprogs
  --------
  
-diff -urN --no-dereference linux-5.4.21.orig/fs/fs-writeback.c linux-5.4.21/fs/fs-writeback.c
---- linux-5.4.21.orig/fs/fs-writeback.c	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/fs/fs-writeback.c	2020-02-22 13:45:29.285522658 +0100
-@@ -37,26 +37,6 @@
+diff -urN --no-dereference linux-5.10.2.orig/fs/fs-writeback.c linux-5.10.2/fs/fs-writeback.c
+--- linux-5.10.2.orig/fs/fs-writeback.c	2020-12-21 13:30:08.000000000 +0100
++++ linux-5.10.2/fs/fs-writeback.c	2020-12-23 00:47:22.587104641 +0100
+@@ -37,25 +37,6 @@
  #define MIN_WRITEBACK_PAGES	(4096UL >> (PAGE_SHIFT - 10))
  
  /*
@@ -118,7 +118,6 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/fs-writeback.c linux-5.4.21/fs/f
 -struct wb_writeback_work {
 -	long nr_pages;
 -	struct super_block *sb;
--	unsigned long *older_than_this;
 -	enum writeback_sync_modes sync_mode;
 -	unsigned int tagged_writepages:1;
 -	unsigned int for_kupdate:1;
@@ -136,7 +135,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/fs-writeback.c linux-5.4.21/fs/f
   * If an inode is constantly having its pages dirtied, but then the
   * updates stop dirtytime_expire_interval seconds in the past, it's
   * possible for the worst case time between when an inode has its
-@@ -1621,20 +1601,12 @@
+@@ -1626,20 +1607,12 @@
   * unlock and relock that for each inode it ends up doing
   * IO for.
   */
@@ -162,8 +161,8 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/fs-writeback.c linux-5.4.21/fs/f
  	unsigned long start_time = jiffies;
  	long write_chunk;
  	long wrote = 0;  /* count both pages and inodes */
-@@ -1673,7 +1645,7 @@
- 			redirty_tail(inode, wb);
+@@ -1678,7 +1651,7 @@
+ 			spin_unlock(&inode->i_lock);
  			continue;
  		}
 -		if ((inode->i_state & I_SYNC) && wbc.sync_mode != WB_SYNC_ALL) {
@@ -171,7 +170,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/fs-writeback.c linux-5.4.21/fs/f
  			/*
  			 * If this inode is locked for writeback and we are not
  			 * doing writeback-for-data-integrity, move it to
-@@ -1703,21 +1675,21 @@
+@@ -1708,21 +1681,21 @@
  			continue;
  		}
  		inode->i_state |= I_SYNC;
@@ -200,7 +199,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/fs-writeback.c linux-5.4.21/fs/f
  
  		if (need_resched()) {
  			/*
-@@ -1740,7 +1712,7 @@
+@@ -1745,7 +1718,7 @@
  		spin_lock(&inode->i_lock);
  		if (!(inode->i_state & I_DIRTY_ALL))
  			wrote++;
@@ -209,7 +208,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/fs-writeback.c linux-5.4.21/fs/f
  		inode_sync_complete(inode);
  		spin_unlock(&inode->i_lock);
  
-@@ -1754,7 +1726,7 @@
+@@ -1759,7 +1732,7 @@
  		 * background threshold and other termination conditions.
  		 */
  		if (wrote) {
@@ -218,7 +217,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/fs-writeback.c linux-5.4.21/fs/f
  				break;
  			if (work->nr_pages <= 0)
  				break;
-@@ -1762,6 +1734,26 @@
+@@ -1767,6 +1740,26 @@
  	}
  	return wrote;
  }
@@ -245,7 +244,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/fs-writeback.c linux-5.4.21/fs/f
  
  static long __writeback_inodes_wb(struct bdi_writeback *wb,
  				  struct wb_writeback_work *work)
-@@ -2054,6 +2046,31 @@
+@@ -2056,6 +2049,31 @@
  }
  
  /*
@@ -277,18 +276,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/fs-writeback.c linux-5.4.21/fs/f
   * Handle writeback of dirty data for the device backed by this bdi. Also
   * reschedules periodically and does kupdated style flushing.
   */
-@@ -2064,7 +2081,7 @@
- 	long pages_written;
- 
- 	set_worker_desc("flush-%s", bdi_dev_name(wb->bdi));
--	current->flags |= PF_SWAPWRITE;
-+	current->flags |= PF_FLUSHER | PF_SWAPWRITE;
- 
- 	if (likely(!current_is_workqueue_rescuer() ||
- 		   !test_bit(WB_registered, &wb->state))) {
-diff -urN --no-dereference linux-5.4.21.orig/fs/Kconfig linux-5.4.21/fs/Kconfig
---- linux-5.4.21.orig/fs/Kconfig	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/fs/Kconfig	2020-02-22 13:44:51.306993442 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/Kconfig linux-5.10.2/fs/Kconfig
+--- linux-5.10.2.orig/fs/Kconfig	2020-12-21 13:30:08.000000000 +0100
++++ linux-5.10.2/fs/Kconfig	2020-12-23 00:43:23.506683388 +0100
 @@ -31,6 +31,7 @@
  	default y if EXT4_FS=y
  	default m if EXT2_FS_XATTR || EXT4_FS
@@ -297,10 +287,10 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/Kconfig linux-5.4.21/fs/Kconfig
  source "fs/reiserfs/Kconfig"
  source "fs/jfs/Kconfig"
  
-diff -urN --no-dereference linux-5.4.21.orig/fs/Makefile linux-5.4.21/fs/Makefile
---- linux-5.4.21.orig/fs/Makefile	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/fs/Makefile	2020-02-22 13:44:51.307993456 +0100
-@@ -69,6 +69,7 @@
+diff -urN --no-dereference linux-5.10.2.orig/fs/Makefile linux-5.10.2/fs/Makefile
+--- linux-5.10.2.orig/fs/Makefile	2020-12-21 13:30:08.000000000 +0100
++++ linux-5.10.2/fs/Makefile	2020-12-23 00:43:23.506683388 +0100
+@@ -70,6 +70,7 @@
  # Do not add any filesystems before this line
  obj-$(CONFIG_FSCACHE)		+= fscache/
  obj-$(CONFIG_REISERFS_FS)	+= reiserfs/
@@ -308,9 +298,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/Makefile linux-5.4.21/fs/Makefil
  obj-$(CONFIG_EXT4_FS)		+= ext4/
  # We place ext4 before ext2 so that clean ext3 root fs's do NOT mount using the
  # ext2 driver, which doesn't know about journalling!  Explicitly request ext2
-diff -urN --no-dereference linux-5.4.21.orig/fs/read_write.c linux-5.4.21/fs/read_write.c
---- linux-5.4.21.orig/fs/read_write.c	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/fs/read_write.c	2020-02-22 13:44:51.308993469 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/read_write.c linux-5.10.2/fs/read_write.c
+--- linux-5.10.2.orig/fs/read_write.c	2020-12-21 13:30:08.000000000 +0100
++++ linux-5.10.2/fs/read_write.c	2020-12-23 00:43:23.507683402 +0100
 @@ -233,12 +233,11 @@
  }
  EXPORT_SYMBOL(no_llseek);
@@ -346,7 +336,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/read_write.c linux-5.4.21/fs/rea
  EXPORT_SYMBOL(default_llseek);
  
  loff_t vfs_llseek(struct file *file, loff_t offset, int whence)
-@@ -400,7 +409,7 @@
+@@ -401,7 +410,7 @@
  				read_write == READ ? MAY_READ : MAY_WRITE);
  }
  
@@ -355,17 +345,17 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/read_write.c linux-5.4.21/fs/rea
  {
  	struct iovec iov = { .iov_base = buf, .iov_len = len };
  	struct kiocb kiocb;
-@@ -417,6 +426,7 @@
+@@ -418,6 +427,7 @@
  		*ppos = kiocb.ki_pos;
  	return ret;
  }
 +EXPORT_SYMBOL(new_sync_read);
  
- ssize_t __vfs_read(struct file *file, char __user *buf, size_t count,
- 		   loff_t *pos)
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/as_ops.c linux-5.4.21/fs/reiser4/as_ops.c
---- linux-5.4.21.orig/fs/reiser4/as_ops.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/as_ops.c	2020-02-22 13:44:51.309993483 +0100
+ static int warn_unsupported(struct file *file, const char *op)
+ {
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/as_ops.c linux-5.10.2/fs/reiser4/as_ops.c
+--- linux-5.10.2.orig/fs/reiser4/as_ops.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/as_ops.c	2020-12-23 00:43:23.508683416 +0100
 @@ -0,0 +1,348 @@
 +/* Copyright 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -715,9 +705,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/as_ops.c linux-5.4.21/fs
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/block_alloc.c linux-5.4.21/fs/reiser4/block_alloc.c
---- linux-5.4.21.orig/fs/reiser4/block_alloc.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/block_alloc.c	2020-02-22 13:44:51.310993497 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/block_alloc.c linux-5.10.2/fs/reiser4/block_alloc.c
+--- linux-5.10.2.orig/fs/reiser4/block_alloc.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/block_alloc.c	2020-12-23 00:43:23.509683430 +0100
 @@ -0,0 +1,1177 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +reiser4/README */
@@ -1896,9 +1886,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/block_alloc.c linux-5.4.
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/block_alloc.h linux-5.4.21/fs/reiser4/block_alloc.h
---- linux-5.4.21.orig/fs/reiser4/block_alloc.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/block_alloc.h	2020-02-22 13:44:51.310993497 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/block_alloc.h linux-5.10.2/fs/reiser4/block_alloc.h
+--- linux-5.10.2.orig/fs/reiser4/block_alloc.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/block_alloc.h	2020-12-23 00:43:23.509683430 +0100
 @@ -0,0 +1,177 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -2077,9 +2067,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/block_alloc.h linux-5.4.
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/blocknrlist.c linux-5.4.21/fs/reiser4/blocknrlist.c
---- linux-5.4.21.orig/fs/reiser4/blocknrlist.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/blocknrlist.c	2020-02-22 13:44:51.311993511 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/blocknrlist.c linux-5.10.2/fs/reiser4/blocknrlist.c
+--- linux-5.10.2.orig/fs/reiser4/blocknrlist.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/blocknrlist.c	2020-12-23 00:43:23.509683430 +0100
 @@ -0,0 +1,336 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -2417,9 +2407,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/blocknrlist.c linux-5.4.
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/blocknrset.c linux-5.4.21/fs/reiser4/blocknrset.c
---- linux-5.4.21.orig/fs/reiser4/blocknrset.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/blocknrset.c	2020-02-22 13:44:51.311993511 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/blocknrset.c linux-5.10.2/fs/reiser4/blocknrset.c
+--- linux-5.10.2.orig/fs/reiser4/blocknrset.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/blocknrset.c	2020-12-23 00:43:23.510683444 +0100
 @@ -0,0 +1,399 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +reiser4/README */
@@ -2820,9 +2810,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/blocknrset.c linux-5.4.2
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/carry.c linux-5.4.21/fs/reiser4/carry.c
---- linux-5.4.21.orig/fs/reiser4/carry.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/carry.c	2020-02-22 13:44:51.312993525 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/carry.c linux-5.10.2/fs/reiser4/carry.c
+--- linux-5.10.2.orig/fs/reiser4/carry.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/carry.c	2020-12-23 00:43:23.510683444 +0100
 @@ -0,0 +1,1408 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -4232,9 +4222,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/carry.c linux-5.4.21/fs/
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/carry.h linux-5.4.21/fs/reiser4/carry.h
---- linux-5.4.21.orig/fs/reiser4/carry.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/carry.h	2020-02-22 13:44:51.313993539 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/carry.h linux-5.10.2/fs/reiser4/carry.h
+--- linux-5.10.2.orig/fs/reiser4/carry.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/carry.h	2020-12-23 00:43:23.510683444 +0100
 @@ -0,0 +1,445 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -4681,9 +4671,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/carry.h linux-5.4.21/fs/
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/carry_ops.c linux-5.4.21/fs/reiser4/carry_ops.c
---- linux-5.4.21.orig/fs/reiser4/carry_ops.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/carry_ops.c	2020-02-22 13:44:51.314993552 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/carry_ops.c linux-5.10.2/fs/reiser4/carry_ops.c
+--- linux-5.10.2.orig/fs/reiser4/carry_ops.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/carry_ops.c	2020-12-23 00:43:23.510683444 +0100
 @@ -0,0 +1,2136 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -6821,9 +6811,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/carry_ops.c linux-5.4.21
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/carry_ops.h linux-5.4.21/fs/reiser4/carry_ops.h
---- linux-5.4.21.orig/fs/reiser4/carry_ops.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/carry_ops.h	2020-02-22 13:44:51.314993552 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/carry_ops.h linux-5.10.2/fs/reiser4/carry_ops.h
+--- linux-5.10.2.orig/fs/reiser4/carry_ops.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/carry_ops.h	2020-12-23 00:43:23.511683459 +0100
 @@ -0,0 +1,43 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -6868,9 +6858,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/carry_ops.h linux-5.4.21
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/checksum.c linux-5.4.21/fs/reiser4/checksum.c
---- linux-5.4.21.orig/fs/reiser4/checksum.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/checksum.c	2020-02-22 13:44:51.315993566 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/checksum.c linux-5.10.2/fs/reiser4/checksum.c
+--- linux-5.10.2.orig/fs/reiser4/checksum.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/checksum.c	2020-12-23 00:43:23.511683459 +0100
 @@ -0,0 +1,33 @@
 +#include <linux/err.h>
 +#include "debug.h"
@@ -6905,9 +6895,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/checksum.c linux-5.4.21/
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/checksum.h linux-5.4.21/fs/reiser4/checksum.h
---- linux-5.4.21.orig/fs/reiser4/checksum.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/checksum.h	2020-02-22 13:44:51.315993566 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/checksum.h linux-5.10.2/fs/reiser4/checksum.h
+--- linux-5.10.2.orig/fs/reiser4/checksum.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/checksum.h	2020-12-23 00:43:23.511683459 +0100
 @@ -0,0 +1,38 @@
 +#ifndef __CHECKSUM__
 +#define __CHECKSUM__
@@ -6947,9 +6937,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/checksum.h linux-5.4.21/
 +   End:
 +*/
 +
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/context.c linux-5.4.21/fs/reiser4/context.c
---- linux-5.4.21.orig/fs/reiser4/context.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/context.c	2020-02-22 13:44:51.315993566 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/context.c linux-5.10.2/fs/reiser4/context.c
+--- linux-5.10.2.orig/fs/reiser4/context.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/context.c	2020-12-23 00:47:22.588104656 +0100
 @@ -0,0 +1,288 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -7106,7 +7096,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/context.c linux-5.4.21/f
 +	if (sbinfo != NULL && sbinfo->fake != NULL &&
 +	    context->nr_marked_dirty != 0 &&
 +	    !(current->flags & PF_MEMALLOC) &&
-+	    !current_is_flush_bd_task())
++	    !context->flush_bd_task)
 + 		reiser4_throttle_write(sbinfo->fake);
 +}
 +
@@ -7239,10 +7229,10 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/context.c linux-5.4.21/f
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/context.h linux-5.4.21/fs/reiser4/context.h
---- linux-5.4.21.orig/fs/reiser4/context.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/context.h	2020-02-22 13:44:51.315993566 +0100
-@@ -0,0 +1,235 @@
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/context.h linux-5.10.2/fs/reiser4/context.h
+--- linux-5.10.2.orig/fs/reiser4/context.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/context.h	2020-12-23 00:47:22.588104656 +0100
+@@ -0,0 +1,237 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
 +
@@ -7309,6 +7299,8 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/context.h linux-5.4.21/f
 +	unsigned int on_stack:1;
 +	/* file system is read-only */
 +	unsigned int ro:1;
++	/* replacement of PF_FLUSHER */
++	unsigned int flush_bd_task:1;
 +
 +	/* count non-trivial jnode_set_dirty() calls */
 +	unsigned long nr_marked_dirty;
@@ -7478,9 +7470,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/context.h linux-5.4.21/f
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/coord.c linux-5.4.21/fs/reiser4/coord.c
---- linux-5.4.21.orig/fs/reiser4/coord.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/coord.c	2020-02-22 13:44:51.315993566 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/coord.c linux-5.10.2/fs/reiser4/coord.c
+--- linux-5.10.2.orig/fs/reiser4/coord.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/coord.c	2020-12-23 00:43:23.511683459 +0100
 @@ -0,0 +1,928 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -8410,9 +8402,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/coord.c linux-5.4.21/fs/
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/coord.h linux-5.4.21/fs/reiser4/coord.h
---- linux-5.4.21.orig/fs/reiser4/coord.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/coord.h	2020-02-22 13:44:51.315993566 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/coord.h linux-5.10.2/fs/reiser4/coord.h
+--- linux-5.10.2.orig/fs/reiser4/coord.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/coord.h	2020-12-23 00:43:23.511683459 +0100
 @@ -0,0 +1,399 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -8813,9 +8805,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/coord.h linux-5.4.21/fs/
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/debug.c linux-5.4.21/fs/reiser4/debug.c
---- linux-5.4.21.orig/fs/reiser4/debug.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/debug.c	2020-02-22 13:44:51.315993566 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/debug.c linux-5.10.2/fs/reiser4/debug.c
+--- linux-5.10.2.orig/fs/reiser4/debug.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/debug.c	2020-12-23 00:43:23.511683459 +0100
 @@ -0,0 +1,309 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -9126,9 +9118,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/debug.c linux-5.4.21/fs/
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/debug.h linux-5.4.21/fs/reiser4/debug.h
---- linux-5.4.21.orig/fs/reiser4/debug.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/debug.h	2020-02-22 13:44:51.315993566 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/debug.h linux-5.10.2/fs/reiser4/debug.h
+--- linux-5.10.2.orig/fs/reiser4/debug.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/debug.h	2020-12-23 00:43:23.511683459 +0100
 @@ -0,0 +1,353 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -9483,9 +9475,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/debug.h linux-5.4.21/fs/
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/dformat.h linux-5.4.21/fs/reiser4/dformat.h
---- linux-5.4.21.orig/fs/reiser4/dformat.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/dformat.h	2020-02-22 13:44:51.315993566 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/dformat.h linux-5.10.2/fs/reiser4/dformat.h
+--- linux-5.10.2.orig/fs/reiser4/dformat.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/dformat.h	2020-12-23 00:43:23.511683459 +0100
 @@ -0,0 +1,73 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -9560,9 +9552,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/dformat.h linux-5.4.21/f
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/discard.c linux-5.4.21/fs/reiser4/discard.c
---- linux-5.4.21.orig/fs/reiser4/discard.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/discard.c	2020-02-22 13:44:51.315993566 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/discard.c linux-5.10.2/fs/reiser4/discard.c
+--- linux-5.10.2.orig/fs/reiser4/discard.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/discard.c	2020-12-23 00:43:23.511683459 +0100
 @@ -0,0 +1,179 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -9743,9 +9735,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/discard.c linux-5.4.21/f
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/discard.h linux-5.4.21/fs/reiser4/discard.h
---- linux-5.4.21.orig/fs/reiser4/discard.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/discard.h	2020-02-22 13:44:51.316993580 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/discard.h linux-5.10.2/fs/reiser4/discard.h
+--- linux-5.10.2.orig/fs/reiser4/discard.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/discard.h	2020-12-23 00:43:23.512683473 +0100
 @@ -0,0 +1,42 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -9789,9 +9781,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/discard.h linux-5.4.21/f
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/dscale.c linux-5.4.21/fs/reiser4/dscale.c
---- linux-5.4.21.orig/fs/reiser4/dscale.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/dscale.c	2020-02-22 13:44:51.316993580 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/dscale.c linux-5.10.2/fs/reiser4/dscale.c
+--- linux-5.10.2.orig/fs/reiser4/dscale.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/dscale.c	2020-12-23 00:43:23.512683473 +0100
 @@ -0,0 +1,192 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -9985,9 +9977,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/dscale.c linux-5.4.21/fs
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/dscale.h linux-5.4.21/fs/reiser4/dscale.h
---- linux-5.4.21.orig/fs/reiser4/dscale.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/dscale.h	2020-02-22 13:44:51.316993580 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/dscale.h linux-5.10.2/fs/reiser4/dscale.h
+--- linux-5.10.2.orig/fs/reiser4/dscale.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/dscale.h	2020-12-23 00:43:23.512683473 +0100
 @@ -0,0 +1,28 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -10017,9 +10009,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/dscale.h linux-5.4.21/fs
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/entd.c linux-5.4.21/fs/reiser4/entd.c
---- linux-5.4.21.orig/fs/reiser4/entd.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/entd.c	2020-02-22 13:44:51.316993580 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/entd.c linux-5.10.2/fs/reiser4/entd.c
+--- linux-5.10.2.orig/fs/reiser4/entd.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/entd.c	2020-12-23 00:43:23.512683473 +0100
 @@ -0,0 +1,361 @@
 +/* Copyright 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -10382,9 +10374,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/entd.c linux-5.4.21/fs/r
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/entd.h linux-5.4.21/fs/reiser4/entd.h
---- linux-5.4.21.orig/fs/reiser4/entd.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/entd.h	2020-02-22 13:44:51.316993580 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/entd.h linux-5.10.2/fs/reiser4/entd.h
+--- linux-5.10.2.orig/fs/reiser4/entd.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/entd.h	2020-12-23 00:43:23.512683473 +0100
 @@ -0,0 +1,90 @@
 +/* Copyright 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -10476,9 +10468,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/entd.h linux-5.4.21/fs/r
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/eottl.c linux-5.4.21/fs/reiser4/eottl.c
---- linux-5.4.21.orig/fs/reiser4/eottl.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/eottl.c	2020-02-22 13:44:51.316993580 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/eottl.c linux-5.10.2/fs/reiser4/eottl.c
+--- linux-5.10.2.orig/fs/reiser4/eottl.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/eottl.c	2020-12-23 00:43:23.512683473 +0100
 @@ -0,0 +1,510 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -10990,9 +10982,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/eottl.c linux-5.4.21/fs/
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/estimate.c linux-5.4.21/fs/reiser4/estimate.c
---- linux-5.4.21.orig/fs/reiser4/estimate.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/estimate.c	2020-02-22 13:44:51.316993580 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/estimate.c linux-5.10.2/fs/reiser4/estimate.c
+--- linux-5.10.2.orig/fs/reiser4/estimate.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/estimate.c	2020-12-23 00:43:23.512683473 +0100
 @@ -0,0 +1,129 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -11123,9 +11115,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/estimate.c linux-5.4.21/
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/export_ops.c linux-5.4.21/fs/reiser4/export_ops.c
---- linux-5.4.21.orig/fs/reiser4/export_ops.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/export_ops.c	2020-02-22 13:44:51.316993580 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/export_ops.c linux-5.10.2/fs/reiser4/export_ops.c
+--- linux-5.10.2.orig/fs/reiser4/export_ops.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/export_ops.c	2020-12-23 00:43:23.512683473 +0100
 @@ -0,0 +1,325 @@
 +/* Copyright 2005 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -11452,9 +11444,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/export_ops.c linux-5.4.2
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/flush.c linux-5.4.21/fs/reiser4/flush.c
---- linux-5.4.21.orig/fs/reiser4/flush.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/flush.c	2020-02-22 13:44:51.317993594 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/flush.c linux-5.10.2/fs/reiser4/flush.c
+--- linux-5.10.2.orig/fs/reiser4/flush.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/flush.c	2020-12-23 00:43:23.513683487 +0100
 @@ -0,0 +1,3522 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -14978,9 +14970,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/flush.c linux-5.4.21/fs/
 +   LocalWords:  preceder
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/flush.h linux-5.4.21/fs/reiser4/flush.h
---- linux-5.4.21.orig/fs/reiser4/flush.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/flush.h	2020-02-22 13:44:51.317993594 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/flush.h linux-5.10.2/fs/reiser4/flush.h
+--- linux-5.10.2.orig/fs/reiser4/flush.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/flush.h	2020-12-23 00:43:23.513683487 +0100
 @@ -0,0 +1,290 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -15272,9 +15264,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/flush.h linux-5.4.21/fs/
 +   LocalWords:  preceder
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/flush_queue.c linux-5.4.21/fs/reiser4/flush_queue.c
---- linux-5.4.21.orig/fs/reiser4/flush_queue.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/flush_queue.c	2020-02-22 13:44:51.317993594 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/flush_queue.c linux-5.10.2/fs/reiser4/flush_queue.c
+--- linux-5.10.2.orig/fs/reiser4/flush_queue.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/flush_queue.c	2020-12-23 00:43:23.513683487 +0100
 @@ -0,0 +1,680 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -15956,9 +15948,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/flush_queue.c linux-5.4.
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/forward.h linux-5.4.21/fs/reiser4/forward.h
---- linux-5.4.21.orig/fs/reiser4/forward.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/forward.h	2020-02-22 13:44:51.317993594 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/forward.h linux-5.10.2/fs/reiser4/forward.h
+--- linux-5.10.2.orig/fs/reiser4/forward.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/forward.h	2020-12-23 00:43:23.513683487 +0100
 @@ -0,0 +1,259 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -16219,9 +16211,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/forward.h linux-5.4.21/f
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/fsdata.c linux-5.4.21/fs/reiser4/fsdata.c
---- linux-5.4.21.orig/fs/reiser4/fsdata.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/fsdata.c	2020-02-22 13:44:51.317993594 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/fsdata.c linux-5.10.2/fs/reiser4/fsdata.c
+--- linux-5.10.2.orig/fs/reiser4/fsdata.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/fsdata.c	2020-12-23 00:43:23.513683487 +0100
 @@ -0,0 +1,801 @@
 +/* Copyright 2001, 2002, 2003, 2004, 2005 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -17024,9 +17016,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/fsdata.c linux-5.4.21/fs
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/fsdata.h linux-5.4.21/fs/reiser4/fsdata.h
---- linux-5.4.21.orig/fs/reiser4/fsdata.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/fsdata.h	2020-02-22 13:44:51.317993594 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/fsdata.h linux-5.10.2/fs/reiser4/fsdata.h
+--- linux-5.10.2.orig/fs/reiser4/fsdata.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/fsdata.h	2020-12-23 00:43:23.513683487 +0100
 @@ -0,0 +1,203 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -17231,9 +17223,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/fsdata.h linux-5.4.21/fs
 + * fill-column: 120
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/init_super.c linux-5.4.21/fs/reiser4/init_super.c
---- linux-5.4.21.orig/fs/reiser4/init_super.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/init_super.c	2020-02-22 13:44:51.318993608 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/init_super.c linux-5.10.2/fs/reiser4/init_super.c
+--- linux-5.10.2.orig/fs/reiser4/init_super.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/init_super.c	2020-12-23 00:43:23.514683501 +0100
 @@ -0,0 +1,806 @@
 +/* Copyright by Hans Reiser, 2003 */
 +
@@ -18041,9 +18033,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/init_super.c linux-5.4.2
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/inode.c linux-5.4.21/fs/reiser4/inode.c
---- linux-5.4.21.orig/fs/reiser4/inode.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/inode.c	2020-02-22 13:44:51.318993608 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/inode.c linux-5.10.2/fs/reiser4/inode.c
+--- linux-5.10.2.orig/fs/reiser4/inode.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/inode.c	2020-12-23 00:43:23.514683501 +0100
 @@ -0,0 +1,711 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -18756,9 +18748,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/inode.c linux-5.4.21/fs/
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/inode.h linux-5.4.21/fs/reiser4/inode.h
---- linux-5.4.21.orig/fs/reiser4/inode.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/inode.h	2020-02-22 13:44:51.318993608 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/inode.h linux-5.10.2/fs/reiser4/inode.h
+--- linux-5.10.2.orig/fs/reiser4/inode.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/inode.h	2020-12-23 00:43:23.514683501 +0100
 @@ -0,0 +1,506 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -19266,9 +19258,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/inode.h linux-5.4.21/fs/
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/ioctl.h linux-5.4.21/fs/reiser4/ioctl.h
---- linux-5.4.21.orig/fs/reiser4/ioctl.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/ioctl.h	2020-02-22 13:44:51.318993608 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/ioctl.h linux-5.10.2/fs/reiser4/ioctl.h
+--- linux-5.10.2.orig/fs/reiser4/ioctl.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/ioctl.h	2020-12-23 00:43:23.514683501 +0100
 @@ -0,0 +1,41 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -19311,9 +19303,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/ioctl.h linux-5.4.21/fs/
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/jnode.c linux-5.4.21/fs/reiser4/jnode.c
---- linux-5.4.21.orig/fs/reiser4/jnode.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/jnode.c	2020-02-22 13:44:51.318993608 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/jnode.c linux-5.10.2/fs/reiser4/jnode.c
+--- linux-5.10.2.orig/fs/reiser4/jnode.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/jnode.c	2020-12-23 00:43:23.514683501 +0100
 @@ -0,0 +1,1906 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -21221,9 +21213,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/jnode.c linux-5.4.21/fs/
 +   fill-column: 80
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/jnode.h linux-5.4.21/fs/reiser4/jnode.h
---- linux-5.4.21.orig/fs/reiser4/jnode.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/jnode.h	2020-02-22 13:44:51.318993608 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/jnode.h linux-5.10.2/fs/reiser4/jnode.h
+--- linux-5.10.2.orig/fs/reiser4/jnode.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/jnode.h	2020-12-23 00:43:23.514683501 +0100
 @@ -0,0 +1,704 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -21929,9 +21921,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/jnode.h linux-5.4.21/fs/
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/kassign.c linux-5.4.21/fs/reiser4/kassign.c
---- linux-5.4.21.orig/fs/reiser4/kassign.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/kassign.c	2020-02-22 13:44:51.319993622 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/kassign.c linux-5.10.2/fs/reiser4/kassign.c
+--- linux-5.10.2.orig/fs/reiser4/kassign.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/kassign.c	2020-12-23 00:43:23.515683515 +0100
 @@ -0,0 +1,677 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -22610,9 +22602,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/kassign.c linux-5.4.21/f
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/kassign.h linux-5.4.21/fs/reiser4/kassign.h
---- linux-5.4.21.orig/fs/reiser4/kassign.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/kassign.h	2020-02-22 13:44:51.319993622 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/kassign.h linux-5.10.2/fs/reiser4/kassign.h
+--- linux-5.10.2.orig/fs/reiser4/kassign.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/kassign.h	2020-12-23 00:43:23.515683515 +0100
 @@ -0,0 +1,111 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -22725,9 +22717,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/kassign.h linux-5.4.21/f
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/Kconfig linux-5.4.21/fs/reiser4/Kconfig
---- linux-5.4.21.orig/fs/reiser4/Kconfig	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/Kconfig	2020-02-22 13:44:51.319993622 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/Kconfig linux-5.10.2/fs/reiser4/Kconfig
+--- linux-5.10.2.orig/fs/reiser4/Kconfig	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/Kconfig	2020-12-23 00:43:23.515683515 +0100
 @@ -0,0 +1,36 @@
 +config REISER4_FS
 +	tristate "Reiser4 (EXPERIMENTAL)"
@@ -22765,9 +22757,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/Kconfig linux-5.4.21/fs/
 +	  Don't use this unless you are debugging reiser4.
 +
 +	  If unsure, say N.
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/key.c linux-5.4.21/fs/reiser4/key.c
---- linux-5.4.21.orig/fs/reiser4/key.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/key.c	2020-02-22 13:44:51.319993622 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/key.c linux-5.10.2/fs/reiser4/key.c
+--- linux-5.10.2.orig/fs/reiser4/key.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/key.c	2020-12-23 00:43:23.515683515 +0100
 @@ -0,0 +1,138 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -22907,9 +22899,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/key.c linux-5.4.21/fs/re
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/key.h linux-5.4.21/fs/reiser4/key.h
---- linux-5.4.21.orig/fs/reiser4/key.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/key.h	2020-02-22 13:44:51.319993622 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/key.h linux-5.10.2/fs/reiser4/key.h
+--- linux-5.10.2.orig/fs/reiser4/key.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/key.h	2020-12-23 00:43:23.515683515 +0100
 @@ -0,0 +1,392 @@
 +/* Copyright 2000, 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -23303,9 +23295,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/key.h linux-5.4.21/fs/re
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/ktxnmgrd.c linux-5.4.21/fs/reiser4/ktxnmgrd.c
---- linux-5.4.21.orig/fs/reiser4/ktxnmgrd.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/ktxnmgrd.c	2020-02-22 13:44:51.319993622 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/ktxnmgrd.c linux-5.10.2/fs/reiser4/ktxnmgrd.c
+--- linux-5.10.2.orig/fs/reiser4/ktxnmgrd.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/ktxnmgrd.c	2020-12-23 00:43:23.515683515 +0100
 @@ -0,0 +1,215 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +/* Transaction manager daemon. */
@@ -23522,9 +23514,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/ktxnmgrd.c linux-5.4.21/
 + * fill-column: 120
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/ktxnmgrd.h linux-5.4.21/fs/reiser4/ktxnmgrd.h
---- linux-5.4.21.orig/fs/reiser4/ktxnmgrd.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/ktxnmgrd.h	2020-02-22 13:44:51.319993622 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/ktxnmgrd.h linux-5.10.2/fs/reiser4/ktxnmgrd.h
+--- linux-5.10.2.orig/fs/reiser4/ktxnmgrd.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/ktxnmgrd.h	2020-12-23 00:43:23.515683515 +0100
 @@ -0,0 +1,52 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -23578,9 +23570,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/ktxnmgrd.h linux-5.4.21/
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/lock.c linux-5.4.21/fs/reiser4/lock.c
---- linux-5.4.21.orig/fs/reiser4/lock.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/lock.c	2020-02-22 13:44:51.319993622 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/lock.c linux-5.10.2/fs/reiser4/lock.c
+--- linux-5.10.2.orig/fs/reiser4/lock.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/lock.c	2020-12-23 00:43:23.515683515 +0100
 @@ -0,0 +1,1237 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -24819,9 +24811,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/lock.c linux-5.4.21/fs/r
 +   fill-column: 79
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/lock.h linux-5.4.21/fs/reiser4/lock.h
---- linux-5.4.21.orig/fs/reiser4/lock.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/lock.h	2020-02-22 13:44:51.320993635 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/lock.h linux-5.10.2/fs/reiser4/lock.h
+--- linux-5.10.2.orig/fs/reiser4/lock.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/lock.h	2020-12-23 00:43:23.515683515 +0100
 @@ -0,0 +1,250 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -25073,9 +25065,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/lock.h linux-5.4.21/fs/r
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/Makefile linux-5.4.21/fs/reiser4/Makefile
---- linux-5.4.21.orig/fs/reiser4/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/Makefile	2020-02-22 13:44:51.320993635 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/Makefile linux-5.10.2/fs/reiser4/Makefile
+--- linux-5.10.2.orig/fs/reiser4/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/Makefile	2020-12-23 00:43:23.515683515 +0100
 @@ -0,0 +1,103 @@
 +#
 +# reiser4/Makefile
@@ -25180,9 +25172,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/Makefile linux-5.4.21/fs
 +		   plugin/disk_format/disk_format40.o \
 +		   plugin/disk_format/disk_format.o
 +
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/oid.c linux-5.4.21/fs/reiser4/oid.c
---- linux-5.4.21.orig/fs/reiser4/oid.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/oid.c	2020-02-22 13:44:51.320993635 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/oid.c linux-5.10.2/fs/reiser4/oid.c
+--- linux-5.10.2.orig/fs/reiser4/oid.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/oid.c	2020-12-23 00:43:23.515683515 +0100
 @@ -0,0 +1,141 @@
 +/* Copyright 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -25325,9 +25317,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/oid.c linux-5.4.21/fs/re
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/page_cache.c linux-5.4.21/fs/reiser4/page_cache.c
---- linux-5.4.21.orig/fs/reiser4/page_cache.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/page_cache.c	2020-02-22 13:44:51.320993635 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/page_cache.c linux-5.10.2/fs/reiser4/page_cache.c
+--- linux-5.10.2.orig/fs/reiser4/page_cache.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/page_cache.c	2020-12-23 00:43:23.516683529 +0100
 @@ -0,0 +1,692 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -26021,10 +26013,10 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/page_cache.c linux-5.4.2
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/page_cache.h linux-5.4.21/fs/reiser4/page_cache.h
---- linux-5.4.21.orig/fs/reiser4/page_cache.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/page_cache.h	2020-02-22 13:44:51.320993635 +0100
-@@ -0,0 +1,64 @@
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/page_cache.h linux-5.10.2/fs/reiser4/page_cache.h
+--- linux-5.10.2.orig/fs/reiser4/page_cache.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/page_cache.h	2020-12-23 00:43:23.516683529 +0100
+@@ -0,0 +1,62 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
 +/* Memory pressure hooks. Fake inodes handling. See page_cache.c. */
@@ -26063,9 +26055,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/page_cache.h linux-5.4.2
 +				   struct writeback_control *);
 +static inline void *reiser4_vmalloc(unsigned long size)
 +{
-+	return __vmalloc(size,
-+			 reiser4_ctx_gfp_mask_get() | __GFP_HIGHMEM,
-+			 PAGE_KERNEL);
++	return __vmalloc(size, reiser4_ctx_gfp_mask_get());
 +}
 +
 +#define PAGECACHE_TAG_REISER4_MOVED PAGECACHE_TAG_DIRTY
@@ -26089,9 +26079,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/page_cache.h linux-5.4.2
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/cluster.c linux-5.4.21/fs/reiser4/plugin/cluster.c
---- linux-5.4.21.orig/fs/reiser4/plugin/cluster.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/cluster.c	2020-02-22 13:44:51.320993635 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/cluster.c linux-5.10.2/fs/reiser4/plugin/cluster.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/cluster.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/cluster.c	2020-12-23 00:43:23.516683529 +0100
 @@ -0,0 +1,72 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -26165,9 +26155,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/cluster.c linux-5
 +  scroll-step: 1
 +  End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/cluster.h linux-5.4.21/fs/reiser4/plugin/cluster.h
---- linux-5.4.21.orig/fs/reiser4/plugin/cluster.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/cluster.h	2020-02-22 13:44:51.320993635 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/cluster.h linux-5.10.2/fs/reiser4/plugin/cluster.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/cluster.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/cluster.h	2020-12-23 00:43:23.516683529 +0100
 @@ -0,0 +1,410 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -26579,9 +26569,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/cluster.h linux-5
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/compress/compress.c linux-5.4.21/fs/reiser4/plugin/compress/compress.c
---- linux-5.4.21.orig/fs/reiser4/plugin/compress/compress.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/compress/compress.c	2020-02-22 13:44:51.320993635 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/compress/compress.c linux-5.10.2/fs/reiser4/plugin/compress/compress.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/compress/compress.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/compress/compress.c	2020-12-23 00:43:23.516683529 +0100
 @@ -0,0 +1,521 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +/* reiser4 compression transform plugins */
@@ -27104,9 +27094,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/compress/compress
 +  scroll-step: 1
 +  End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/compress/compress.h linux-5.4.21/fs/reiser4/plugin/compress/compress.h
---- linux-5.4.21.orig/fs/reiser4/plugin/compress/compress.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/compress/compress.h	2020-02-22 13:44:51.321993649 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/compress/compress.h linux-5.10.2/fs/reiser4/plugin/compress/compress.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/compress/compress.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/compress/compress.h	2020-12-23 00:43:23.516683529 +0100
 @@ -0,0 +1,44 @@
 +#if !defined( __FS_REISER4_COMPRESS_H__ )
 +#define __FS_REISER4_COMPRESS_H__
@@ -27152,9 +27142,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/compress/compress
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/compress/compress_mode.c linux-5.4.21/fs/reiser4/plugin/compress/compress_mode.c
---- linux-5.4.21.orig/fs/reiser4/plugin/compress/compress_mode.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/compress/compress_mode.c	2020-02-22 13:44:51.321993649 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/compress/compress_mode.c linux-5.10.2/fs/reiser4/plugin/compress/compress_mode.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/compress/compress_mode.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/compress/compress_mode.c	2020-12-23 00:43:23.516683529 +0100
 @@ -0,0 +1,162 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +/* This file contains Reiser4 compression mode plugins.
@@ -27318,18 +27308,18 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/compress/compress
 +  scroll-step: 1
 +  End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/compress/Makefile linux-5.4.21/fs/reiser4/plugin/compress/Makefile
---- linux-5.4.21.orig/fs/reiser4/plugin/compress/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/compress/Makefile	2020-02-22 13:44:51.321993649 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/compress/Makefile linux-5.10.2/fs/reiser4/plugin/compress/Makefile
+--- linux-5.10.2.orig/fs/reiser4/plugin/compress/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/compress/Makefile	2020-12-23 00:43:23.516683529 +0100
 @@ -0,0 +1,5 @@
 +obj-$(CONFIG_REISER4_FS) += compress_plugins.o
 +
 +compress_plugins-objs :=	\
 +	compress.o		\
 +	compress_mode.o
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/crypto/cipher.c linux-5.4.21/fs/reiser4/plugin/crypto/cipher.c
---- linux-5.4.21.orig/fs/reiser4/plugin/crypto/cipher.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/crypto/cipher.c	2020-02-22 13:44:51.321993649 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/crypto/cipher.c linux-5.10.2/fs/reiser4/plugin/crypto/cipher.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/crypto/cipher.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/crypto/cipher.c	2020-12-23 00:43:23.516683529 +0100
 @@ -0,0 +1,37 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser,
 +   licensing governed by reiser4/README */
@@ -27368,9 +27358,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/crypto/cipher.c l
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/crypto/cipher.h linux-5.4.21/fs/reiser4/plugin/crypto/cipher.h
---- linux-5.4.21.orig/fs/reiser4/plugin/crypto/cipher.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/crypto/cipher.h	2020-02-22 13:44:51.321993649 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/crypto/cipher.h linux-5.10.2/fs/reiser4/plugin/crypto/cipher.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/crypto/cipher.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/crypto/cipher.h	2020-12-23 00:43:23.516683529 +0100
 @@ -0,0 +1,55 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +/* This file contains definitions for the objects operated
@@ -27427,9 +27417,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/crypto/cipher.h l
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/crypto/digest.c linux-5.4.21/fs/reiser4/plugin/crypto/digest.c
---- linux-5.4.21.orig/fs/reiser4/plugin/crypto/digest.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/crypto/digest.c	2020-02-22 13:44:51.321993649 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/crypto/digest.c linux-5.10.2/fs/reiser4/plugin/crypto/digest.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/crypto/digest.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/crypto/digest.c	2020-12-23 00:43:23.516683529 +0100
 @@ -0,0 +1,58 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -27489,9 +27479,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/crypto/digest.c l
 +  scroll-step: 1
 +  End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/dir/dir.h linux-5.4.21/fs/reiser4/plugin/dir/dir.h
---- linux-5.4.21.orig/fs/reiser4/plugin/dir/dir.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/dir/dir.h	2020-02-22 13:44:51.321993649 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/dir/dir.h linux-5.10.2/fs/reiser4/plugin/dir/dir.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/dir/dir.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/dir/dir.h	2020-12-23 00:43:23.516683529 +0100
 @@ -0,0 +1,36 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -27529,9 +27519,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/dir/dir.h linux-5
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/dir/hashed_dir.c linux-5.4.21/fs/reiser4/plugin/dir/hashed_dir.c
---- linux-5.4.21.orig/fs/reiser4/plugin/dir/hashed_dir.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/dir/hashed_dir.c	2020-02-22 13:44:51.321993649 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/dir/hashed_dir.c linux-5.10.2/fs/reiser4/plugin/dir/hashed_dir.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/dir/hashed_dir.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/dir/hashed_dir.c	2020-12-23 00:43:23.517683543 +0100
 @@ -0,0 +1,81 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -27614,18 +27604,18 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/dir/hashed_dir.c 
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/dir/Makefile linux-5.4.21/fs/reiser4/plugin/dir/Makefile
---- linux-5.4.21.orig/fs/reiser4/plugin/dir/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/dir/Makefile	2020-02-22 13:44:51.321993649 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/dir/Makefile linux-5.10.2/fs/reiser4/plugin/dir/Makefile
+--- linux-5.10.2.orig/fs/reiser4/plugin/dir/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/dir/Makefile	2020-12-23 00:43:23.517683543 +0100
 @@ -0,0 +1,5 @@
 +obj-$(CONFIG_REISER4_FS) += dir_plugins.o
 +
 +dir_plugins-objs :=	\
 +	hashed_dir.o	\
 +	seekable_dir.o
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/dir/seekable_dir.c linux-5.4.21/fs/reiser4/plugin/dir/seekable_dir.c
---- linux-5.4.21.orig/fs/reiser4/plugin/dir/seekable_dir.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/dir/seekable_dir.c	2020-02-22 13:44:51.321993649 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/dir/seekable_dir.c linux-5.10.2/fs/reiser4/plugin/dir/seekable_dir.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/dir/seekable_dir.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/dir/seekable_dir.c	2020-12-23 00:43:23.517683543 +0100
 @@ -0,0 +1,46 @@
 +/* Copyright 2005 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -27673,9 +27663,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/dir/seekable_dir.
 +	set_key_offset(result, (__u64) 0);
 +	return;
 +}
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/dir_plugin_common.c linux-5.4.21/fs/reiser4/plugin/dir_plugin_common.c
---- linux-5.4.21.orig/fs/reiser4/plugin/dir_plugin_common.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/dir_plugin_common.c	2020-02-22 13:44:51.321993649 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/dir_plugin_common.c linux-5.10.2/fs/reiser4/plugin/dir_plugin_common.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/dir_plugin_common.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/dir_plugin_common.c	2020-12-23 00:43:23.517683543 +0100
 @@ -0,0 +1,865 @@
 +/* Copyright 2005 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -28542,9 +28532,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/dir_plugin_common
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/disk_format/disk_format40.c linux-5.4.21/fs/reiser4/plugin/disk_format/disk_format40.c
---- linux-5.4.21.orig/fs/reiser4/plugin/disk_format/disk_format40.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/disk_format/disk_format40.c	2020-02-22 13:44:51.321993649 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/disk_format/disk_format40.c linux-5.10.2/fs/reiser4/plugin/disk_format/disk_format40.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/disk_format/disk_format40.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/disk_format/disk_format40.c	2020-12-23 00:43:23.517683543 +0100
 @@ -0,0 +1,668 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -29214,9 +29204,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/disk_format/disk_
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/disk_format/disk_format40.h linux-5.4.21/fs/reiser4/plugin/disk_format/disk_format40.h
---- linux-5.4.21.orig/fs/reiser4/plugin/disk_format/disk_format40.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/disk_format/disk_format40.h	2020-02-22 13:44:51.322993663 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/disk_format/disk_format40.h linux-5.10.2/fs/reiser4/plugin/disk_format/disk_format40.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/disk_format/disk_format40.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/disk_format/disk_format40.h	2020-12-23 00:43:23.517683543 +0100
 @@ -0,0 +1,111 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -29329,9 +29319,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/disk_format/disk_
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/disk_format/disk_format.c linux-5.4.21/fs/reiser4/plugin/disk_format/disk_format.c
---- linux-5.4.21.orig/fs/reiser4/plugin/disk_format/disk_format.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/disk_format/disk_format.c	2020-02-22 13:44:51.322993663 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/disk_format/disk_format.c linux-5.10.2/fs/reiser4/plugin/disk_format/disk_format.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/disk_format/disk_format.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/disk_format/disk_format.c	2020-12-23 00:43:23.517683543 +0100
 @@ -0,0 +1,38 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -29371,9 +29361,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/disk_format/disk_
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/disk_format/disk_format.h linux-5.4.21/fs/reiser4/plugin/disk_format/disk_format.h
---- linux-5.4.21.orig/fs/reiser4/plugin/disk_format/disk_format.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/disk_format/disk_format.h	2020-02-22 13:44:51.322993663 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/disk_format/disk_format.h linux-5.10.2/fs/reiser4/plugin/disk_format/disk_format.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/disk_format/disk_format.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/disk_format/disk_format.h	2020-12-23 00:43:23.517683543 +0100
 @@ -0,0 +1,27 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -29402,18 +29392,18 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/disk_format/disk_
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/disk_format/Makefile linux-5.4.21/fs/reiser4/plugin/disk_format/Makefile
---- linux-5.4.21.orig/fs/reiser4/plugin/disk_format/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/disk_format/Makefile	2020-02-22 13:44:51.322993663 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/disk_format/Makefile linux-5.10.2/fs/reiser4/plugin/disk_format/Makefile
+--- linux-5.10.2.orig/fs/reiser4/plugin/disk_format/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/disk_format/Makefile	2020-12-23 00:43:23.517683543 +0100
 @@ -0,0 +1,5 @@
 +obj-$(CONFIG_REISER4_FS) += df_plugins.o
 +
 +df_plugins-objs :=	\
 +	disk_format40.o	\
 +	disk_format.o
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/fibration.c linux-5.4.21/fs/reiser4/plugin/fibration.c
---- linux-5.4.21.orig/fs/reiser4/plugin/fibration.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/fibration.c	2020-02-22 13:44:51.322993663 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/fibration.c linux-5.10.2/fs/reiser4/plugin/fibration.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/fibration.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/fibration.c	2020-12-23 00:43:23.517683543 +0100
 @@ -0,0 +1,175 @@
 +/* Copyright 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -29590,9 +29580,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/fibration.c linux
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/fibration.h linux-5.4.21/fs/reiser4/plugin/fibration.h
---- linux-5.4.21.orig/fs/reiser4/plugin/fibration.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/fibration.h	2020-02-22 13:44:51.322993663 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/fibration.h linux-5.10.2/fs/reiser4/plugin/fibration.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/fibration.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/fibration.h	2020-12-23 00:43:23.517683543 +0100
 @@ -0,0 +1,37 @@
 +/* Copyright 2004 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -29631,10 +29621,10 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/fibration.h linux
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompress.c linux-5.4.21/fs/reiser4/plugin/file/cryptcompress.c
---- linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompress.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/file/cryptcompress.c	2020-02-22 13:44:51.322993663 +0100
-@@ -0,0 +1,3798 @@
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/file/cryptcompress.c linux-5.10.2/fs/reiser4/plugin/file/cryptcompress.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/file/cryptcompress.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/file/cryptcompress.c	2020-12-23 00:43:23.518683557 +0100
+@@ -0,0 +1,3811 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 +   reiser4/README */
 +/*
@@ -30165,6 +30155,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompres
 +	return 0;
 +}
 +
++#if REISER4_CRYPTO
 +/* returns a blocksize, the attribute of a cipher algorithm */
 +static unsigned int
 +cipher_blocksize(struct inode * inode)
@@ -30190,6 +30181,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompres
 +						 cipher_blocksize(inode),
 +						 src_off);
 +}
++#else
++#define inode_scaled_offset(__inode, __off) __off
++#endif
 +
 +/* returns disk cluster size */
 +size_t inode_scaled_cluster_size(struct inode * inode)
@@ -30486,6 +30480,8 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompres
 +	return result;
 +}
 +
++#if REISER4_CRYPTO
++
 +/* This function is called by deflate[inflate] manager when
 +   creating a transformed/plain stream to check if we should
 +   create/cut some overhead. If this returns true, then @oh
@@ -30546,6 +30542,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompres
 +		return 0;
 +	return cipher_blocksize(inode);
 +}
++#else
++#define max_cipher_overhead(_inode) 0
++#endif
 +
 +static int deflate_overhead(struct inode *inode)
 +{
@@ -30795,6 +30794,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompres
 +		}
 +	}
 + cipher:
++#if REISER4_CRYPTO
 +	if (need_cipher(inode)) {
 +		cipher_plugin * ciplug;
 +		struct blkcipher_desc desc;
@@ -30822,6 +30822,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompres
 +		}
 +		encrypted = 1;
 +	}
++#endif
 +	if (compressed && coplug->checksum != NULL)
 +		dc_set_checksum(coplug, tc);
 +	if (!compressed && !encrypted)
@@ -30856,6 +30857,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompres
 +			return RETERR(-EIO);
 +		}
 +	}
++#if REISER4_CRYPTO
 +	if (need_cipher(inode)) {
 +		cipher_plugin * ciplug;
 +		struct blkcipher_desc desc;
@@ -30882,6 +30884,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompres
 +		align_or_cut_overhead(inode, clust, READ_OP);
 +		transformed = 1;
 +	}
++#endif
 +	if (need_inflate(clust, inode, 0)) {
 +		size_t dst_len = inode_cluster_size(inode);
 +		if(transformed)
@@ -33433,10 +33436,10 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompres
 +  scroll-step: 1
 +  End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompress.h linux-5.4.21/fs/reiser4/plugin/file/cryptcompress.h
---- linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompress.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/file/cryptcompress.h	2020-02-22 13:44:51.323993677 +0100
-@@ -0,0 +1,619 @@
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/file/cryptcompress.h linux-5.10.2/fs/reiser4/plugin/file/cryptcompress.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/file/cryptcompress.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/file/cryptcompress.h	2020-12-23 00:43:23.518683557 +0100
+@@ -0,0 +1,621 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +/* See http://www.namesys.com/cryptcompress_design.html */
 +
@@ -33456,6 +33459,8 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompres
 +
 +#define MIN_LATTICE_FACTOR 1
 +#define MAX_LATTICE_FACTOR 32
++
++#define REISER4_CRYPTO 0
 +
 +/* this mask contains all non-standard plugins that might
 +   be present in reiser4-specific part of inode managed by
@@ -34056,9 +34061,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/cryptcompres
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/file.c linux-5.4.21/fs/reiser4/plugin/file/file.c
---- linux-5.4.21.orig/fs/reiser4/plugin/file/file.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/file/file.c	2020-02-22 13:44:51.323993677 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/file/file.c linux-5.10.2/fs/reiser4/plugin/file/file.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/file/file.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/file/file.c	2020-12-23 00:43:23.519683571 +0100
 @@ -0,0 +1,2798 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -36858,9 +36863,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/file.c linux
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/file_conversion.c linux-5.4.21/fs/reiser4/plugin/file/file_conversion.c
---- linux-5.4.21.orig/fs/reiser4/plugin/file/file_conversion.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/file/file_conversion.c	2020-02-22 13:44:51.323993677 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/file/file_conversion.c linux-5.10.2/fs/reiser4/plugin/file/file_conversion.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/file/file_conversion.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/file/file_conversion.c	2020-12-23 00:43:23.519683571 +0100
 @@ -0,0 +1,762 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser,
 +   licensing governed by reiser4/README */
@@ -37624,9 +37629,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/file_convers
 +  scroll-step: 1
 +  End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/file.h linux-5.4.21/fs/reiser4/plugin/file/file.h
---- linux-5.4.21.orig/fs/reiser4/plugin/file/file.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/file/file.h	2020-02-22 13:44:51.323993677 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/file/file.h linux-5.10.2/fs/reiser4/plugin/file/file.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/file/file.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/file/file.h	2020-12-23 00:43:23.519683571 +0100
 @@ -0,0 +1,323 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -37951,9 +37956,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/file.h linux
 + * scroll-step: 1
 + * End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/Makefile linux-5.4.21/fs/reiser4/plugin/file/Makefile
---- linux-5.4.21.orig/fs/reiser4/plugin/file/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/file/Makefile	2020-02-22 13:44:51.323993677 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/file/Makefile linux-5.10.2/fs/reiser4/plugin/file/Makefile
+--- linux-5.10.2.orig/fs/reiser4/plugin/file/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/file/Makefile	2020-12-23 00:43:23.519683571 +0100
 @@ -0,0 +1,7 @@
 +obj-$(CONFIG_REISER4_FS) += file_plugins.o
 +
@@ -37962,9 +37967,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/Makefile lin
 +	tail_conversion.o	\
 +	symlink.o		\
 +	cryptcompress.o
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/symfile.c linux-5.4.21/fs/reiser4/plugin/file/symfile.c
---- linux-5.4.21.orig/fs/reiser4/plugin/file/symfile.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/file/symfile.c	2020-02-22 13:44:51.323993677 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/file/symfile.c linux-5.10.2/fs/reiser4/plugin/file/symfile.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/file/symfile.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/file/symfile.c	2020-12-23 00:43:23.519683571 +0100
 @@ -0,0 +1,87 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -38053,9 +38058,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/symfile.c li
 +   sophisticated symfile syntax that we are not planning to write for
 +   version 4.0.
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/symlink.c linux-5.4.21/fs/reiser4/plugin/file/symlink.c
---- linux-5.4.21.orig/fs/reiser4/plugin/file/symlink.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/file/symlink.c	2020-02-22 13:44:51.323993677 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/file/symlink.c linux-5.10.2/fs/reiser4/plugin/file/symlink.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/file/symlink.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/file/symlink.c	2020-12-23 00:43:23.519683571 +0100
 @@ -0,0 +1,95 @@
 +/* Copyright 2002, 2003, 2005 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -38152,9 +38157,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/symlink.c li
 +  scroll-step: 1
 +  End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/tail_conversion.c linux-5.4.21/fs/reiser4/plugin/file/tail_conversion.c
---- linux-5.4.21.orig/fs/reiser4/plugin/file/tail_conversion.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/file/tail_conversion.c	2020-02-22 13:44:51.324993691 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/file/tail_conversion.c linux-5.10.2/fs/reiser4/plugin/file/tail_conversion.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/file/tail_conversion.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/file/tail_conversion.c	2020-12-23 00:43:23.519683571 +0100
 @@ -0,0 +1,763 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -38919,9 +38924,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file/tail_convers
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file_ops.c linux-5.4.21/fs/reiser4/plugin/file_ops.c
---- linux-5.4.21.orig/fs/reiser4/plugin/file_ops.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/file_ops.c	2020-02-22 13:44:51.324993691 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/file_ops.c linux-5.10.2/fs/reiser4/plugin/file_ops.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/file_ops.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/file_ops.c	2020-12-23 00:43:23.519683571 +0100
 @@ -0,0 +1,119 @@
 +/* Copyright 2005 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -39042,9 +39047,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file_ops.c linux-
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file_ops_readdir.c linux-5.4.21/fs/reiser4/plugin/file_ops_readdir.c
---- linux-5.4.21.orig/fs/reiser4/plugin/file_ops_readdir.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/file_ops_readdir.c	2020-02-22 13:44:51.324993691 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/file_ops_readdir.c linux-5.10.2/fs/reiser4/plugin/file_ops_readdir.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/file_ops_readdir.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/file_ops_readdir.c	2020-12-23 00:43:23.520683585 +0100
 @@ -0,0 +1,659 @@
 +/* Copyright 2005 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -39705,9 +39710,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file_ops_readdir.
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file_plugin_common.c linux-5.4.21/fs/reiser4/plugin/file_plugin_common.c
---- linux-5.4.21.orig/fs/reiser4/plugin/file_plugin_common.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/file_plugin_common.c	2020-02-22 13:44:51.324993691 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/file_plugin_common.c linux-5.10.2/fs/reiser4/plugin/file_plugin_common.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/file_plugin_common.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/file_plugin_common.c	2020-12-23 00:43:23.520683585 +0100
 @@ -0,0 +1,1004 @@
 +/* Copyright 2005 by Hans Reiser, licensing governed by
 +   reiser4/README */
@@ -40713,9 +40718,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/file_plugin_commo
 +  scroll-step: 1
 +  End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/hash.c linux-5.4.21/fs/reiser4/plugin/hash.c
---- linux-5.4.21.orig/fs/reiser4/plugin/hash.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/hash.c	2020-02-22 13:44:51.324993691 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/hash.c linux-5.10.2/fs/reiser4/plugin/hash.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/hash.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/hash.c	2020-12-23 00:43:23.520683585 +0100
 @@ -0,0 +1,352 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -41069,9 +41074,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/hash.c linux-5.4.
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/inode_ops.c linux-5.4.21/fs/reiser4/plugin/inode_ops.c
---- linux-5.4.21.orig/fs/reiser4/plugin/inode_ops.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/inode_ops.c	2020-02-22 13:44:51.324993691 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/inode_ops.c linux-5.10.2/fs/reiser4/plugin/inode_ops.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/inode_ops.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/inode_ops.c	2020-12-23 00:43:23.520683585 +0100
 @@ -0,0 +1,891 @@
 +/*
 + * Copyright 2005 by Hans Reiser, licensing governed by reiser4/README
@@ -41964,9 +41969,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/inode_ops.c linux
 +  scroll-step: 1
 +  End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/inode_ops_rename.c linux-5.4.21/fs/reiser4/plugin/inode_ops_rename.c
---- linux-5.4.21.orig/fs/reiser4/plugin/inode_ops_rename.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/inode_ops_rename.c	2020-02-22 13:44:51.325993705 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/inode_ops_rename.c linux-5.10.2/fs/reiser4/plugin/inode_ops_rename.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/inode_ops_rename.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/inode_ops_rename.c	2020-12-23 00:43:23.520683585 +0100
 @@ -0,0 +1,958 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -42926,9 +42931,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/inode_ops_rename.
 +	return result;
 +}
 +#endif
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/acl.h linux-5.4.21/fs/reiser4/plugin/item/acl.h
---- linux-5.4.21.orig/fs/reiser4/plugin/item/acl.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/acl.h	2020-02-22 13:44:51.325993705 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/acl.h linux-5.10.2/fs/reiser4/plugin/item/acl.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/acl.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/acl.h	2020-12-23 00:43:23.520683585 +0100
 @@ -0,0 +1,66 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -42996,9 +43001,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/acl.h linux-
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/blackbox.c linux-5.4.21/fs/reiser4/plugin/item/blackbox.c
---- linux-5.4.21.orig/fs/reiser4/plugin/item/blackbox.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/blackbox.c	2020-02-22 13:44:51.325993705 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/blackbox.c linux-5.10.2/fs/reiser4/plugin/item/blackbox.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/blackbox.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/blackbox.c	2020-12-23 00:43:23.520683585 +0100
 @@ -0,0 +1,142 @@
 +/* Copyright 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -43142,9 +43147,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/blackbox.c l
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/blackbox.h linux-5.4.21/fs/reiser4/plugin/item/blackbox.h
---- linux-5.4.21.orig/fs/reiser4/plugin/item/blackbox.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/blackbox.h	2020-02-22 13:44:51.325993705 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/blackbox.h linux-5.10.2/fs/reiser4/plugin/item/blackbox.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/blackbox.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/blackbox.h	2020-12-23 00:43:23.520683585 +0100
 @@ -0,0 +1,33 @@
 +/* Copyright 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -43179,9 +43184,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/blackbox.h l
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/cde.c linux-5.4.21/fs/reiser4/plugin/item/cde.c
---- linux-5.4.21.orig/fs/reiser4/plugin/item/cde.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/cde.c	2020-02-22 13:44:51.325993705 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/cde.c linux-5.10.2/fs/reiser4/plugin/item/cde.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/cde.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/cde.c	2020-12-23 00:43:23.521683599 +0100
 @@ -0,0 +1,1004 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -44187,9 +44192,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/cde.c linux-
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/cde.h linux-5.4.21/fs/reiser4/plugin/item/cde.h
---- linux-5.4.21.orig/fs/reiser4/plugin/item/cde.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/cde.h	2020-02-22 13:44:51.325993705 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/cde.h linux-5.10.2/fs/reiser4/plugin/item/cde.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/cde.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/cde.h	2020-12-23 00:43:23.521683599 +0100
 @@ -0,0 +1,87 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -44278,9 +44283,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/cde.h linux-
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/ctail.c linux-5.4.21/fs/reiser4/plugin/item/ctail.c
---- linux-5.4.21.orig/fs/reiser4/plugin/item/ctail.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/ctail.c	2020-02-22 13:44:51.325993705 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/ctail.c linux-5.10.2/fs/reiser4/plugin/item/ctail.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/ctail.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/ctail.c	2020-12-23 00:43:23.521683599 +0100
 @@ -0,0 +1,1754 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -46036,9 +46041,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/ctail.c linu
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/ctail.h linux-5.4.21/fs/reiser4/plugin/item/ctail.h
---- linux-5.4.21.orig/fs/reiser4/plugin/item/ctail.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/ctail.h	2020-02-22 13:44:51.326993718 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/ctail.h linux-5.10.2/fs/reiser4/plugin/item/ctail.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/ctail.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/ctail.h	2020-12-23 00:43:23.521683599 +0100
 @@ -0,0 +1,102 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -46142,9 +46147,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/ctail.h linu
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/extent.c linux-5.4.21/fs/reiser4/plugin/item/extent.c
---- linux-5.4.21.orig/fs/reiser4/plugin/item/extent.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/extent.c	2020-02-22 13:44:51.326993718 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/extent.c linux-5.10.2/fs/reiser4/plugin/item/extent.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/extent.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/extent.c	2020-12-23 00:43:23.521683599 +0100
 @@ -0,0 +1,197 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -46343,9 +46348,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/extent.c lin
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/extent_file_ops.c linux-5.4.21/fs/reiser4/plugin/item/extent_file_ops.c
---- linux-5.4.21.orig/fs/reiser4/plugin/item/extent_file_ops.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/extent_file_ops.c	2020-02-22 13:44:51.326993718 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/extent_file_ops.c linux-5.10.2/fs/reiser4/plugin/item/extent_file_ops.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/extent_file_ops.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/extent_file_ops.c	2020-12-23 00:43:23.521683599 +0100
 @@ -0,0 +1,1434 @@
 +/* COPYRIGHT 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -47781,9 +47786,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/extent_file_
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/extent_flush_ops.c linux-5.4.21/fs/reiser4/plugin/item/extent_flush_ops.c
---- linux-5.4.21.orig/fs/reiser4/plugin/item/extent_flush_ops.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/extent_flush_ops.c	2020-02-22 13:44:51.326993718 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/extent_flush_ops.c linux-5.10.2/fs/reiser4/plugin/item/extent_flush_ops.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/extent_flush_ops.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/extent_flush_ops.c	2020-12-23 00:43:23.522683613 +0100
 @@ -0,0 +1,686 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -48471,9 +48476,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/extent_flush
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/extent.h linux-5.4.21/fs/reiser4/plugin/item/extent.h
---- linux-5.4.21.orig/fs/reiser4/plugin/item/extent.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/extent.h	2020-02-22 13:44:51.326993718 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/extent.h linux-5.10.2/fs/reiser4/plugin/item/extent.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/extent.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/extent.h	2020-12-23 00:43:23.522683613 +0100
 @@ -0,0 +1,231 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -48706,9 +48711,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/extent.h lin
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/extent_item_ops.c linux-5.4.21/fs/reiser4/plugin/item/extent_item_ops.c
---- linux-5.4.21.orig/fs/reiser4/plugin/item/extent_item_ops.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/extent_item_ops.c	2020-02-22 13:44:51.326993718 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/extent_item_ops.c linux-5.10.2/fs/reiser4/plugin/item/extent_item_ops.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/extent_item_ops.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/extent_item_ops.c	2020-12-23 00:43:23.522683613 +0100
 @@ -0,0 +1,888 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -49598,9 +49603,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/extent_item_
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/internal.c linux-5.4.21/fs/reiser4/plugin/item/internal.c
---- linux-5.4.21.orig/fs/reiser4/plugin/item/internal.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/internal.c	2020-02-22 13:44:51.327993732 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/internal.c linux-5.10.2/fs/reiser4/plugin/item/internal.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/internal.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/internal.c	2020-12-23 00:43:23.522683613 +0100
 @@ -0,0 +1,405 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -50007,9 +50012,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/internal.c l
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/internal.h linux-5.4.21/fs/reiser4/plugin/item/internal.h
---- linux-5.4.21.orig/fs/reiser4/plugin/item/internal.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/internal.h	2020-02-22 13:44:51.327993732 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/internal.h linux-5.10.2/fs/reiser4/plugin/item/internal.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/internal.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/internal.h	2020-12-23 00:43:23.522683613 +0100
 @@ -0,0 +1,57 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +/* Internal item contains down-link to the child of the internal/twig
@@ -50068,9 +50073,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/internal.h l
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/item.c linux-5.4.21/fs/reiser4/plugin/item/item.c
---- linux-5.4.21.orig/fs/reiser4/plugin/item/item.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/item.c	2020-02-22 13:44:51.327993732 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/item.c linux-5.10.2/fs/reiser4/plugin/item/item.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/item.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/item.c	2020-12-23 00:43:23.522683613 +0100
 @@ -0,0 +1,719 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -50791,9 +50796,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/item.c linux
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/item.h linux-5.4.21/fs/reiser4/plugin/item/item.h
---- linux-5.4.21.orig/fs/reiser4/plugin/item/item.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/item.h	2020-02-22 13:44:51.327993732 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/item.h linux-5.10.2/fs/reiser4/plugin/item/item.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/item.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/item.h	2020-12-23 00:43:23.522683613 +0100
 @@ -0,0 +1,398 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -51193,9 +51198,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/item.h linux
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/Makefile linux-5.4.21/fs/reiser4/plugin/item/Makefile
---- linux-5.4.21.orig/fs/reiser4/plugin/item/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/Makefile	2020-02-22 13:44:51.327993732 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/Makefile linux-5.10.2/fs/reiser4/plugin/item/Makefile
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/Makefile	2020-12-23 00:43:23.522683613 +0100
 @@ -0,0 +1,18 @@
 +obj-$(CONFIG_REISER4_FS) += item_plugins.o
 +
@@ -51215,9 +51220,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/Makefile lin
 +
 +
 +
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/sde.c linux-5.4.21/fs/reiser4/plugin/item/sde.c
---- linux-5.4.21.orig/fs/reiser4/plugin/item/sde.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/sde.c	2020-02-22 13:44:51.327993732 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/sde.c linux-5.10.2/fs/reiser4/plugin/item/sde.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/sde.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/sde.c	2020-12-23 00:43:23.523683627 +0100
 @@ -0,0 +1,186 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -51405,9 +51410,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/sde.c linux-
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/sde.h linux-5.4.21/fs/reiser4/plugin/item/sde.h
---- linux-5.4.21.orig/fs/reiser4/plugin/item/sde.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/sde.h	2020-02-22 13:44:51.327993732 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/sde.h linux-5.10.2/fs/reiser4/plugin/item/sde.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/sde.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/sde.h	2020-12-23 00:43:23.523683627 +0100
 @@ -0,0 +1,66 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -51475,9 +51480,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/sde.h linux-
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/static_stat.c linux-5.4.21/fs/reiser4/plugin/item/static_stat.c
---- linux-5.4.21.orig/fs/reiser4/plugin/item/static_stat.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/static_stat.c	2020-02-22 13:44:51.327993732 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/static_stat.c linux-5.10.2/fs/reiser4/plugin/item/static_stat.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/static_stat.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/static_stat.c	2020-12-23 00:43:23.523683627 +0100
 @@ -0,0 +1,1114 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -52593,9 +52598,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/static_stat.
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/static_stat.h linux-5.4.21/fs/reiser4/plugin/item/static_stat.h
---- linux-5.4.21.orig/fs/reiser4/plugin/item/static_stat.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/static_stat.h	2020-02-22 13:44:51.327993732 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/static_stat.h linux-5.10.2/fs/reiser4/plugin/item/static_stat.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/static_stat.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/static_stat.h	2020-12-23 00:43:23.523683627 +0100
 @@ -0,0 +1,224 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -52821,9 +52826,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/static_stat.
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/tail.c linux-5.4.21/fs/reiser4/plugin/item/tail.c
---- linux-5.4.21.orig/fs/reiser4/plugin/item/tail.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/tail.c	2020-02-22 13:44:51.328993746 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/tail.c linux-5.10.2/fs/reiser4/plugin/item/tail.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/tail.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/tail.c	2020-12-23 00:43:23.523683627 +0100
 @@ -0,0 +1,810 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -53635,9 +53640,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/tail.c linux
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/tail.h linux-5.4.21/fs/reiser4/plugin/item/tail.h
---- linux-5.4.21.orig/fs/reiser4/plugin/item/tail.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/item/tail.h	2020-02-22 13:44:51.328993746 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/item/tail.h linux-5.10.2/fs/reiser4/plugin/item/tail.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/item/tail.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/item/tail.h	2020-12-23 00:43:23.523683627 +0100
 @@ -0,0 +1,59 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -53698,9 +53703,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/item/tail.h linux
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/Makefile linux-5.4.21/fs/reiser4/plugin/Makefile
---- linux-5.4.21.orig/fs/reiser4/plugin/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/Makefile	2020-02-22 13:44:51.328993746 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/Makefile linux-5.10.2/fs/reiser4/plugin/Makefile
+--- linux-5.10.2.orig/fs/reiser4/plugin/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/Makefile	2020-12-23 00:43:23.523683627 +0100
 @@ -0,0 +1,26 @@
 +obj-$(CONFIG_REISER4_FS) += plugins.o
 +
@@ -53728,9 +53733,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/Makefile linux-5.
 +obj-$(CONFIG_REISER4_FS) += space/
 +obj-$(CONFIG_REISER4_FS) += disk_format/
 +obj-$(CONFIG_REISER4_FS) += security/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/Makefile linux-5.4.21/fs/reiser4/plugin/node/Makefile
---- linux-5.4.21.orig/fs/reiser4/plugin/node/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/node/Makefile	2020-02-22 13:44:51.328993746 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/node/Makefile linux-5.10.2/fs/reiser4/plugin/node/Makefile
+--- linux-5.10.2.orig/fs/reiser4/plugin/node/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/node/Makefile	2020-12-23 00:43:23.523683627 +0100
 @@ -0,0 +1,6 @@
 +obj-$(CONFIG_REISER4_FS) += node_plugins.o
 +
@@ -53738,9 +53743,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/Makefile lin
 +	node.o		\
 +	node40.o	\
 +	node41.o
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/node40.c linux-5.4.21/fs/reiser4/plugin/node/node40.c
---- linux-5.4.21.orig/fs/reiser4/plugin/node/node40.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/node/node40.c	2020-02-22 13:44:51.328993746 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/node/node40.c linux-5.10.2/fs/reiser4/plugin/node/node40.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/node/node40.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/node/node40.c	2020-12-23 00:43:23.524683641 +0100
 @@ -0,0 +1,3074 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -56816,9 +56821,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/node40.c lin
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/node40.h linux-5.4.21/fs/reiser4/plugin/node/node40.h
---- linux-5.4.21.orig/fs/reiser4/plugin/node/node40.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/node/node40.h	2020-02-22 13:44:51.328993746 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/node/node40.h linux-5.10.2/fs/reiser4/plugin/node/node40.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/node/node40.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/node/node40.h	2020-12-23 00:43:23.524683641 +0100
 @@ -0,0 +1,130 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -56950,9 +56955,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/node40.h lin
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/node41.c linux-5.4.21/fs/reiser4/plugin/node/node41.c
---- linux-5.4.21.orig/fs/reiser4/plugin/node/node41.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/node/node41.c	2020-02-22 13:44:51.328993746 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/node/node41.c linux-5.10.2/fs/reiser4/plugin/node/node41.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/node/node41.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/node/node41.c	2020-12-23 00:43:23.524683641 +0100
 @@ -0,0 +1,137 @@
 +/*
 + * Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README
@@ -57091,9 +57096,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/node41.c lin
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/node41.h linux-5.4.21/fs/reiser4/plugin/node/node41.h
---- linux-5.4.21.orig/fs/reiser4/plugin/node/node41.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/node/node41.h	2020-02-22 13:44:51.329993760 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/node/node41.h linux-5.10.2/fs/reiser4/plugin/node/node41.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/node/node41.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/node/node41.h	2020-12-23 00:43:23.524683641 +0100
 @@ -0,0 +1,50 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -57145,9 +57150,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/node41.h lin
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/node.c linux-5.4.21/fs/reiser4/plugin/node/node.c
---- linux-5.4.21.orig/fs/reiser4/plugin/node/node.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/node/node.c	2020-02-22 13:44:51.329993760 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/node/node.c linux-5.10.2/fs/reiser4/plugin/node/node.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/node/node.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/node/node.c	2020-12-23 00:43:23.524683641 +0100
 @@ -0,0 +1,170 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -57319,9 +57324,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/node.c linux
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/node.h linux-5.4.21/fs/reiser4/plugin/node/node.h
---- linux-5.4.21.orig/fs/reiser4/plugin/node/node.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/node/node.h	2020-02-22 13:44:51.329993760 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/node/node.h linux-5.10.2/fs/reiser4/plugin/node/node.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/node/node.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/node/node.h	2020-12-23 00:43:23.524683641 +0100
 @@ -0,0 +1,275 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -57598,9 +57603,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/node/node.h linux
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/object.c linux-5.4.21/fs/reiser4/plugin/object.c
---- linux-5.4.21.orig/fs/reiser4/plugin/object.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/object.c	2020-02-22 13:44:51.329993760 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/object.c linux-5.10.2/fs/reiser4/plugin/object.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/object.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/object.c	2020-12-23 00:43:23.524683641 +0100
 @@ -0,0 +1,554 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -58156,9 +58161,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/object.c linux-5.
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/object.h linux-5.4.21/fs/reiser4/plugin/object.h
---- linux-5.4.21.orig/fs/reiser4/plugin/object.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/object.h	2020-02-22 13:44:51.329993760 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/object.h linux-5.10.2/fs/reiser4/plugin/object.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/object.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/object.h	2020-12-23 00:43:23.524683641 +0100
 @@ -0,0 +1,117 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -58277,9 +58282,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/object.h linux-5.
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/plugin.c linux-5.4.21/fs/reiser4/plugin/plugin.c
---- linux-5.4.21.orig/fs/reiser4/plugin/plugin.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/plugin.c	2020-02-22 13:44:51.329993760 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/plugin.c linux-5.10.2/fs/reiser4/plugin/plugin.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/plugin.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/plugin.c	2020-12-23 00:43:23.525683655 +0100
 @@ -0,0 +1,569 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -58850,9 +58855,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/plugin.c linux-5.
 + * fill-column: 120
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/plugin.h linux-5.4.21/fs/reiser4/plugin/plugin.h
---- linux-5.4.21.orig/fs/reiser4/plugin/plugin.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/plugin.h	2020-02-22 13:44:51.329993760 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/plugin.h linux-5.10.2/fs/reiser4/plugin/plugin.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/plugin.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/plugin.h	2020-12-23 00:43:23.525683655 +0100
 @@ -0,0 +1,999 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -59853,9 +59858,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/plugin.h linux-5.
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/plugin_header.h linux-5.4.21/fs/reiser4/plugin/plugin_header.h
---- linux-5.4.21.orig/fs/reiser4/plugin/plugin_header.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/plugin_header.h	2020-02-22 13:44:51.329993760 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/plugin_header.h linux-5.10.2/fs/reiser4/plugin/plugin_header.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/plugin_header.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/plugin_header.h	2020-12-23 00:43:23.525683655 +0100
 @@ -0,0 +1,150 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -60007,9 +60012,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/plugin_header.h l
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/plugin_set.c linux-5.4.21/fs/reiser4/plugin/plugin_set.c
---- linux-5.4.21.orig/fs/reiser4/plugin/plugin_set.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/plugin_set.c	2020-02-22 13:44:51.329993760 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/plugin_set.c linux-5.10.2/fs/reiser4/plugin/plugin_set.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/plugin_set.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/plugin_set.c	2020-12-23 00:43:23.525683655 +0100
 @@ -0,0 +1,387 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -60398,9 +60403,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/plugin_set.c linu
 + * fill-column: 120
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/plugin_set.h linux-5.4.21/fs/reiser4/plugin/plugin_set.h
---- linux-5.4.21.orig/fs/reiser4/plugin/plugin_set.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/plugin_set.h	2020-02-22 13:44:51.330993773 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/plugin_set.h linux-5.10.2/fs/reiser4/plugin/plugin_set.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/plugin_set.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/plugin_set.h	2020-12-23 00:43:23.525683655 +0100
 @@ -0,0 +1,78 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -60480,17 +60485,17 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/plugin_set.h linu
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/security/Makefile linux-5.4.21/fs/reiser4/plugin/security/Makefile
---- linux-5.4.21.orig/fs/reiser4/plugin/security/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/security/Makefile	2020-02-22 13:44:51.330993773 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/security/Makefile linux-5.10.2/fs/reiser4/plugin/security/Makefile
+--- linux-5.10.2.orig/fs/reiser4/plugin/security/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/security/Makefile	2020-12-23 00:43:23.525683655 +0100
 @@ -0,0 +1,4 @@
 +obj-$(CONFIG_REISER4_FS) += security_plugins.o
 +
 +security_plugins-objs :=	\
 +	perm.o
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/security/perm.c linux-5.4.21/fs/reiser4/plugin/security/perm.c
---- linux-5.4.21.orig/fs/reiser4/plugin/security/perm.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/security/perm.c	2020-02-22 13:44:51.330993773 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/security/perm.c linux-5.10.2/fs/reiser4/plugin/security/perm.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/security/perm.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/security/perm.c	2020-12-23 00:43:23.525683655 +0100
 @@ -0,0 +1,33 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -60525,9 +60530,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/security/perm.c l
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/security/perm.h linux-5.4.21/fs/reiser4/plugin/security/perm.h
---- linux-5.4.21.orig/fs/reiser4/plugin/security/perm.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/security/perm.h	2020-02-22 13:44:51.330993773 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/security/perm.h linux-5.10.2/fs/reiser4/plugin/security/perm.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/security/perm.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/security/perm.h	2020-12-23 00:43:23.525683655 +0100
 @@ -0,0 +1,38 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -60567,9 +60572,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/security/perm.h l
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/space/bitmap.c linux-5.4.21/fs/reiser4/plugin/space/bitmap.c
---- linux-5.4.21.orig/fs/reiser4/plugin/space/bitmap.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/space/bitmap.c	2020-02-22 13:44:51.330993773 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/space/bitmap.c linux-5.10.2/fs/reiser4/plugin/space/bitmap.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/space/bitmap.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/space/bitmap.c	2020-12-23 00:43:23.526683669 +0100
 @@ -0,0 +1,1609 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -62180,9 +62185,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/space/bitmap.c li
 + * scroll-step: 1
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/space/bitmap.h linux-5.4.21/fs/reiser4/plugin/space/bitmap.h
---- linux-5.4.21.orig/fs/reiser4/plugin/space/bitmap.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/space/bitmap.h	2020-02-22 13:44:51.330993773 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/space/bitmap.h linux-5.10.2/fs/reiser4/plugin/space/bitmap.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/space/bitmap.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/space/bitmap.h	2020-12-23 00:43:23.526683669 +0100
 @@ -0,0 +1,47 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -62231,17 +62236,17 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/space/bitmap.h li
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/space/Makefile linux-5.4.21/fs/reiser4/plugin/space/Makefile
---- linux-5.4.21.orig/fs/reiser4/plugin/space/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/space/Makefile	2020-02-22 13:44:51.330993773 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/space/Makefile linux-5.10.2/fs/reiser4/plugin/space/Makefile
+--- linux-5.10.2.orig/fs/reiser4/plugin/space/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/space/Makefile	2020-12-23 00:43:23.526683669 +0100
 @@ -0,0 +1,4 @@
 +obj-$(CONFIG_REISER4_FS) += space_plugins.o
 +
 +space_plugins-objs := \
 +	bitmap.o
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/space/space_allocator.h linux-5.4.21/fs/reiser4/plugin/space/space_allocator.h
---- linux-5.4.21.orig/fs/reiser4/plugin/space/space_allocator.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/space/space_allocator.h	2020-02-22 13:44:51.330993773 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/space/space_allocator.h linux-5.10.2/fs/reiser4/plugin/space/space_allocator.h
+--- linux-5.10.2.orig/fs/reiser4/plugin/space/space_allocator.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/space/space_allocator.h	2020-12-23 00:43:23.526683669 +0100
 @@ -0,0 +1,80 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -62323,9 +62328,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/space/space_alloc
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/tail_policy.c linux-5.4.21/fs/reiser4/plugin/tail_policy.c
---- linux-5.4.21.orig/fs/reiser4/plugin/tail_policy.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/tail_policy.c	2020-02-22 13:44:51.330993773 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/tail_policy.c linux-5.10.2/fs/reiser4/plugin/tail_policy.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/tail_policy.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/tail_policy.c	2020-12-23 00:43:23.526683669 +0100
 @@ -0,0 +1,113 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -62440,9 +62445,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/tail_policy.c lin
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/txmod.c linux-5.4.21/fs/reiser4/plugin/txmod.c
---- linux-5.4.21.orig/fs/reiser4/plugin/txmod.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/plugin/txmod.c	2020-02-22 13:44:51.331993788 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/plugin/txmod.c linux-5.10.2/fs/reiser4/plugin/txmod.c
+--- linux-5.10.2.orig/fs/reiser4/plugin/txmod.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/plugin/txmod.c	2020-12-23 00:43:23.526683669 +0100
 @@ -0,0 +1,1238 @@
 +#include "../forward.h"
 +#include "../debug.h"
@@ -63682,9 +63687,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/plugin/txmod.c linux-5.4
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/pool.c linux-5.4.21/fs/reiser4/pool.c
---- linux-5.4.21.orig/fs/reiser4/pool.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/pool.c	2020-02-22 13:44:51.331993788 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/pool.c linux-5.10.2/fs/reiser4/pool.c
+--- linux-5.10.2.orig/fs/reiser4/pool.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/pool.c	2020-12-23 00:43:23.526683669 +0100
 @@ -0,0 +1,231 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -63917,9 +63922,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/pool.c linux-5.4.21/fs/r
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/pool.h linux-5.4.21/fs/reiser4/pool.h
---- linux-5.4.21.orig/fs/reiser4/pool.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/pool.h	2020-02-22 13:44:51.331993788 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/pool.h linux-5.10.2/fs/reiser4/pool.h
+--- linux-5.10.2.orig/fs/reiser4/pool.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/pool.h	2020-12-23 00:43:23.526683669 +0100
 @@ -0,0 +1,57 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -63978,9 +63983,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/pool.h linux-5.4.21/fs/r
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/readahead.c linux-5.4.21/fs/reiser4/readahead.c
---- linux-5.4.21.orig/fs/reiser4/readahead.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/readahead.c	2020-02-22 13:44:51.331993788 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/readahead.c linux-5.10.2/fs/reiser4/readahead.c
+--- linux-5.10.2.orig/fs/reiser4/readahead.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/readahead.c	2020-12-23 00:43:23.526683669 +0100
 @@ -0,0 +1,140 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -64122,9 +64127,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/readahead.c linux-5.4.21
 +   fill-column: 80
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/readahead.h linux-5.4.21/fs/reiser4/readahead.h
---- linux-5.4.21.orig/fs/reiser4/readahead.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/readahead.h	2020-02-22 13:44:51.331993788 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/readahead.h linux-5.10.2/fs/reiser4/readahead.h
+--- linux-5.10.2.orig/fs/reiser4/readahead.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/readahead.h	2020-12-23 00:43:23.526683669 +0100
 @@ -0,0 +1,42 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -64168,9 +64173,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/readahead.h linux-5.4.21
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/README linux-5.4.21/fs/reiser4/README
---- linux-5.4.21.orig/fs/reiser4/README	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/README	2020-02-22 13:44:51.331993788 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/README linux-5.10.2/fs/reiser4/README
+--- linux-5.10.2.orig/fs/reiser4/README	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/README	2020-12-23 00:43:23.526683669 +0100
 @@ -0,0 +1,128 @@
 +[LICENSING]
 +
@@ -64300,9 +64305,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/README linux-5.4.21/fs/r
 +Edward Shishkin wrote cryptcompress file plugin (which manages files
 +built of encrypted and(or) compressed bodies) and other plugins related
 +to transparent encryption and compression support.
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/reiser4.h linux-5.4.21/fs/reiser4/reiser4.h
---- linux-5.4.21.orig/fs/reiser4/reiser4.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/reiser4.h	2020-02-22 13:44:51.331993788 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/reiser4.h linux-5.10.2/fs/reiser4/reiser4.h
+--- linux-5.10.2.orig/fs/reiser4/reiser4.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/reiser4.h	2020-12-23 00:43:23.527683683 +0100
 @@ -0,0 +1,260 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -64564,9 +64569,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/reiser4.h linux-5.4.21/f
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/safe_link.c linux-5.4.21/fs/reiser4/safe_link.c
---- linux-5.4.21.orig/fs/reiser4/safe_link.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/safe_link.c	2020-02-22 13:44:51.331993788 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/safe_link.c linux-5.10.2/fs/reiser4/safe_link.c
+--- linux-5.10.2.orig/fs/reiser4/safe_link.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/safe_link.c	2020-12-23 00:43:23.527683683 +0100
 @@ -0,0 +1,354 @@
 +/* Copyright 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -64922,9 +64927,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/safe_link.c linux-5.4.21
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/safe_link.h linux-5.4.21/fs/reiser4/safe_link.h
---- linux-5.4.21.orig/fs/reiser4/safe_link.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/safe_link.h	2020-02-22 13:44:51.331993788 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/safe_link.h linux-5.10.2/fs/reiser4/safe_link.h
+--- linux-5.10.2.orig/fs/reiser4/safe_link.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/safe_link.h	2020-12-23 00:43:23.527683683 +0100
 @@ -0,0 +1,29 @@
 +/* Copyright 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -64955,9 +64960,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/safe_link.h linux-5.4.21
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/seal.c linux-5.4.21/fs/reiser4/seal.c
---- linux-5.4.21.orig/fs/reiser4/seal.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/seal.c	2020-02-22 13:44:51.331993788 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/seal.c linux-5.10.2/fs/reiser4/seal.c
+--- linux-5.10.2.orig/fs/reiser4/seal.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/seal.c	2020-12-23 00:43:23.527683683 +0100
 @@ -0,0 +1,219 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +/* Seals implementation. */
@@ -65178,9 +65183,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/seal.c linux-5.4.21/fs/r
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/seal.h linux-5.4.21/fs/reiser4/seal.h
---- linux-5.4.21.orig/fs/reiser4/seal.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/seal.h	2020-02-22 13:44:51.331993788 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/seal.h linux-5.10.2/fs/reiser4/seal.h
+--- linux-5.10.2.orig/fs/reiser4/seal.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/seal.h	2020-12-23 00:43:23.527683683 +0100
 @@ -0,0 +1,49 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -65231,9 +65236,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/seal.h linux-5.4.21/fs/r
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/search.c linux-5.4.21/fs/reiser4/search.c
---- linux-5.4.21.orig/fs/reiser4/search.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/search.c	2020-02-22 13:44:51.332993801 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/search.c linux-5.10.2/fs/reiser4/search.c
+--- linux-5.10.2.orig/fs/reiser4/search.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/search.c	2020-12-23 00:43:23.527683683 +0100
 @@ -0,0 +1,1612 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -66847,9 +66852,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/search.c linux-5.4.21/fs
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/status_flags.c linux-5.4.21/fs/reiser4/status_flags.c
---- linux-5.4.21.orig/fs/reiser4/status_flags.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/status_flags.c	2020-02-22 13:44:51.332993801 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/status_flags.c linux-5.10.2/fs/reiser4/status_flags.c
+--- linux-5.10.2.orig/fs/reiser4/status_flags.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/status_flags.c	2020-12-23 00:43:23.527683683 +0100
 @@ -0,0 +1,180 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -67031,9 +67036,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/status_flags.c linux-5.4
 +	get_super_private(sb)->status_bio = NULL;
 +	return 0;
 +}
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/status_flags.h linux-5.4.21/fs/reiser4/status_flags.h
---- linux-5.4.21.orig/fs/reiser4/status_flags.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/status_flags.h	2020-02-22 13:44:51.332993801 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/status_flags.h linux-5.10.2/fs/reiser4/status_flags.h
+--- linux-5.10.2.orig/fs/reiser4/status_flags.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/status_flags.h	2020-12-23 00:43:23.527683683 +0100
 @@ -0,0 +1,47 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -67082,9 +67087,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/status_flags.h linux-5.4
 +int reiser4_status_finish(void);
 +
 +#endif
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/super.c linux-5.4.21/fs/reiser4/super.c
---- linux-5.4.21.orig/fs/reiser4/super.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/super.c	2020-02-22 13:44:51.332993801 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/super.c linux-5.10.2/fs/reiser4/super.c
+--- linux-5.10.2.orig/fs/reiser4/super.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/super.c	2020-12-23 00:43:23.527683683 +0100
 @@ -0,0 +1,306 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -67392,9 +67397,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/super.c linux-5.4.21/fs/
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/super.h linux-5.4.21/fs/reiser4/super.h
---- linux-5.4.21.orig/fs/reiser4/super.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/super.h	2020-02-22 13:44:51.332993801 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/super.h linux-5.10.2/fs/reiser4/super.h
+--- linux-5.10.2.orig/fs/reiser4/super.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/super.h	2020-12-23 00:43:23.528683697 +0100
 @@ -0,0 +1,456 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -67852,10 +67857,10 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/super.h linux-5.4.21/fs/
 + * fill-column: 120
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/super_ops.c linux-5.4.21/fs/reiser4/super_ops.c
---- linux-5.4.21.orig/fs/reiser4/super_ops.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/super_ops.c	2020-02-22 13:44:51.332993801 +0100
-@@ -0,0 +1,790 @@
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/super_ops.c linux-5.10.2/fs/reiser4/super_ops.c
+--- linux-5.10.2.orig/fs/reiser4/super_ops.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/super_ops.c	2020-12-23 00:47:22.589104670 +0100
+@@ -0,0 +1,789 @@
 +/* Copyright 2005 by Hans Reiser, licensing governed by
 + * reiser4/README */
 +
@@ -68241,6 +68246,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/super_ops.c linux-5.4.21
 +		spin_lock(&wb->list_lock);
 +		goto skip;
 +	}
++	ctx->flush_bd_task = 1;
 +	/*
 +	 * call reiser4_writepages for each of dirty inodes to turn
 +	 * dirty pages into transactions if they were not yet.
@@ -68437,14 +68443,12 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/super_ops.c linux-5.4.21
 +	sbinfo->debugfs_root = debugfs_create_dir(super->s_id,
 +						  reiser4_debugfs_root);
 +	if (sbinfo->debugfs_root) {
-+		sbinfo->tmgr.debugfs_atom_count =
-+			debugfs_create_u32("atom_count", S_IFREG|S_IRUSR,
-+					   sbinfo->debugfs_root,
-+					   &sbinfo->tmgr.atom_count);
-+		sbinfo->tmgr.debugfs_id_count =
-+			debugfs_create_u32("id_count", S_IFREG|S_IRUSR,
-+					   sbinfo->debugfs_root,
-+					   &sbinfo->tmgr.id_count);
++		debugfs_create_u32("atom_count", S_IFREG|S_IRUSR,
++				   sbinfo->debugfs_root,
++				   &sbinfo->tmgr.atom_count);
++		debugfs_create_u32("id_count", S_IFREG|S_IRUSR,
++				   sbinfo->debugfs_root,
++				   &sbinfo->tmgr.id_count);
 +	}
 +	printk("reiser4: %s: using %s.\n", super->s_id,
 +	       txmod_plugin_by_id(sbinfo->txmod)->h.desc);
@@ -68646,9 +68650,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/super_ops.c linux-5.4.21
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tap.c linux-5.4.21/fs/reiser4/tap.c
---- linux-5.4.21.orig/fs/reiser4/tap.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/tap.c	2020-02-22 13:44:51.332993801 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/tap.c linux-5.10.2/fs/reiser4/tap.c
+--- linux-5.10.2.orig/fs/reiser4/tap.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/tap.c	2020-12-23 00:43:23.528683697 +0100
 @@ -0,0 +1,376 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -69026,9 +69030,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tap.c linux-5.4.21/fs/re
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tap.h linux-5.4.21/fs/reiser4/tap.h
---- linux-5.4.21.orig/fs/reiser4/tap.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/tap.h	2020-02-22 13:44:51.332993801 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/tap.h linux-5.10.2/fs/reiser4/tap.h
+--- linux-5.10.2.orig/fs/reiser4/tap.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/tap.h	2020-12-23 00:43:23.528683697 +0100
 @@ -0,0 +1,70 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -69100,9 +69104,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tap.h linux-5.4.21/fs/re
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tree.c linux-5.4.21/fs/reiser4/tree.c
---- linux-5.4.21.orig/fs/reiser4/tree.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/tree.c	2020-02-22 13:44:51.333993816 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/tree.c linux-5.10.2/fs/reiser4/tree.c
+--- linux-5.10.2.orig/fs/reiser4/tree.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/tree.c	2020-12-23 00:43:23.528683697 +0100
 @@ -0,0 +1,1884 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -70988,9 +70992,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tree.c linux-5.4.21/fs/r
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tree.h linux-5.4.21/fs/reiser4/tree.h
---- linux-5.4.21.orig/fs/reiser4/tree.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/tree.h	2020-02-22 13:44:51.333993816 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/tree.h linux-5.10.2/fs/reiser4/tree.h
+--- linux-5.10.2.orig/fs/reiser4/tree.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/tree.h	2020-12-23 00:43:23.528683697 +0100
 @@ -0,0 +1,577 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -71569,9 +71573,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tree.h linux-5.4.21/fs/r
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tree_mod.c linux-5.4.21/fs/reiser4/tree_mod.c
---- linux-5.4.21.orig/fs/reiser4/tree_mod.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/tree_mod.c	2020-02-22 13:44:51.333993816 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/tree_mod.c linux-5.10.2/fs/reiser4/tree_mod.c
+--- linux-5.10.2.orig/fs/reiser4/tree_mod.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/tree_mod.c	2020-12-23 00:43:23.528683697 +0100
 @@ -0,0 +1,387 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -71960,9 +71964,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tree_mod.c linux-5.4.21/
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tree_mod.h linux-5.4.21/fs/reiser4/tree_mod.h
---- linux-5.4.21.orig/fs/reiser4/tree_mod.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/tree_mod.h	2020-02-22 13:44:51.333993816 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/tree_mod.h linux-5.10.2/fs/reiser4/tree_mod.h
+--- linux-5.10.2.orig/fs/reiser4/tree_mod.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/tree_mod.h	2020-12-23 00:43:23.529683711 +0100
 @@ -0,0 +1,29 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -71993,9 +71997,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tree_mod.h linux-5.4.21/
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tree_walk.c linux-5.4.21/fs/reiser4/tree_walk.c
---- linux-5.4.21.orig/fs/reiser4/tree_walk.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/tree_walk.c	2020-02-22 13:44:51.333993816 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/tree_walk.c linux-5.10.2/fs/reiser4/tree_walk.c
+--- linux-5.10.2.orig/fs/reiser4/tree_walk.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/tree_walk.c	2020-12-23 00:43:23.529683711 +0100
 @@ -0,0 +1,927 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -72924,9 +72928,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tree_walk.c linux-5.4.21
 +   fill-column: 80
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tree_walk.h linux-5.4.21/fs/reiser4/tree_walk.h
---- linux-5.4.21.orig/fs/reiser4/tree_walk.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/tree_walk.h	2020-02-22 13:44:51.333993816 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/tree_walk.h linux-5.10.2/fs/reiser4/tree_walk.h
+--- linux-5.10.2.orig/fs/reiser4/tree_walk.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/tree_walk.h	2020-12-23 00:43:23.529683711 +0100
 @@ -0,0 +1,125 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -73053,9 +73057,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/tree_walk.h linux-5.4.21
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/txnmgr.c linux-5.4.21/fs/reiser4/txnmgr.c
---- linux-5.4.21.orig/fs/reiser4/txnmgr.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/txnmgr.c	2020-02-22 13:44:51.334993829 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/txnmgr.c linux-5.10.2/fs/reiser4/txnmgr.c
+--- linux-5.10.2.orig/fs/reiser4/txnmgr.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/txnmgr.c	2020-12-23 00:47:22.589104670 +0100
 @@ -0,0 +1,3163 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -74472,7 +74476,7 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/txnmgr.c linux-5.4.21/fs
 +		 * Write throttling is case of no one atom can be
 +		 * flushed/committed.
 +		 */
-+		if (!current_is_flush_bd_task()) {
++		if (!ctx->flush_bd_task) {
 +			list_for_each_entry(atom, &tmgr->atoms_list, atom_link) {
 +				spin_lock_atom(atom);
 +				/* Repeat the check from the above. */
@@ -76220,9 +76224,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/txnmgr.c linux-5.4.21/fs
 + * fill-column: 79
 + * End:
 + */
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/txnmgr.h linux-5.4.21/fs/reiser4/txnmgr.h
---- linux-5.4.21.orig/fs/reiser4/txnmgr.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/txnmgr.h	2020-02-22 13:44:51.334993829 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/txnmgr.h linux-5.10.2/fs/reiser4/txnmgr.h
+--- linux-5.10.2.orig/fs/reiser4/txnmgr.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/txnmgr.h	2020-12-23 00:43:23.530683725 +0100
 @@ -0,0 +1,755 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -76979,9 +76983,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/txnmgr.h linux-5.4.21/fs
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/type_safe_hash.h linux-5.4.21/fs/reiser4/type_safe_hash.h
---- linux-5.4.21.orig/fs/reiser4/type_safe_hash.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/type_safe_hash.h	2020-02-22 13:44:51.334993829 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/type_safe_hash.h linux-5.10.2/fs/reiser4/type_safe_hash.h
+--- linux-5.10.2.orig/fs/reiser4/type_safe_hash.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/type_safe_hash.h	2020-12-23 00:43:23.530683725 +0100
 @@ -0,0 +1,320 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -77303,9 +77307,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/type_safe_hash.h linux-5
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/vfs_ops.c linux-5.4.21/fs/reiser4/vfs_ops.c
---- linux-5.4.21.orig/fs/reiser4/vfs_ops.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/vfs_ops.c	2020-02-22 13:44:51.334993829 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/vfs_ops.c linux-5.10.2/fs/reiser4/vfs_ops.c
+--- linux-5.10.2.orig/fs/reiser4/vfs_ops.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/vfs_ops.c	2020-12-23 00:43:23.530683725 +0100
 @@ -0,0 +1,260 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -77567,9 +77571,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/vfs_ops.c linux-5.4.21/f
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/vfs_ops.h linux-5.4.21/fs/reiser4/vfs_ops.h
---- linux-5.4.21.orig/fs/reiser4/vfs_ops.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/vfs_ops.h	2020-02-22 13:44:51.334993829 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/vfs_ops.h linux-5.10.2/fs/reiser4/vfs_ops.h
+--- linux-5.10.2.orig/fs/reiser4/vfs_ops.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/vfs_ops.h	2020-12-23 00:43:23.530683725 +0100
 @@ -0,0 +1,60 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -77631,9 +77635,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/vfs_ops.h linux-5.4.21/f
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/wander.c linux-5.4.21/fs/reiser4/wander.c
---- linux-5.4.21.orig/fs/reiser4/wander.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/wander.c	2020-02-22 13:44:51.335993843 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/wander.c linux-5.10.2/fs/reiser4/wander.c
+--- linux-5.10.2.orig/fs/reiser4/wander.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/wander.c	2020-12-23 00:43:23.530683725 +0100
 @@ -0,0 +1,1757 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -79392,9 +79396,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/wander.c linux-5.4.21/fs
 +   fill-column: 80
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/wander.h linux-5.4.21/fs/reiser4/wander.h
---- linux-5.4.21.orig/fs/reiser4/wander.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/wander.h	2020-02-22 13:44:51.335993843 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/wander.h linux-5.10.2/fs/reiser4/wander.h
+--- linux-5.10.2.orig/fs/reiser4/wander.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/wander.h	2020-12-23 00:43:23.530683725 +0100
 @@ -0,0 +1,135 @@
 +/* Copyright 2002, 2003 by Hans Reiser, licensing governed by reiser4/README */
 +
@@ -79531,9 +79535,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/wander.h linux-5.4.21/fs
 +   scroll-step: 1
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/writeout.h linux-5.4.21/fs/reiser4/writeout.h
---- linux-5.4.21.orig/fs/reiser4/writeout.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/writeout.h	2020-02-22 13:44:51.335993843 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/writeout.h linux-5.10.2/fs/reiser4/writeout.h
+--- linux-5.10.2.orig/fs/reiser4/writeout.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/writeout.h	2020-12-23 00:43:23.530683725 +0100
 @@ -0,0 +1,21 @@
 +/* Copyright 2002, 2003, 2004 by Hans Reiser, licensing governed by reiser4/README  */
 +
@@ -79556,9 +79560,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/writeout.h linux-5.4.21/
 +   fill-column: 80
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/znode.c linux-5.4.21/fs/reiser4/znode.c
---- linux-5.4.21.orig/fs/reiser4/znode.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/znode.c	2020-02-22 13:44:51.335993843 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/znode.c linux-5.10.2/fs/reiser4/znode.c
+--- linux-5.10.2.orig/fs/reiser4/znode.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/znode.c	2020-12-23 00:43:23.531683739 +0100
 @@ -0,0 +1,1027 @@
 +/* Copyright 2001, 2002, 2003 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -80587,9 +80591,9 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/znode.c linux-5.4.21/fs/
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/znode.h linux-5.4.21/fs/reiser4/znode.h
---- linux-5.4.21.orig/fs/reiser4/znode.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.4.21/fs/reiser4/znode.h	2020-02-22 13:44:51.335993843 +0100
+diff -urN --no-dereference linux-5.10.2.orig/fs/reiser4/znode.h linux-5.10.2/fs/reiser4/znode.h
+--- linux-5.10.2.orig/fs/reiser4/znode.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.10.2/fs/reiser4/znode.h	2020-12-23 00:43:23.531683739 +0100
 @@ -0,0 +1,435 @@
 +/* Copyright 2001, 2002, 2003, 2004 by Hans Reiser, licensing governed by
 + * reiser4/README */
@@ -81026,10 +81030,10 @@ diff -urN --no-dereference linux-5.4.21.orig/fs/reiser4/znode.h linux-5.4.21/fs/
 +   fill-column: 120
 +   End:
 +*/
-diff -urN --no-dereference linux-5.4.21.orig/include/linux/fs.h linux-5.4.21/include/linux/fs.h
---- linux-5.4.21.orig/include/linux/fs.h	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/include/linux/fs.h	2020-02-22 13:44:51.336993857 +0100
-@@ -250,7 +250,7 @@
+diff -urN --no-dereference linux-5.10.2.orig/include/linux/fs.h linux-5.10.2/include/linux/fs.h
+--- linux-5.10.2.orig/include/linux/fs.h	2020-12-21 13:30:08.000000000 +0100
++++ linux-5.10.2/include/linux/fs.h	2020-12-23 00:43:23.531683739 +0100
+@@ -245,7 +245,7 @@
   */
  #define FILESYSTEM_MAX_STACK_DEPTH 2
  
@@ -81038,7 +81042,7 @@ diff -urN --no-dereference linux-5.4.21.orig/include/linux/fs.h linux-5.4.21/inc
   * enum positive_aop_returns - aop return codes with specific semantics
   *
   * @AOP_WRITEPAGE_ACTIVATE: Informs the caller that page writeback has
-@@ -260,7 +260,7 @@
+@@ -255,7 +255,7 @@
   * 			    be a candidate for writeback again in the near
   * 			    future.  Other callers must be careful to unlock
   * 			    the page if they get this return.  Returned by
@@ -81047,16 +81051,16 @@ diff -urN --no-dereference linux-5.4.21.orig/include/linux/fs.h linux-5.4.21/inc
   *
   * @AOP_TRUNCATED_PAGE: The AOP method that was handed a locked page has
   *  			unlocked it and the page might have been truncated.
-@@ -292,6 +292,8 @@
- struct page;
+@@ -288,6 +288,8 @@
  struct address_space;
  struct writeback_control;
+ struct readahead_control;
 +struct wb_writeback_work;
 +struct bdi_writeback;
  
  /*
   * Write life time hint values.
-@@ -407,6 +409,7 @@
+@@ -413,6 +415,7 @@
  	int (*swap_activate)(struct swap_info_struct *sis, struct file *file,
  				sector_t *span);
  	void (*swap_deactivate)(struct file *file);
@@ -81064,7 +81068,7 @@ diff -urN --no-dereference linux-5.4.21.orig/include/linux/fs.h linux-5.4.21/inc
  };
  
  extern const struct address_space_operations empty_aops;
-@@ -1958,6 +1961,14 @@
+@@ -1951,6 +1954,14 @@
  	int (*remount_fs) (struct super_block *, int *, char *);
  	void (*umount_begin) (struct super_block *);
  
@@ -81079,7 +81083,7 @@ diff -urN --no-dereference linux-5.4.21.orig/include/linux/fs.h linux-5.4.21/inc
  	int (*show_options)(struct seq_file *, struct dentry *);
  	int (*show_devname)(struct seq_file *, struct dentry *);
  	int (*show_path)(struct seq_file *, struct dentry *);
-@@ -2730,6 +2741,13 @@
+@@ -2620,6 +2631,13 @@
  extern int invalidate_inode_pages2_range(struct address_space *mapping,
  					 pgoff_t start, pgoff_t end);
  extern int write_inode_now(struct inode *, int);
@@ -81093,7 +81097,7 @@ diff -urN --no-dereference linux-5.4.21.orig/include/linux/fs.h linux-5.4.21/inc
  extern int filemap_fdatawrite(struct address_space *);
  extern int filemap_flush(struct address_space *);
  extern int filemap_fdatawait_keep_errors(struct address_space *mapping);
-@@ -3004,7 +3022,7 @@
+@@ -2855,7 +2873,7 @@
  extern ssize_t kernel_write(struct file *, const void *, size_t, loff_t *);
  extern ssize_t __kernel_write(struct file *, const void *, size_t, loff_t *);
  extern struct file * open_exec(const char *);
@@ -81102,7 +81106,7 @@ diff -urN --no-dereference linux-5.4.21.orig/include/linux/fs.h linux-5.4.21/inc
  /* fs/dcache.c -- generic fs support functions */
  extern bool is_subdir(struct dentry *, struct dentry *);
  extern bool path_is_under(const struct path *, const struct path *);
-@@ -3014,6 +3032,8 @@
+@@ -2865,6 +2883,8 @@
  #include <linux/err.h>
  
  /* needed for stackable file system support */
@@ -81111,7 +81115,7 @@ diff -urN --no-dereference linux-5.4.21.orig/include/linux/fs.h linux-5.4.21/inc
  extern loff_t default_llseek(struct file *file, loff_t offset, int whence);
  
  extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
-@@ -3108,6 +3128,8 @@
+@@ -2973,6 +2993,8 @@
  extern ssize_t generic_file_direct_write(struct kiocb *, struct iov_iter *);
  extern ssize_t generic_perform_write(struct file *, struct iov_iter *, loff_t);
  
@@ -81120,10 +81124,10 @@ diff -urN --no-dereference linux-5.4.21.orig/include/linux/fs.h linux-5.4.21/inc
  ssize_t vfs_iter_read(struct file *file, struct iov_iter *iter, loff_t *ppos,
  		rwf_t flags);
  ssize_t vfs_iter_write(struct file *file, struct iov_iter *iter, loff_t *ppos,
-diff -urN --no-dereference linux-5.4.21.orig/include/linux/mm.h linux-5.4.21/include/linux/mm.h
---- linux-5.4.21.orig/include/linux/mm.h	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/include/linux/mm.h	2020-02-22 13:44:51.336993857 +0100
-@@ -1598,6 +1598,7 @@
+diff -urN --no-dereference linux-5.10.2.orig/include/linux/mm.h linux-5.10.2/include/linux/mm.h
+--- linux-5.10.2.orig/include/linux/mm.h	2020-12-21 13:30:08.000000000 +0100
++++ linux-5.10.2/include/linux/mm.h	2020-12-23 00:43:23.532683753 +0100
+@@ -1813,6 +1813,7 @@
  			  struct bdi_writeback *wb);
  int set_page_dirty(struct page *page);
  int set_page_dirty_lock(struct page *page);
@@ -81131,34 +81135,10 @@ diff -urN --no-dereference linux-5.4.21.orig/include/linux/mm.h linux-5.4.21/inc
  void __cancel_dirty_page(struct page *page);
  static inline void cancel_dirty_page(struct page *page)
  {
-diff -urN --no-dereference linux-5.4.21.orig/include/linux/sched.h linux-5.4.21/include/linux/sched.h
---- linux-5.4.21.orig/include/linux/sched.h	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/include/linux/sched.h	2020-02-22 13:44:51.338993885 +0100
-@@ -1442,6 +1442,7 @@
- /*
-  * Per process flags
-  */
-+#define PF_FLUSHER              0x00000001      /* responsible for disk writeback */
- #define PF_IDLE			0x00000002	/* I am an IDLE thread */
- #define PF_EXITING		0x00000004	/* Getting shut down */
- #define PF_VCPU			0x00000010	/* I'm a virtual CPU */
-diff -urN --no-dereference linux-5.4.21.orig/include/linux/writeback.h linux-5.4.21/include/linux/writeback.h
---- linux-5.4.21.orig/include/linux/writeback.h	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/include/linux/writeback.h	2020-02-22 13:44:51.338993885 +0100
-@@ -17,6 +17,12 @@
- 
- DECLARE_PER_CPU(int, dirty_throttle_leaks);
- 
-+static inline int is_flush_bd_task(struct task_struct *task)
-+{
-+       return task->flags & PF_FLUSHER;
-+}
-+#define current_is_flush_bd_task()  is_flush_bd_task(current)
-+
- /*
-  * The 1/4 region under the global dirty thresh is for smooth dirty throttling:
-  *
-@@ -185,8 +191,28 @@
+diff -urN --no-dereference linux-5.10.2.orig/include/linux/writeback.h linux-5.10.2/include/linux/writeback.h
+--- linux-5.10.2.orig/include/linux/writeback.h	2020-12-21 13:30:08.000000000 +0100
++++ linux-5.10.2/include/linux/writeback.h	2020-12-23 00:47:22.590104685 +0100
+@@ -185,8 +185,27 @@
  }
  
  /*
@@ -81167,7 +81147,6 @@ diff -urN --no-dereference linux-5.4.21.orig/include/linux/writeback.h linux-5.4
 +struct wb_writeback_work {
 +	long nr_pages;
 +	struct super_block *sb;
-+	unsigned long *older_than_this;
 +	enum writeback_sync_modes sync_mode;
 +	unsigned int tagged_writepages:1;
 +	unsigned int for_kupdate:1;
@@ -81188,10 +81167,10 @@ diff -urN --no-dereference linux-5.4.21.orig/include/linux/writeback.h linux-5.4
  struct bdi_writeback;
  void writeback_inodes_sb(struct super_block *, enum wb_reason reason);
  void writeback_inodes_sb_nr(struct super_block *, unsigned long nr,
-diff -urN --no-dereference linux-5.4.21.orig/mm/filemap.c linux-5.4.21/mm/filemap.c
---- linux-5.4.21.orig/mm/filemap.c	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/mm/filemap.c	2020-02-22 13:44:51.338993885 +0100
-@@ -1841,6 +1841,7 @@
+diff -urN --no-dereference linux-5.10.2.orig/mm/filemap.c linux-5.10.2/mm/filemap.c
+--- linux-5.10.2.orig/mm/filemap.c	2020-12-21 13:30:08.000000000 +0100
++++ linux-5.10.2/mm/filemap.c	2020-12-23 00:43:23.533683767 +0100
+@@ -2018,6 +2018,7 @@
  
  	return ret;
  }
@@ -81199,10 +81178,10 @@ diff -urN --no-dereference linux-5.4.21.orig/mm/filemap.c linux-5.4.21/mm/filema
  
  /**
   * find_get_pages_contig - gang contiguous pagecache lookup
-diff -urN --no-dereference linux-5.4.21.orig/mm/page-writeback.c linux-5.4.21/mm/page-writeback.c
---- linux-5.4.21.orig/mm/page-writeback.c	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/mm/page-writeback.c	2020-02-22 13:44:51.339993899 +0100
-@@ -2520,6 +2520,35 @@
+diff -urN --no-dereference linux-5.10.2.orig/mm/page-writeback.c linux-5.10.2/mm/page-writeback.c
+--- linux-5.10.2.orig/mm/page-writeback.c	2020-12-21 13:30:08.000000000 +0100
++++ linux-5.10.2/mm/page-writeback.c	2020-12-23 00:43:23.534683781 +0100
+@@ -2528,6 +2528,35 @@
  EXPORT_SYMBOL(account_page_redirty);
  
  /*
@@ -81238,9 +81217,9 @@ diff -urN --no-dereference linux-5.4.21.orig/mm/page-writeback.c linux-5.4.21/mm
   * When a writepage implementation decides that it doesn't want to write this
   * page for some reason, it should redirty the locked page via
   * redirty_page_for_writepage() and it should then unlock the page and return 0
-diff -urN --no-dereference linux-5.4.21.orig/mm/truncate.c linux-5.4.21/mm/truncate.c
---- linux-5.4.21.orig/mm/truncate.c	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/mm/truncate.c	2020-02-22 13:44:51.339993899 +0100
+diff -urN --no-dereference linux-5.10.2.orig/mm/truncate.c linux-5.10.2/mm/truncate.c
+--- linux-5.10.2.orig/mm/truncate.c	2020-12-21 13:30:08.000000000 +0100
++++ linux-5.10.2/mm/truncate.c	2020-12-23 00:43:23.534683781 +0100
 @@ -360,6 +360,13 @@
  				continue;
  			}
@@ -81255,10 +81234,10 @@ diff -urN --no-dereference linux-5.4.21.orig/mm/truncate.c linux-5.4.21/mm/trunc
  		}
  		for (i = 0; i < pagevec_count(&locked_pvec); i++)
  			truncate_cleanup_page(mapping, locked_pvec.pages[i]);
-diff -urN --no-dereference linux-5.4.21.orig/mm/vmscan.c linux-5.4.21/mm/vmscan.c
---- linux-5.4.21.orig/mm/vmscan.c	2020-02-19 19:53:10.000000000 +0100
-+++ linux-5.4.21/mm/vmscan.c	2020-02-22 13:44:51.340993913 +0100
-@@ -3070,7 +3070,11 @@
+diff -urN --no-dereference linux-5.10.2.orig/mm/vmscan.c linux-5.10.2/mm/vmscan.c
+--- linux-5.10.2.orig/mm/vmscan.c	2020-12-21 13:30:08.000000000 +0100
++++ linux-5.10.2/mm/vmscan.c	2020-12-23 00:43:23.534683781 +0100
+@@ -3016,7 +3016,11 @@
  	pg_data_t *last_pgdat;
  	struct zoneref *z;
  	struct zone *zone;
@@ -81269,8 +81248,8 @@ diff -urN --no-dereference linux-5.4.21.orig/mm/vmscan.c linux-5.4.21/mm/vmscan.
 +
  	delayacct_freepages_start();
  
- 	if (global_reclaim(sc))
-@@ -3107,6 +3111,8 @@
+ 	if (!cgroup_reclaim(sc))
+@@ -3061,6 +3065,8 @@
  	}
  
  	delayacct_freepages_end();
