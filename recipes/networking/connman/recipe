@@ -19,7 +19,7 @@ set -e
 
 program=connman
 version=1.38
-release=3
+release=4
 
 # Define a category for the output of the package name
 pkgcategory=networking
@@ -60,7 +60,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
@@ -70,6 +71,7 @@ build()
      --enable-pie \
      --enable-iwd \
      --disable-wispr \
+     --disable-wireguard \
      --with-firewall=iptables \
      --with-dns-backend=internal \
      --build="$(gcc -dumpmachine)"
@@ -77,7 +79,7 @@ build()
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
-    # Install perp service for connman
+    # Install perp service for CONNMAN
 
     mkdir -p "${destdir}/etc/perp/connmand" \
              "${destdir}/var/lib/connman"

@@ -15,7 +15,13 @@ start()
 {
     echo "*** ${SVNAME}: Starting connmand ..."
 
-    mkdir -p /var/run/connman
+    # Check first if 'dbus' is running before to run 'connmand'
+    perpok dbus || exit $?
+
+    if test ! -e /var/run/connman
+    then
+        mkdir -p /var/run/connman || exit $?
+    fi
     exec /usr/sbin/connmand --nodaemon
 }
 
