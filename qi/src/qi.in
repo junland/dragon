@@ -324,7 +324,7 @@ mode_build()
         then
             warn \
              ""                                                          \
-             "The recipe is more RECENT than the detected package:"      \
+             "This recipe is more RECENT than the produced package:"     \
              ""                                                          \
              "$( stat -c "%y %n" "${CWD}/$recipe" )"                     \
              "$( stat -c "%y %n" "${outdir}/${full_pkgname}.tlz" )"      \
@@ -341,12 +341,12 @@ mode_build()
              "$( stat -c "%y %n" "${CWD}/post-install" )"                \
              "$( stat -c "%y %n" "${CWD}/$recipe" )"                     \
              ""                                                          \
-             "    The recipe will be re-processed ..."                   \
+             "    This recipe will be re-processed ..."                  \
              ""
              touch "${CWD}/$recipe"
         elif test "$opt_skipqsts" = opt_skipqsts
         then
-            warn "Recipe for '${full_pkgname}.tlz':  Ignored." ""
+            warn "Recipe for '${full_pkgname}.tlz':  [Ignored]." ""
             return 0
         else
             warn \
@@ -946,15 +946,16 @@ mode_upgrade()
     # Ignore some signals until the upgrade process is complete
     trap "" HUP INT QUIT ABRT TERM
 
-    # Check blacklisted packages
+    # Check blacklisted packages before to proceed with the upgrade
 
     echo "=== Checking blacklist ..."
     for item in $blacklist
     do
         case $item in
-        ${incoming}*)
+        "${incoming%@*}"*)
             warn \
-             "Package name declared on the blacklist \"${incoming}\"."      \
+             "A BLACKLISTED package name has been detected:"                \
+             "-> $incoming"                                                 \
              ""                                                             \
              "  This package will be INSTALLED instead of being upgraded."
              opt_prune=opt_prune mode_install "$1"
