@@ -1,0 +1,111 @@
+# Build recipe for openjpeg.
+#
+# Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
+# Copyright (c) 2021 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Exit immediately on any error
+set -e
+
+program=openjpeg
+version=2.4.0
+release=1
+
+# Define a category for the output of the package name
+pkgcategory=libs
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=https://github.com/uclouvain/openjpeg/archive/v${version}/$tarname
+
+description="
+OpenJPEG is an open-source JPEG 2000 codec.
+
+OpenJPEG is written in C language.  It has been developed in order to
+promote the use of JPEG 2000, a still-image compression standard from
+the Joint Photographic Experts Group (JPEG).  Since may 2015, it is
+officially recognized by ISO/IEC and ITU-T as a JPEG 2000 Reference
+Software.
+"
+
+homepage=https://www.openjpeg.org
+license="BSD 2-clause"
+
+# Source documentation
+docs="AUTHORS.md LICENSE CHANGELOG.md NEWS.md README.md THANKS.md"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+    
+    rm -rf BUILD
+    mkdir BUILD
+    cd BUILD
+
+    cmake \
+     -DCMAKE_C_FLAGS:STRING="$QICFLAGS"               \
+     -DCMAKE_CXX_FLAGS:STRING="$QICXXFLAGS"           \
+     -DCMAKE_EXE_LINKER_FLAGS:STRING="$QILDFLAGS"     \
+     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$QILDFLAGS"  \
+     -DCMAKE_INSTALL_PREFIX=/usr                      \
+     -DOPENJPEG_INSTALL_LIB_DIR=lib${libSuffix}       \
+     -DCMAKE_INSTALL_MANDIR=$mandir                   \
+     -DCMAKE_INSTALL_DOCDIR=$docsdir                  \
+     -DCMAKE_BUILD_TYPE=Release                       \
+     -DCMAKE_VERBOSE_MAKEFILE=ON                      \
+     -DCMAKE_SKIP_INSTALL_RPATH=YES                   \
+     -DBUILD_STATIC_LIBS=OFF                          \
+     -G Ninja ..
+
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
+
+    # Leave the temporary BUILD directory
+    cd .. 
+
+    # Install manual pages (manually)
+    cd doc
+    for file in man/man?/*
+    do
+        install -p -m 644 "$file" -D "${destdir}/usr/share/$file"
+    done
+    unset -v file
+    cd ..
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 '{}' +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
