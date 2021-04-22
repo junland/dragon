@@ -30,20 +30,24 @@ then
 fi
 if ! type mkisofs > /dev/null
 then
-    echo "" 1>&2
-    echo "    \`mkisofs' is not found in your PATH ..." 1>&2
+    printf '%s\n' \
+     "" \
+     "    \`mkisofs' was not found in your PATH ..." \
+     "" 1>&2
     if type genisoimage > /dev/null
     then
         MKISOFS=genisoimage
     else
-        echo "\`genisoimage' was not found in your PATH." 1>&2
-        echo "" 1>&2
-        echo "Please install one of these programs to make the ISO image." 1>&2
-        echo "" 1>&2
+        printf '%s\n' \
+        "    \`genisoimage' was not found in your PATH." \
+        "" \
+        "Please install one of these programs to make the ISO image." \
+        "" 1>&2
         exit 2;
     fi
 fi
-echo "The \`${MKISOFS}' command will be used to generate the .iso"
+echo "The \`${MKISOFS}' command will be used to generate the ISO image."
+echo ""
 
 # This depends on the existence of the stage 1
 
@@ -62,13 +66,18 @@ fi
 STAGE1="${output}/stage1"
 CDROM="${rootdir}/cdrom"
 
+#
 # Re-create CD tree
+#
 
 echo "Re-creating CD tree (${CDROM}) ..."
+echo ""
 rm -rf -- "$CDROM"
 mkdir -p -- "${CDROM}/isolinux"
 
+#
 # Copy kernel installation to isolinux/
+#
 
 cd -- "${STAGE1}/boot"
 
@@ -78,15 +87,65 @@ do
 done
 unset file
 
+#
 # Copy local isolinux files and initramfs for ISOLINUX
+#
 
 cp -p "${worktree}"/archive/isolinux/* "${CDROM}/isolinux/"
+cp -p "${rootdir}/initrd/initrd.img" "${CDROM}/isolinux/"
+
+# Clean up (we don't want this on the final ISO)
 rm -f "${CDROM}/isolinux/isohybrid.pl" \
       "${CDROM}/isolinux/generate-keymap"
 
-cp -p "${rootdir}/initrd/initrd.img" "${CDROM}/isolinux/"
+#
+# Adjust things on the live side
+#
 
+# Set auto login
+sed \
+ -e 's|c1:123:respawn:/sbin/agetty --noclear tty1 38400 linux|c1:123:respawn:/sbin/agetty --noclear --autologin root --noissue tty1 38400 linux|' \
+ -e 's|c2:123:respawn:/sbin/agetty tty2 38400 linux|c2:123:respawn:/sbin/agetty --autologin root --login-pause --noissue tty2 38400 linux|' \
+ -e 's|c3:12345:respawn:/sbin/agetty tty3 38400 linux|c3:12345:respawn:/sbin/agetty --autologin root --login-pause --noissue tty3 38400 linux|' \
+ -i "${STAGE1}/etc/inittab"
+
+# Add instructions for running the installer from boot menu option
+cat << 'EOF' > "${STAGE1}/root/.profile"
+#
+# .profile - Personal shell-initialization file.
+#
+# The instructions here could serve to complement
+# /etc/profile or to override default (previous)
+# values.
+#
+
+# Add personal bin directory to the end of path
+# and make it known to child process
+
+PATH=${PATH}:${HOME}/bin
+export PATH
+
+# Run Dragora setup if the "parameter" in the boot was set
+
+# Execute setup only on tty1/serial console
+
+case "$(fgconsole)" in
+1* | serial* )
+    if grep -q -m 1 DRAGORA_SETUP /proc/cmdline
+    then
+        /sbin/dragora-keymap
+        /sbin/dragora-mouse
+        /sbin/dragora-installer
+    fi
+    ;;
+esac
+
+EOF
+
+#
 # Produce compressed image using mksquashfs(1)
+#
+
 cd -- "$STAGE1"
 rm -f ./dragora.sfs
 
@@ -95,7 +154,9 @@ rm -f ./dragora.sfs
  -noappend -e ./tools ./var/cache/qi/packages ./root/.ash_history \
   ./*-log* ./usr/pkg/kernel-buildtree-* ./usr/src/linux-* ./usr/src/qi
 
+#
 # Produce hybrid ISO-9660 image
+#
 
 cd -- "$CDROM"
 
@@ -112,10 +173,11 @@ unset MKISOFS
 echo "Applying \"hybrid booting\" to the ISO image ..."
 "${worktree}"/archive/isolinux/isohybrid.pl ${ISONAME}.iso
 
-echo "Making .sha256 sum ..."
+echo "Creating .sha256 sum ..."
+echo "sha256sum ${ISONAME}.iso > ${ISONAME}.iso.sha256"
 sha256sum ${ISONAME}.iso > ${ISONAME}.iso.sha256
 
-echo "Finish ..."
+echo "Finishing ..."
 echo ""
 echo "***"
 echo "The ISO image has been produced at"

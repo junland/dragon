@@ -1,23 +1,22 @@
                                02Dragora
-                       08http://www.dragora.org07
+                       04http://www.dragora.org07
 
-Boot options:
+
+BOOT PARAMETERS
+
+The following variables are boot parameters for the live system startup.
+Any parameters given on the command line will only be valid for the
+current session.
 
 Defaults for the options are specified in brackets.
 
-RC_HWCLOCK=09.......... 07Set hardware clock timescale, 0futc07 or 0flocal07 [09utc07]
-RC_HOSTNAME=09......... 07Set system host name [09dragora07]
-RC_DOMAINNAME=09....... 07Set system domain name [09example.net07]
-RC_ESPEAKUP=09......... 07Use 0f107 to enable eSpeakup (software synthesizer) [09007]
-RC_EVOICE=09........... 07Voice for the software synthesizer [09default07]
-RC_KEYMAP=09........... 07Keyboard map for the console [09qwerty/us07]
-RC_BLANKTIME=09........ 07Terminal screen blanking in minutes [091507]
+RC_HWCLOCK=08.......... 07Set hardware clock timescale, 0futc07 or 0flocal07 [03utc07]
+RC_HOSTNAME=08......... 07Set system host name [03dragora07]
+RC_DOMAINNAME=08....... 07Set system domain name [03example.net07]
+RC_ESPEAKUP=08......... 07Use 0f107 to enable eSpeakup (software synthesizer) [03007]
+RC_EVOICE=08........... 07Voice for the software synthesizer [03default07]
+RC_KEYMAP=08........... 07Keyboard map for the console [03qwerty/us07]
+RC_BLANKTIME=08........ 07Terminal screen blanking in minutes [031507]
 
-These are boot parameters for the distribution's startup.  Any passed
-command-line parameter is only valid for the current session.  If you
-wish to make a permanent change after booting, please refer to the
-distribution documentation.
 
-0fIMPORTANT! Default login password for "root" is: dragora07
-
-    To continue, press [Enter] or [Esc].
+... press [Enter] or [Esc] to return.
