@@ -19,7 +19,7 @@ set -e
 
 program=tdebase-trinity
 version=14.0.9
-release=3
+release=4
 
 # Define a category for the output of the package name
 pkgcategory=tde
@@ -50,9 +50,14 @@ build()
 
     cd "$srcdir"
 
+    # Fix FTBFS with OpenEXR >= 3.0.x This resolves issue #198
+    # https://mirror.git.trinitydesktop.org/gitea/TDE/tdebase/issues/198
+    patch -p1 < "${worktree}/patches/tdebase/4fb2a90b45964ef025ed6483f3c028934f127b01"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    rm -rf BUILD
     mkdir BUILD
     cd BUILD
 
@@ -87,7 +92,7 @@ build()
      -DWITH_SAMBA=OFF                                       \
      -DWITH_LIBUSB=OFF                                      \
      -DWITH_LIBRAW1394=OFF                                  \
-     -DWITH_OPENEXR=OFF                                     \
+     -DWITH_OPENEXR=ON                                      \
      -DWITH_XCOMPOSITE=ON                                   \
      -DWITH_XCURSOR=ON                                      \
      -DWITH_XFIXES=ON                                       \
