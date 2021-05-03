@@ -18,8 +18,8 @@
 set -e
 
 program=tdebase-trinity
-version=14.0.9
-release=4
+version=14.0.10
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=tde
@@ -27,7 +27,7 @@ pkgcategory=tde
 tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
-fetch=https://mirror.ppa.trinitydesktop.org/trinity/releases/R${version}/main/$tarname
+fetch=https://mirror.ppa.trinitydesktop.org/trinity/releases/R${version}/main/core/$tarname
 
 description="
 TDE base libraries and programs.
@@ -49,10 +49,6 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
-
-    # Fix FTBFS with OpenEXR >= 3.0.x This resolves issue #198
-    # https://mirror.git.trinitydesktop.org/gitea/TDE/tdebase/issues/198
-    patch -p1 < "${worktree}/patches/tdebase/4fb2a90b45964ef025ed6483f3c028934f127b01"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -100,7 +96,8 @@ build()
      -DWITH_XINERAMA=ON                                     \
      -DWITH_SENSORS=ON                                      \
      -DWITH_HAL=OFF                                         \
-     -DWITH_TDEHWLIB=OFF                             \
+     -DWITH_TDEHWLIB=OFF \
+     -DWITH_UDEVIL=ON                                       \
      -DWITH_XDMCP=ON                                        \
      -DWITH_XRENDER=ON                                      \
      -DWITH_XTEST=ON                                        \
