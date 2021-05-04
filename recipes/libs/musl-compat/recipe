@@ -19,7 +19,7 @@ set -e
 
 program=musl-compat
 version=20210503_77a1509
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -62,6 +62,21 @@ build()
 
     make -j${jobs} V=1 \
      prefix=/usr CFLAGS="$QICFLAGS" DESTDIR="$destdir" install
+
+    # This should be part of usr/sbin
+    rm -f "${destdir}/usr/bin/ldconfig"
+
+    strip --strip-unneeded "${destdir}"/usr/bin/* || true
+
+    # Write a better version of dummy "ldconfig"
+    mkdir -p "${destdir}"/usr/sbin
+    cat << EOF > "${destdir}"/usr/sbin/ldconfig
+#! /bin/sh -
+
+true
+
+EOF
+    chmod 755 "${destdir}"/usr/sbin/ldconfig
 
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}"
