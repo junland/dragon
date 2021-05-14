@@ -1,0 +1,333 @@
+# Build recipe for tde-i18n.
+#
+# Copyright (c) 2021 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Exit immediately on any error
+set -e
+
+# This recipe does not produce a main package, but sub-packages
+opt_nopkg=opt_nopkg
+
+program=tde-i18n-trinity
+version=14.0.10
+arch=noarch
+release=1
+
+# Define a category for the output of the package name
+pkgcategory=tde
+
+tarname=${program}-${version}.tar.xz
+
+# Remote source(s)
+fetch=https://mirror.ppa.trinitydesktop.org/trinity/releases/R${version}/main/core/$tarname
+
+description="TDE internationalization translations."
+
+homepage=https://www.trinitydesktop.org/
+license=GPLv2+
+
+# Source documentation
+docs="AUTHORS COPYING* README*"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    for langdir in tde-i18n-*
+    do
+        unset -v pkgname destdir full_pkgname description
+        pkgname="$langdir"
+        destdir="${TMPDIR}/package-$pkgname"
+        full_pkgname="${pkgname}_${pkgversion}_${arch}-${release}${pkgcategory}"
+
+        # Set description for each generated package
+        case $langdir in
+        tde-i18n-af)
+            langdescription="Afrikaans (af)"
+            ;;
+        tde-i18n-ar)
+            langdescription="Arabic (ar)"
+            ;;
+        tde-i18n-az)
+            langdescription="Azerbaijani (az)"
+            ;;
+        tde-i18n-be)
+            langdescription="Belarusian (be)"
+            ;;
+        tde-i18n-bg)
+            langdescription="Bulgarian (bg)"
+            ;;
+        tde-i18n-bn)
+            langdescription="Bengali (bn)"
+            ;;
+        tde-i18n-br)
+            langdescription="Breton (br)"
+            ;;
+        tde-i18n-bs)
+            langdescription="Bosnian (bs)"
+            ;;
+        tde-i18n-ca)
+            langdescription="Catalan (ca)"
+            ;;
+        tde-i18n-cs)
+            langdescription="Czech (cs)"
+            ;;
+        tde-i18n-csb)
+            langdescription="Kashubian (csb)"
+            ;;
+        tde-i18n-cy)
+            langdescription="Welsh (cy)"
+            ;;
+        tde-i18n-da)
+            langdescription="Danish (da)"
+            ;;
+        tde-i18n-de)
+            langdescription="German (de)"
+            ;;
+        tde-i18n-el)
+            langdescription="Greek (el)"
+            ;;
+        tde-i18n-en_GB)
+            langdescription="British English (en_GB)"
+            ;;
+        tde-i18n-eo)
+            langdescription="Esperanto (eo)"
+            ;;
+        tde-i18n-es)
+            langdescription="Spanish (es)"
+            ;;
+        tde-i18n-es_AR)
+            langdescription="Spanish Argentina (es_AR)"
+            ;;
+        tde-i18n-et)
+            langdescription="Estonian (et)"
+            ;;
+        tde-i18n-eu)
+            langdescription="Basque (eu)"
+            ;;
+        tde-i18n-fa)
+            langdescription="Farsi, Persian (fa)"
+            ;;
+        tde-i18n-fi)
+            langdescription="Finnish (fi)"
+            ;;
+        tde-i18n-fr)
+            langdescription="French (fr)"
+            ;;
+        tde-i18n-fy)
+            langdescription="Frisian (fy)"
+            ;;
+        tde-i18n-ga)
+            langdescription="Irish (ga)"
+            ;;
+        tde-i18n-gl)
+            langdescription="Galician (gl)"
+            ;;
+        tde-i18n-he)
+            langdescription="Hebrew (he)"
+            ;;
+        tde-i18n-hi)
+            langdescription="Hindi (hi)"
+            ;;
+        tde-i18n-hr)
+            langdescription="Croatian (hr)"
+            ;;
+        tde-i18n-hu)
+            langdescription="Hungarian (hu)"
+            ;;
+        tde-i18n-ie)
+            # "tde-i18n-ie" lacks a valid CMakeList file
+            #langdescription="Occidental (ie)"
+            continue;
+            ;;
+        tde-i18n-is)
+            langdescription="Icelandic (is)"
+            ;;
+        tde-i18n-it)
+            langdescription="Italian (it)"
+            ;;
+        tde-i18n-ja)
+            langdescription="Japanese (ja)"
+            ;;
+        tde-i18n-kk)
+            langdescription="Kazakh (kk)"
+            ;;
+        tde-i18n-km)
+            langdescription="Khmer (km)"
+            ;;
+        tde-i18n-ko)
+            langdescription="Korean (ko)"
+            ;;
+        tde-i18n-lt)
+            langdescription="Lithuanian (lt)"
+            ;;
+        tde-i18n-lv)
+            langdescription="Latvian (lv)"
+            ;;
+        tde-i18n-mk)
+            langdescription="Macedonian (mk)"
+            ;;
+        tde-i18n-mn)
+            langdescription="Mongolian (mn)"
+            ;;
+        tde-i18n-ms)
+            langdescription="Malay (ms)"
+            ;;
+        tde-i18n-nb)
+            langdescription="Norwegian Bookmal (nb)"
+            ;;
+        tde-i18n-nds)
+            langdescription="Low Saxon (nds)"
+            ;;
+        tde-i18n-nl)
+            langdescription="Dutch (nl)"
+            ;;
+        tde-i18n-nn)
+            langdescription="Norwegian Nynorsk (nn)"
+            ;;
+        tde-i18n-pa)
+            langdescription="Punjabi (pa)"
+            ;;
+        tde-i18n-pl)
+            langdescription="Polish (pl)"
+            ;;
+        tde-i18n-pt)
+            langdescription="Portuguese (pl)"
+            ;;
+        tde-i18n-pt_BR)
+            langdescription="Brazilian Portuguese (pt_BR)"
+            ;;
+        tde-i18n-ro)
+            langdescription="Romanian (ro)"
+            ;;
+        tde-i18n-ru)
+            langdescription="Russian (ru)"
+            ;;
+        tde-i18n-rw)
+            langdescription="Kinyarwanda (rw)"
+            ;;
+        tde-i18n-se)
+            langdescription="Northern Sami (se)"
+            ;;
+        tde-i18n-sk)
+            langdescription="Slovak (sk)"
+            ;;
+        tde-i18n-sl)
+            langdescription="Slovenian (sl)"
+            ;;
+        tde-i18n-sr)
+            langdescription="Serbian (sr)"
+            ;;
+        tde-i18n-sr@Latn)
+            langdescription="Serbian (sr@Latn)"
+            ;;
+        tde-i18n-ss)
+            langdescription="Swati (ss)"
+            ;;
+        tde-i18n-sv)
+            langdescription="Swedish (sv)"
+            ;;
+        tde-i18n-ta)
+            langdescription="Tamil (ta)"
+            ;;
+        tde-i18n-te)
+            langdescription="Telugu (te)"
+            ;;
+        tde-i18n-tg)
+            langdescription="Tajik (tg)"
+            ;;
+        tde-i18n-th)
+            langdescription="Thai (th)"
+            ;;
+        tde-i18n-tr)
+            langdescription="Turkish (tr)"
+            ;;
+        tde-i18n-uk)
+            langdescription="Ukrainian (uk)"
+            ;;
+        tde-i18n-uz)
+            langdescription="Uzbek (uz)"
+            ;;
+        tde-i18n-uz@cyrillic)
+            langdescription="Uzbek (uz@cyrillic)"
+            ;;
+        tde-i18n-vi)
+            langdescription="Vietnamese (vi)"
+            ;;
+        tde-i18n-wa)
+            langdescription="Walloon (wa)"
+            ;;
+        tde-i18n-zh_CN)
+            langdescription="Chinese Simplified (zh_CN)"
+            ;;
+        tde-i18n-zh_TW)
+            langdescription="Chinese Traditional (zh_TW)"
+            ;;
+        *)
+            langdescription="$langdir"
+            ;;
+        esac
+
+        description="${langdescription} translation for TDE."
+
+        cd -- "$langdir"
+        rm -rf BUILD
+        mkdir BUILD
+        cd BUILD
+        cmake \
+         -DCMAKE_INSTALL_PREFIX=/usr                            \
+         -DLIB_SUFFIX=${libSuffix}                              \
+         -DCMAKE_VERBOSE_MAKEFILE=ON                            \
+         -DCMAKE_SKIP_RPATH=OFF                                 \
+         -DCMAKE_INSTALL_PREFIX=/opt/trinity                    \
+         -DCONFIG_INSTALL_DIR=/etc/trinity                      \
+         -DSYSCONF_INSTALL_DIR=/etc/trinity                     \
+         -DCMAKE_LIBRARY_PATH=/opt/trinity/lib${libSuffix}      \
+         -DCMAKE_INCLUDE_PATH=/opt/trinity/include              \
+         -DBUILD_DOC=ON                                         \
+         -DBUILD_DATA=ON                                        \
+         -DBUILD_MESSAGES=ON                                    \
+         -G Ninja ..
+         ninja -j${jobs}
+         DESTDIR="$destdir" ninja -j${jobs} install
+
+         do_meta > "${outdir}/${full_pkgname}.tlz.txt"
+         mkdir -p -- "${destdir}/var/lib/qi"
+         cp -p "${outdir}/${full_pkgname}.tlz.txt" \
+               "${destdir}/var/lib/qi/${full_pkgname}.txt"
+
+         # Produce the sub-package by invoking the internal Qi function
+         cd -- "$destdir" && mode_create "${outdir}/${full_pkgname}.tlz"
+
+         # Check given options to Qi in order to remove 'destdir' or not
+         if test "$opt_keep" != opt_keep && test -z "$keep_destdir"
+         then
+             cd ..
+             rm -r "$destdir"
+         fi
+
+         # Switch back to the source directory
+         cd -- "${TMPDIR}/$srcdir"
+    done
+
+    unset -v pkgname destdir full_pkgname description
+}
+
