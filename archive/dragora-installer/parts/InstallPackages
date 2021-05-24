@@ -44,11 +44,29 @@ All )
 /hierarchyfs_/m1
 w
 EOF
-        qi install \
-         --rootdir=/media/dragora-root \
-         --packagedir=/usr/pkg \
-         --targetdir=/ \
-         --prune - < ${SUBTMPDIR}/return-InstallPackages_All.sorted
+        echo ""
+
+        # Calculate total number of packages installed to reflect
+        # the progress during package installation
+
+        x=0
+        total=$(awk 'END{ print NR }' ${SUBTMPDIR}/return-InstallPackages_All.sorted)
+
+        while read -r package
+        do
+            qi install \
+             --rootdir=/media/dragora-root \
+             --packagedir=/usr/pkg \
+             --targetdir=/ \
+             --prune "$package"
+
+            printf "%${COLUMNS}s %s\n" \
+             "$(tput bold)$(tput setaf 3)${x}/${total}$(tput sgr0)"
+
+            x=$((x+1));		# Increment counter.
+        done < ${SUBTMPDIR}/return-InstallPackages_All.sorted
+
+        unset -v x total
     else
         echo "${PROGRAM}: All: Error the package list is empty." 1>&2
         exit 99;
@@ -95,12 +113,13 @@ EOF
     # Populate checklist item using information from meta files
     while read -r meta
     do
-        . "${meta}.txt" || {
+        if ! . "${meta}.txt"
+        then
             echo "${PROGRAM}: Error no meta file(s) available." 1>&2
             exit 99;
-        }
+        fi
 
-        echo "\"${full_pkgname%%@*}\" \"@${pkgcategory}\" ON \"${blurb}\" \\" \
+        echo "\"${full_pkgname%@*}\" \"@${pkgcategory}\" ON \"${blurb}\" \\" \
          >> ${SUBTMPDIR}/InstallPackages_Expert
     done < ${SUBTMPDIR}/search-InstallPackages_Expert.sorted
 
@@ -117,27 +136,46 @@ EOF
 
     if test -s ${SUBTMPDIR}/return-InstallPackages_Expert
     then
+       tr ' ' '\n' < ${SUBTMPDIR}/return-InstallPackages_Expert | \
+        sort > ${SUBTMPDIR}/return-InstallPackages_Expert.sorted
+
         # Set some packages at the top of the list to give priority
-        ed -l -s ${SUBTMPDIR}/return-InstallPackages_Expert << EOF
+        ed -l -s ${SUBTMPDIR}/return-InstallPackages_Expert.sorted << EOF
 /etc_/m0
 /hierarchyfs_/m1
 w
 EOF
-        # Proceed to install if there is a match in the search list
-        while read -r line
-        do
-            grep -F -s -w -m 1 "$line" \
-             ${SUBTMPDIR}/search-InstallPackages_Expert.sorted | \
-              qi install \
-               --rootdir=/media/dragora-root \
-               --packagedir=/usr/pkg \
-               --targetdir=/ \
-               --prune -
-        done < ${SUBTMPDIR}/return-InstallPackages_Expert
     else
         echo "${PROGRAM}: Expert: Error the package list is empty." 1>&2
         exit 99;
     fi
+
+    echo ""
+
+    # Calculate total number of packages installed to reflect
+    # the progress during package installation
+
+    x=0
+    total=$(awk 'END{ print NR }' ${SUBTMPDIR}/return-InstallPackages_Expert.sorted)
+
+    # Proceed to install if there is a match in the search list
+    while read -r line
+    do
+        grep -F -s -w -m 1 "$line" \
+         ${SUBTMPDIR}/search-InstallPackages_Expert.sorted | \
+          qi install \
+           --rootdir=/media/dragora-root \
+           --packagedir=/usr/pkg \
+           --targetdir=/ \
+           --prune -
+
+        printf "%${COLUMNS}s %s\n" \
+         "$(tput bold)$(tput setaf 3)${x}/${total}$(tput sgr0)"
+
+        x=$((x+1));		# Increment counter.
+    done < ${SUBTMPDIR}/return-InstallPackages_Expert.sorted
+
+    unset -v x total
     ;;
 esac
 
