@@ -42,6 +42,7 @@ All )
         ed -l -s ${SUBTMPDIR}/return-InstallPackages_All.sorted << EOF
 /etc_/m0
 /hierarchyfs_/m1
+/musl$/m2
 w
 EOF
         echo ""
@@ -50,7 +51,7 @@ EOF
         # the progress during package installation
 
         x=0
-        total=$(awk 'END{ print NR }' ${SUBTMPDIR}/return-InstallPackages_All.sorted)
+        total="$(awk 'END{ print NR }' ${SUBTMPDIR}/return-InstallPackages_All.sorted)"
 
         while read -r package
         do
@@ -61,7 +62,7 @@ EOF
              --prune "$package"
 
             printf "%${COLUMNS}s %s\n" \
-             "$(tput bold)$(tput setaf 3)${x}/${total}$(tput sgr0)"
+             "$(tput bold)$(tput setaf 3)(${x} / ${total})$(tput sgr0)"
 
             x=$((x+1));		# Increment counter.
         done < ${SUBTMPDIR}/return-InstallPackages_All.sorted
@@ -143,6 +144,7 @@ EOF
         ed -l -s ${SUBTMPDIR}/return-InstallPackages_Expert.sorted << EOF
 /etc_/m0
 /hierarchyfs_/m1
+/musl$/m2
 w
 EOF
     else
@@ -156,12 +158,12 @@ EOF
     # the progress during package installation
 
     x=0
-    total=$(awk 'END{ print NR }' ${SUBTMPDIR}/return-InstallPackages_Expert.sorted)
+    total="$(awk 'END{ print NR }' ${SUBTMPDIR}/return-InstallPackages_Expert.sorted)"
 
     # Proceed to install if there is a match in the search list
     while read -r line
     do
-        grep -F -s -w -m 1 "$line" \
+        grep -s "${line}[@]" \
          ${SUBTMPDIR}/search-InstallPackages_Expert.sorted | \
           qi install \
            --rootdir=/media/dragora-root \
@@ -170,7 +172,7 @@ EOF
            --prune -
 
         printf "%${COLUMNS}s %s\n" \
-         "$(tput bold)$(tput setaf 3)${x}/${total}$(tput sgr0)"
+         "$(tput bold)$(tput setaf 3)(${x} / ${total})$(tput sgr0)"
 
         x=$((x+1));		# Increment counter.
     done < ${SUBTMPDIR}/return-InstallPackages_Expert.sorted
