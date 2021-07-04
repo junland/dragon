@@ -1,11 +1,13 @@
+Dragora
+=======
 
 Dragora is a complete and reliable distribution of the GNU/Linux operating
 system that is entirely free software.  Dragora is founded on the concepts
 of simplicity and elegance, it can be run for almost any purpose (desktop,
 workstation, server, development, etc.).  The intended audience is people
 interested in learning more about the technical aspects of a friendly
-GNU/Linux distribution. Also people looking to use the purest ethical
+GNU/Linux distribution.  Also people looking to use the purest ethical
 software for daily use.
 
-For more information, visit: http://www.dragora.org/
+For more details, visit: https://www.dragora.org
 
