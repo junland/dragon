@@ -66,6 +66,24 @@ build()
         done
     )
 
+    # Do not include manual pages that belong to
+    # other packages, which are considered newer
+
+    echo ""
+    echo "Searching for manual pages included in other packages ..."
+    echo ""
+    for file in "${mandir}"/man?/*
+    do
+        if test -f "${destdir}/$file"
+        then
+            echo "Removing pre-existing manual page: $file"
+            echo "    Already included from $(realpath $file)."
+            echo ""
+            rm "${destdir}/$file"
+        fi
+    done
+    unset -v file
+
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
     cp -p $docs "${destdir}${docsdir}"
