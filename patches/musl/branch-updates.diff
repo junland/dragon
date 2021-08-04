@@ -1,3 +1,170 @@
+diff --git a/arch/aarch64/bits/hwcap.h b/arch/aarch64/bits/hwcap.h
+index 7ab73f99..424cc4d4 100644
+--- a/arch/aarch64/bits/hwcap.h
++++ b/arch/aarch64/bits/hwcap.h
+@@ -48,3 +48,5 @@
+ #define HWCAP2_BF16		(1 << 14)
+ #define HWCAP2_DGH		(1 << 15)
+ #define HWCAP2_RNG		(1 << 16)
++#define HWCAP2_BTI		(1 << 17)
++#define HWCAP2_MTE		(1 << 18)
+diff --git a/arch/aarch64/bits/mman.h b/arch/aarch64/bits/mman.h
+new file mode 100644
+index 00000000..8fad5ceb
+--- /dev/null
++++ b/arch/aarch64/bits/mman.h
+@@ -0,0 +1,2 @@
++#define PROT_BTI 0x10
++#define PROT_MTE 0x20
+diff --git a/arch/aarch64/bits/syscall.h.in b/arch/aarch64/bits/syscall.h.in
+index f9457c18..1ad467c0 100644
+--- a/arch/aarch64/bits/syscall.h.in
++++ b/arch/aarch64/bits/syscall.h.in
+@@ -293,4 +293,5 @@
+ #define __NR_openat2		437
+ #define __NR_pidfd_getfd	438
+ #define __NR_faccessat2		439
++#define __NR_process_madvise	440
+ 
+diff --git a/arch/arm/bits/syscall.h.in b/arch/arm/bits/syscall.h.in
+index 7e2fc266..cf9e3411 100644
+--- a/arch/arm/bits/syscall.h.in
++++ b/arch/arm/bits/syscall.h.in
+@@ -393,6 +393,7 @@
+ #define __NR_openat2		437
+ #define __NR_pidfd_getfd	438
+ #define __NR_faccessat2		439
++#define __NR_process_madvise	440
+ 
+ #define __ARM_NR_breakpoint	0x0f0001
+ #define __ARM_NR_cacheflush	0x0f0002
+diff --git a/arch/i386/bits/syscall.h.in b/arch/i386/bits/syscall.h.in
+index abdb210d..5d1c4d7a 100644
+--- a/arch/i386/bits/syscall.h.in
++++ b/arch/i386/bits/syscall.h.in
+@@ -430,4 +430,5 @@
+ #define __NR_openat2		437
+ #define __NR_pidfd_getfd	438
+ #define __NR_faccessat2		439
++#define __NR_process_madvise	440
+ 
+diff --git a/arch/m68k/bits/syscall.h.in b/arch/m68k/bits/syscall.h.in
+index e10969a2..6794b1a0 100644
+--- a/arch/m68k/bits/syscall.h.in
++++ b/arch/m68k/bits/syscall.h.in
+@@ -410,3 +410,4 @@
+ #define __NR_openat2		437
+ #define __NR_pidfd_getfd	438
+ #define __NR_faccessat2		439
++#define __NR_process_madvise	440
+diff --git a/arch/microblaze/bits/syscall.h.in b/arch/microblaze/bits/syscall.h.in
+index 9d469047..7f71df3b 100644
+--- a/arch/microblaze/bits/syscall.h.in
++++ b/arch/microblaze/bits/syscall.h.in
+@@ -431,4 +431,5 @@
+ #define __NR_openat2		437
+ #define __NR_pidfd_getfd	438
+ #define __NR_faccessat2		439
++#define __NR_process_madvise	440
+ 
+diff --git a/arch/mips/bits/syscall.h.in b/arch/mips/bits/syscall.h.in
+index 2bb03f06..d54845b2 100644
+--- a/arch/mips/bits/syscall.h.in
++++ b/arch/mips/bits/syscall.h.in
+@@ -412,4 +412,5 @@
+ #define __NR_openat2		4437
+ #define __NR_pidfd_getfd	4438
+ #define __NR_faccessat2		4439
++#define __NR_process_madvise	4440
+ 
+diff --git a/arch/mips64/bits/syscall.h.in b/arch/mips64/bits/syscall.h.in
+index 045e8238..920b4358 100644
+--- a/arch/mips64/bits/syscall.h.in
++++ b/arch/mips64/bits/syscall.h.in
+@@ -342,4 +342,5 @@
+ #define __NR_openat2		5437
+ #define __NR_pidfd_getfd	5438
+ #define __NR_faccessat2		5439
++#define __NR_process_madvise	5440
+ 
+diff --git a/arch/mipsn32/bits/syscall.h.in b/arch/mipsn32/bits/syscall.h.in
+index 5b322558..e6dad688 100644
+--- a/arch/mipsn32/bits/syscall.h.in
++++ b/arch/mipsn32/bits/syscall.h.in
+@@ -366,4 +366,5 @@
+ #define __NR_openat2		6437
+ #define __NR_pidfd_getfd	6438
+ #define __NR_faccessat2		6439
++#define __NR_process_madvise	6440
+ 
+diff --git a/arch/or1k/bits/syscall.h.in b/arch/or1k/bits/syscall.h.in
+index b3603891..463ee901 100644
+--- a/arch/or1k/bits/syscall.h.in
++++ b/arch/or1k/bits/syscall.h.in
+@@ -315,4 +315,5 @@
+ #define __NR_openat2		437
+ #define __NR_pidfd_getfd	438
+ #define __NR_faccessat2		439
++#define __NR_process_madvise	440
+ 
+diff --git a/arch/powerpc/bits/shm.h b/arch/powerpc/bits/shm.h
+index fb1d4020..7f1ca17e 100644
+--- a/arch/powerpc/bits/shm.h
++++ b/arch/powerpc/bits/shm.h
+@@ -8,11 +8,11 @@ struct shmid_ds {
+ 	unsigned long __shm_dtime_lo;
+ 	unsigned long __shm_ctime_hi;
+ 	unsigned long __shm_ctime_lo;
++	unsigned long __pad1;
+ 	size_t shm_segsz;
+ 	pid_t shm_cpid;
+ 	pid_t shm_lpid;
+ 	unsigned long shm_nattch;
+-	unsigned long __pad1;
+ 	unsigned long __pad2;
+ 	time_t shm_atime;
+ 	time_t shm_dtime;
+diff --git a/arch/powerpc/bits/syscall.h.in b/arch/powerpc/bits/syscall.h.in
+index 5c6fae3e..db4d0ca4 100644
+--- a/arch/powerpc/bits/syscall.h.in
++++ b/arch/powerpc/bits/syscall.h.in
+@@ -419,4 +419,5 @@
+ #define __NR_openat2		437
+ #define __NR_pidfd_getfd	438
+ #define __NR_faccessat2		439
++#define __NR_process_madvise	440
+ 
+diff --git a/arch/powerpc64/bits/syscall.h.in b/arch/powerpc64/bits/syscall.h.in
+index edf73d3d..a128890b 100644
+--- a/arch/powerpc64/bits/syscall.h.in
++++ b/arch/powerpc64/bits/syscall.h.in
+@@ -391,4 +391,5 @@
+ #define __NR_openat2		437
+ #define __NR_pidfd_getfd	438
+ #define __NR_faccessat2		439
++#define __NR_process_madvise	440
+ 
+diff --git a/arch/riscv64/bits/syscall.h.in b/arch/riscv64/bits/syscall.h.in
+index 5def016b..39c0d650 100644
+--- a/arch/riscv64/bits/syscall.h.in
++++ b/arch/riscv64/bits/syscall.h.in
+@@ -76,7 +76,7 @@
+ #define __NR_splice 76
+ #define __NR_tee 77
+ #define __NR_readlinkat 78
+-#define __NR_fstatat 79
++#define __NR_newfstatat 79
+ #define __NR_fstat 80
+ #define __NR_sync 81
+ #define __NR_fsync 82
+@@ -293,6 +293,7 @@
+ #define __NR_openat2		437
+ #define __NR_pidfd_getfd	438
+ #define __NR_faccessat2		439
++#define __NR_process_madvise	440
+ 
+ #define __NR_sysriscv __NR_arch_specific_syscall
+ #define __NR_riscv_flush_icache (__NR_sysriscv + 15)
 diff --git a/arch/riscv64/bits/user.h b/arch/riscv64/bits/user.h
 index 2da743ea..0d37de0b 100644
 --- a/arch/riscv64/bits/user.h
@@ -9,6 +176,243 @@ index 2da743ea..0d37de0b 100644
 +#define ELF_NFPREG 33
  typedef unsigned long elf_greg_t, elf_gregset_t[ELF_NGREG];
  typedef union __riscv_mc_fp_state elf_fpregset_t;
+diff --git a/arch/s390x/bits/syscall.h.in b/arch/s390x/bits/syscall.h.in
+index fb2e60e3..9c8d984e 100644
+--- a/arch/s390x/bits/syscall.h.in
++++ b/arch/s390x/bits/syscall.h.in
+@@ -356,4 +356,5 @@
+ #define __NR_openat2		437
+ #define __NR_pidfd_getfd	438
+ #define __NR_faccessat2		439
++#define __NR_process_madvise	440
+ 
+diff --git a/arch/sh/bits/syscall.h.in b/arch/sh/bits/syscall.h.in
+index 158afc09..17dd7e07 100644
+--- a/arch/sh/bits/syscall.h.in
++++ b/arch/sh/bits/syscall.h.in
+@@ -403,4 +403,5 @@
+ #define __NR_openat2		437
+ #define __NR_pidfd_getfd	438
+ #define __NR_faccessat2		439
++#define __NR_process_madvise	440
+ 
+diff --git a/arch/x32/bits/syscall.h.in b/arch/x32/bits/syscall.h.in
+index cfd9856f..5361442e 100644
+--- a/arch/x32/bits/syscall.h.in
++++ b/arch/x32/bits/syscall.h.in
+@@ -302,6 +302,7 @@
+ #define __NR_openat2		(0x40000000 + 437)
+ #define __NR_pidfd_getfd	(0x40000000 + 438)
+ #define __NR_faccessat2		(0x40000000 + 439)
++#define __NR_process_madvise	(0x40000000 + 440)
+ 
+ 
+ #define __NR_rt_sigaction (0x40000000 + 512)
+diff --git a/arch/x86_64/bits/syscall.h.in b/arch/x86_64/bits/syscall.h.in
+index a6117951..e943883d 100644
+--- a/arch/x86_64/bits/syscall.h.in
++++ b/arch/x86_64/bits/syscall.h.in
+@@ -349,4 +349,5 @@
+ #define __NR_openat2		437
+ #define __NR_pidfd_getfd	438
+ #define __NR_faccessat2		439
++#define __NR_process_madvise	440
+ 
+diff --git a/include/ctype.h b/include/ctype.h
+index 7936536f..32bcef4d 100644
+--- a/include/ctype.h
++++ b/include/ctype.h
+@@ -64,7 +64,9 @@ int   isascii(int);
+ int   toascii(int);
+ #define _tolower(a) ((a)|0x20)
+ #define _toupper(a) ((a)&0x5f)
++#ifndef __cplusplus
+ #define isascii(a) (0 ? isascii(a) : (unsigned)(a) < 128)
++#endif
+ 
+ #endif
+ 
+diff --git a/include/elf.h b/include/elf.h
+index b5e7befb..5170f3e2 100644
+--- a/include/elf.h
++++ b/include/elf.h
+@@ -686,6 +686,7 @@ typedef struct {
+ #define NT_ARM_PAC_MASK	0x406
+ #define NT_ARM_PACA_KEYS	0x407
+ #define NT_ARM_PACG_KEYS	0x408
++#define NT_ARM_TAGGED_ADDR_CTRL	0x409
+ #define NT_METAG_CBUF	0x500
+ #define NT_METAG_RPIPE	0x501
+ #define NT_METAG_TLS	0x502
+diff --git a/include/pthread.h b/include/pthread.h
+index 0492f26a..89fd9ff7 100644
+--- a/include/pthread.h
++++ b/include/pthread.h
+@@ -221,6 +221,7 @@ int pthread_getaffinity_np(pthread_t, size_t, struct cpu_set_t *);
+ int pthread_setaffinity_np(pthread_t, size_t, const struct cpu_set_t *);
+ int pthread_getattr_np(pthread_t, pthread_attr_t *);
+ int pthread_setname_np(pthread_t, const char *);
++int pthread_getname_np(pthread_t, char *, size_t);
+ int pthread_getattr_default_np(pthread_attr_t *);
+ int pthread_setattr_default_np(const pthread_attr_t *);
+ int pthread_tryjoin_np(pthread_t, void **);
+diff --git a/include/setjmp.h b/include/setjmp.h
+index 2d43abf8..1976af23 100644
+--- a/include/setjmp.h
++++ b/include/setjmp.h
+@@ -15,25 +15,33 @@ typedef struct __jmp_buf_tag {
+ 	unsigned long __ss[128/sizeof(long)];
+ } jmp_buf[1];
+ 
++#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
++#define __setjmp_attr __attribute__((__returns_twice__))
++#else
++#define __setjmp_attr
++#endif
++
+ #if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
+  || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+  || defined(_BSD_SOURCE)
+ typedef jmp_buf sigjmp_buf;
+-int sigsetjmp (sigjmp_buf, int);
++int sigsetjmp (sigjmp_buf, int) __setjmp_attr;
+ _Noreturn void siglongjmp (sigjmp_buf, int);
+ #endif
+ 
+ #if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+  || defined(_BSD_SOURCE)
+-int _setjmp (jmp_buf);
++int _setjmp (jmp_buf) __setjmp_attr;
+ _Noreturn void _longjmp (jmp_buf, int);
+ #endif
+ 
+-int setjmp (jmp_buf);
++int setjmp (jmp_buf) __setjmp_attr;
+ _Noreturn void longjmp (jmp_buf, int);
+ 
+ #define setjmp setjmp
+ 
++#undef __setjmp_attr
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/include/signal.h b/include/signal.h
+index 9ed929e4..f270a594 100644
+--- a/include/signal.h
++++ b/include/signal.h
+@@ -75,6 +75,8 @@ typedef struct sigaltstack stack_t;
+ #define SEGV_ACCERR 2
+ #define SEGV_BNDERR 3
+ #define SEGV_PKUERR 4
++#define SEGV_MTEAERR 8
++#define SEGV_MTESERR 9
+ 
+ #define BUS_ADRALN 1
+ #define BUS_ADRERR 2
+diff --git a/include/stdc-predef.h b/include/stdc-predef.h
+index f8cd4b89..af1a2799 100644
+--- a/include/stdc-predef.h
++++ b/include/stdc-predef.h
+@@ -7,4 +7,7 @@
+ #define __STDC_IEC_559__ 1
+ #endif
+ 
++#define __STDC_UTF_16__ 1
++#define __STDC_UTF_32__ 1
++
+ #endif
+diff --git a/include/sys/membarrier.h b/include/sys/membarrier.h
+index 10cb3108..11193eda 100644
+--- a/include/sys/membarrier.h
++++ b/include/sys/membarrier.h
+@@ -9,9 +9,13 @@
+ #define MEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED 16
+ #define MEMBARRIER_CMD_PRIVATE_EXPEDITED_SYNC_CORE 32
+ #define MEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED_SYNC_CORE 64
++#define MEMBARRIER_CMD_PRIVATE_EXPEDITED_RSEQ 128
++#define MEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED_RSEQ 256
+ 
+ #define MEMBARRIER_CMD_SHARED MEMBARRIER_CMD_GLOBAL
+ 
++#define MEMBARRIER_CMD_FLAG_CPU 1
++
+ int membarrier(int, int);
+ 
+ #endif
+diff --git a/include/sys/mman.h b/include/sys/mman.h
+index 4d603e91..80a3baae 100644
+--- a/include/sys/mman.h
++++ b/include/sys/mman.h
+@@ -40,6 +40,7 @@ extern "C" {
+ 
+ #define MAP_HUGE_SHIFT 26
+ #define MAP_HUGE_MASK  0x3f
++#define MAP_HUGE_16KB  (14 << 26)
+ #define MAP_HUGE_64KB  (16 << 26)
+ #define MAP_HUGE_512KB (19 << 26)
+ #define MAP_HUGE_1MB   (20 << 26)
+diff --git a/include/sys/mount.h b/include/sys/mount.h
+index 57a89c09..09bd6e9d 100644
+--- a/include/sys/mount.h
++++ b/include/sys/mount.h
+@@ -31,6 +31,7 @@ extern "C" {
+ #define MS_REMOUNT     32
+ #define MS_MANDLOCK    64
+ #define MS_DIRSYNC     128
++#define MS_NOSYMFOLLOW 256
+ #define MS_NOATIME     1024
+ #define MS_NODIRATIME  2048
+ #define MS_BIND        4096
+diff --git a/include/sys/prctl.h b/include/sys/prctl.h
+index 4b9fcc05..4ba73f42 100644
+--- a/include/sys/prctl.h
++++ b/include/sys/prctl.h
+@@ -157,6 +157,13 @@ struct prctl_mm_map {
+ #define PR_SET_TAGGED_ADDR_CTRL 55
+ #define PR_GET_TAGGED_ADDR_CTRL 56
+ #define PR_TAGGED_ADDR_ENABLE (1UL << 0)
++#define PR_MTE_TCF_SHIFT 1
++#define PR_MTE_TCF_NONE  (0UL << 1)
++#define PR_MTE_TCF_SYNC  (1UL << 1)
++#define PR_MTE_TCF_ASYNC (2UL << 1)
++#define PR_MTE_TCF_MASK  (3UL << 1)
++#define PR_MTE_TAG_SHIFT 3
++#define PR_MTE_TAG_MASK  (0xffffUL << 3)
+ 
+ #define PR_SET_IO_FLUSHER 57
+ #define PR_GET_IO_FLUSHER 58
+diff --git a/ldso/dynlink.c b/ldso/dynlink.c
+index 6b868c84..5b9c8be4 100644
+--- a/ldso/dynlink.c
++++ b/ldso/dynlink.c
+@@ -579,6 +579,7 @@ static void *mmap_fixed(void *p, size_t n, int prot, int flags, int fd, off_t of
+ {
+ 	static int no_map_fixed;
+ 	char *q;
++	if (!n) return p;
+ 	if (!no_map_fixed) {
+ 		q = mmap(p, n, prot, flags|MAP_FIXED, fd, off);
+ 		if (!DL_NOMMU_SUPPORT || q != MAP_FAILED || errno != EINVAL)
+@@ -1830,7 +1831,7 @@ void __dls3(size_t *sp, size_t *auxv)
+ 			dprintf(2, "%s: cannot load %s: %s\n", ldname, argv[0], strerror(errno));
+ 			_exit(1);
+ 		}
+-		Ehdr *ehdr = (void *)map_library(fd, &app);
++		Ehdr *ehdr = map_library(fd, &app);
+ 		if (!ehdr) {
+ 			dprintf(2, "%s: %s: Not a valid dynamic program\n", ldname, argv[0]);
+ 			_exit(1);
+@@ -2330,7 +2331,8 @@ int dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size_t size, void
+ 		info.dlpi_adds      = gencnt;
+ 		info.dlpi_subs      = 0;
+ 		info.dlpi_tls_modid = current->tls_id;
+-		info.dlpi_tls_data  = current->tls.image;
++		info.dlpi_tls_data = !current->tls_id ? 0 :
++			__tls_get_addr((tls_mod_off_t[]){current->tls_id,0});
+ 
+ 		ret = (callback)(&info, sizeof (info), data);
+ 
 diff --git a/src/env/__libc_start_main.c b/src/env/__libc_start_main.c
 index 8fbe5262..c5b277bd 100644
 --- a/src/env/__libc_start_main.c
@@ -23,6 +427,96 @@ index 8fbe5262..c5b277bd 100644
  {
  	char **envp = argv+argc+1;
  
+diff --git a/src/ldso/dl_iterate_phdr.c b/src/ldso/dl_iterate_phdr.c
+index 86c87ef8..9546dd36 100644
+--- a/src/ldso/dl_iterate_phdr.c
++++ b/src/ldso/dl_iterate_phdr.c
+@@ -1,5 +1,6 @@
+ #include <elf.h>
+ #include <link.h>
++#include "pthread_impl.h"
+ #include "libc.h"
+ 
+ #define AUX_CNT 38
+@@ -35,7 +36,7 @@ static int static_dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size
+ 	info.dlpi_subs  = 0;
+ 	if (tls_phdr) {
+ 		info.dlpi_tls_modid = 1;
+-		info.dlpi_tls_data = (void *)(base + tls_phdr->p_vaddr);
++		info.dlpi_tls_data = __tls_get_addr((tls_mod_off_t[]){1,0});
+ 	} else {
+ 		info.dlpi_tls_modid = 0;
+ 		info.dlpi_tls_data = 0;
+diff --git a/src/legacy/cuserid.c b/src/legacy/cuserid.c
+index 4e78798d..dcaf73d4 100644
+--- a/src/legacy/cuserid.c
++++ b/src/legacy/cuserid.c
+@@ -2,13 +2,21 @@
+ #include <pwd.h>
+ #include <stdio.h>
+ #include <unistd.h>
++#include <string.h>
+ 
+ char *cuserid(char *buf)
+ {
++	static char usridbuf[L_cuserid];
+ 	struct passwd pw, *ppw;
+ 	long pwb[256];
+-	if (getpwuid_r(geteuid(), &pw, (void *)pwb, sizeof pwb, &ppw))
+-		return 0;
+-	snprintf(buf, L_cuserid, "%s", pw.pw_name);
++	if (buf) *buf = 0;
++	getpwuid_r(geteuid(), &pw, (void *)pwb, sizeof pwb, &ppw);
++	if (!ppw)
++		return buf;
++	size_t len = strnlen(pw.pw_name, L_cuserid);
++	if (len == L_cuserid)
++		return buf;
++	if (!buf) buf = usridbuf;
++	memcpy(buf, pw.pw_name, len+1);
+ 	return buf;
+ }
+diff --git a/src/linux/epoll.c b/src/linux/epoll.c
+index deff5b10..93baa814 100644
+--- a/src/linux/epoll.c
++++ b/src/linux/epoll.c
+@@ -24,9 +24,9 @@ int epoll_ctl(int fd, int op, int fd2, struct epoll_event *ev)
+ 
+ int epoll_pwait(int fd, struct epoll_event *ev, int cnt, int to, const sigset_t *sigs)
+ {
+-	int r = __syscall(SYS_epoll_pwait, fd, ev, cnt, to, sigs, _NSIG/8);
++	int r = __syscall_cp(SYS_epoll_pwait, fd, ev, cnt, to, sigs, _NSIG/8);
+ #ifdef SYS_epoll_wait
+-	if (r==-ENOSYS && !sigs) r = __syscall(SYS_epoll_wait, fd, ev, cnt, to);
++	if (r==-ENOSYS && !sigs) r = __syscall_cp(SYS_epoll_wait, fd, ev, cnt, to);
+ #endif
+ 	return __syscall_ret(r);
+ }
+diff --git a/src/malloc/free.c b/src/malloc/free.c
+index f17a952c..3944f7b2 100644
+--- a/src/malloc/free.c
++++ b/src/malloc/free.c
+@@ -2,5 +2,5 @@
+ 
+ void free(void *p)
+ {
+-	return __libc_free(p);
++	__libc_free(p);
+ }
+diff --git a/src/malloc/mallocng/aligned_alloc.c b/src/malloc/mallocng/aligned_alloc.c
+index 34116896..e0862a83 100644
+--- a/src/malloc/mallocng/aligned_alloc.c
++++ b/src/malloc/mallocng/aligned_alloc.c
+@@ -22,6 +22,9 @@ void *aligned_alloc(size_t align, size_t len)
+ 	if (align <= UNIT) align = UNIT;
+ 
+ 	unsigned char *p = malloc(len + align - UNIT);
++	if (!p)
++		return 0;
++
+ 	struct meta *g = get_meta(p);
+ 	int idx = get_slot_index(p);
+ 	size_t stride = get_stride(g);
 diff --git a/src/malloc/mallocng/free.c b/src/malloc/mallocng/free.c
 index 40745f97..418a085c 100644
 --- a/src/malloc/mallocng/free.c
@@ -131,6 +625,72 @@ index 297e0b44..09a41afe 100644
  			x *= 0x1p127f;
  			return x;
  		}
+diff --git a/src/math/fmaf.c b/src/math/fmaf.c
+index 80f5cd8a..7c65acf1 100644
+--- a/src/math/fmaf.c
++++ b/src/math/fmaf.c
+@@ -77,17 +77,16 @@ float fmaf(float x, float y, float z)
+ 	 * If result is inexact, and exactly halfway between two float values,
+ 	 * we need to adjust the low-order bit in the direction of the error.
+ 	 */
+-#ifdef FE_TOWARDZERO
+-	fesetround(FE_TOWARDZERO);
+-#endif
+-	volatile double vxy = xy;  /* XXX work around gcc CSE bug */
+-	double adjusted_result = vxy + z;
+-	fesetround(FE_TONEAREST);
+-	if (result == adjusted_result) {
+-		u.f = adjusted_result;
++	double err;
++	int neg = u.i >> 63;
++	if (neg == (z > xy))
++		err = xy - result + z;
++	else
++		err = z - result + xy;
++	if (neg == (err < 0))
+ 		u.i++;
+-		adjusted_result = u.f;
+-	}
+-	z = adjusted_result;
++	else
++		u.i--;
++	z = u.f;
+ 	return z;
+ }
+diff --git a/src/passwd/nscd_query.c b/src/passwd/nscd_query.c
+index d38e371b..dc3406b8 100644
+--- a/src/passwd/nscd_query.c
++++ b/src/passwd/nscd_query.c
+@@ -40,7 +40,15 @@ retry:
+ 	buf[0] = NSCDVERSION;
+ 
+ 	fd = socket(PF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+-	if (fd < 0) return NULL;
++	if (fd < 0) {
++		if (errno == EAFNOSUPPORT) {
++			f = fopen("/dev/null", "re");
++			if (f)
++				errno = errno_save;
++			return f;
++		}
++		return 0;
++	}
+ 
+ 	if(!(f = fdopen(fd, "r"))) {
+ 		close(fd);
+diff --git a/src/process/fdop.h b/src/process/fdop.h
+index 5adf1443..7cf733b2 100644
+--- a/src/process/fdop.h
++++ b/src/process/fdop.h
+@@ -10,3 +10,8 @@ struct fdop {
+ 	mode_t mode;
+ 	char path[];
+ };
++
++#define malloc __libc_malloc
++#define calloc __libc_calloc
++#define realloc undef
++#define free __libc_free
 diff --git a/src/process/posix_spawn_file_actions_addclose.c b/src/process/posix_spawn_file_actions_addclose.c
 index cdda5979..0c2ef8fa 100644
 --- a/src/process/posix_spawn_file_actions_addclose.c
@@ -179,6 +739,103 @@ index 368922c7..82bbcec9 100644
  	struct fdop *op = malloc(sizeof *op + strlen(path) + 1);
  	if (!op) return ENOMEM;
  	op->cmd = FDOP_OPEN;
+diff --git a/src/signal/block.c b/src/signal/block.c
+index d7f61001..cc8698f0 100644
+--- a/src/signal/block.c
++++ b/src/signal/block.c
+@@ -3,9 +3,9 @@
+ #include <signal.h>
+ 
+ static const unsigned long all_mask[] = {
+-#if ULONG_MAX == 0xffffffff && _NSIG == 129
++#if ULONG_MAX == 0xffffffff && _NSIG > 65
+ 	-1UL, -1UL, -1UL, -1UL
+-#elif ULONG_MAX == 0xffffffff
++#elif ULONG_MAX == 0xffffffff || _NSIG > 65
+ 	-1UL, -1UL
+ #else
+ 	-1UL
+diff --git a/src/stdio/popen.c b/src/stdio/popen.c
+index 92cb57ee..3ec83394 100644
+--- a/src/stdio/popen.c
++++ b/src/stdio/popen.c
+@@ -31,25 +31,12 @@ FILE *popen(const char *cmd, const char *mode)
+ 		__syscall(SYS_close, p[1]);
+ 		return NULL;
+ 	}
+-	FLOCK(f);
+-
+-	/* If the child's end of the pipe happens to already be on the final
+-	 * fd number to which it will be assigned (either 0 or 1), it must
+-	 * be moved to a different fd. Otherwise, there is no safe way to
+-	 * remove the close-on-exec flag in the child without also creating
+-	 * a file descriptor leak race condition in the parent. */
+-	if (p[1-op] == 1-op) {
+-		int tmp = fcntl(1-op, F_DUPFD_CLOEXEC, 0);
+-		if (tmp < 0) {
+-			e = errno;
+-			goto fail;
+-		}
+-		__syscall(SYS_close, p[1-op]);
+-		p[1-op] = tmp;
+-	}
+ 
+ 	e = ENOMEM;
+ 	if (!posix_spawn_file_actions_init(&fa)) {
++		for (FILE *l = *__ofl_lock(); l; l=l->next)
++			if (l->pipe_pid && posix_spawn_file_actions_addclose(&fa, l->fd))
++				goto fail;
+ 		if (!posix_spawn_file_actions_adddup2(&fa, p[1-op], 1-op)) {
+ 			if (!(e = posix_spawn(&pid, "/bin/sh", &fa, 0,
+ 			    (char *[]){ "sh", "-c", (char *)cmd, 0 }, __environ))) {
+@@ -58,13 +45,14 @@ FILE *popen(const char *cmd, const char *mode)
+ 				if (!strchr(mode, 'e'))
+ 					fcntl(p[op], F_SETFD, 0);
+ 				__syscall(SYS_close, p[1-op]);
+-				FUNLOCK(f);
++				__ofl_unlock();
+ 				return f;
+ 			}
+ 		}
++fail:
++		__ofl_unlock();
+ 		posix_spawn_file_actions_destroy(&fa);
+ 	}
+-fail:
+ 	fclose(f);
+ 	__syscall(SYS_close, p[1-op]);
+ 
+diff --git a/src/thread/pthread_getname_np.c b/src/thread/pthread_getname_np.c
+new file mode 100644
+index 00000000..48d1a294
+--- /dev/null
++++ b/src/thread/pthread_getname_np.c
+@@ -0,0 +1,25 @@
++#define _GNU_SOURCE
++#include <fcntl.h>
++#include <unistd.h>
++#include <sys/prctl.h>
++
++#include "pthread_impl.h"
++
++int pthread_getname_np(pthread_t thread, char *name, size_t len)
++{
++	int fd, cs, status = 0;
++	char f[sizeof "/proc/self/task//comm" + 3*sizeof(int)];
++
++	if (len < 16) return ERANGE;
++
++	if (thread == pthread_self())
++		return prctl(PR_GET_NAME, (unsigned long)name, 0UL, 0UL, 0UL) ? errno : 0;
++
++	snprintf(f, sizeof f, "/proc/self/task/%d/comm", thread->tid);
++	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
++	if ((fd = open(f, O_RDONLY|O_CLOEXEC)) < 0 || (len = read(fd, name, len)) < 0) status = errno;
++	else name[len-1] = 0; /* remove trailing new line only if successful */
++	if (fd >= 0) close(fd);
++	pthread_setcancelstate(cs, 0);
++	return status;
++}
 diff --git a/src/thread/pthread_setname_np.c b/src/thread/pthread_setname_np.c
 index 82d35e17..fc2d2306 100644
 --- a/src/thread/pthread_setname_np.c
@@ -192,3 +849,38 @@ index 82d35e17..fc2d2306 100644
  	if (fd >= 0) close(fd);
  	pthread_setcancelstate(cs, 0);
  	return status;
+diff --git a/src/time/__tz.c b/src/time/__tz.c
+index 09a6317e..3e2fcdcb 100644
+--- a/src/time/__tz.c
++++ b/src/time/__tz.c
+@@ -4,6 +4,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <sys/mman.h>
++#include <ctype.h>
+ #include "libc.h"
+ #include "lock.h"
+ #include "fork_impl.h"
+@@ -154,10 +155,21 @@ static void do_tzset()
+ 	}
+ 	if (old_tz) memcpy(old_tz, s, i+1);
+ 
++	int posix_form = 0;
++	if (*s != ':') {
++		p = s;
++		char dummy_name[TZNAME_MAX+1];
++		getname(dummy_name, &p);
++		if (p!=s && (*p == '+' || *p == '-' || isdigit(*p)
++		             || !strcmp(dummy_name, "UTC")
++		             || !strcmp(dummy_name, "GMT")))
++			posix_form = 1;
++	}	
++
+ 	/* Non-suid can use an absolute tzfile pathname or a relative
+ 	 * pathame beginning with "."; in secure mode, only the
+ 	 * standard path will be searched. */
+-	if (*s == ':' || ((p=strchr(s, '/')) && !memchr(s, ',', p-s))) {
++	if (!posix_form) {
+ 		if (*s == ':') s++;
+ 		if (*s == '/' || *s == '.') {
+ 			if (!libc.secure || !strcmp(s, "/etc/localtime"))
