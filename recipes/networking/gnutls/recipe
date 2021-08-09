@@ -19,7 +19,7 @@
 set -e
 
 program=gnutls
-version=3.7.0
+version=3.7.2
 release=1
 
 # Define a category for the output of the package name
@@ -61,16 +61,16 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure \
-    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
     $configure_args \
     --libdir=/usr/lib${libSuffix} \
     --infodir=$infodir \
     --mandir=$mandir \
     --docdir=$docsdir \
-    --with-html-dir=${docsdir}/html \
-    --enable-gtk-doc-html=no \
+    --htmldir=${docsdir}/html \
     --enable-static=no \
+    --enable-threads=posix \
     --enable-guile \
     --with-p11-kit \
     --without-included-libtasn1 \
@@ -79,6 +79,9 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Move wrong installed .png files to the HTML location
+    mv "${destdir}/$infodir"/*.png "${destdir}/${docsdir}/html"
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
