@@ -19,7 +19,7 @@ set -e
 
 program=eudev
 version=3.2.10
-release=4
+release=5
 
 # Define a category for the output of the package name
 pkgcategory=boot
@@ -69,20 +69,14 @@ build()
      --enable-hwdb \
      --enable-manpages \
      --enable-rule-generator \
-     --enable-split-usr \
      --disable-introspection \
      --disable-selinux \
-     --with-rootprefix="" \
-     --with-rootlibdir=/lib \
      --build="$(gcc -dumpmachine)"
 
     # http://github.com/gentoo/eudev/pull/127
-    make -j${jobs} V=1 udevhwdbdir=/lib/udev/hwdb.d
-    make -j${jobs} udevhwdbdir=/lib/udev/hwdb.d \
+    make -j${jobs} V=1 udevhwdbdir=/usr/lib${libSuffix}/udev/hwdb.d
+    make -j${jobs} udevhwdbdir=/usr/lib${libSuffix}/udev/hwdb.d \
                    DESTDIR="$destdir" install-strip
-
-    # Make symlink for multipath
-    ( cd "${destdir}/usr/sbin" && ln -sf /lib/udev/scsi_id . )
 
     # Insert custom rules
 
@@ -92,10 +86,9 @@ build()
         install -p -m 644 -o root -g root "$file" "${destdir}/etc/udev/rules.d"
     done
 
-    mkdir -p "${destdir}/lib/udev"
     for file in "${worktree}"/archive/eudev/lib/udev/*
     do
-        install -p -m 755 -o root -g root "$file" "${destdir}/lib/udev"
+        install -p -m 755 -o root -g root "$file" "${destdir}/usr/lib${libSuffix}/udev"
     done
     unset -v file
 

@@ -19,7 +19,7 @@ set -e
 
 program=gcc
 version=10-20210206
-release=5
+release=6
 
 # Define a category for the output of the package name
 pkgcategory=devel
@@ -157,6 +157,7 @@ build()
     # Provide compatibility and make soft links for package size
     (
         cd "${destdir}/usr/bin" || exit 1
+
         mv gcc gcc-${version}
         ln -sf gcc-${version} gcc
         ln -sf gcc cc
@@ -191,8 +192,7 @@ build()
         ln -sf gcc-ranlib-${version} ${MACHINE}-gcc-ranlib
     )
     (
-        mkdir -p "${destdir}/lib" && \
-        cd "${destdir}/lib" && ln -sf ../usr/bin/cpp .
+        cd "${destdir}/usr/lib${libSuffix}" && ln -sf ../bin/cpp .
     )
 
     unset -v MACHINE
