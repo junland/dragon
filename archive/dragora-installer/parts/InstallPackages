@@ -39,13 +39,22 @@ All )
         > ${SUBTMPDIR}/return-InstallPackages_All.sorted
 
         # Set some packages at the top of the list to give priority
-        ed -l -s ${SUBTMPDIR}/return-InstallPackages_All.sorted << EOF
-/hierarchyfs/m0
-/etc/m1
-/musl@libs/m2
-/barelibs/m3
+
+        count=0
+        total=3
+        while test $count -lt $total
+        do
+            for string in hierarchyfs etc musl@libs barelibs
+            do
+                ed -l -s ${SUBTMPDIR}/return-InstallPackages_All.sorted << EOF
+/${string}/m${count}
 w
 EOF
+            count=$((count+1))
+            done
+        done
+        unset -v count total string
+
         echo ""
 
         # Calculate total number of packages installed to reflect
@@ -142,13 +151,21 @@ EOF
         sort > ${SUBTMPDIR}/return-InstallPackages_Expert.sorted
 
         # Set some packages at the top of the list to give priority
-        ed -l -s ${SUBTMPDIR}/return-InstallPackages_Expert.sorted << EOF
-/hierarchyfs/m0
-/etc/m1
-/musl@libs/m2
-/barelibs/m3
+
+        count=0
+        total=3
+        while test $count -lt $total
+        do
+            for string in hierarchyfs etc musl@libs barelibs
+            do
+                ed -l -s ${SUBTMPDIR}/return-InstallPackages_Expert.sorted << EOF
+/${string}/m${count}
 w
 EOF
+            count=$((count+1))
+            done
+        done
+        unset -v count total string
     else
         echo "${PROGRAM}: Expert: Error the package list is empty." 1>&2
         exit 99;
