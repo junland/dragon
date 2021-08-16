@@ -165,16 +165,23 @@ _mkreiser4()
 {
     devname=$1
 
+    # Check if the device name is a SDD
+    case $devname in
+    *nvme*)
+        reiser_sdd=-d
+        ;;
+    esac
+
     progressfile="${SUBTMPDIR}/MakeFS-mkfs.reiser4.progress.${RANDOM-0}$$"
 
-    slowcmd "mkfs.reiser4 --yes --force $devname" "$progressfile" | \
+    slowcmd "mkfs.reiser4 -yf $reiser_sdd -o node=node41 $devname" "$progressfile" | \
      dialog --colors \
       --backtitle "\\ZbPartitions: Formatting partitions" \
       --title "PROGRESS" \
       --sleep 3 --progressbox \
 "Formatting $devname - No bad blocks support." $(( LINES / 2 )) $COLUMNS
 
-    unset -v devname progressfile
+    unset -v devname reiser_sdd progressfile
 }
 
 _mkxfs()
