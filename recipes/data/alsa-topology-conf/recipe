@@ -1,6 +1,6 @@
-# Build recipe for alsa-lib.
+# Build recipe for alsa-topology-conf.
 #
-# Copyright (c) 2017-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,12 +17,13 @@
 # Exit immediately on any error
 set -e
 
-program=alsa-lib
+program=alsa-topology-conf
 version=1.2.5.1
+arch=noarch
 release=1
 
 # Define a category for the output of the package name
-pkgcategory=libs
+pkgcategory=data
 
 tarname=${program}-${version}.tar.bz2
 
@@ -30,18 +31,16 @@ tarname=${program}-${version}.tar.bz2
 fetch=ftp://ftp.alsa-project.org/pub/lib/$tarname
 
 description="
-The ALSA library.
+ALSA topology configuration files.
 
-The alsa-lib package contains the ALSA library.  This is used by
-programs (including ALSA utilities) requiring access to the ALSA
-sound interface.
+This is required for the correct functioning of ALSA.
 "
 
 homepage=https://alsa-project.org
-license=LGPLv2.1
+license="BSD 3-clause"
 
 # Source documentation
-docs="COPYING ChangeLog MEMORY-LEAK NOTES TODO version doc/asoundrc.txt"
+docs="LICENSE README.md"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -53,15 +52,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" \
-    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --without-versioned \
-     --build="$(gcc -dumpmachine)"
-
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
+    mkdir -p "${destdir}/usr/share/alsa"
+    cp -RpP 'topology' "${destdir}/usr/share/alsa"
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
