@@ -310,13 +310,22 @@ build()
          ninja -j${jobs}
          DESTDIR="$destdir" ninja -j${jobs} install
 
+         # Produce the sub-package by invoking the internal Qi function
          do_meta > "${outdir}/${full_pkgname}.tlz.txt"
          mkdir -p -- "${destdir}/var/lib/qi"
          cp -p "${outdir}/${full_pkgname}.tlz.txt" \
                "${destdir}/var/lib/qi/${full_pkgname}.txt"
 
-         # Produce the sub-package by invoking the internal Qi function
          cd -- "$destdir" && mode_create "${outdir}/${full_pkgname}.tlz"
+
+         # Install or upgrade the package after build
+         if test "$opt_install" = opt_install
+         then
+             mode_install "${outdir}/${full_pkgname}.tlz"
+         elif test "$opt_upgrade" = opt_upgrade
+         then
+             mode_upgrade "${outdir}/${full_pkgname}.tlz"
+         fi
 
          # Check given options to Qi in order to remove 'destdir' or not
          if test "$opt_keep" != opt_keep && test -z "$keep_destdir"
