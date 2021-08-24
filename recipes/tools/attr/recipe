@@ -1,6 +1,6 @@
 # Build recipe for attr.
 #
-# Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=attr
-version=2.4.48
+version=2.5.1
 release=1
 
 # Define a category for the output of the package name
@@ -54,15 +54,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Apply patches from upstream.
-    #
-    # test: escape left brace in a regex in test/run
-    patch -p1 < "${worktree}/patches/attr/406eab7aa09da9df787a964d3c152c0bda6e23c4"
-
-    # Switch back to syscall()
-    patch -p1 < "${worktree}/patches/attr/14adc898a36948267bfe5c63b399996879e94c98"
-
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
