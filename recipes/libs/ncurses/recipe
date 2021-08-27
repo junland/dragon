@@ -18,7 +18,7 @@
 set -e
 
 program=ncurses
-version=6.2-20210327
+version=6.2-20210821
 release=1
 
 # Define a category for the output of the package name
@@ -54,6 +54,30 @@ license=Custom
 docs="ANNOUNCE AUTHORS COPYING NEWS README TO-DO VERSION"
 docsdir="${docdir}/${program}-${version}"
 
+DEFAULT_NCURSES_BUILD_OPTIONS="
+  --libdir=/usr/lib${libSuffix} \
+  --mandir=$mandir \
+  --enable-overwrite \
+  --enable-symlinks \
+  --enable-pc-files \
+  --enable-xmc-glitch \
+  --enable-colorfgbg \
+  --enable-hard-tabs \
+  --disable-stripping \
+  --disable-relink \
+  --disable-tic-depends \
+  --with-pkg-config-libdir=/usr/lib${libSuffix}/pkgconfig \
+  --with-shared \
+  --with-termlib=tinfo \
+  --with-ticlib=tic \
+  --with-gpm \
+  --without-tests \
+  --without-debug \
+  --without-profile \
+  --without-ada \
+  --build="$(gcc -dumpmachine)"
+"
+
 build()
 {
     unpack "${tardir}/$tarname"
@@ -63,29 +87,46 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" \
+    unset -v TERMINFO;	# Just in case.
+
+    ./configure CPPFLAGS="$QICPPFLAGS -D_GNU_SOURCE" \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --mandir=$mandir \
-     --enable-widec \
-     --enable-symlinks \
-     --enable-termcap \
-     --enable-pc-files \
-     --enable-xmc-glitch \
-     --disable-stripping \
-     --disable-relink \
-     --with-pkg-config-libdir=/usr/lib${libSuffix}/pkgconfig \
-     --with-shared \
-     --with-gpm \
-     --without-tests \
-     --without-debug \
-     --without-ada \
-     --build="$(gcc -dumpmachine)"
+     $configure_args --includedir=/usr/include/ncurses \
+      $DEFAULT_NCURSES_BUILD_OPTIONS \
+       --without-manpages --without-progs --disable-pc-files --disable-widec
 
     make -j${jobs} V=1
-    mkdir -p "${destdir}/usr/lib${libSuffix}/pkgconfig"
     make -j${jobs} DESTDIR="$destdir" install
+
+    # Build again to include the "wide character" support
+
+    ./configure CPPFLAGS="$QICPPFLAGS -D_GNU_SOURCE" \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args --includedir=/usr/include/ncurses \
+      $DEFAULT_NCURSES_BUILD_OPTIONS \
+       --with-manpages --with-progs --enable-pc-files --enable-widec
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+
+    unset -v DEFAULT_NCURSES_BUILD_OPTIONS
+
+    # Make symlinks for compatibility
+    (
+        cd "${destdir}/usr/lib${libSuffix}/pkgconfig" || exit 1
+        ln -sf formw.pc form.pc
+        ln -sf menuw.pc menu.pc
+        ln -sf ncursesw.pc ncurses.pc
+        ln -sf panelw.pc panel.pc
+    )
+    (
+        cd "${destdir}/usr/include" || exit 1
+        ln -sf ncurses ncursesw
+        for header in ncurses/*
+        do
+            ln -sf $header .
+        done
+    )
 
     # Insert termcap file provided by "Thomas E. Dickey"
     mkdir -p "${destdir}/etc"
@@ -95,44 +136,16 @@ build()
 
     touch "${destdir}/etc/.graft-config"
 
-    # Provide non-widec compatibility
-
-    for name in ncurses form panel menu
-    do
-        rm -f "${destdir}/usr/lib${libSuffix}/lib${name}.so"
-
-        echo "INPUT(-l${name}w)" > \
-         "${destdir}/usr/lib${libSuffix}/lib${name}.so"
-
-        echo "INPUT(-l${name}w)" > \
-         "${destdir}/usr/lib${libSuffix}/lib${name}.a"
-
-        (
-            cd "${destdir}/usr/lib${libSuffix}/pkgconfig" && \
-             ln -sf ${name}w.pc ${name}.pc
-        )
-    done
-
-    major_version=$(echo $version | cut -f 1 -d .)
-    for name in tic tinfo
-    do
-        echo "INPUT(libncursesw.so.${major_version})" > \
-         "${destdir}/usr/lib${libSuffix}/lib${name}.so"
-
-        ln -sf libncursesw.so.${major_version} \
-         "${destdir}/usr/lib${libSuffix}/lib${name}.so.${major_version}"
-    done
-    unset -v major_version
-
     # Backward compatibility
     (
         cd "${destdir}/usr/lib${libSuffix}" || exit 2
         echo "INPUT(-lncursesw)" > libcursesw.so
-        ln -sf libncurses.so libcurses.so
+        echo "INPUT(-ltinfo)" > libtermcap.so
+
+        # Replace hard-links with soft-links to save space
         ln -sf libncurses++w.a libncurses++.a
+        ln -sf libpanelw.a libpanel.a
     )
-    # Just in case
-    ln -sf ncursesw6-config "${destdir}/usr/bin/ncurses6-config"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
