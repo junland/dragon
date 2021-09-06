@@ -19,7 +19,7 @@ set -e
 
 program=ncurses
 version=6.2-20210821
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -54,7 +54,7 @@ license=Custom
 docs="ANNOUNCE AUTHORS COPYING NEWS README TO-DO VERSION"
 docsdir="${docdir}/${program}-${version}"
 
-DEFAULT_NCURSES_BUILD_OPTIONS="
+_DEFAULT_NCURSES_BUILD_OPTIONS="
   --libdir=/usr/lib${libSuffix} \
   --mandir=$mandir \
   --enable-overwrite \
@@ -64,8 +64,6 @@ DEFAULT_NCURSES_BUILD_OPTIONS="
   --enable-colorfgbg \
   --enable-hard-tabs \
   --disable-stripping \
-  --disable-relink \
-  --disable-tic-depends \
   --with-pkg-config-libdir=/usr/lib${libSuffix}/pkgconfig \
   --with-shared \
   --with-termlib=tinfo \
@@ -92,33 +90,34 @@ build()
     ./configure CPPFLAGS="$QICPPFLAGS -D_GNU_SOURCE" \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args --includedir=/usr/include/ncurses \
-      $DEFAULT_NCURSES_BUILD_OPTIONS \
-       --without-manpages --without-progs --disable-pc-files --disable-widec
+      $_DEFAULT_NCURSES_BUILD_OPTIONS \
+       --with-manpages --enable-pc-files --enable-widec
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
-    # Build again to include the "wide character" support
+    unset -v _DEFAULT_NCURSES_BUILD_OPTIONS
 
-    ./configure CPPFLAGS="$QICPPFLAGS -D_GNU_SOURCE" \
-    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args --includedir=/usr/include/ncurses \
-      $DEFAULT_NCURSES_BUILD_OPTIONS \
-       --with-manpages --with-progs --enable-pc-files --enable-widec
+    # Provide non-widec compatibility
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
+    for name in ncurses form panel menu
+    do
+        rm -f "${destdir}/usr/lib${libSuffix}/lib${name}.so" \
+              "${destdir}/usr/lib${libSuffix}/lib${name}.a"
 
-    unset -v DEFAULT_NCURSES_BUILD_OPTIONS
+        echo "INPUT(-l${name}w)" > \
+         "${destdir}/usr/lib${libSuffix}/lib${name}.so"
+        echo "INPUT(-l${name}w)" > \
+         "${destdir}/usr/lib${libSuffix}/lib${name}.a"
+
+        (
+            cd "${destdir}/usr/lib${libSuffix}/pkgconfig" && \
+             ln -sf ${name}w.pc ${name}.pc
+        )
+    done
+    unset -v name
 
     # Make symlinks for compatibility
-    (
-        cd "${destdir}/usr/lib${libSuffix}/pkgconfig" || exit 1
-        ln -sf formw.pc form.pc
-        ln -sf menuw.pc menu.pc
-        ln -sf ncursesw.pc ncurses.pc
-        ln -sf panelw.pc panel.pc
-    )
     (
         cd "${destdir}/usr/include" || exit 1
         ln -sf ncurses ncursesw
@@ -136,16 +135,13 @@ build()
 
     touch "${destdir}/etc/.graft-config"
 
-    # Backward compatibility
+    # Make sure to link libtermcap against -ltinfo
     (
-        cd "${destdir}/usr/lib${libSuffix}" || exit 2
-        echo "INPUT(-lncursesw)" > libcursesw.so
+        cd "${destdir}/usr/lib${libSuffix}" || exit 1
+        rm -f libtermcap.so libtermcap.a
+
         echo "INPUT(-ltinfo)" > libtermcap.so
         echo "INPUT(-ltinfo)" > libtermcap.a
-
-        # Replace hard-links with soft-links to save space
-        ln -sf libncurses++w.a libncurses++.a
-        ln -sf libpanelw.a libpanel.a
     )
 
     # Compress and link man pages (if needed)
