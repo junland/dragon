@@ -18,14 +18,14 @@
 set -e
 
 program=ncurses
-version=6.2-20210821
-release=2
+version=6.2-20210905
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=libs
 
 tarname=${program}-${version}.tgz
-termcap_file=termcap-20201128.src.gz
+termcap_file=termcap-20210816.src.gz
 
 # Remote source(s)
 fetch="
@@ -91,7 +91,7 @@ build()
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args --includedir=/usr/include/ncurses \
       $_DEFAULT_NCURSES_BUILD_OPTIONS \
-       --with-manpages --enable-pc-files --enable-widec
+       --with-manpages --enable-widec --with-normal
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
@@ -100,7 +100,7 @@ build()
 
     # Provide non-widec compatibility
 
-    for name in ncurses form panel menu
+    for name in form panel menu
     do
         rm -f "${destdir}/usr/lib${libSuffix}/lib${name}.so" \
               "${destdir}/usr/lib${libSuffix}/lib${name}.a"
@@ -135,10 +135,17 @@ build()
 
     touch "${destdir}/etc/.graft-config"
 
-    # Make sure to link libtermcap against -ltinfo
+    # Make sure to link against -ltinfo
     (
+        major_version=$(echo $version | cut -f 1 -d .)
+
         cd "${destdir}/usr/lib${libSuffix}" || exit 1
-        rm -f libtermcap.so libtermcap.a
+        rm -f libncursesw.so libncurses.so libncurses.a libtermcap.so libtermcap.a
+
+        echo "INPUT(libncursesw.so.${major_version} -ltinfo)" > libncurses.so
+        echo "INPUT(libncursesw.a -ltinfo)" > libncurses.a
+
+        echo "INPUT(libncursesw.so.${major_version} -ltinfo)" > libncursesw.so
 
         echo "INPUT(-ltinfo)" > libtermcap.so
         echo "INPUT(-ltinfo)" > libtermcap.a
