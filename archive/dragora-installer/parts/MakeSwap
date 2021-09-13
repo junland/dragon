@@ -27,9 +27,9 @@ set_checklist()
     echo " 2> \${SUBTMPDIR}/$3" >> "$2"
 }
 
-### Detection, addition of active and inactive swap devices
+### Detection and addition of inactive/active swap devices
 
-swaplist="$(blkid -s TYPE | awk -F ":" '/swap/{ print $1 }')"
+swaplist="$(fdisk -l | awk '/Linux swap/{ print $1 }')"
 
 if test -z "$swaplist"
 then
@@ -186,17 +186,19 @@ Device name: $device [$(get_size $device)]" 14 51 1 \
             if test -s "$tempfile"
             then
                 mkswap -c "$device"
-                sleep 3
+                sleep 5
             else
                 mkswap "$device"
-                sleep 3
+                sleep 5
             fi
 
             # Activate device, adding the entry for the fstab
 
             echo ""
-            swapon -v -f "$device" && add_fstabEntry "$device"
-            sleep 2
+            swapon -v -f "$device"
+            sleep 3
+
+            add_fstabEntry "$device"
         done
 
         unset -v REPLY device tempfile
