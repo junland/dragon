@@ -111,8 +111,8 @@ Enter a mount point for \"${1}\":
 
 _mkfs()
 {
-    helper=$1
-    devname=$2
+    helper="$1"
+    devname="$2"
 
     dialog --colors \
      --backtitle "\\ZbPartitions - ${devname}" \
@@ -124,79 +124,43 @@ $(fdisk -l "$devname" | head -n 1)" 13 55 1 \
 "$devname"    "Check for bad blocks (slow)" off \
     2> "${SUBTMPDIR}/return-MakeFS_mkfs" || return $?
 
-    progressfile="${SUBTMPDIR}/MakeFS-${helper}.progress.${RANDOM-0}$$"
-
     if test -s "${SUBTMPDIR}/return-MakeFS_mkfs"
     then
-        slowcmd "$helper -c $devname" "$progressfile" | \
-         dialog --colors \
-          --backtitle "\\ZbPartitions: Formatting and checking partitions" \
-          --title "PROGRESS" \
-          --sleep 3 --progressbox \
-"Formatting $devname - Checking for bad blocks..." $(( LINES / 2 )) $COLUMNS
+        $helper -c $devname
+        sleep 3
     else
-        slowcmd "$helper $devname" "$progressfile" | \
-         dialog --colors \
-          --backtitle "\\ZbPartitions: Formatting partitions" \
-          --title "PROGRESS" \
-          --sleep 3 --progressbox \
-"Formatting $devname - No bad blocks check." $(( LINES / 2 )) $COLUMNS
+        $helper $devname
+        sleep 3
     fi
 
-    unset -v helper devname progressfile
+    unset -v helper devname
 }
 
 _mkbtrfs()
 {
-    devname=$1
-    progressfile="${SUBTMPDIR}/MakeFS-mkfs.btrfs.progress.${RANDOM-0}$$"
-
-    slowcmd "mkfs.btrfs -f -d single -m single $devname" "$progressfile" | \
-     dialog --colors \
-      --backtitle "\\ZbPartitions: Formatting partitions" \
-      --title "PROGRESS" \
-      --sleep 3 --progressbox \
-"Formatting $devname - No bad blocks support." $(( LINES / 2 )) $COLUMNS
-
-    unset -v devname progressfile
+    mkfs.btrfs -f -d single -m single "$1"
+    sleep 3
 }
 
 _mkreiser4()
 {
-    devname=$1
-
     # Check if the device name is a SDD
-    case $devname in
+    case $1 in
     *nvme*)
         reiser_sdd=-d
         ;;
     esac
 
-    progressfile="${SUBTMPDIR}/MakeFS-mkfs.reiser4.progress.${RANDOM-0}$$"
+    mkfs.reiser4 -yf $reiser_sdd -o create=reg40,node=node41 "$1"
+    sleep 3
 
-    slowcmd "mkfs.reiser4 -yf $reiser_sdd -o create=reg40,node=node41 $devname" "$progressfile" | \
-     dialog --colors \
-      --backtitle "\\ZbPartitions: Formatting partitions" \
-      --title "PROGRESS" \
-      --sleep 3 --progressbox \
-"Formatting $devname - No bad blocks support." $(( LINES / 2 )) $COLUMNS
-
-    unset -v devname reiser_sdd progressfile
+    unset -v reiser_sdd
 }
 
 _mkxfs()
 {
-    devname=$1
-    progressfile="${SUBTMPDIR}/MakeFS-mkfs.xfs.progress.${RANDOM-0}$$"
-
-    slowcmd "mkfs.xfs -f $devname" "$progressfile" | \
-     dialog --colors \
-      --backtitle "\\ZbPartitions: Formatting partitions" \
-      --title "PROGRESS" \
-      --sleep 3 --progressbox \
-"Formatting $devname - No bad blocks support." $(( LINES / 2 )) $COLUMNS
-
-    unset -v devname progressfile
+    mkfs.xfs -f "$1"
+    sleep 3
 }
 
 formatMenu()
@@ -223,6 +187,8 @@ formatMenu()
 
     # Try to unmount the device if it is already mounted
     umount "$1" > /dev/null 2>&1 || true
+
+    dialog --clear
 
     # Check for selected options to give the proper format
     case "$(cat -- "${SUBTMPDIR}"/return-MakeFS_formatMenu)" in

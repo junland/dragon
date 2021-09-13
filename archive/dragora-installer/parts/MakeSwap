@@ -164,7 +164,6 @@ then
         do
             # Set up temporary random files related to the menu
             tempfile="${SUBTMPDIR}/return_MakeSwap_format${RANDOM-0}$$"
-            progressfile="${tempfile}.progress"
 
             dialog --colors \
              --backtitle "\\ZbInactive Swap device"  \
@@ -182,35 +181,25 @@ Device name: $device [$(get_size $device)]" 14 51 1 \
 "$device"    "Check for bad blocks (slow)" off \
             2> $tempfile || continue;
 
+            dialog --clear
+
             if test -s "$tempfile"
             then
-                slowcmd "mkswap -c $device" "$progressfile" | \
-                 dialog --colors \
-                  --backtitle "\\ZbSwap format for $device" \
-                  --title "PROGRESS" \
-                  --sleep 3 --progressbox \
-"Formatting $device - Checking for bad blocks..." $(( LINES / 2 )) $COLUMNS
+                mkswap -c "$device"
+                sleep 3
             else
-                slowcmd "mkswap $device" "$progressfile" | \
-                 dialog --colors \
-                  --backtitle "\\ZbSwap format for $device" \
-                  --title "PROGRESS" \
-                  --sleep 3 --progressbox \
-"Formatting $device - No bad blocks check." $(( LINES / 2 )) $COLUMNS
+                mkswap "$device"
+                sleep 3
             fi
 
             # Activate device, adding the entry for the fstab
 
-            slowcmd "swapon -v -f $device" "$progressfile" | \
-             dialog --colors \
-              --backtitle "\\ZbSwap activation for $device" \
-              --title "PROGRESS" \
-              --sleep 3 --progressbox \
-"Activating swap device $device ..." $(( LINES / 2 )) $COLUMNS
-            add_fstabEntry "$device"
+            echo ""
+            swapon -v -f "$device" && add_fstabEntry "$device"
+            sleep 2
         done
 
-        unset -v REPLY device tempfile progressfile
+        unset -v REPLY device tempfile
     fi
 fi
 
