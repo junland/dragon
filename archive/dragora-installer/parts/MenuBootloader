@@ -120,21 +120,13 @@ Please select the boot loader destination:" 0 0 0 "${xlist[@]}" \
 
         # GRUB Installation
 
-        dialog --colors \
-         --backtitle "\\ZbGRUB: Installing the boot loader" \
-         --title "Installing GRUB on $BOOT_DEVICE" \
-         --prgbox \
-"chroot /media/dragora-root /usr/sbin/grub-install --force $BOOT_DEVICE && \
- echo \"^ Return status = $?\"" $(( LINES - 8 )) $COLUMNS
-
-        # GRUB config file
-
-        dialog --colors \
-         --backtitle "\\ZbGRUB: Generating configuration file" \
-         --title "Generating grub.cfg" \
-         --prgbox \
-"chroot /media/dragora-root /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg && \
- echo \"^ Return status = $?\"" $(( LINES - 8 )) $COLUMNS
+        echo ""
+        chroot /media/dragora-root /usr/sbin/grub-install --force $BOOT_DEVICE
+        echo ""
+        echo "Generating configuration file (as /boot/grub/grub.cfg) ..."
+        echo ""
+        chroot /media/dragora-root /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg
+        sleep 5
 
         unset -v BOOT_DEVICE
 
