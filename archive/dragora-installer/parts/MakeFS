@@ -124,26 +124,37 @@ $(fdisk -l "$devname" | head -n 1)" 13 55 1 \
 "$devname"    "Check for bad blocks (slow)" off \
     2> "${SUBTMPDIR}/return-MakeFS_mkfs" || return $?
 
+    dialog --clear
+
+    echo "Making ${helper#*.} filesystem for $devname ..."
+    echo ""
+
     if test -s "${SUBTMPDIR}/return-MakeFS_mkfs"
     then
-        $helper -c $devname
-        sleep 3
+        $helper -F -F -c $devname
     else
-        $helper $devname
-        sleep 3
+        $helper -F -F $devname
     fi
+    sleep 4
 
     unset -v helper devname
 }
 
 _mkbtrfs()
 {
+    dialog --clear
+
+    echo "Making BTRFS filesystem for $1 ..."
+    echo ""
+
     mkfs.btrfs -f -d single -m single "$1"
-    sleep 3
+    sleep 4
 }
 
 _mkreiser4()
 {
+    dialog --clear
+
     # Check if the device name is a SDD
     case $1 in
     *nvme*)
@@ -151,16 +162,24 @@ _mkreiser4()
         ;;
     esac
 
+    echo "Making Reiser4 filesystem for $1 ..."
+    echo ""
+
     mkfs.reiser4 -yf $reiser_sdd -o create=reg40,node=node41 "$1"
-    sleep 3
+    sleep 4
 
     unset -v reiser_sdd
 }
 
 _mkxfs()
 {
+    dialog --clear
+
+    echo "Making XFS filesystem for $1 ..."
+    echo ""
+
     mkfs.xfs -f "$1"
-    sleep 3
+    sleep 4
 }
 
 formatMenu()
@@ -187,8 +206,6 @@ formatMenu()
 
     # Try to unmount the device if it is already mounted
     umount "$1" > /dev/null 2>&1 || true
-
-    dialog --clear
 
     # Check for selected options to give the proper format
     case "$(cat -- "${SUBTMPDIR}"/return-MakeFS_formatMenu)" in
