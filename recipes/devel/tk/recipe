@@ -18,8 +18,8 @@
 set -e
 
 program=tk
-version=8.6.11
-series_version="${version%.*}"
+version=8.6.11.1
+series_version=8.6
 release=1
 
 # Define a category for the output of the package name
@@ -48,7 +48,7 @@ docs="ChangeLog README.md changes license.terms"
 docsdir="${docdir}/${program}-${version}"
 
 # Custom source directory
-srcdir=${program}${version}
+srcdir="${program}${version%.*}"
 
 build()
 {
@@ -68,7 +68,8 @@ build()
 
     cd unix
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" \
+    LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
@@ -124,6 +125,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"/
+    cp -p $docs "${destdir}${docsdir}"
 }
 

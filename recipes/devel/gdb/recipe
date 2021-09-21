@@ -18,7 +18,7 @@
 set -e
 
 program=gdb
-version=10.1
+version=11.1
 release=1
 
 # Define a category for the output of the package name
@@ -27,7 +27,7 @@ pkgcategory=devel
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=https://ftpmirror.gnu.org/gdb/$tarname
+fetch=https://ftp.gnu.org/gnu/gdb/$tarname
 
 description="
 The GNU debugger.
@@ -54,11 +54,9 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     # Create a separate build directory
+    rm -rf BUILD
     mkdir BUILD
     cd BUILD
-
-    # The GUILE support is pending (--with-guile=guile-3.0)
-    # It does not work for GDB 8.2, 8.3, 9.2, ... ?
 
     ../configure CPPFLAGS="$QICPPFLAGS" \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
@@ -71,6 +69,7 @@ build()
      --with-python=/usr/bin/python3 \
      --with-system-zlib \
      --with-system-readline \
+     --with-guile=guile-3.0 \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
