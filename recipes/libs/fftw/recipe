@@ -18,8 +18,8 @@
 set -e
 
 program=fftw
-version=3.3.9
-release=2
+version=3.3.10
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -47,7 +47,8 @@ docsdir="${docdir}/${program}-${version}"
 
 _configure_argv()
 {
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" \
+    LDFLAGS="$QILDFLAGS" \
     $configure_args \
     --libdir=/usr/lib${libSuffix} \
     --infodir=$infodir \
@@ -55,7 +56,6 @@ _configure_argv()
     --docdir=$docsdir \
     --enable-static=no \
     --enable-shared=yes \
-    --enable-threads=yes \
     --build="$(gcc -dumpmachine)" "$@"
 }
 
@@ -68,23 +68,39 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # Set custom build options per architecture
+    case $arch in
+    i?86 | amd64 | x32 )
+        _build_simd="--enable-sse2 --enable-avx"
+        ;;
+    esac
+
     # Build with double precision arithmetic support
 
-    _configure_argv
+    _configure_argv $_build_simd
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Build with single precision support
 
     make clean
-    _configure_argv --enable-float
+    _configure_argv $_build_simd --enable-threads --enable-float
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
+
+    unset -v _build_simd
 
     # Build with long double support
 
     make clean
-    _configure_argv --enable-long-double
+    _configure_argv --enable-threads --enable-long-double
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # Build with quad precision support
+
+    make clean
+    _configure_argv --enable-threads --enable-quad-precision
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
 
@@ -112,6 +128,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}/"
+    cp -p $docs "${destdir}${docsdir}"
 }
 

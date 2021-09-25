@@ -18,7 +18,7 @@
 set -e
 
 program=tiff
-version=4.2.0
+version=4.3.0
 release=1
 
 # Define a category for the output of the package name
@@ -53,7 +53,8 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     ./configure \
-    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" \
+    LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
@@ -61,7 +62,9 @@ build()
      --enable-static=yes \
      --enable-shared=yes \
      --enable-cxx \
-     --disable-lzma
+     --disable-lzma \
+     --disable-zstd \
+     --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip

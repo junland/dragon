@@ -1,7 +1,7 @@
 # Build recipe for libffcall.
 #
 # Copyright (c) 2017 MMPG, <mmpg@vp.pl>.
-# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 set -e
 
 program=libffcall
-version=2.2
+version=2.4
 release=1
 
 # Define a category for the output of the package name
@@ -69,7 +69,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure \
+    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
@@ -77,14 +78,11 @@ build()
      --htmldir=${docsdir}/html \
      --enable-static=yes \
      --enable-shared=yes \
-     --disable-rpath \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs}
-    #make -k check
+    make -k check
     make -j${jobs} DESTDIR="$destdir" install
-
-    #strip --strip-unneeded "${destdir}/usr/lib${libSuffix}"/*.so.0
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -107,6 +105,6 @@ build()
     # Move wrong HTML directory
     mv "${destdir}/usr/share/html" "${destdir}${docsdir}/"
 
-    cp -p $docs "${destdir}${docsdir}/"
+    cp -p $docs "${destdir}${docsdir}"
 }
 

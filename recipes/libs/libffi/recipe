@@ -1,6 +1,6 @@
 # Build recipe for libffi.
 #
-# Copyright (c) 2017 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=libffi
-version=3.2.1
+version=3.4.2
 release=1
 
 # Define a category for the output of the package name
@@ -38,16 +38,14 @@ license=BSD
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=ftp://sourceware.org/pub/libffi/$tarname
-
-# Parallel jobs for the compiler
-jobs=1
+fetch=https://github.com/libffi/libffi/releases/download/v${version}/$tarname
 
 # Source documentation
-docs="ChangeLog LICENSE README"
+docs="ChangeLog LICENSE* README.md"
 docsdir="${docdir}/${program}-${version}"
 
-build() {
+build()
+{
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
@@ -55,16 +53,14 @@ build() {
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Sanitize the header installation path
-    patch -p0 < "${worktree}/patches/libffi/libffi-paths.patch"
-
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --libdir=/usr/lib${libSuffix} \
-    --infodir=$infodir \
-    --mandir=$mandir \
-    --docdir=$docsdir \
-    --build="$(gcc -dumpmachine)"
+    ./configure \
+    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
@@ -91,6 +87,6 @@ build() {
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}/"
+    cp -p $docs "${destdir}${docsdir}"
 }
 

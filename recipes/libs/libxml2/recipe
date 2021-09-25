@@ -19,8 +19,8 @@
 set -e
 
 program=libxml2
-version=2.9.10
-release=5
+version=2.9.12
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -53,22 +53,11 @@ build()
 
     cd "$srcdir"
 
-    # Apply fixes from "Beyond of Linux From Scratch" :-)
-    patch -p1 < "${worktree}/patches/libxml2/libxml2-2.9.10-security_fixes-1.patch"
-
-    # Fix a problem generating the Python3 module with Python-3.9 and later
-    sed -i '/if Py/{s/Py/(Py/;s/)/))/}' python/types.c python/libxml.c
-
-    # Fix Python tests which terminates early with an error
-    sed -i 's/test.test/#&/' python/tests/tstLastError.py
-
-    # A fix for ICU-68.2
-    sed -i 's/ TRUE/ true/' encoding.c
-
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure \
+    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
@@ -78,7 +67,6 @@ build()
      --with-python=/usr/bin/python3 \
      --with-history \
      --with-icu \
-     --with-threads \
      --without-lzma \
      --without-iso8859x \
      --without-legacy \
