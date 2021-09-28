@@ -160,7 +160,8 @@ readconfig()
 {
     if test "${_readconfig:-readconfig}" = readconfig
     then
-        is_readable "$HOME/.qirc" 2> /dev/null && _rcfile="$HOME/.qirc";
+        is_readable "$HOME/.qirc" && _rcfile="$HOME/.qirc"
+
         echo "Importing configuration file from \`${_rcfile}' ..."
         . "$_rcfile" || chkstatus_or_exit 5
     fi
@@ -379,7 +380,7 @@ mode_build()
                     ;;
                 3*)
                     unset -v ANSWER
-                    echo "=== Building UNPROCESSED/MODIFIED recipes ..." > /dev/tty
+                    echo "=== Building unprocessed or recently modified recipe(s) ..." > /dev/tty
                     echo ""
                     opt_skipqsts=opt_skipqsts
                     readonly opt_skipqsts
@@ -393,7 +394,7 @@ mode_build()
                     ;;
                 esac
             else
-                warn "Use the --force option to reprocess ${CWD}/$recipe." ""
+                warn "Use the --force option to reprocess ${CWD}/${recipe}." ""
                 return 6;
             fi
         fi
@@ -460,7 +461,7 @@ mode_build()
     then
         if test -e "${TMPDIR}/$srcdir"
         then
-            rm -r -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
+            rm -rf -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
             echo "removed directory: '${TMPDIR}/$srcdir'"
         fi
     else
@@ -597,7 +598,7 @@ mode_build()
     # Back to the current working directory
     cd -- "$CWD" || chkstatus_or_exit
 
-    echo "=== Deleting 'srcdir', 'destdir' ..."
+    echo "=== Deleting 'srcdir' or 'destdir' ..."
     if test "$opt_keep" != opt_keep
     then
         if test -z "$keep_srcdir"
@@ -605,7 +606,7 @@ mode_build()
             srcdir="${srcdir%%/*}";	# Directory name without parents.
             if test -e "${TMPDIR}/$srcdir"
             then
-                rm -r -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
+                rm -rf -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
                 echo "removed directory: '${TMPDIR}/$srcdir'"
             fi
         fi
@@ -614,15 +615,17 @@ mode_build()
         then
             if test -e "$destdir"
             then
-                rm -r -- "$destdir" || chkstatus_or_exit
+                rm -rf -- "$destdir" || chkstatus_or_exit
                 echo "removed directory: '$destdir'"
             fi
         fi
     else
         warn \
-         "    Request via --keep to preserve 'srcdir' or 'destdir' has been made:" \
-         "${TMPDIR}/$srcdir" \
-         "$destdir"
+         "    The following directories will be preserved:"  \
+         "${TMPDIR}/$srcdir"                                 \
+         "$destdir"                                          \
+         ""                                                  \
+         "^ The --keep option has been passed."
     fi
 
     # Install or upgrade the package after build
@@ -637,8 +640,7 @@ mode_build()
         fi
     fi
 
-    echo "{@} All done for \"${CWD}/${recipe}\"."
-    echo ""
+    warn "{@} Recipe \"${CWD}/${recipe}\" has been processed." ""
 }
 
 mode_create()
@@ -680,12 +682,10 @@ mode_create()
     ( cd -- "$directory" && sha256sum "$name" > "${name}.sha256" )
     chkstatus_or_exit 4
 
-    echo "{#} Package \"${name}\" created on ${directory}."
+    warn "{#} Package \"${name}\" created on ${directory}." ""
 
     # Remove used variables
     unset -v directory name
-
-    echo ""
 }
 
 mode_remove()
@@ -693,7 +693,7 @@ mode_remove()
     expunge="${packagedir}/$(basename -- "$1" .tlz)"
 
     echo ""
-    echo "<<< Removing package \`$rootdir${expunge}' ..."
+    echo "{<} Removing \`$rootdir${expunge}' ..."
 
     # Complain if the package directory does not exist
 
@@ -736,18 +736,16 @@ mode_remove()
     # Delete package directory
     if test "$opt_keep" != opt_keep
     then
-        echo "=== Deleting package directory, if exists as such ..."
-        if test -e "${rootdir}$expunge"
+        echo "=== Deleting package directory ..."
+        if is_readable "${rootdir}$expunge"
         then
             rm -r -- "${rootdir}$expunge" || chkstatus_or_exit
             echo "removed directory: '${rootdir}$expunge'"
         fi
     fi
 
-    # Remove used variables
+    warn "{<} Package \"${expunge##*/}\" removed from $rootdir${expunge%%/*}." ""
     unset -v expunge
-
-    echo ""
 }
 
 mode_install()
@@ -766,11 +764,8 @@ mode_install()
 
     # Make preparations to install the package
 
-    # Get the filename
-    name="$(basename -- "$1" .tlz)"
-
     echo ""
-    echo ">>> Installing package \`${name}' ..."
+    echo "{>} Installing $1 ..."
 
     echo "=== Checking tarball integrity ..."
     tarlz --missing-crc -tf "$1" > /dev/null
@@ -781,6 +776,9 @@ mode_install()
     _packagedir="${_packagedir:=$packagedir}"
 
     # Create package directory using 'name'
+
+    name="$(basename -- "$1" .tlz)";		# Get the file name.
+
     if ! test -d "$rootdir${_packagedir}/$name"
     then
         mkdir -p -- "$rootdir${_packagedir}/$name" || chkstatus_or_exit
@@ -854,7 +852,7 @@ mode_install()
                 do
                     if ! test -e "$replace"
                     then
-                        warn "<^> Declared package \`${replace}' does not exist. (ignoring)"
+                        warn "    Declared package \`${replace}' to be replaced does not exist.  [Ignored]"
                         continue;
                     fi
 
@@ -884,10 +882,8 @@ mode_install()
         fi
     fi
 
-    # Remove used variables
-    unset -v name _packagedir
-
-    echo ""
+    warn "{>} Package \"${name}.tlz\" installed on $rootdir${_packagedir}." ""
+    unset -v name _packagedir;	# Remove used variables.
 }
 
 mode_order()
@@ -926,19 +922,17 @@ mode_upgrade()
         return 4
     fi
 
-    # Get the filename
-    incoming="$(basename -- "$1" .tlz)"
-
     echo ""
-    echo "{%} Upgrading package \`${incoming}' ..."
+    echo "{^} Upgrading $1 ..."
+
+    incoming="$(basename -- "$1" .tlz)";	# Get the file name.
 
     # Check package pre-existence
     if test "$opt_force" != opt_force && \
        test -e "$rootdir${packagedir}/$incoming"
     then
-        warn \
-         ""                                                                \
-         "    The package to be upgraded already exist;"                   \
+        warn "" \
+         "    The package to be upgraded already exist;" \
          "Unless the --force option is given, this package won't be UPGRADED."
         return 6;
     fi
@@ -954,12 +948,12 @@ mode_upgrade()
         case $item in
         "${incoming%@*}"*)
             warn \
-             "A BLACKLISTED package name has been detected:"                \
-             "-> $incoming"                                                 \
+             "    A blacklisted package name has been detected:"            \
+             "$incoming"                                                    \
              ""                                                             \
-             "  This package will be INSTALLED instead of being upgraded."
-             opt_prune=opt_prune mode_install "$1"
-             return 0
+             "^ This package will be INSTALLED instead of being upgraded ..."
+            opt_prune=opt_prune mode_install "$1"
+            return 0
             ;;
         esac
     done
@@ -971,52 +965,50 @@ mode_upgrade()
     PRVLOC=$(mktemp -dp "$rootdir${packagedir}" ${incoming}.XXXXXXXXXXXX) || exit 2
 
     echo "=== Pre-installing package in temporary location ..."
-    opt_prune=opt_prune		# Turn on prune operation.
+    opt_prune=opt_prune;	# Turns on prune operation.
     _isUpgrade=_isUpgrade.on mode_install "$1" "$PRVLOC" > /dev/null
     _isUpgrade=_isUpgrade.off
 
     echo "=== Looking for installations under the same name ..."
-    for long_name in "$rootdir${packagedir}/${incoming%%_*}"_*
+    for previous_package in "$rootdir${packagedir}/${incoming%%_*}"_*
     do
-        # Check if it is a valid directory and if the incoming
-        # package is not equivalent to a previous installation;
-        # also check if the package to be deleted is equivalent
-        # to the temporary, private location.
+        test -e "$previous_package" || continue
 
-        if ! test -d "$long_name"
-        then
-            continue;
-        fi
-        if test "${long_name##*/}" = "$incoming"
-        then
-            continue;
-        fi
-        if test "$long_name" = "$PRVLOC"
+        # Previous package directory to be removed cannot be
+        # the same to the temporary (private) location
+        if test "$previous_package" = "$PRVLOC"
         then
             continue;
         fi
 
-        warn "Proceeding to the removal of ${long_name} ..."
-        # A package directory will be preserved if --keep is given
-        mode_remove "${long_name##*/}" > /dev/null
+        echo "$previous_package"
+
+        # The package directory could be preserved if --keep is given
+        if test "$opt_keep" != opt_keep
+        then
+            rm -r -- "$previous_package" || chkstatus_or_exit
+            echo "removed directory: '$previous_package'"
+        else
+            warn "    Preserving package $previous_package directory ..."
+        fi
     done
-    unset -v long_name
+    unset -v previous_package
 
-    # Re-install the package removing the temporary location
+    # Re-install incoming package to the final location
 
     mode_install "$1"
-    opt_prune=opt_prune.off	# Turn off prune operation.
+    opt_prune=opt_prune.off;	# Turns off prune operation.
 
     echo "=== Deleting temporary location ..."
-    rm -rf -- "$PRVLOC" || chkstatus_or_exit
-    echo "removed directory: '$PRVLOC'"
+    if is_readable "$PRVLOC"
+    then
+        rm -rf -- "$PRVLOC" || chkstatus_or_exit
+        echo "removed directory: '$PRVLOC'"
+    fi
+    unset -v PRVLOC
 
-    echo "{%} Upgraded from \"${1}\"."
-
-    # Remove remaining variables
-    unset -v incoming PRVLOC
-
-    echo ""
+    warn "{^} Package \"${incoming}.tlz\" upgraded for $rootdir${packagedir}." ""
+    unset -v incoming
 
     # Reset given signals
     trap - HUP INT QUIT ABRT TERM
@@ -1073,7 +1065,7 @@ mode_extract()
     chmod 700 -- "$PRVDIR"
 
     echo ""
-    echo "--- Extracting package \`${name}' ..."
+    echo "{-} Extracting package \`${name}' ..."
 
     ( umask 000 ; cd -- "$PRVDIR" && tarlz -xvf - ) < "$1"
     if test $? -ne 0
@@ -1083,14 +1075,13 @@ mode_extract()
         exit 3;
     fi
 
-    echo ""
-    echo "\"${name}\" has been extracted on \`${PRVDIR}'"
-
-    # Reset given signals
-    trap - HUP INT ABRT TERM
+    warn "" "{-} Package \"${name}\" has been extracted on ${PRVDIR}."
 
     # Remove used variables
     unset -v name PRVDIR
+
+    # Reset given signals
+    trap - HUP INT ABRT TERM
 }
 
 ### Extra functions to be used during the modes
