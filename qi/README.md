@@ -25,11 +25,12 @@ Requirements
 
 - A POSIX-compliant shell.
 
-- Graft for handling symlinks: http://peters.gormand.com.au/Home/tools
+- Graft for handling symlinks: https://peters.gormand.com.au/Home/tools
+  Alternatively from https://rsync.dragora.org/current/sources/
 
-- Perl in order to run Graft: http://www.perl.org
+- Perl in order to run Graft: https://www.perl.org
 
-- Tarlz for produce binary packages: http://lzip.nongnu.org/tarlz.html
+- Tarlz for produce binary packages: https://lzip.nongnu.org/tarlz.html
 
 ### Note
 
