@@ -19,7 +19,7 @@ set -e
 
 program=lzlib
 version=1.12
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -57,7 +57,7 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     ./configure CPPFLAGS="$QICPPFLAGS" \
-    CFLAGS="-Wall -W $QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    CFLAGS="-Wall -W $QICFLAGS -O3" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
@@ -68,13 +68,11 @@ build()
 
     make -j${jobs}
     make -j${jobs} DESTDIR="$destdir" install
-
-    # Install "minilzip"
-    make -j${jobs} DESTDIR="$destdir" install-bin
+    make -j${jobs} DESTDIR="$destdir" install-bin;	# Install "minilzip".
 
     # Compress info documents
 
-    rm -f "${destdir}/${infodir}/dir";	# Redundancy
+    rm -f "${destdir}/${infodir}/dir";			# Redundancy.
     lzip -9 "${destdir}/${infodir}/lzlib.info"
 
     # Copy documentation
