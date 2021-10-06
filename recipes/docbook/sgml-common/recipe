@@ -1,6 +1,6 @@
 # Build recipe for sgml-common.
 #
-# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019, 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 program=sgml-common
 version=0.6.3
 arch=noarch
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=docbook
@@ -56,6 +56,15 @@ build()
 
     # Apply patch from Beyond Linux From Scratch
     patch -Np1 -i "${worktree}/patches/sgml-common/sgml-common-0.6.3-manpage-1.patch"
+
+    # Replace bogus links with files (Adapted from "Fedora")
+    automakedir="$(ls -1 -d /usr/share/automake-* | head -n 1)"
+    for file in COPYING INSTALL install-sh missing mkinstalldirs
+    do
+        rm -- $file
+        cp -L -p "${automakedir}"/$file .
+    done
+    unset -v automakedir file
 
     autoreconf -vif
 
