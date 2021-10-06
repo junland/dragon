@@ -160,7 +160,10 @@ readconfig()
 {
     if test "${_readconfig:-readconfig}" = readconfig
     then
-        is_readable "$HOME/.qirc" && _rcfile="$HOME/.qirc"
+        if is_readable "$HOME/.qirc" 2> /dev/null
+        then
+            _rcfile="$HOME/.qirc"
+        fi
 
         echo "Importing configuration file from \`${_rcfile}' ..."
         . "$_rcfile" || chkstatus_or_exit 5
@@ -625,7 +628,7 @@ mode_build()
          "${TMPDIR}/$srcdir"                                 \
          "$destdir"                                          \
          ""                                                  \
-         "^ The --keep option has been passed."
+         "The '--keep' option has been used."
     fi
 
     # Install or upgrade the package after build
@@ -1205,7 +1208,7 @@ opt_incr_release=opt_incr_release.off
 opt_skipqsts=opt_skipqsts.off
 opt_nopkg=opt_nopkg.off
 opt_prune=opt_prune.off
-verbose=0
+verbose_level=0
 rootdir=""
 arch=@ARCH@
 jobs=1
@@ -1318,17 +1321,14 @@ do
         ;;
     extract)
         validate_mode extract
-        readconfig
         mode=mode_extract
         ;;
     create)
         validate_mode create
-        readconfig
         mode=mode_create
         ;;
     order)
         validate_mode order
-        readconfig
         mode=mode_order
         ;;
     build)
@@ -1452,11 +1452,11 @@ do
         opt_skipqsts=opt_skipqsts
         ;;
     --verbose | -v )
-        verbose=$(( verbose + 1 ))
+        verbose_level=$(( verbose_level + 1 ))
         ;;
     -vv)
-        # ^ Trick for a second -v.
-        verbose=2
+        # A trick for a second -v.
+        verbose_level=2
         ;;
     --show-location | -L )
         printf '%s\n' \
@@ -1520,11 +1520,11 @@ do
 done
 unset -v need
 
-# Set verbosity level/flag
+# Set verbosity level and flags
 
-if test "$verbose" -gt 0
+if test "$verbose_level" -gt 0
 then
-    if test "$verbose" -eq 1
+    if test "$verbose_level" -eq 1
     then
         graft_v=-v
     else
