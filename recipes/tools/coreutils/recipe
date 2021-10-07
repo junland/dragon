@@ -19,7 +19,7 @@ set -e
 
 program=coreutils
 version=9.0
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -53,6 +53,10 @@ build()
 
     cd "$srcdir"
 
+    # chmod: fix exit status when ignoring symlinks
+    # https://debbugs.gnu.org/cgi/bugreport.cgi?bug=50784
+    patch -Np1 -i "${worktree}/patches/coreutils/chmod-fix.patch"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
@@ -66,7 +70,7 @@ build()
      --enable-install-program=arch \
      --enable-no-install-program=kill,uptime,hostname \
      --with-tty-group=tty \
-     --without-gmp \
+     --without-libgmp \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
