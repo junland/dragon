@@ -421,15 +421,14 @@ mode_build()
                 chkstatus_or_exit
                 continue;
             else
-                warn "${_source}.sha256: Checksum file does not exist, yet."
+                warn "    Checksum file \`${_source}.sha256' does not exist"
             fi
 
             # Download source or resume if allowed
 
             if test ! -e "${tardir}/$_source"
             then
-                warn "    Can't find \"${_source}\" at \"${tardir}\";" \
-                     "attempting to get it from ${origin%/*} ..."
+                warn "=== Attempting to get it from $origin ..."
             fi
 
             case $origin in
@@ -558,6 +557,11 @@ mode_build()
               "${destdir}/var/lib/qi/${full_pkgname}.recipe" && \
          chmod 644 "${destdir}/var/lib/qi/${full_pkgname}.recipe"
         chkstatus_or_exit
+        (
+            # Produce a checksum file for recipe copy
+            cd -- "${destdir}/var/lib/qi" && \
+             sha256sum "${full_pkgname}.recipe" > "${full_pkgname}.recipe.sha256"
+        ); chkstatus_or_exit 4
 
         # Detect post-install script for inclusion
 
@@ -613,7 +617,6 @@ mode_build()
                 echo "removed directory: '${TMPDIR}/$srcdir'"
             fi
         fi
-
         if test -z "$keep_destdir"
         then
             if test -e "$destdir"
@@ -671,7 +674,7 @@ mode_create()
         exit 4
     fi
 
-    # Pass extra options for tarlz(1)
+    # Pass extra options to tarlz(1)
     if test -n "$SOURCE_DATE_EPOCH"
     then
         tarlz_opts="--mtime=@${SOURCE_DATE_EPOCH}"
@@ -704,7 +707,7 @@ mode_remove()
         warn "Package directory '$rootdir${expunge}' does not exist."
         return 4
     }
-
+H
     # Complain if the package directory cannot be well-read
 
     is_readable "$rootdir${expunge}" || exit 4
