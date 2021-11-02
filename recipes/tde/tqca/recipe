@@ -1,4 +1,4 @@
-# Build recipe for tqca-tls.
+# Build recipe for tqca-trinity.
 #
 # Copyright (c) 2020-2021 Matias Fonzo, <selk@dragora.org>.
 #
@@ -17,9 +17,9 @@
 # Exit immediately on any error
 set -e
 
-program=tqca-tls-trinity
-pkgname=tqca-tls
-version=14.0.10
+program=tqca-trinity
+pkgname=tqca
+version=14.0.11
 release=1
 
 # Define a category for the output of the package name
@@ -31,10 +31,23 @@ tarname=${program}-${version}.tar.xz
 fetch=https://mirror.ppa.trinitydesktop.org/trinity/releases/R${version}/main/dependencies/$tarname
 
 description="
-TQCA TLS plugin.
+The TQt cryptographic architecture.
 
-This is a plugin to provide SSL/TLS capability to programs that
-utilize the TQt Cryptographic Architecture (TQCA).
+This library provides an easy API for the following features:
+
+  SSL/TLS
+  X509
+  SASL
+  RSA
+  Hashing (SHA1, MD5)
+  Ciphers (BlowFish, 3DES, AES)
+
+Functionality is supplied via plugins. This is useful for avoiding
+dependence on a particular crypto library and makes upgrading easier,
+as there is no need to recompile your application when adding or
+upgrading a crypto plugin.  Also, by pushing crypto functionality into
+plugins, your application is free of legal issues, such as export
+regulation.
 "
 
 homepage=https://www.trinitydesktop.org/
@@ -70,6 +83,8 @@ build()
      -DXDG_MENU_INSTALL_DIR=/etc/xdg/menus                  \
      -DCMAKE_VERBOSE_MAKEFILE=ON                            \
      -DCMAKE_SKIP_RPATH=OFF                                 \
+     -DBUILD_TQCA=ON                                        \
+     -DBUILD_TQCA_TLS=ON                                    \
      -DWITH_ALL_OPTIONS=ON                                  \
      -G Ninja ..
 
