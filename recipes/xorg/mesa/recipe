@@ -19,8 +19,8 @@
 set -e
 
 program=mesa
-version=20.3.2
-release=2
+version=21.2.5
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=xorg_mesa
@@ -41,7 +41,7 @@ homepage=https://www.mesa3d.org/
 license=MIT
 
 # Source documentation
-docs="VERSION"
+docs="README* REVIEWERS VERSION"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -51,11 +51,11 @@ build()
     cd "$srcdir"
 
     # To increment compatibility with Musl (Thanks to "Alpine Linux")
-    patch -p1 < "${worktree}/patches/mesa/adjust-cache-deflate-buffer.patch"
     patch -p1 < "${worktree}/patches/mesa/musl-fix-includes.patch"
+    patch -p1 < "${worktree}/patches/mesa/add-use-elf-tls.patch"
 
     # To provide a few xdemos (Thanks to BLFS!)
-    patch -p1 < "${worktree}/patches/mesa/mesa-20.3.2-add_xdemos-1.patch"
+    patch -p1 < "${worktree}/patches/mesa/mesa-21.2.4-add_xdemos-1.patch"
 
     MESA_GIT_SHA1_OVERRIDE='53b2b224dc2de982c37915a0ad218e33365ff75e'
     export MESA_GIT_SHA1_OVERRIDE
@@ -64,6 +64,13 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    case $arch in
+    amd64 | x32 | i?86 )
+        _extra_options="-Dglx-read-only-text=true -Dasm=false"
+        ;;
+    esac
+
+    rm -rf BUILD
     mkdir BUILD
     cd BUILD
 
@@ -77,27 +84,27 @@ build()
      -Ddri-drivers="i915,i965,r100,r200,nouveau" \
      -Dgallium-drivers="nouveau,r300,r600,svga,radeonsi,swrast,virgl,iris,virgl" \
      -Dglx=dri \
-     -Dosmesa=gallium \
-     -Dllvm=true \
+     -Dosmesa=true \
+     -Dllvm=enabled \
      -Dshared-llvm=enabled \
      -Dgallium-xvmc=enabled \
      -Dgallium-va=enabled \
      -Dgallium-xa=enabled \
      -Dgallium-vdpau=enabled \
-     -Dgles1=enabled \
+     -Dgles1=disabled \
      -Dgles2=enabled \
      -Dopengl=true \
-     -Dlmsensors=true \
+     -Dlmsensors=enabled \
      -Dgallium-nine=false \
-     -Dvalgrind=false \
-     -Dlibunwind=false \
-     -Dzstd=false \
+     -Dvalgrind=disabled \
+     $_extra_options \
      ..
 
     ninja -j${jobs}
     DESTDIR="$destdir" ninja -j${jobs} install
 
-    unset -v MESA_GIT_SHA1_OVERRIDE
+    unset -v MESA_GIT_SHA1_OVERRIDE _extra_options
+
     cd ../
 
     # Handle .new files via graft(1), if any
@@ -127,8 +134,8 @@ build()
         )
     fi
 
-##    # Copy documentation
-##    mkdir -p "${destdir}${docsdir}"
-##    cp -p $docs "${destdir}${docsdir}"/
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
 }
 
