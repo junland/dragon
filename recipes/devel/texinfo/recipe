@@ -19,7 +19,7 @@ set -e
 
 program=texinfo
 version=6.8
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=devel
@@ -57,6 +57,9 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # https://lists.gnu.org/archive/html/bug-texinfo/2021-09/msg00011.html
+    patch -Np1 -i "${worktree}/patches/texinfo/headings-single.patch"
+
     ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" \
     LDFLAGS="$QILDFLAGS" \
      $configure_args \
@@ -64,7 +67,6 @@ build()
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --disable-static \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
