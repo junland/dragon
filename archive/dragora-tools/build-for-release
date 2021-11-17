@@ -1,4 +1,4 @@
-#! /bin/sh -
+#! /bin/bash -
 # Specific script for the final Dragora release process.
 #
 # Copyright (c) 2021 Matias Fonzo, <selk@dragora.org>.
@@ -15,9 +15,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+#
+## ChangeLog (current version is 0.2).
+#
+#= Version 0.2:
+#
+# - Switch /bin/sh to /bin/bash for catching errors on pipes.
+#
+# - Upgrade packages on 'phase-2' to ensure no dependency on
+#   /tools (temporary system) or to ensure possible system
+#   breaks by cutting symbolic links using qi/graft.
+#
+#= Version 0.1:
+#
+# - Initial version.
+#
 
-rm -f build-phase1-log.txt build-phase2-log.txt
+set -e -o pipefail
+
+rm -f /build-phase1-log.txt /build-phase2-log.txt
 
 #
 # Build all the packages to conform the final system.
@@ -60,7 +76,9 @@ then
 fi
 
 qi order /usr/src/qi/recipes/*.order | awk "$exclude_list" | \
- qi build -S -f -j${JOBS} -p -i - 2>&1 | tee build-phase2-log.txt
+ qi build -f -j${JOBS} -p -u - 2>&1 | tee build-phase2-log.txt
+
+unset -v JOBS exclude_list
 
 if test -d /tools-to-be-renamed
 then
