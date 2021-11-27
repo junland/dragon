@@ -17,18 +17,20 @@
 # Exit immediately on any error
 set -e
 
-program=tqt3-trinity
-pkgname=tqt3
-version=14.0.11
-release=2
+program=tqt3
+version=20211030_fd4ff7c6
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=tde
 
-tarname=${program}-${version}.tar.xz
+tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
-fetch=https://mirror.ppa.trinitydesktop.org/trinity/releases/R${version}/main/dependencies/$tarname
+fetch="
+ https://mirror.cedia.org.ec/dragora/current/sources/$tarname
+ https://rsync.dragora.org/current/sources/$tarname
+"
 
 description="
 Qt is a multiplatform C++ GUI application framework.
@@ -46,7 +48,7 @@ license="GPLv2+, GPLv3+ | The Q Public License"
 
 # Source documentation
 docs="FAQ LICENSE* README*"
-docsdir="${docdir}/${pkgname}-${version}"
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
@@ -68,19 +70,20 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    SAVED_QTDIR="$QTDIR"
-    QTDIR="$PWD"
-    LD_LIBRARY_PATH="${QTDIR}/lib:${LD_LIBRARY_PATH}"
-    SAVED_PATH="$PATH"
-    PATH="${QTDIR}/bin:${PATH}"
-
-    echo ""
-    echo "New QTDIR: $QTDIR"
+#    SAVED_QTDIR="$QTDIR"
+#    QTDIR="$PWD"
+    LD_LIBRARY_PATH="${PWD}/lib:${LD_LIBRARY_PATH}"
+#    SAVED_PATH="$PATH"
+#    PATH="${QTDIR}/bin:${PATH}"
+#
+#    echo ""
+#    echo "New QTDIR: $QTDIR"
     echo "New LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
-    echo "New PATH: $PATH"
-    echo ""
-
-    export QTDIR LD_LIBRARY_PATH PATH
+#    echo "New PATH: $PATH"
+#    echo ""
+#
+#    export QTDIR LD_LIBRARY_PATH PATH
+     export LD_LIBRARY_PATH
 
     echo yes | ./configure \
      -L/usr/lib${libSuffix} \
@@ -125,10 +128,11 @@ build()
     make -i -j${jobs} sub-tools
     make -j${jobs} INSTALL_ROOT="$destdir" install
 
-    PATH=$SAVED_PATH
-    QTDIR=$SAVED_QTDIR
-    unset -v SAVED_QTDIR SAVED_PATH LD_LIBRARY_PATH
-    export PATH QTDIR
+    unset -v LD_LIBRARY_PATH
+#    PATH=$SAVED_PATH
+#    QTDIR=$SAVED_QTDIR
+#    unset -v SAVED_QTDIR SAVED_PATH LD_LIBRARY_PATH
+#    export PATH QTDIR
 
     # Strip remaining binaries and libraries
     find "$destdir" -type f | xargs file | \

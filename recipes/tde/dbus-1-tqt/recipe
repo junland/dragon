@@ -17,18 +17,20 @@
 # Exit immediately on any error
 set -e
 
-program=dbus-1-tqt-trinity
-pkgname=dbus-1-tqt
-version=14.0.11
+program=dbus-1-tqt
+version=20210524_d05b026
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=tde
 
-tarname=${program}-${version}.tar.xz
+tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
-fetch=https://mirror.ppa.trinitydesktop.org/trinity/releases/R${version}/main/dependencies/$tarname
+fetch="
+ https://mirror.cedia.org.ec/dragora/current/sources/$tarname
+ https://rsync.dragora.org/current/sources/$tarname
+"
 
 description="
 A backport of Harald Fernengel's Qt4 D-Bus bindings.
@@ -47,7 +49,7 @@ license="Academic Free License version 2.1 | MIT Expat Variant, GPLv2+"
 
 # Source documentation
 docs="AUTHORS COPYING* ChangeLog NEWS README TODO"
-docsdir="${docdir}/${pkgname}-${version}"
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
@@ -70,6 +72,7 @@ build()
      -DCMAKE_INSTALL_PREFIX=/usr                            \
      -DLIB_SUFFIX=${libSuffix}                              \
      -DCMAKE_VERBOSE_MAKEFILE=ON                            \
+     -DWITH_ALL_OPTIONS=ON                                  \
      -G Ninja ..
 
     ninja -j${jobs}

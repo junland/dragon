@@ -1,6 +1,6 @@
-# Build recipe for libart-gpl.
+# Build recipe for libr.
 #
-# Copyright (c) 2020-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2021 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 # Exit immediately on any error
 set -e
 
-program=libart-lgpl
-version=20210524_e975b2e
-release=1
+program=libr
+version=20210524_31908d9
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tde
@@ -33,19 +33,16 @@ fetch="
 "
 
 description="
-LGPL version of the libart library.
+ELF resource manager library.
 
-This is the LGPL'd component of libart.  All functions needed for
-running the Gnome canvas, and for printing support, will be going in
-here.  The GPL'd component will be getting various enhanced functions
-for specific applications.
+This is a simple inter-process messaging system (TQt-based shared library).
 "
 
 homepage=https://www.trinitydesktop.org/
-license=LGPLv2+
+license=LGPLv2.1
 
 # Source documentation
-docs="AUTHORS COPYING ChangeLog NEWS README"
+docs="AUTHORS COPYING* ChangeLog NEWS README"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -53,6 +50,12 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # We don't have doxygen by the moment, so we avoid calling it
+    # for generate the documentation (aka manpage)
+    patch -Np1 -i "${worktree}/patches/libr/do-not-call-doxygen-for-doc.diff"
+
+    rm -rf man/
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -64,13 +67,14 @@ build()
     cmake \
      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON                     \
      -DCMAKE_BUILD_TYPE=RelWithDebInfo                      \
-     -DCMAKE_CXX_FLAGS:STRING="$QICXXFLAGS"                 \
+     -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING="$QICFLAGS"      \
      -DCMAKE_SHARED_LINKER_FLAGS:STRING="$(echo $QILDFLAGS | sed 's/-s//')" \
      -DCMAKE_INSTALL_PREFIX=/usr                            \
      -DLIB_SUFFIX=${libSuffix}                              \
      -DCMAKE_VERBOSE_MAKEFILE=ON                            \
-     -DCMAKE_SKIP_RPATH=OFF                                 \
-     -DWITH_ALL_OPTIONS=ON                                  \
+     -DWITH_BACKEND_LIBBFD=ON                               \
+     -DWITH_BACKEND_LIBELF=ON                               \
+     -DWITH_BACKEND_READONLY=ON                             \
      -G Ninja ..
 
     ninja -j${jobs}
