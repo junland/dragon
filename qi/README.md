@@ -12,8 +12,8 @@ be used as the main package manager or complement the existing one.
    Qi offers a friendly command line interface, a global configuration
 file, a simple recipe layout to deploy software packages; also works
 with binary packages in parallel, speeding up installations and packages
-in production.  The format used for packages is a simplified but safe
-POSIX pax archive compressed with lzip.
+in production.  The format used for packages is a simplified and safer
+variant of POSIX pax archive compressed in lzip format.
 
    Qi is a modern (POSIX-compliant) shell script released under the
 terms of the GNU General Public License.  There are only two major

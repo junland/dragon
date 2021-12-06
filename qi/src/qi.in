@@ -206,7 +206,7 @@ mode_build()
 
     test -f "$recipe" || {
         warn "\`${recipe}' is not a regular file."
-        return 4
+        exit 4
     }
 
     # Complain if the file name is not "recipe"
@@ -214,7 +214,7 @@ mode_build()
     if test "${recipe##*/}" != recipe
     then
         warn "\`${recipe}' is not a valid recipe name."
-        return 4
+        exit 4
     fi
 
     # Start preparations to import the recipe
@@ -705,7 +705,7 @@ mode_remove()
 
     test -e "$rootdir${expunge}" || {
         warn "Package directory '$rootdir${expunge}' does not exist."
-        return 4
+        exit 4
     }
 
     # Complain if the package directory cannot be well-read
@@ -724,7 +724,7 @@ mode_remove()
             warn "" \
              "    A conflict occurred during uninstallation;"  \
              "Unless the --prune option is given, this package will be PRESERVED."
-            return 6;
+            exit 6;
         fi
     fi
 
@@ -765,7 +765,7 @@ mode_install()
     if ! fnmatch '*.tlz' "$1"
     then
         warn "\`${1}' does not end in .tlz"
-        return 4
+        exit 4
     fi
 
     # Make preparations to install the package
@@ -801,7 +801,7 @@ mode_install()
             warn "" \
              "    A conflict occurred during installation;"  \
              "Unless the --prune option is given, this package won't be LINKED."
-             return 6;
+             exit 6;
         fi
     fi
 
@@ -903,7 +903,7 @@ mode_order()
     if ! fnmatch '*.order' "$1"
     then
         warn "\`${1}' does not end in .order"
-        return 4
+        exit 4
     fi
 
     # Get a clean list of the file while printing its contents in
@@ -925,7 +925,7 @@ mode_upgrade()
     if ! fnmatch '*.tlz' "$1"
     then
         warn "\`${1}' does not end in .tlz"
-        return 4
+        exit 4
     fi
 
     echo ""
@@ -940,7 +940,7 @@ mode_upgrade()
         warn "" \
          "    The package to be upgraded already exist;" \
          "Unless the --force option is given, this package won't be UPGRADED."
-        return 6;
+        exit 6;
     fi
 
     # Ignore some signals until the upgrade process is complete
@@ -1031,7 +1031,7 @@ mode_warn()
     if ! fnmatch '*.tlz' "$1"
     then
         warn "\`${1}' does not end in .tlz"
-        return 4
+        exit 4
     fi
 
     # List content of files excluding directories
@@ -1052,7 +1052,7 @@ mode_extract()
 
     test -f "$1" || {
         warn "\`${1}' is not a regular file."
-        return 4
+        exit 4
     }
 
     # Preparations to extract the package
