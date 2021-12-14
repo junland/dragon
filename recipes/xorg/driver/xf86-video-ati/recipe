@@ -18,17 +18,22 @@
 # Exit immediately on any error
 set -e
 
-program=xf86-video-ati
-version=19.1.0
+program=xorg-xf86-video-ati
+pkgname=xf86-video-ati
+version=20210202_5eba006e
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=xorg_driver
 
-tarname=${program}-${version}.tar.bz2
+tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
-fetch=https://www.x.org/releases/individual/driver/$tarname
+#fetch=https://www.x.org/releases/individual/driver/$tarname
+fetch="
+ https://rsync.dragora.org/current/sources/$tarname
+ https://mirror.cedia.org.ec/dragora/current/sources/$tarname
+"
 
 description="
 ATI Radeon video driver for the Xorg X server.
@@ -40,8 +45,8 @@ homepage=https://www.x.org
 license="MIT X Consortium"
 
 # Source documentation
-docs="COPYING ChangeLog README.md"
-docsdir="${docdir}/${program}-${version}"
+docs="COPYING README.md"
+docsdir="${docdir}/${pkgname}-${version}"
 
 build()
 {
@@ -52,11 +57,13 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS -fplt -fcommon" LDFLAGS="$QILDFLAGS -Wl,-z,lazy" \
+    sh ./autogen.sh CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS -fplt" LDFLAGS="$QILDFLAGS -Wl,-z,lazy" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --enable-glamor \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
