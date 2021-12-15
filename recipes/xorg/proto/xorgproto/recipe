@@ -20,7 +20,7 @@ set -e
 
 program=xorgproto
 version=2021.5
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=xorg_proto
@@ -57,17 +57,16 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
-     --mandir=$mandir \
-     --docdir=$docsdir \
-     --enable-legacy \
-     --without-xmlto \
-     || true
+    rm -rf BUILD
+    mkdir BUILD
+    cd BUILD
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
+    meson setup $configure_args -Dlegacy=true ..
+
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
+
+    cd ..
 
     # This is provided by 'xorg/lib/libXvMC' currently
     rm "${destdir}/usr/include/X11/extensions/vldXvMC.h"
