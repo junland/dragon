@@ -295,6 +295,21 @@ index b5e7befb..5170f3e2 100644
  #define NT_METAG_CBUF	0x500
  #define NT_METAG_RPIPE	0x501
  #define NT_METAG_TLS	0x502
+diff --git a/include/locale.h b/include/locale.h
+index ce384381..11106fea 100644
+--- a/include/locale.h
++++ b/include/locale.h
+@@ -7,7 +7,9 @@ extern "C" {
+ 
+ #include <features.h>
+ 
+-#ifdef __cplusplus
++#if __cplusplus >= 201103L
++#define NULL nullptr
++#elif defined(__cplusplus)
+ #define NULL 0L
+ #else
+ #define NULL ((void*)0)
 diff --git a/include/pthread.h b/include/pthread.h
 index 0492f26a..89fd9ff7 100644
 --- a/include/pthread.h
@@ -373,11 +388,52 @@ index f8cd4b89..af1a2799 100644
 +#define __STDC_UTF_32__ 1
 +
  #endif
+diff --git a/include/stddef.h b/include/stddef.h
+index bd753853..f25b8639 100644
+--- a/include/stddef.h
++++ b/include/stddef.h
+@@ -1,7 +1,9 @@
+ #ifndef _STDDEF_H
+ #define _STDDEF_H
+ 
+-#ifdef __cplusplus
++#if __cplusplus >= 201103L
++#define NULL nullptr
++#elif defined(__cplusplus)
+ #define NULL 0L
+ #else
+ #define NULL ((void*)0)
+diff --git a/include/stdio.h b/include/stdio.h
+index 3604198c..d1ed01f0 100644
+--- a/include/stdio.h
++++ b/include/stdio.h
+@@ -25,7 +25,9 @@ extern "C" {
+ 
+ #include <bits/alltypes.h>
+ 
+-#ifdef __cplusplus
++#if __cplusplus >= 201103L
++#define NULL nullptr
++#elif defined(__cplusplus)
+ #define NULL 0L
+ #else
+ #define NULL ((void*)0)
 diff --git a/include/stdlib.h b/include/stdlib.h
-index b54a051f..7af86e3b 100644
+index b54a051f..b507ca33 100644
 --- a/include/stdlib.h
 +++ b/include/stdlib.h
-@@ -146,6 +146,7 @@ int clearenv(void);
+@@ -7,7 +7,9 @@ extern "C" {
+ 
+ #include <features.h>
+ 
+-#ifdef __cplusplus
++#if __cplusplus >= 201103L
++#define NULL nullptr
++#elif defined(__cplusplus)
+ #define NULL 0L
+ #else
+ #define NULL ((void*)0)
+@@ -146,6 +148,7 @@ int clearenv(void);
  #define WCOREDUMP(s) ((s) & 0x80)
  #define WIFCONTINUED(s) ((s) == 0xffff)
  void *reallocarray (void *, size_t, size_t);
@@ -385,6 +441,21 @@ index b54a051f..7af86e3b 100644
  #endif
  
  #ifdef _GNU_SOURCE
+diff --git a/include/string.h b/include/string.h
+index 795a2abc..43ad0942 100644
+--- a/include/string.h
++++ b/include/string.h
+@@ -7,7 +7,9 @@ extern "C" {
+ 
+ #include <features.h>
+ 
+-#ifdef __cplusplus
++#if __cplusplus >= 201103L
++#define NULL nullptr
++#elif defined(__cplusplus)
+ #define NULL 0L
+ #else
+ #define NULL ((void*)0)
 diff --git a/include/sys/membarrier.h b/include/sys/membarrier.h
 index 10cb3108..11193eda 100644
 --- a/include/sys/membarrier.h
@@ -445,6 +516,51 @@ index 4b9fcc05..4ba73f42 100644
  
  #define PR_SET_IO_FLUSHER 57
  #define PR_GET_IO_FLUSHER 58
+diff --git a/include/time.h b/include/time.h
+index 5494df18..3d948372 100644
+--- a/include/time.h
++++ b/include/time.h
+@@ -7,7 +7,9 @@ extern "C" {
+ 
+ #include <features.h>
+ 
+-#ifdef __cplusplus
++#if __cplusplus >= 201103L
++#define NULL nullptr
++#elif defined(__cplusplus)
+ #define NULL 0L
+ #else
+ #define NULL ((void*)0)
+diff --git a/include/unistd.h b/include/unistd.h
+index 13064026..ee2dbe8a 100644
+--- a/include/unistd.h
++++ b/include/unistd.h
+@@ -15,7 +15,9 @@ extern "C" {
+ #define SEEK_CUR 1
+ #define SEEK_END 2
+ 
+-#ifdef __cplusplus
++#if __cplusplus >= 201103L
++#define NULL nullptr
++#elif defined(__cplusplus)
+ #define NULL 0L
+ #else
+ #define NULL ((void*)0)
+diff --git a/include/wchar.h b/include/wchar.h
+index 88eb55b1..ed5d774d 100644
+--- a/include/wchar.h
++++ b/include/wchar.h
+@@ -38,7 +38,9 @@ extern "C" {
+ #define WCHAR_MIN (-1-0x7fffffff+L'\0')
+ #endif
+ 
+-#ifdef __cplusplus
++#if __cplusplus >= 201103L
++#define NULL nullptr
++#elif defined(__cplusplus)
+ #define NULL 0L
+ #else
+ #define NULL ((void*)0)
 diff --git a/ldso/dynlink.c b/ldso/dynlink.c
 index 6b868c84..5b9c8be4 100644
 --- a/ldso/dynlink.c
@@ -799,6 +915,40 @@ index a99a2a3b..dc1a749d 100644
  
  #include "../fmaf.c"
  
+diff --git a/src/misc/ioctl.c b/src/misc/ioctl.c
+index 49282811..35804f02 100644
+--- a/src/misc/ioctl.c
++++ b/src/misc/ioctl.c
+@@ -6,6 +6,7 @@
+ #include <stddef.h>
+ #include <stdint.h>
+ #include <string.h>
++#include <endian.h>
+ #include "syscall.h"
+ 
+ #define alignof(t) offsetof(struct { char c; t x; }, x)
+@@ -53,7 +54,7 @@ static const struct ioctl_compat_map compat_map[] = {
+ 	{ _IOWR('A', 0x23, char[136]), _IOWR('A', 0x23, char[132]), 0, WR, 1, 0 },
+ 	{ 0, 0, 4, WR, 1, 0 }, /* snd_pcm_sync_ptr (flags only) */
+ 	{ 0, 0, 32, WR, 1, OFFS(8,12,16,24,28) }, /* snd_pcm_mmap_status */
+-	{ 0, 0, 8, WR, 1, OFFS(0,4) }, /* snd_pcm_mmap_control */
++	{ 0, 0, 4, WR, 1, 0 }, /* snd_pcm_mmap_control (each member) */
+ 
+ 	/* VIDIOC_QUERYBUF, VIDIOC_QBUF, VIDIOC_DQBUF, VIDIOC_PREPARE_BUF */
+ 	{ _IOWR('V',  9, new_misaligned(68)), _IOWR('V',  9, char[68]), 68, WR, 1, OFFS(20, 24) },
+@@ -90,7 +91,11 @@ static void convert_ioctl_struct(const struct ioctl_compat_map *map, char *old,
+ 		 * if another exception appears this needs changing. */
+ 		convert_ioctl_struct(map+1, old, new, dir);
+ 		convert_ioctl_struct(map+2, old+4, new+8, dir);
+-		convert_ioctl_struct(map+3, old+68, new+72, dir);
++		/* snd_pcm_mmap_control, special-cased due to kernel
++		 * type definition having been botched. */
++		int adj = BYTE_ORDER==BIG_ENDIAN ? 4 : 0;
++		convert_ioctl_struct(map+3, old+68, new+72+adj, dir);
++		convert_ioctl_struct(map+3, old+72, new+76+3*adj, dir);
+ 		return;
+ 	}
+ 	for (int i=0; i < map->noffs; i++) {
 diff --git a/src/passwd/nscd_query.c b/src/passwd/nscd_query.c
 index d38e371b..dc3406b8 100644
 --- a/src/passwd/nscd_query.c
@@ -882,7 +1032,7 @@ index 368922c7..82bbcec9 100644
  	if (!op) return ENOMEM;
  	op->cmd = FDOP_OPEN;
 diff --git a/src/setjmp/powerpc/longjmp.S b/src/setjmp/powerpc/longjmp.S
-index e598bd05..34aecb4c 100644
+index e598bd05..611389fe 100644
 --- a/src/setjmp/powerpc/longjmp.S
 +++ b/src/setjmp/powerpc/longjmp.S
 @@ -37,7 +37,37 @@ longjmp:
@@ -897,7 +1047,7 @@ index e598bd05..34aecb4c 100644
 +	.long __hwcap-.
 +1:	mflr 4
 +	lwz 5, 0(4)
-+	add 4, 4, 5
++	lwzx 4, 4, 5
 +	andis. 4, 4, 0x80
 +	beq 1f
 +	.long 0x11c35b01 /* evldd 14,88(3) */
@@ -925,7 +1075,7 @@ index e598bd05..34aecb4c 100644
  	lfd 15,96(3)
  	lfd 16,104(3)
 diff --git a/src/setjmp/powerpc/setjmp.S b/src/setjmp/powerpc/setjmp.S
-index cd91a207..413e6a81 100644
+index cd91a207..f1fcce33 100644
 --- a/src/setjmp/powerpc/setjmp.S
 +++ b/src/setjmp/powerpc/setjmp.S
 @@ -37,7 +37,37 @@ setjmp:
@@ -940,7 +1090,7 @@ index cd91a207..413e6a81 100644
 +	.long __hwcap-.
 +1:	mflr 4
 +	lwz 5, 0(4)
-+	add 4, 4, 5
++	lwzx 4, 4, 5
 +	andis. 4, 4, 0x80
 +	beq 1f
 +	.long 0x11c35b21 /* evstdd 14,88(3) */
