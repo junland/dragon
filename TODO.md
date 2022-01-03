@@ -9,7 +9,11 @@
     - [ ] EFI support.
     - [ ] Complement the Trinity Desktop Environment.
     - [ ] Free software web browser (GNU IceCat?).
-    - [ ] Version control systems: mercurial, fossil, rcs, cvs.
+    - [ ] Version control systems:
+      - [ ] Mercurial
+      - [ ] CVS
+      - [ ] Fossil
+      - [ ] RCS
     - [ ] Complement spacefm (plugins, extra support for it).
     - [ ] Java, OpenJDK support?.
     - [ ] Qire inclusion in Dragora.
