@@ -2,6 +2,7 @@
 
 "To do" for development of current Dragora.
 
+    - [ ] Add GNU Xorriso (for .iso creation support).
     - [ ] Version control systems:
       - [ ] Mercurial
       - [ ] CVS
