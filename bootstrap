@@ -2,7 +2,7 @@
 #
 # Builder of custom stages (cross compilers, GNU/Linux distributions)
 #
-# Copyright (c) 2014-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2014-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -74,8 +74,8 @@ echo ""
 version()
 {
     printf '%s' \
-"$PROGRAM 3.28
-Copyright (C) 2014-2021 Matias Andres Fonzo.
+"$PROGRAM 3.29
+Copyright (C) 2014-2022 Matias Andres Fonzo.
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
 This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
@@ -199,7 +199,7 @@ libSuffix=""
 arch="$(uname -m)" || chkstatus_or_exit
 jobs=1
 worktree="$CWD"
-output=${worktree}/OUTPUT.${PROGRAM}
+output="${worktree}/OUTPUT.${PROGRAM}"
 TMPDIR="${TMPDIR:=${output}/sources}"
 
 # Compose vendor name adding "-" as suffix
@@ -301,8 +301,8 @@ fi
 # Compose variables for the physical output,
 # printing some useful information
 
-crossdir=${output}/cross/${target}
-rootdir=${output}/stage${stage}
+crossdir="${output}/cross/${target}"
+rootdir="${output}/stage${stage}"
 
 printf '%s\n' \
  "BTCC: $BTCC"                  \
@@ -359,7 +359,7 @@ do
 
         # Ensure toolchain sanity for multilib purposes
         case $arch in
-        aarch64* | arm* | i586 | *x32 | x86_64 | riscv* )
+        aarch64* | arm* | x32 | x86_64 | i?86 | riscv* )
             if test ! -e "${crossdir}/lib" && test -n "$libSuffix"
             then
                 ln -sf lib${libSuffix} "${crossdir}/lib" || chkstatus_or_exit
@@ -380,7 +380,7 @@ do
         ln -sf "${rootdir}/tools" / || chkstatus_or_exit
     fi
 
-    echo "${PROGRAM}: Processing $file from stage $stage ..."
+    echo "${PROGRAM}: Processing $file from stages/${stage} ..."
 
     # Set trap before to run the script in order to
     # catch the return status, exit code 2 if fails
