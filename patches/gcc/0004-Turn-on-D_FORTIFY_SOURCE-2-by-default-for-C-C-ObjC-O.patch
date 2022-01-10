@@ -1,4 +1,4 @@
-From c5924988157b27b60c28d20d971179bbacbd2ae3 Mon Sep 17 00:00:00 2001
+From 36fde4108ebb872cbf0e45d815e76fc3ef69ded5 Mon Sep 17 00:00:00 2001
 From: Ariadne Conill <ariadne@dereferenced.org>
 Date: Fri, 21 Aug 2020 06:46:22 +0000
 Subject: [PATCH] Turn on -D_FORTIFY_SOURCE=2 by default for C, C++, ObjC,
@@ -10,10 +10,10 @@ Subject: [PATCH] Turn on -D_FORTIFY_SOURCE=2 by default for C, C++, ObjC,
  2 files changed, 10 insertions(+)
 
 diff --git a/gcc/c-family/c-cppbuiltin.c b/gcc/c-family/c-cppbuiltin.c
-index db91a36794a..ed976c71404 100644
+index 9f993c4aff2..7db314195ff 100644
 --- a/gcc/c-family/c-cppbuiltin.c
 +++ b/gcc/c-family/c-cppbuiltin.c
-@@ -1385,6 +1385,10 @@ c_cpp_builtins (cpp_reader *pfile)
+@@ -1421,6 +1421,10 @@ c_cpp_builtins (cpp_reader *pfile)
    builtin_define_with_value ("__REGISTER_PREFIX__", REGISTER_PREFIX, 0);
    builtin_define_with_value ("__USER_LABEL_PREFIX__", user_label_prefix, 0);
  
@@ -24,3 +24,23 @@ index db91a36794a..ed976c71404 100644
    /* Misc.  */
    if (flag_gnu89_inline)
      cpp_define (pfile, "__GNUC_GNU_INLINE__");
+diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
+index 4b8335bbd1f..833164e0a2b 100644
+--- a/gcc/doc/invoke.texi
++++ b/gcc/doc/invoke.texi
+@@ -10224,6 +10224,12 @@ also turns on the following optimization flags:
+ Please note the warning under @option{-fgcse} about
+ invoking @option{-O2} on programs that use computed gotos.
+ 
++NOTE: In Alpine Linux, @option{-D_FORTIFY_SOURCE=2} is
++set by default, and is activated when @option{-O} is set to 2 or higher.
++This enables additional compile-time and run-time checks for several libc
++functions.  To disable, specify either @option{-U_FORTIFY_SOURCE} or
++@option{-D_FORTIFY_SOURCE=0}.
++
+ @item -O3
+ @opindex O3
+ Optimize yet more.  @option{-O3} turns on all optimizations specified
+-- 
+2.34.1
+

@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version=10-20211231
+version=11-20220101
 
 # Prerequisites
 gmp_version=6.2.1
@@ -35,18 +35,19 @@ unpack "${worktree}/sources/gcc-${version}.tar.xz" \
 # Build instructions
 cd gcc-${version}
 
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80196
+patch -Np1 -i "${worktree}/patches/gcc/gcc-11-bug80196.patch"
+
 # Apply specific patches for the support in musl.
-# https://port70.net/~nsz/musl/gcc-10.3.0/
+# https://port70.net/~nsz/musl/gcc-11.1.0/
 
-patch -Np1 -i "${worktree}/patches/gcc/10/0002-posix_memalign.patch"
-patch -Np1 -i "${worktree}/patches/gcc/10/0003-j2.patch"
-patch -Np1 -i "${worktree}/patches/gcc/10/0004-static-pie.patch"
-patch -Np1 -i "${worktree}/patches/gcc/10/0005-libstdc-futex-time64.patch"
-patch -Np1 -i "${worktree}/patches/gcc/10/0006-m68k-sqrt.patch"
+patch -Np1 -i "${worktree}/patches/gcc/11/0002-posix_memalign.patch"
+patch -Np1 -i "${worktree}/patches/gcc/11/0003-j2.patch"
+patch -Np1 -i "${worktree}/patches/gcc/11/0004-static-pie.patch"
+patch -Np1 -i "${worktree}/patches/gcc/11/0005-m68k-sqrt.patch"
 
-# Apply extra patches to increment the security
-patch -Np1 -i "${worktree}/patches/gcc/10/extra-relro-in-dragora.patch"
-patch -Np1 -i "${worktree}/patches/gcc/10/extra-musl_libssp.patch"
+patch -Np1 -i "${worktree}/patches/gcc/11/extra-relro-in-dragora.patch"
+patch -Np1 -i "${worktree}/patches/gcc/11/extra-musl_libssp.patch"
 
 # Apply patches from "Alpine Linux" in order to improve the security (Thanks!)
 patch -Np1 -i "${worktree}/patches/gcc/0004-Turn-on-D_FORTIFY_SOURCE-2-by-default-for-C-C-ObjC-O.patch"
