@@ -1,6 +1,6 @@
 # Build recipe for gdbm.
 #
-# Copyright (c) 2016-2018, 2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018, 2020, 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 set -e
 
 program=gdbm
-version=1.18.1
-release=2
+version=1.22
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=db
@@ -49,15 +49,11 @@ build()
 
     cd "$srcdir"
 
-    # Apply a few patches from Debian
-
-    patch -Np1 -i "${worktree}/patches/gdbm/patch-fix-spelling-error-in-gdbm.3.patch"
-    patch -Np1 -i "${worktree}/patches/gdbm/gcc-10-ftbfs.patch"
-
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \

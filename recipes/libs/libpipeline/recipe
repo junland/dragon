@@ -1,6 +1,6 @@
 # Build recipe for libpipeline.
 #
-# Copyright (c) 2016-2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=libpipeline
-version=1.5.3
+version=1.5.4
 release=2
 
 # Define a category for the output of the package name
@@ -41,7 +41,7 @@ homepage=https://libpipeline.nongnu.org
 license=GPLv3+
 
 # Source documentation
-docs="COPYING ChangeLog NEWS README TODO"
+docs="COPYING ChangeLog NEWS* README* TODO"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -53,13 +53,16 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
      --enable-static=yes \
      --enable-shared=no \
+     --enable-threads=posix \
+     --enable-socketpair-pipe \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1

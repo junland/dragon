@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version=2.36.1
+version=2.35.2
 
 cd -- "$TMPDIR"
 rm -rf binutils-${version}
@@ -24,10 +24,51 @@ unpack "${worktree}/sources/binutils-${version}.tar.lz"
 cd binutils-${version}
 
 # Apply patches from Fedora (Nick Clifton)
-patch -Np1 -i "${worktree}/patches/binutils/binutils-export-demangle.h.patch"
-patch -Np1 -i "${worktree}/patches/binutils/binutils-no-config-h-check.patch"
-patch -Np1 -i "${worktree}/patches/binutils/binutils-gold-warn-unsupported.patch"
-patch -Np1 -i "${worktree}/patches/binutils/binutils-use-long-long.patch"
+
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-2.25-version.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-export-demangle.h.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-2.22.52.0.4-no-config-h-check.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-2.29-filename-in-error-messages.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-2.29-revert-PLT-elision.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-readelf-other-sym-info.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-2.27-aarch64-ifunc.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-do-not-link-with-static-libstdc++.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-attach-to-group.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-special-sections-in-groups.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-fix-testsuite-failures.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-gold-mismatched-section-flags.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-CVE-2019-1010204.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-gold-warn-unsupported.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-s390-build.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-config.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-warnings.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-gcc-10-fixes.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-add-sym-cache-to-elf-link-hash.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-elf-add-objects.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-aarch64-condbranch-relocs.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-ppc-annobin-disassembly.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-strip-merge.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-plugin-as-needed.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-recursive-debuglink-following.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-SHF_LINK_ORDER.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-duplicate-sections.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-use-long-long.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-gold-gnu-properties.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-testsuite-failures.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-CVE-2021-20197.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-ld-DWARF-5-sections.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-s390-arch14-insns.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-ppc64le-note-merge.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-readelf-no-warn-gaps.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-unexpected-form-20.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-CVE-2021-20284.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-extend-s390-arch14-support.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-CVE-2021-3487.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-CVE-2020-35448.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-dwarf-5-dir0.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-gas-Use-the-directory-name-in-.file-0.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils.unicode.patch"
+patch -Np1 -i "${worktree}/patches/binutils/2.35/binutils-gas-multibyte-warnings.patch"
 
 patch -Np1 -i "${worktree}/patches/binutils/branch-updates.diff"
 
@@ -60,6 +101,7 @@ CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
  --disable-ppl-version-check \
  --disable-cloog-version-check \
  --with-lib-path=/tools/lib \
+ --with-pic \
  $multilib_options
 
 make -j${jobs} MAKEINFO="true"

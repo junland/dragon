@@ -1,7 +1,7 @@
 # Recipe file for expat.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues, <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 set -e
 
 program=expat
-version=2.2.10
+version=2.4.2
 release=1
 
 # Define a category for the output of the package name
@@ -52,14 +52,15 @@ build() {
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --libdir=/usr/lib${libSuffix} \
-    --mandir=$mandir \
-    --docdir=$docsdir \
-    --enable-static=no \
-    --enable-shared=yes \
-    --build="$(gcc -dumpmachine)"
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --docdir=$docsdir \
+     --enable-static=no \
+     --enable-shared=yes \
+     --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
@@ -79,6 +80,6 @@ build() {
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}/"
+    cp -p $docs "${destdir}${docsdir}"
 }
 
