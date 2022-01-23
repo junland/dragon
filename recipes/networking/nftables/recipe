@@ -1,6 +1,6 @@
 # Build recipe for nftables.
 #
-# Copyright (c) 2017-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 set -e
 
 program=nftables
-version=0.9.8
-release=2
+version=1.0.1
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=networking
@@ -55,11 +55,13 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --disable-debug \
      --enable-python \
      --with-xtables \
+     --with-cli=readline \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1

@@ -1,6 +1,6 @@
 # Build recipe for libressl.
 #
-# Copyright (c) 2017-2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=libressl
-version=3.4.0
+version=3.4.2
 release=1
 
 # Define a category for the output of the package name
@@ -71,6 +71,10 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip
+
+    # This is provided by the ca-certificates package
+    rm -f "${destdir}/etc/ssl/cert.pem"
+    rmdir "${destdir}/etc/ssl/certs"
 
     # To manage config file(s)
     touch "${destdir}/etc/ssl/.graft-config"

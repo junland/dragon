@@ -1,6 +1,6 @@
 # Build recipe for ruby.
 #
-# Copyright (c) 2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@
 set -e
 
 program=ruby
-version=3.0.0
+version=3.1.0
 pkgname=ruby3
-release=3
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=ruby
@@ -54,12 +54,10 @@ build()
 
     cd "$srcdir"
 
-    # A patch to avoid installing platform-specific gems with binaries
-    # linked against Glibc (Thanks to "Alpine Linux")
-    patch -Np1 -i "${worktree}/patches/ruby/rubygems-avoid-platform-specific-gems.patch"
-
-    patch -Np1 -i "${worktree}/patches/ruby/fix-get_main_stack.patch"
+    # Apply patches from "Alpine Linux"
     patch -Np1 -i "${worktree}/patches/ruby/test_insns-lower-recursion-depth.patch"
+    patch -Np1 -i "${worktree}/patches/ruby/fix-get_main_stack.patch"
+    patch -Np1 -i "${worktree}/patches/ruby/dont-install-bundled-gems.patch"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -76,13 +74,11 @@ build()
      --enable-shared \
      --enable-ipv6 \
      --enable-load-relative \
+     --with-mantype=man \
      --with-sitedir=/usr/local/share/ruby \
      --with-sitearchdir=/usr/local/lib${libSuffix}/ruby \
      --without-compress-debug-sections \
      --disable-rpath \
-     --disable-install-doc \
-     --disable-install-rdoc \
-     --disable-install-capi \
      --build="$(gcc -dumpmachine)" \
      ac_cv_func_isnan=yes \
      ac_cv_func_isinf=yes
@@ -106,6 +102,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"/
+    cp -p $docs "${destdir}${docsdir}"
 }
 

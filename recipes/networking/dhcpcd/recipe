@@ -1,7 +1,7 @@
 # Build recipe for dhcpcd.
 #
 # Copyright (c) 2017 MMPG, <mmpg@vp.pl>.
-# Copyright (c) 2017-2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 set -e
 
 program=dhcpcd
-version=9.4.0
-release=2
+version=9.4.1
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=networking
@@ -54,12 +54,13 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-    $configure_args \
-    --libdir=/usr/lib${libSuffix} \
-    --libexecdir=/usr/libexec/dhcpcd \
-    --dbdir=/var/lib/dhcpcd \
-    --build="$(gcc -dumpmachine)"
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --libexecdir=/usr/libexec/dhcpcd \
+     --dbdir=/var/lib/dhcpcd \
+     --build="$(gcc -dumpmachine)"
 
     make -j${jobs}
     make -j${jobs} DESTDIR="$destdir" install
@@ -98,6 +99,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}/"
+    cp -p $docs "${destdir}${docsdir}"
 }
 

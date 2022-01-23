@@ -1,6 +1,6 @@
 # Build recipe for weechat.
 #
-# Copyright (c) 2019-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=weechat
-version=3.0
+version=3.4
 release=1
 
 # Define a category for the output of the package name
@@ -55,7 +55,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    mkdir -p BUILD
+    rm -rf BUILD
+    mkdir BUILD
     cd BUILD
 
     # Note about NLS: it does not work with gettex-tiny, currently.
@@ -69,11 +70,12 @@ build()
      -DCMAKE_VERBOSE_MAKEFILE=ON                     \
      -DCMAKE_SKIP_INSTALL_RPATH=YES                  \
      -DLIBDIR=/usr/lib${libSuffix}                   \
-     -DENABLE_NLS=OFF                                \
+     -DENABLE_NLS=ON                                 \
+     -DENABLE_JAVASCRIPT=OFF                         \
      -DENABLE_ENCHANT=OFF                            \
      -DENABLE_PHP=OFF                                \
      -DENABLE_MAN=ON                                 \
-     -DENABLE_DOC=OFF                                \
+     -DENABLE_DOC=ON                                 \
      -G Ninja ..
 
     ninja -j${jobs}

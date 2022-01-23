@@ -1,6 +1,6 @@
 # Build recipe for ca-certificates (a version from Alpine Linux).
 #
-# Copyright (c) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=ca-certificates
-version=20200206_898ab81
+version=20220111_d12d01b
 release=1
 
 # Define a category for the output of the package name
@@ -86,6 +86,13 @@ build()
         cd "${destdir}/usr/share/ca-certificates"
         find . -name '*.crt' | sort | cut -b3-
     ) > "${destdir}/etc/ca-certificates.conf"
+
+    # Generate the bundle in similar way as update-ca-certificates would do
+    find . -name '*.crt' | sort | while read -r file
+    do
+	cat -- "$file"
+        echo ""
+    done > "${destdir}/etc/ssl/certs/ca-certificates.crt"
 
     # Make run-parts script
 
