@@ -1,6 +1,6 @@
-# Build recipe for hwids.
+# Build recipe for hwdata.
 #
-# Copyright (c) 2017-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
 # Exit immediately on any error
 set -e
 
-program=hwids
-version=20210613
+program=hwdata
+version=0.355
 arch=noarch
 release=1
 
@@ -28,26 +28,21 @@ pkgcategory=libs
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=https://github.com/gentoo/hwids/archive/refs/tags/$tarname
+fetch=https://github.com/vcrhonek/hwdata/archive/v${version}/$tarname
 
 description="
-Hardware identification databases.
+Hardware identification and configuration data.
 
-This package contain a specially re-packaged copy of the pci.ids
-and usb.ids files, as well as a copy of IEEE's databases for the
-Organizationally Unique Identifiers (OUI) and Individual Address
-Block (IAB).
+hwdata contains various hardware identification and configuration data,
+such as the pci.ids and usb.ids databases.
 "
 
-homepage=https://github.com/gentoo/hwids
-license="GPLv2+ | 3-clause BSD"
+homepage=https://github.com/vcrhonek/hwdata
+license="GPLv2+ | XFree86 1.0 license"
 
 # Source documentation
-docs="README.md *.txt"
+docs="COPYING LICENSE README"
 docsdir="${docdir}/${program}-${version}"
-
-# Custom source directory name
-srcdir=hwids-hwids-${version}
 
 build()
 {
@@ -58,15 +53,21 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Do not run `udevadm hwdb` when installing
-    sed -i -e '/udevadm hwdb/d' Makefile
+    ./configure $configure_args --libdir=/usr/lib${libSuffix}
+    make -j${jobs} install DESTDIR="$destdir"
 
-    make -j${jobs} install \
-     MISCDIR=/usr/share/hwdata \
-     HWDBDIR=/etc/udev/hwdb.d \
-     UDEV=yes \
-     DOCDIR=$docsdir \
-     DESTDIR="$destdir"
+    # Make symlinks of the database for programs looking at /usr/share/
+    (
+        cd "${destdir}/usr/share" || exit 1
+        for file in hwdata/*
+        do
+            ln -sf "$file" .
+        done        
+    )
+
+    # Information already provided by the eudev package
+    rm -rf "${destdir}/usr/lib${libSuffix}/modprobe.d"
+    rmdir "${destdir}/usr/lib${libSuffix}"
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
