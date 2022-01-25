@@ -1,7 +1,7 @@
 # Build recipe for htop.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
-# Copyright (c) 2018, 2020, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018, 2020, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,16 +19,19 @@
 set -e
 
 program=htop
-version=3.0.5
+version=3.1.2
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=tools
 
-tarname=${program}-${version}.tar.gz
+tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
-fetch=https://dl.bintray.com/htop/source/$tarname
+fetch="
+  https://github.com/htop-dev/htop/releases/download/${version}/$tarname
+  https://dl.bintray.com/htop/source/$tarname
+"
 
 description="
 An interactive process viewer for Unix systems.
@@ -62,7 +65,8 @@ build()
     
     cd "$srcdir"
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS -O3" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
@@ -90,6 +94,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}/"
+    cp -p $docs "${destdir}${docsdir}"
 }
 

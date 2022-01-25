@@ -1,6 +1,6 @@
 # Build recipe for shadow.
 #
-# Copyright (c) 2016-2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=shadow
-version=4.8.1
+version=4.11.1
 release=1
 
 # Define a category for the output of the package name
@@ -52,13 +52,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Apply patches
-
-    # ruserok(3) is missing from musl
-    patch -Np0 -i "${worktree}/patches/shadow/shadow-no_rlogin"
-
     # Apply to use our custom definitions
-    patch -Np0 -i "${worktree}/patches/shadow/shadow-login.defs.diff"
+    patch -Np1 -i "${worktree}/patches/shadow/shadow-login.defs.diff"
 
     # Disable the installation of the groups program and its man pages,
     # as Coreutils provides a better version.  Also, prevent the
@@ -69,7 +64,8 @@ build()
     find man -type f -name Makefile.in -exec sed -i 's/getspnam\.3 / /' {} \;
     find man -type f -name Makefile.in -exec sed -i 's/passwd\.5 / /'   {} \;
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --infodir=$infodir \
      --mandir=$mandir \
@@ -78,8 +74,8 @@ build()
      --disable-shared \
      --with-sha-crypt \
      --with-group-name-max-length=32 \
+     --with-su \
      --without-libcrack \
-     --without-nscd \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
@@ -91,11 +87,9 @@ build()
           "${destdir}/usr/sbin/"
     chmod 755 "${destdir}/usr/sbin/shadowconfig"
 
-    # Make the default useradd consistent with our /etc/group file
-    sed -i 's/1000/100/' "${destdir}/etc/default/useradd"
-
-    # Set mksh(1) as the default shell
-    sed -i 's@SHELL=/bin/bash@SHELL=/bin/mksh@' \
+    # Insert our default useradd file for default users definition
+    mkdir -p "${destdir}/etc/default"
+    install -p -m 644 "${worktree}/archive/shadow/etc/default/useradd" \
      "${destdir}/etc/default/useradd"
 
     # To handle config file(s)

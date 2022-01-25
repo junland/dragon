@@ -1,6 +1,6 @@
 # Build recipe for mdadm.
 #
-# Copyright (c) 2018-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019, 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 set -e
 
 program=mdadm
-version=4.1
-release=2
+version=4.2
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -52,13 +52,7 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Patch to include sysmacros.h unconditionally
-    patch -Np1 -i "${worktree}/patches/mdadm/mdadm-4.1_sysmacros.diff"
-
-    # Do not stop on warnings
-    sed -i 's/-Werror//' Makefile
-
-    make -j${jobs} CXFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    make -j${jobs} CXFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      BINDIR=/usr/sbin MANDIR=$mandir
     make -j${jobs} MANDIR=$mandir BINDIR=/usr/sbin DESTDIR=$destdir install
 
@@ -83,6 +77,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}"/
+    cp -p $docs "${destdir}${docsdir}"
 }
 
