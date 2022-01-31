@@ -1,6 +1,6 @@
 # Build recipe for libwacom.
 #
-# Copyright (c) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,13 +18,13 @@
 set -e
 
 program=libwacom
-version=1.8
+version=2.0.0
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=xorg_extra
 
-tarname=${program}-${version}.tar.bz2
+tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
 fetch=https://github.com/linuxwacom/libwacom/releases/download/${program}-${version}/$tarname
@@ -52,18 +52,24 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" \
-    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --mandir=$mandir \
-     --docdir=$docsdir \
-     --enable-static=no \
-     --enable-shared=yes \
-     --build="$(gcc -dumpmachine)"
+    rm -rf BUILD
+    mkdir BUILD
+    cd BUILD
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install-strip
+    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     -Dudev-dir=/lib/udev \
+     -Ddocumentation=disabled \
+     -Dtests=disabled \
+     ..
+
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
+
+    cd ..
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
