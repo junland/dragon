@@ -1,7 +1,7 @@
 # Build recipe for Gdk Pixbuf.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (C) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2018-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 set -e
 
 program=gdk-pixbuf
-version=2.42.2
+version=2.42.6
 release=1
 
 # Define a category for the output of the package name
@@ -54,8 +54,9 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    mkdir -p build
-    cd build
+    rm -rf BUILD
+    mkdir BUILD
+    cd BUILD
 
     CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     meson setup $configure_args \
@@ -63,8 +64,8 @@ build()
      --mandir=$mandir \
      --buildtype=release \
      --strip \
+     --wrap-mode=nofallback \
      -Dman=true \
-     -Djasper=true \
      -Dinstalled_tests=false \
      ..
 

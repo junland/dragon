@@ -1,7 +1,7 @@
 # Build recipe for Pango.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (C) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2018-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 set -e
 
 program=pango
-version=1.48.1
+version=1.50.3
 release=1
 
 # Define a category for the output of the package name
@@ -54,15 +54,19 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    rm -rf BUILD
     mkdir BUILD
     cd BUILD
 
-    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
     meson setup $configure_args \
      --libdir /usr/lib${libSuffix} \
      --mandir $mandir \
      --buildtype=release \
      --strip \
+     --wrap-mode=nofallback \
+     -Dintrospection=enabled \
      ..
 
     ninja -j${jobs}

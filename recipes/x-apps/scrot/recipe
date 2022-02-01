@@ -1,7 +1,7 @@
 # Build recipe for scrot.
 #
 # Copyright (c) 2018 Markus Tornow, <tornow@riseup.net>.
-# Copyright (c) 2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018, 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 set -e
 
 program=scrot
-version=0.8
+version=0.10.0
 release=1
 
 # Define a category for the output of the package name
@@ -28,7 +28,7 @@ pkgcategory=x-apps
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=https://github.com/dreamer/scrot/archive/$tarname
+fetch=https://github.com/dreamer/scrot/archive/v${version}/$tarname
 
 description="
 Command line screen capture util.
@@ -40,14 +40,11 @@ them together.
 "
 
 homepage=https://github.com/dreamer/scrot
-license=BSD
+license=MIT
 
 # Source documentation
-docs="AUTHORS COPYING ChangeLog README TODO"
+docs="AUTHORS COPYING ChangeLog README*"
 docsdir="${docdir}/${program}-${version}"
-
-# Custom source directory
-srcdir="${program}-${program}-${version}"
 
 build()
 {
@@ -55,29 +52,27 @@ build()
 
     cd "$srcdir"
 
-    # Refresh scrot using patches from Debian, plus an update
-    # from Dragora adding a missing header to getopt.c
-    for file in "${worktree}"/patches/scrot/??*.patch
-    do
-        patch -Np1 < "$file"
-    done
-    unset -v file
+    rm -rf BUILD
+    mkdir BUILD
+    cd BUILD
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --mandir=$mandir \
-     --build="$(gcc -dumpmachine)"
+    CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     ..
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
+
+    cd ..
 
     lzip -9 "${destdir}/${mandir}/man1/scrot.1"
 
-    # This is wrong
-    rm -rf "${destdir}/usr/doc"
-
     # Copy documentation
     mkdir -p "${destdir}${docsdir}"
-    cp -p $docs "${destdir}${docsdir}/"
+    cp -p $docs "${destdir}${docsdir}"
 }
 

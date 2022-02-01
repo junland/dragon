@@ -40,7 +40,7 @@ homepage=https://wiki.gnome.org/Projects/libgudev
 license=LGPLv2.1
 
 # Source documentation
-docs="COPYING NEWS README"
+docs="COPYING NEWS README*"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -52,18 +52,22 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --mandir=$mandir \
-     --docdir=$docsdir \
-     --enable-shared=yes \
-     --enable-static=no \
-     --disable-umockdev \
-     --build="$(gcc -dumpmachine)"
+    rm -rf BUILD
+    mkdir BUILD
+    cd BUILD
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
+    CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     ..
+
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
+
+    cd ..
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"

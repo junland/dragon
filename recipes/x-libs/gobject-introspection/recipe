@@ -1,7 +1,7 @@
 # Build recipe for GObject Introspection.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (C) 2018-2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2018-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 set -e
 
 program=gobject-introspection
-version=1.66.1
+version=1.70.0
 release=1
 
 # Define a category for the output of the package name
@@ -52,11 +52,16 @@ build()
 
     cd "$srcdir"
 
+    # Apply a patch that allows building with Meson version 0.61 or above
+    # Thanks to "Beyond Linux From Scratch"
+    patch -Np1 -i "${worktree}/patches/gobject-introspection/gobject-introspection-1.70.0-build_fix-1.patch"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    mkdir -p build
-    cd build
+    rm -rf BUILD
+    mkdir BUILD
+    cd BUILD
 
     CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     meson setup $configure_args \
