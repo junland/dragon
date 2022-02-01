@@ -1,5 +1,5 @@
 #! /bin/sh -
-# Copyright (C) 2016-2021 Matias Fonzo <selk@dragora.org>
+# Copyright (C) 2016-2022 Matias Fonzo <selk@dragora.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -959,7 +959,7 @@ mode_upgrade()
              ""                                                             \
              "^ This package will be INSTALLED instead of being upgraded ..."
             opt_prune=opt_prune mode_install "$1"
-            return 0
+            return 0;
             ;;
         esac
     done
@@ -971,7 +971,9 @@ mode_upgrade()
     PRVLOC=$(mktemp -dp "$rootdir${packagedir}" ${incoming}.XXXXXXXXXXXX) || exit 2
 
     echo "=== Pre-installing package in temporary location ..."
+
     opt_prune=opt_prune;	# Turns on prune operation.
+
     _isUpgrade=_isUpgrade.on mode_install "$1" "$PRVLOC" > /dev/null
     _isUpgrade=_isUpgrade.off
 
@@ -987,16 +989,8 @@ mode_upgrade()
             continue;
         fi
 
-        echo "$previous_package"
-
-        # The package directory could be preserved if --keep is given
-        if test "$opt_keep" != opt_keep
-        then
-            rm -r -- "$previous_package" || chkstatus_or_exit
-            echo "removed directory: '$previous_package'"
-        else
-            warn "    Preserving package $previous_package directory ..."
-        fi
+        # The directory of the package could be preserved if --keep
+        mode_remove "$previous_package"
     done
     unset -v previous_package
 
