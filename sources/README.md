@@ -39,6 +39,12 @@ any previous source.
 
 The tarballs will be stored on the current working directory.
 
+### Recommendation
+
+Download all the sources from the list.
+
+Use the RSYNC protocol to download missing sources.
+
 ## Check sums
 
 Remember to check if everything is OK.  To check the integrity of all
