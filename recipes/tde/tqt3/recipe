@@ -1,6 +1,6 @@
 # Build recipe for tqt3 (trinity).
 #
-# Copyright (c) 2019-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=tqt3
-version=20211030_fd4ff7c6
+version=20220121_09659a56
 release=1
 
 # Define a category for the output of the package name
@@ -70,20 +70,10 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-#    SAVED_QTDIR="$QTDIR"
-#    QTDIR="$PWD"
     LD_LIBRARY_PATH="${PWD}/lib:${LD_LIBRARY_PATH}"
-#    SAVED_PATH="$PATH"
-#    PATH="${QTDIR}/bin:${PATH}"
-#
-#    echo ""
-#    echo "New QTDIR: $QTDIR"
+    LD_LIBRARY_PATH="${LD_LIBRARY_PATH%%:*}";	# Get the rid of ":".
+    export LD_LIBRARY_PATH
     echo "New LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
-#    echo "New PATH: $PATH"
-#    echo ""
-#
-#    export QTDIR LD_LIBRARY_PATH PATH
-     export LD_LIBRARY_PATH
 
     echo yes | ./configure \
      -L/usr/lib${libSuffix} \
@@ -129,10 +119,6 @@ build()
     make -j${jobs} INSTALL_ROOT="$destdir" install
 
     unset -v LD_LIBRARY_PATH
-#    PATH=$SAVED_PATH
-#    QTDIR=$SAVED_QTDIR
-#    unset -v SAVED_QTDIR SAVED_PATH LD_LIBRARY_PATH
-#    export PATH QTDIR
 
     # Strip remaining binaries and libraries
     find "$destdir" -type f | xargs file | \
