@@ -74,7 +74,7 @@ echo ""
 version()
 {
     printf '%s' \
-"$PROGRAM 3.29
+"$PROGRAM 3.30
 Copyright (C) 2014-2022 Matias Andres Fonzo.
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
 This is free software: you are free to change and redistribute it.
@@ -188,8 +188,8 @@ warn_flags()
 
 ### Default values
 
-BTCC="${BTCC:=cc}"
-BTCXX="${BTCXX:=c++}"
+BTCC="${BTCC:=gcc}"
+BTCXX="${BTCXX:=g++}"
 BTCFLAGS="${BTCFLAGS:=-O2}"
 BTCXXFLAGS="${BTCXXFLAGS:=-O2}"
 BTLDFLAGS="${BTLDFLAGS:=}"
@@ -272,18 +272,10 @@ fi
 
 # Determine the host to use.
 #
-# Set up the host if a C compiler command was exported,
-# otherwise, a local `cc' will be used instead
-
-if test -n "$BTCC"
-then
-    host="$(${BTCC} -dumpmachine)" || chkstatus_or_exit
-else
-    host="$(cc -dumpmachine)" || chkstatus_or_exit
-fi
-
 # If the host and the target are the same triplet, it won't work.
 # We are changing the host if it is really needed
+
+host="$(${BTCC} -dumpmachine)" || chkstatus_or_exit
 
 if test "$host" = "$target"
 then
