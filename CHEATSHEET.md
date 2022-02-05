@@ -2,9 +2,11 @@
 
 ## Bootstrapping
 
-Prerequisities:
+Prerequisites:
 
 - A working C compiler, system toolchain, utilities.
+
+- A filesystem that supports Unix-like permissions.
 
 - Enough hard disk space (7GB+) for the whole process.
 
