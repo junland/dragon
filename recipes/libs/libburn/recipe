@@ -1,0 +1,73 @@
+# Build recipe for libburn.
+#
+# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Exit immediately on any error
+set -e
+
+program=libburn
+version=1.5.4
+release=1
+
+# Define a category for the output of the package name
+pkgcategory=libs
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=http://files.libburnia-project.org/releases/$tarname
+
+description="
+Library to read/write optical discs.
+
+libburn is a library for writing preformatted data onto optical media:
+CD, DVD and BD (Blu-Ray).
+"
+
+homepage=https://dev.lovelyhq.com/libburnia
+license=GPLv2+
+
+# Source documentation
+docs="AUTHORS CONTRIBUTORS COPYING COPYRIGHT ChangeLog NEWS README"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+     $configure_args \
+     --libdir=/usr/lib${libSuffix} \
+     --docdir=$docsdir \
+     --enable-shared=yes \
+     --enable-static=no \
+     --build="$(gcc -dumpmachine)"
+
+    make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install-strip
+
+    lzip -9 "${destdir}${mandir}"/man?/*
+
+    # Copy documentation
+    mkdir -p "${destdir}${docsdir}"
+    cp -p $docs "${destdir}${docsdir}"
+}
+
