@@ -4,7 +4,7 @@
 
     - [x] Add libusb-compat.
     - [ ] Add the zstd compressor.
-    - [ ] Add GNU Xorriso (for .iso creation support).
+    - [x] Add GNU Xorriso (for .iso creation support).
     - [ ] Version control systems:
       - [ ] Mercurial
       - [ ] CVS
