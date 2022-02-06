@@ -2,7 +2,7 @@
 
 "To do" for development of current Dragora.
 
-    - [ ] Add libusb-compat.
+    - [x] Add libusb-compat.
     - [ ] Add the zstd compressor.
     - [ ] Add GNU Xorriso (for .iso creation support).
     - [ ] Version control systems:
