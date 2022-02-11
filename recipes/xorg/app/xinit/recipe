@@ -1,7 +1,7 @@
 # Build recipe for xinit.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2019, 2021 Matias Fonzo <selk@dragora.org>.
+# Copyright (c) 2017-2019, 2021-2022 Matias Fonzo <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 
 program=xinit
 version=1.4.1
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=xorg_app
@@ -50,6 +50,11 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # We don't support systemd.
+    #
+    # Apply a patch from "Slackware Linux".
+    patch -Np1 -i "${worktree}/patches/xinit/xinit.remove.systemd.kludge.diff"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
