@@ -74,7 +74,7 @@ echo ""
 version()
 {
     printf '%s' \
-"$PROGRAM 3.30
+"$PROGRAM 3.31
 Copyright (C) 2014-2022 Matias Andres Fonzo.
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
 This is free software: you are free to change and redistribute it.
@@ -246,7 +246,7 @@ do
     esac
 done
 shift $(( OPTIND - 1 ))
-unset -f usage
+unset -f usage version
 
 # Check for environment variables, print warning, unset in any case
 
@@ -344,17 +344,17 @@ do
     then
         mkdir -p -- "${crossdir}/$target" || chkstatus_or_exit
 
-        if test ! -e "${crossdir}/${target}/usr"
+        if test ! -L "${crossdir}/${target}/usr"
         then
-            ln -sf . "${crossdir}/${target}/usr" || chkstatus_or_exit
+            ln -s -f . "${crossdir}/${target}/usr" || chkstatus_or_exit
         fi
 
         # Ensure toolchain sanity for multilib purposes
         case $arch in
         aarch64* | arm* | x32 | x86_64 | i?86 | riscv* )
-            if test ! -e "${crossdir}/lib" && test -n "$libSuffix"
+            if test ! -L "${crossdir}/lib" && test -n "$libSuffix"
             then
-                ln -sf lib${libSuffix} "${crossdir}/lib" || chkstatus_or_exit
+                ln -s -f lib${libSuffix} "${crossdir}/lib" || chkstatus_or_exit
             fi
             ;;
         esac
@@ -368,8 +368,11 @@ do
             mkdir -p -- "${rootdir}/tools" || chkstatus_or_exit
         fi
 
-        # Make required symlink
-        ln -sf "${rootdir}/tools" / || chkstatus_or_exit
+        # Check and make required symlink
+        if test ! -L /tools
+        then
+            ln -s -f "${rootdir}/tools" / || chkstatus_or_exit
+        fi
     fi
 
     echo "${PROGRAM}: Processing $file from stages/${stage} ..."
