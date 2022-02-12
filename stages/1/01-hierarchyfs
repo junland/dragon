@@ -1,6 +1,6 @@
 # Build script for the filesystem layout (Dragora).
 #
-# Copyright (c) 2014-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2014-2018, 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# These steps here are to satisfy "13-symlinks", the complete
-# steps are done from "recipes/config/hierarchyfs".
+# These steps here are to satisfy "13-symlinks", complete
+# steps are done from "recipes/data/hierarchyfs".
 
 echo "Creating minimal structure of directories for 'rootdir' ..."
 
@@ -24,7 +24,11 @@ mkdir -p -- \
 (
     cd -- "${rootdir}"
     chmod 1777 tmp
-    ln -sf usr/bin bin
+    if test ! -L bin
+    then
+        rm -f bin
+        ln -s -f usr/bin bin
+    fi
 )
 
 # Handle lib<equal> directory for the multi directory support
@@ -32,20 +36,40 @@ if test -n "$libSuffix"
 then
     echo "Handling lib<equal> for ${rootdir}/usr/lib${libSuffix} ..."
     (
-        cd -- "${rootdir}"/usr
+        cd -- "${rootdir}/usr"
         mkdir -p lib${libSuffix}
-        ln -s -f lib${libSuffix} lib
+        if test ! -L lib
+        then
+            rm -f lib
+            ln -s -f lib${libSuffix} lib
+        fi
     )
 
     # Make symlink of compatibility for / at $rootdir
     cd -- "$rootdir"
-    rm -f lib
-    ln -s usr/lib${libSuffix} lib
+
+    echo "Handling lib<equal> for ${rootdir}/lib${libSuffix} ..."
+    if test ! -L "lib${libSuffix}"
+    then
+        rm -f lib${libSuffix}
+        ln -s -f usr/lib${libSuffix} lib${libSuffix}
+    fi
+
+    echo "Handling lib<equal> for ${rootdir}/lib ..."
+    if test ! -L lib
+    then
+        rm -f lib
+        ln -s -f lib${libSuffix} lib
+    fi
 
     echo "Making compatibility for ${rootdir}/tools/lib${libSuffix} ..."
     cd tools
     mkdir -p lib${libSuffix}
-    ln -s -f lib${libSuffix} lib
+    if test ! -L lib
+    then
+        rm -f lib
+        ln -s -f lib${libSuffix} lib
+    fi
 else
     mkdir -p -- "${rootdir}/lib" "${rootdir}/tools/lib" "${rootdir}/usr/lib"
 fi
