@@ -1,3 +1,4 @@
+
 # Ownerships and permissions
 
 chown root:games  usr/games usr/share/games usr/local/games var/games
@@ -9,12 +10,13 @@ chown root:news   var/spool/news
 chmod 775         var/log
 chmod 2775        var/mail
 chmod 1777        var/tmp
-# Force the symbolic link to make /var/run and /var/lock point to /run
+
+# Force symlink creation for "/var/run -> ../run" and "/var/lock -> ../run/lock"
 (
     cd var || exit 1
     rm -rf run lock
-    ln -sf /run .
-    ln -sf /run/lock .
+    ln -sf ../run .
+    ln -sf ../run/lock .
 )
 
 chmod 555         proc sys
@@ -30,8 +32,8 @@ test -c dev/null || mknod -m 666 dev/null c 1 3
 test -e dev/shm || mkdir -p dev/shm
 
 # Create file records for logins and logouts
-touch var/log/btmp var/log/lastlog var/log/faillog var/log/wtmp \
-      var/run/utmp
+touch \
+ var/log/btmp var/log/lastlog var/log/faillog var/log/wtmp var/run/utmp
 
 chgrp utmp  var/log/lastlog var/run/utmp
 chmod 664   var/log/lastlog var/run/utmp
@@ -39,14 +41,15 @@ chmod 600   var/log/btmp
 
 # Make symlinks at 'rootdir'
 
-for link in bin lib sbin
+for link_name in bin sbin
 do
-    if test ! -e $link
+    if test ! -L $link_name
     then
-        ln -sf usr/${link} $link
+        rm -f $link_name
+        ln -s -f usr/${link_name} $link_name
     fi
 done
-unset link
+unset link_name
 
 (
     cd opt || exit 1
@@ -59,57 +62,76 @@ unset link
     ln -sf share/man   man
 )
 (
-    cd usr/share || exit 1
-    ln -sf ../lib/pkgconfig pkgconfig
-)
-(
     cd usr/local || exit 1
     ln -sf share/doc   doc
     ln -sf share/info  info
     ln -sf share/man   man
 )
 (
-    cd usr/local/share || exit 1
-    ln -sf ../lib/pkgconfig pkgconfig
-)
-(
     cd var/spool || exit 1
     ln -sf ../mail mail
 )
 
-# Offer X11R6 compatibility symlink.
-ln -sf /usr /usr/X11R6
+# Offer a compatible "X11R6 symlink"
+test -L usr/X11R6 || ( cd usr && ln -sf . X11R6 )
 
 libSuffix=X
 
 if test "$libSuffix" != X
 then
-    if test ! -e usr/lib${libSuffix}
+     rmdir lib usr/lib usr/local/lib 2> /dev/null
+
+     # Make default library path using 'libSuffix', linking
+     # canonical path "lib" to the library suffix directory
+     for directory in usr usr/local
+     do
+         (
+             cd "$directory" || exit 1
+             test -d lib${libSuffix} || mkdir -p lib${libSuffix}
+             if test ! -L lib
+             then
+                 rm -f lib
+                 ln -s -f lib${libSuffix} lib
+             fi
+         )
+     done
+     unset directory
+     # This is for the 'rootdir'
+     (
+         cd . || exit 1
+         if test ! -L lib${libSuffix}
+         then
+             rm -f lib${libSuffix}
+             ln -s -f usr/lib${libSuffix} lib${libSuffix}
+         fi
+         if test ! -L lib
+         then
+             rm -f lib
+             ln -s -f lib${libSuffix} lib
+         fi
+     )
+else
+    # Make canonical paths for usr/lib, usr/local/lib, with a
+    # symlink of "/lib -> usr/lib" if 'libSuffix' is empty
+    for directory in usr/lib usr/local/lib
+    do
+        test -e $directory || mkdir -p $directory
+    done
+    unset directory
+    if test ! -L lib || test ! -e lib
     then
-        (
-            cd usr || exit 1
-            rmdir lib/pkgconfig lib/ 2> /dev/null
-
-            mkdir -p lib${libSuffix}
-            ln -s -f lib${libSuffix} lib
-        )
+        rm -f lib
+        ln -s -f usr/lib lib
     fi
-    if test ! -e usr/local/lib${libSuffix}
-    then
-        (
-            cd usr/local || exit 1
-            rmdir lib/pkgconfig lib/ 2> /dev/null
-
-            mkdir -p lib${libSuffix}
-            ln -s -f lib${libSuffix} lib
-        )
-    fi
-
-    # Re-create pkgconfig directory
-
-    mkdir -p usr/lib/pkgconfig usr/local/lib/pkgconfig
-
-    rm -f lib
-    ln -s usr/lib${libSuffix} lib
 fi
+
+# Re-create pkgconfig directory
+test -e usr/lib/pkgconfig || mkdir -p usr/lib/pkgconfig
+test -e usr/local/lib/pkgconfig || mkdir -p usr/local/lib/pkgconfig
+
+for directory in usr/share usr/local/share
+do
+    ( cd $directory && ln -sf ../lib/pkgconfig . )
+done
+unset directory
 
