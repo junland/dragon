@@ -1,7 +1,7 @@
 # Build recipe for xf86-video-sis.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 
 program=xf86-video-sis
 version=0.12.0
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=xorg_driver
@@ -48,6 +48,9 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # Fix old cpp macros references.  Thanks to "Alpine Linux"
+    patch -p1 < "${worktree}/patches/xf86-video-sis/fix-old-cpp-macros_sis.patch"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .

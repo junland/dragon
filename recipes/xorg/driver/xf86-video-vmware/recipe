@@ -20,7 +20,7 @@ set -e
 
 program=xf86-video-vmware
 version=20211130_50ab008
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=xorg_driver
@@ -52,6 +52,9 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # Fix old cpp macros references.  Thanks to "Alpine Linux"
+    patch -p1 < "${worktree}/patches/xf86-video-vmware/fix-old-cpp-macros_vmware.patch"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
