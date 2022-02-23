@@ -19,7 +19,7 @@ set -e
 
 program=linux
 version=5.10.100
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=kernel
@@ -37,22 +37,25 @@ license="GPLv2 only"
 
 build()
 {
-    # Check if 'keep_srcdir' is not empty
-    # (theoretically exported from kernel/generic)
-    if test -n "$keep_srcdir"
+    if test "$kernel_generic_has_been_built" != kernel_generic_has_been_built
     then
-        cd "$srcdir"
-
-        # Set sane permissions
-        chmod -R u+w,go-w,a+rX-s .
-
-        # Move (build) kernel-tree into package
-
-        mkdir -p "${destdir}/usr/src/${srcdir}"
-        mv -f ./* "${destdir}/usr/src/${srcdir}"
-
-        # Unset 'keep_srcdir' for the next recipe(s)
-        unset -v keep_srcdir
+        printf '%s\n' \
+         'The recipe "kernel/generic" has not been processed, this recipe will not be built.' 2>&1
+        exit 4;
     fi
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    # Move (build) kernel-tree into package
+
+    mkdir -p "${destdir}/usr/src/${srcdir}"
+    mv -f ./* "${destdir}/usr/src/${srcdir}"
+
+    # Unset 'keep_srcdir' and 'kernel_generic_has_been_built'
+    # (both exported from "kernel/generic")
+    unset -v keep_srcdir kernel_generic_has_been_built
 }
 
