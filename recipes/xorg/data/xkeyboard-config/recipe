@@ -21,7 +21,7 @@ set -e
 program=xkeyboard-config
 version=2.34
 arch=noarch
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=xorg_data
@@ -63,13 +63,8 @@ build()
     make -j${jobs} DESTDIR="$destdir" install
 
     # To manage .new files via graft(1)
-    for directory in "${destdir}/etc/X11/xkb"/*
+    find "${destdir}"/etc/X11/xkb -type d -print | while read -r directory
     do
-        test -d "$directory" || continue
-
-        # Exclude files from "rules" directory which should not be edited.
-        test "${directory##*/}" = rules && continue
-
         ( cd -- "$directory" && touch .graft-config )
     done
 

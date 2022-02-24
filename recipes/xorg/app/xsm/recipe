@@ -1,7 +1,7 @@
 # Build recipe for xsm.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019, 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 
 program=xsm
 version=1.0.4
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=xorg_app
@@ -65,7 +65,9 @@ build()
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
-    touch "${destdir}/etc/X11/app-defaults/.graft-config"
+    # To manage dot new files via graft(1)
+    touch "${destdir}/etc/X11/app-defaults/.graft-config" \
+          "${destdir}/etc/X11/xsm/.graft-config"
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
