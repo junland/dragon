@@ -1,7 +1,7 @@
 # Build recipe for dbus (Use 'dbus-x11' instead for the X11 support).
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (c) 2018-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2018-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,13 +19,13 @@
 set -e
 
 program=dbus
-version=1.12.20
-release=8
+version=1.14.0
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=daemons
 
-tarname=${program}-${version}.tar.gz
+tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
 fetch=https://dbus.freedesktop.org/releases/dbus/$tarname
@@ -42,7 +42,7 @@ homepage=https://www.freedesktop.org/wiki/Software/dbus/
 license="AFLv2.1 | GPLv2+"
 
 # Source documentation
-docs="AUTHORS COPYING ChangeLog NEWS README"
+docs="AUTHORS CONTRIBUTING.md COPYING NEWS README"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -82,6 +82,7 @@ build()
      --build="$(gcc -dumpmachine)"
     
     make -j${jobs} V=1
+    make -j${jobs} check
     make -j${jobs} DESTDIR="$destdir" install
 
     chown root:messagebus "${destdir}/usr/libexec/dbus-daemon-launch-helper"
