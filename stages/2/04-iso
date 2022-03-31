@@ -1,7 +1,7 @@
 # Build script to compose the Live CD image.
 #
 # Copyright (c) 2017 MMPG.
-# Copyright (c) 2017-2021 Matias Fonzo <selk@dragora.org>.
+# Copyright (c) 2017-2022 Matias Fonzo <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,36 +18,20 @@
 # ISO file name
 ISONAME="${ISONAME:-dragora-3.0_$(date +%Y%m%d)-${package_arch}}"
 
-# Default mkisofs(8) invocation name
-MKISOFS=mkisofs
-
 # Perform sanity checks (requirements)
+
+if ! type xorriso > /dev/null
+then
+    echo "    xorriso(1) was not found in your PATH." 1>&2
+    echo "GNU Xorriso is required to produce the ISO image(s)." 1>&2
+    exit 2;
+fi
 
 if ! test -e "${rootdir}/squashfs-tools_lzip/mksquashfs"
 then
     echo "Local \`${rootdir}/squashfs-tools_lzip/mksquashfs' does not exist." 1>&2
-    exit 2;
+    exit 4;
 fi
-if ! type mkisofs > /dev/null
-then
-    printf '%s\n' \
-     "" \
-     "    \`mkisofs' was not found in your PATH ..." \
-     "" 1>&2
-    if type genisoimage > /dev/null
-    then
-        MKISOFS=genisoimage
-    else
-        printf '%s\n' \
-        "    \`genisoimage' was not found in your PATH." \
-        "" \
-        "Please install one of these programs to make the ISO image." \
-        "" 1>&2
-        exit 2;
-    fi
-fi
-echo "The \`${MKISOFS}' command will be used to generate the ISO image."
-echo ""
 
 # This depends on the existence of the stage 1
 
@@ -66,9 +50,7 @@ fi
 STAGE1="${output}/stage1"
 CDROM="${rootdir}/cdrom"
 
-#
 # Re-create CD tree
-#
 
 echo "Re-creating CD tree (${CDROM}) ..."
 echo ""
@@ -77,7 +59,6 @@ mkdir -p -- "${CDROM}/isolinux"
 
 #
 # Copy kernel installation to isolinux/
-#
 
 cd -- "${STAGE1}/boot"
 
@@ -87,9 +68,7 @@ do
 done
 unset file
 
-#
 # Copy local isolinux files and initramfs for ISOLINUX
-#
 
 cp -p "${worktree}"/archive/isolinux/* "${CDROM}/isolinux/"
 cp -p "${rootdir}/initrd/initrd.img" "${CDROM}/isolinux/"
@@ -98,11 +77,9 @@ cp -p "${rootdir}/initrd/initrd.img" "${CDROM}/isolinux/"
 rm -f "${CDROM}/isolinux/isohybrid.pl" \
       "${CDROM}/isolinux/generate-keymap"
 
+# Adjust things on the live side.
 #
-# Adjust things on the live side
-#
-
-# Set auto login
+# Set auto-login:
 sed \
  -e 's|c1:123:respawn:/sbin/agetty --noclear tty1 38400 linux|c1:123:respawn:/sbin/agetty --noclear --autologin root --noissue tty1 38400 linux|' \
  -e 's|c2:123:respawn:/sbin/agetty tty2 38400 linux|c2:123:respawn:/sbin/agetty --autologin root --login-pause --noissue tty2 38400 linux|' \
@@ -110,6 +87,7 @@ sed \
  -i "${STAGE1}/etc/inittab"
 
 # Add instructions for running the installer from boot menu option
+
 cat << 'EOF' > "${STAGE1}/root/.profile"
 #
 # .profile - Personal shell-initialization file.
@@ -127,6 +105,7 @@ export PATH
 
 # Run Dragora setup if the "parameter" in the boot was set
 
+#
 # Execute setup only on tty1/serial console
 
 case "$(fgconsole)" in
@@ -142,9 +121,7 @@ esac
 
 EOF
 
-#
 # Produce compressed image using mksquashfs(1)
-#
 
 cd -- "$STAGE1"
 rm -f ./dragora.sfs
@@ -155,24 +132,22 @@ rm -f ./dragora.sfs
   ./*-log* ./usr/pkg/kernel-buildtree-* ./usr/src/linux-* ./usr/src/qi \
   ./usr/bin/build-for-release
 
-#
 # Produce hybrid ISO-9660 image
-#
 
 cd -- "$CDROM"
 
 rm -f ./${ISONAME}*
-$MKISOFS -v -o ${ISONAME}.iso                                     \
-         -J -R -iso-level 3                                       \
-         -no-emul-boot -boot-load-size 4 -boot-info-table         \
+xorriso -as mkisofs -verbose \
+         -o ${ISONAME}.iso                                        \
+         -J -R -hide-rr-moved -iso-level 3                        \
+         -no-emul-boot -boot-load-size 32 -boot-info-table        \
          -b "isolinux/isolinux.bin"                               \
          -c "isolinux/boot.cat"                                   \
-         -V "Dragora-${package_arch}"                             \
+         -isohybrid-mbr "isolinux/isohdpfx.bin"                   \
+         -isohybrid-gpt-basdat                                    \
+         -publisher "Dragora GNU/Linux-Libre, https://www.dragora.org" \
+         -volid "Dragora-${package_arch}"                             \
          .
-unset MKISOFS
-
-echo "Applying \"hybrid booting\" to the ISO image ..."
-"${worktree}"/archive/isolinux/isohybrid.pl ${ISONAME}.iso
 
 echo "Creating .sha256 sum ..."
 echo "sha256sum ${ISONAME}.iso > ${ISONAME}.iso.sha256"
