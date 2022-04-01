@@ -44,7 +44,7 @@ fi
 if test ! -f "${rootdir}/initrd/initrd.img"
 then
     echo "${rootdir}/initrd/initrd.img: No such initramfs file" 1>&2
-    exit 1;
+    exit 4;
 fi
 
 STAGE1="${output}/stage1"
@@ -72,10 +72,6 @@ unset file
 
 cp -p "${worktree}"/archive/isolinux/* "${CDROM}/isolinux/"
 cp -p "${rootdir}/initrd/initrd.img" "${CDROM}/isolinux/"
-
-# Clean up (we don't want this on the final ISO)
-rm -f "${CDROM}/isolinux/isohybrid.pl" \
-      "${CDROM}/isolinux/generate-keymap"
 
 # Adjust things on the live side.
 #
@@ -139,7 +135,7 @@ cd -- "$CDROM"
 rm -f ./${ISONAME}*
 xorriso -as mkisofs -verbose \
          -o ${ISONAME}.iso                                        \
-         -J -R -hide-rr-moved -iso-level 3                        \
+         -J -rational-rock -hide-rr-moved -iso-level 3            \
          -no-emul-boot -boot-load-size 32 -boot-info-table        \
          -b "isolinux/isolinux.bin"                               \
          -c "isolinux/boot.cat"                                   \
