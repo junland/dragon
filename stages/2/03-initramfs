@@ -19,8 +19,8 @@ cd -- "${rootdir}/initrd"
 
 # Create essential directories for the image
 
-mkdir -p proc dev UP
-chmod 755 proc dev UP
+mkdir -p proc sys dev UP
+chmod 755 proc sys dev UP
 
 cat << "EOF" > init
 #! /bin/busybox hush
@@ -28,6 +28,7 @@ cat << "EOF" > init
 set -x
 
 /bin/busybox mount -n -o nosuid,noexec,nodev -t proc proc /proc
+/bin/busybox mount -n -o nosuid,noexec,nodev -t sysfs sysfs /sys
 /bin/busybox mount -n -t devtmpfs devtmpfs /dev
 /bin/busybox sleep 5
 
@@ -51,6 +52,7 @@ set -x
 # Move virtual file systems prior to switch_root
 /bin/busybox mount -n --move /dev   /UP/union/dev
 /bin/busybox mount -n --move /proc  /UP/union/proc
+/bin/busybox mount -n --move /sys   /UP/union/sys
 
 : > /UP/union/fastboot
 exec /bin/busybox switch_root /UP/union /sbin/init
