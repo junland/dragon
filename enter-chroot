@@ -23,17 +23,17 @@ set -e
 LC_ALL=C
 export LC_ALL
 
-# Get current working directory
-CWD="$(dirname -- "$0")"
+# Get physical working directory (absolute path)
+CWD="$(CDPATH='' cd -P -- "$(dirname -- "$0")" && pwd -P)" || exit $?
 
 # Functions
 unmountSeries()
 {
-    for node in "${rootdir}/usr/src/qi/archive" \
+    for node in "${CWD}/packages" \
+                "${rootdir}/usr/src/qi/archive" \
                 "${rootdir}/usr/src/qi/patches" \
                 "${rootdir}/usr/src/qi/recipes" \
                 "${rootdir}/usr/src/qi/sources" \
-                "${rootdir}/var/cache/qi/packages" \
                 "${rootdir}/sys" \
                 "${rootdir}/proc" \
                 "${rootdir}/dev/pts" \
@@ -98,7 +98,7 @@ mount -o bind "${CWD}/archive" "${rootdir}/usr/src/qi/archive"
 mount -o bind "${CWD}/patches" "${rootdir}/usr/src/qi/patches"
 mount -o bind "${CWD}/recipes" "${rootdir}/usr/src/qi/recipes"
 mount -o bind "${CWD}/sources" "${rootdir}/usr/src/qi/sources"
-mount -o bind "${CWD}/packages" "${rootdir}/var/cache/qi/packages"
+mount -o bind "${rootdir}/var/cache/qi/packages" "${CWD}/packages"
 
 # Change reported architecture for an appropriate environment
 _machine_type=""
