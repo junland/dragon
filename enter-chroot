@@ -1,6 +1,6 @@
 #! /bin/sh -
 # Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
-# Copyright (c) 2020-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2020-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ unmountSeries()
                 "${rootdir}/usr/src/qi/patches" \
                 "${rootdir}/usr/src/qi/recipes" \
                 "${rootdir}/usr/src/qi/sources" \
+                "${rootdir}/var/cache/qi/packages" \
                 "${rootdir}/sys" \
                 "${rootdir}/proc" \
                 "${rootdir}/dev/pts" \
@@ -48,7 +49,7 @@ unmountSeries()
             fi
         fi
     done
-    unset node
+    unset -v node
 }
 
 # Autodetermine the path of /tools
@@ -75,14 +76,16 @@ rootdir="${rootdir%/*}"
 unmountSeries
 
 # Create required directory for destination
-mkdir -p -- "${rootdir}/dev"                 \
-            "${rootdir}/dev/pts"             \
-            "${rootdir}/proc"                \
-            "${rootdir}/sys"                 \
-            "${rootdir}/usr/src/qi/archive"  \
-            "${rootdir}/usr/src/qi/patches"  \
-            "${rootdir}/usr/src/qi/recipes"  \
-            "${rootdir}/usr/src/qi/sources"
+mkdir -p -- \
+ "${rootdir}/dev"                    \
+ "${rootdir}/dev/pts"                \
+ "${rootdir}/proc"                   \
+ "${rootdir}/sys"                    \
+ "${rootdir}/usr/src/qi/archive"     \
+ "${rootdir}/usr/src/qi/patches"     \
+ "${rootdir}/usr/src/qi/recipes"     \
+ "${rootdir}/usr/src/qi/sources"     \
+ "${rootdir}/var/cache/qi/packages"
 
 echo "Mounting virtual file systems ..."
 mount -o bind /dev      "${rootdir}/dev"
@@ -90,23 +93,25 @@ mount -t devpts devpts  "${rootdir}/dev/pts"
 mount -t proc proc      "${rootdir}/proc"
 mount -t sysfs sysfs    "${rootdir}/sys"
 
-echo "Binding directories to mount: archive, patches, recipes, sources ..."
+echo "Binding directories for archive/, patches/, recipes/, sources/, and packages/ ..."
 mount -o bind "${CWD}/archive" "${rootdir}/usr/src/qi/archive"
 mount -o bind "${CWD}/patches" "${rootdir}/usr/src/qi/patches"
 mount -o bind "${CWD}/recipes" "${rootdir}/usr/src/qi/recipes"
 mount -o bind "${CWD}/sources" "${rootdir}/usr/src/qi/sources"
+mount -o bind "${CWD}/packages" "${rootdir}/var/cache/qi/packages"
 
 # Change reported architecture for an appropriate environment
 _machine_type=""
 
 if file /tools/bin/busybox | grep -q "32-bit"
 then
-    echo "Using the linux32 command for this machine type: $(uname -m) ..."
+    echo "Using the linux32 command to change the reported architecure ..."
     if command -v linux32 > /dev/null
     then
         _machine_type="linux32"
     else
-        echo "    The linux32 command is not available on your system." 1>&2
+        echo "    The linux32 command is not available in your system." 1>&2
+        echo "The current architecture will be used for the environment: $(uname -m)" 1>&2
     fi
 fi
 
