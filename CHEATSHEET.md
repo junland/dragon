@@ -20,7 +20,7 @@ Bootstrapping from Debian systems:
 
 `apt update && apt upgrade`
 
-`apt install build-essential file flex git lzip xorriso texinfo unzip zlib1g zlib1g-dev liblz1 liblz-dev`
+`apt install bison build-essential file flex git lzip xorriso texinfo unzip zlib1g zlib1g-dev liblz1 liblz-dev`
 
 ### Instructions:
 
@@ -68,4 +68,4 @@ number of processors + 1, for example `-j3`
 Under the terms of the GNU Free Documentation License,
 http://www.gnu.org/licenses/fdl.html
 
-Updated: 2022-03-31
+Updated: 2022-04-19
