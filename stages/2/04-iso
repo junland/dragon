@@ -117,24 +117,47 @@ esac
 
 EOF
 
-# Produce compressed image using mksquashfs(1)
+# Produce compressed images using mksquashfs(1)
 
 cd -- "$STAGE1"
 rm -f ./dragora.sfs
 
+EXCLUDED_PATHS_COMMON="
+ ./tools \
+ ./root/.ash_history \
+ ./*-log* \
+ ./usr/src/qi \
+ ./usr/bin/build-for-release
+"
+EXCLUDED_PATHS_CD="
+ $EXCLUDED_PATHS_COMMON \
+ ./var/cache/qi/packages \
+ ./usr/pkg/kernel-buildtree-* \
+ ./usr/src/linux-*
+"
+
+# For a DVD live-image with binary packages and kernel sources
+echo "Creating DVD ISO image ..."
+echo ""
+
+echo "Binding ${CWD}/packages with ${rootdir}/var/cache/qi/packages ..."
+mount -o bind "${CWD}/packages" ./var/cache/qi/packages
+echo ""
+
 "${rootdir}"/squashfs-tools_lzip/mksquashfs ./* "${CDROM}/dragora.sfs" \
  -comp lzip -b 128K -Xcompression-level 1 -Xdict-size 100% \
- -noappend -e ./tools ./var/cache/qi/packages ./root/.ash_history \
-  ./*-log* ./usr/pkg/kernel-buildtree-* ./usr/src/linux-* ./usr/src/qi \
-  ./usr/bin/build-for-release
+ -noappend -e $EXCLUDED_PATHS_COMMON
 
-# Produce hybrid ISO-9660 image
+echo ""
+echo "Unmounting bind-mount ${CWD}/packages ..."
+umount ./var/cache/qi/packages
 
+# Produce hybrid ISO-9660 image (DVD)
 cd -- "$CDROM"
 
-rm -f ./${ISONAME}*
+rm -f ./${ISONAME}-dvd*
 xorriso -as mkisofs -verbose \
-         -o ${ISONAME}.iso                                        \
+         -o ${ISONAME}-dvd.iso                                    \
          -J -rational-rock -hide-rr-moved -iso-level 3            \
          -no-emul-boot -boot-load-size 32 -boot-info-table        \
          -b "isolinux/isolinux.bin"                               \
@@ -146,15 +169,18 @@ xorriso -as mkisofs -verbose \
          .
 
 echo "Creating .sha256 sum ..."
-echo "sha256sum ${ISONAME}.iso > ${ISONAME}.iso.sha256"
-sha256sum ${ISONAME}.iso > ${ISONAME}.iso.sha256
+echo "sha256sum ${ISONAME}-dvd.iso > ${ISONAME}-dvd.iso.sha256"
+sha256sum ${ISONAME}-dvd.iso > ${ISONAME}-dvd.iso.sha256
+
+# ^ End Of 'For a DVD live-image with binary packages and kernel sources'
 
 echo "Finishing ..."
 echo ""
 echo "***"
-echo "The ISO image has been produced at"
-echo "    ${CDROM}/${ISONAME}.iso"
+echo "The DVD ISO image has been produced at"
+echo "    ${CDROM}/${ISONAME}-dvd.iso"
 echo "***"
 echo ""
+
 exit 0
 
