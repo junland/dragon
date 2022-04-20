@@ -38,7 +38,7 @@ Enter the temporary system:
 
 Start replacing the temporary system with the final system:
 
-`qi order /usr/src/qi/recipes/*.order | qi build -S -p -i - 2>&1 | tee build-log.txt`
+`qi order /usr/src/qi/recipes/*.order | qi build -S -f -p -i - 2>&1 | tee build-log.txt`
 
 Set custom modifications, like a password for the superuser:
 
@@ -68,4 +68,4 @@ number of processors + 1, for example `-j3`
 Under the terms of the GNU Free Documentation License,
 http://www.gnu.org/licenses/fdl.html
 
-Updated: 2022-04-19
+Updated: 2022-04-20
