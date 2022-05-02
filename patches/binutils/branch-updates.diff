@@ -72,33 +72,50 @@ index bf4f70d6256..d67aadde16b 100644
  		      /* GNU_PROPERTY_NO_COPY_ON_PROTECTED is implied.  */
  		      elf_has_no_copy_on_protected (abfd) = true;
 diff --git a/bfd/elf32-i386.c b/bfd/elf32-i386.c
-index 25977cc56bd..fb5ed161f50 100644
+index 25977cc56bd..b034154fb97 100644
 --- a/bfd/elf32-i386.c
 +++ b/bfd/elf32-i386.c
-@@ -1779,6 +1779,23 @@ elf_i386_scan_relocs (bfd *abfd,
+@@ -1772,11 +1772,14 @@ elf_i386_scan_relocs (bfd *abfd,
+ 		}
+ 	      else
+ 		{
+-		  h->pointer_equality_needed = 1;
+-		  /* R_386_32 can be resolved at run-time.  */
++		  /* R_386_32 can be resolved at run-time.  Function
++		     pointer reference doesn't need PLT for pointer
++		     equality.  */
+ 		  if (r_type == R_386_32
+ 		      && (sec->flags & SEC_READONLY) == 0)
  		    func_pointer_ref = true;
++		  else
++		    h->pointer_equality_needed = 1;
  		}
  
-+	      if (h->pointer_equality_needed
-+		  && h->type == STT_FUNC
-+		  && eh->def_protected
-+		  && elf_has_indirect_extern_access (h->root.u.def.section->owner))
-+		{
-+		  /* Disallow non-canonical reference to canonical
-+		     protected function.  */
-+		  _bfd_error_handler
-+		    /* xgettext:c-format */
-+		    (_("%pB: non-canonical reference to canonical "
-+		       "protected function `%s' in %pB"),
-+		     abfd, h->root.root.string,
-+		     h->root.u.def.section->owner);
-+		  bfd_set_error (bfd_error_bad_value);
-+		  goto error_return;
-+		}
-+
  	      if (!func_pointer_ref)
- 		{
- 		  /* If this reloc is in a read-only section, we might
+@@ -1798,6 +1801,23 @@ elf_i386_scan_relocs (bfd *abfd,
+ 		  if (!h->def_regular
+ 		      || (sec->flags & (SEC_CODE | SEC_READONLY)) != 0)
+ 		    h->plt.refcount = 1;
++
++		  if (h->pointer_equality_needed
++		      && h->type == STT_FUNC
++		      && eh->def_protected
++		      && elf_has_indirect_extern_access (h->root.u.def.section->owner))
++		    {
++		      /* Disallow non-canonical reference to canonical
++			 protected function.  */
++		      _bfd_error_handler
++			/* xgettext:c-format */
++			(_("%pB: non-canonical reference to canonical "
++			   "protected function `%s' in %pB"),
++			 abfd, h->root.root.string,
++			 h->root.u.def.section->owner);
++		      bfd_set_error (bfd_error_bad_value);
++		      goto error_return;
++		    }
+ 		}
+ 	    }
+ 
 diff --git a/bfd/elf64-ppc.c b/bfd/elf64-ppc.c
 index e7a9ffef089..cb12ed476d8 100644
 --- a/bfd/elf64-ppc.c
@@ -427,34 +444,197 @@ index e7a9ffef089..cb12ed476d8 100644
        /* Pad any excess with 1's, a do-nothing encoding.  */
        while ((size_t) (loc - htab->elf.srelrdyn->contents)
  	     < htab->elf.srelrdyn->size)
+diff --git a/bfd/elf64-s390.c b/bfd/elf64-s390.c
+index e780efa7181..0b851f7ac0e 100644
+--- a/bfd/elf64-s390.c
++++ b/bfd/elf64-s390.c
+@@ -774,7 +774,7 @@ elf_s390_tls_transition (struct bfd_link_info *info,
+ 			 int r_type,
+ 			 int is_local)
+ {
+-  if (bfd_link_pic (info))
++  if (bfd_link_dll (info))
+     return r_type;
+ 
+   switch (r_type)
+@@ -1026,7 +1026,7 @@ elf_s390_check_relocs (bfd *abfd,
+ 	case R_390_TLS_GOTIE20:
+ 	case R_390_TLS_GOTIE64:
+ 	case R_390_TLS_IEENT:
+-	  if (bfd_link_pic (info))
++	  if (bfd_link_dll (info))
+ 	    info->flags |= DF_STATIC_TLS;
+ 	  /* Fall through */
+ 
+@@ -1107,7 +1107,7 @@ elf_s390_check_relocs (bfd *abfd,
+ 	  if (r_type == R_390_TLS_LE64 && bfd_link_pie (info))
+ 	    break;
+ 
+-	  if (!bfd_link_pic (info))
++	  if (!bfd_link_dll (info))
+ 	    break;
+ 	  info->flags |= DF_STATIC_TLS;
+ 	  /* Fall through */
+@@ -1571,7 +1571,7 @@ allocate_dynrelocs (struct elf_link_hash_entry *h,
+      to R_390_TLS_LE64 requiring no TLS entry. For GOTIE12 and IEENT
+      we can save the dynamic TLS relocation.  */
+   if (h->got.refcount > 0
+-      && !bfd_link_pic (info)
++      && !bfd_link_dll (info)
+       && h->dynindx == -1
+       && elf_s390_hash_entry(h)->tls_type >= GOT_TLS_IE)
+     {
+@@ -1876,7 +1876,20 @@ elf_s390_size_dynamic_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
+       else if (startswith (bfd_section_name (s), ".rela"))
+ 	{
+ 	  if (s->size != 0 && s != htab->elf.srelplt)
+-	    relocs = true;
++	    {
++	      relocs = true;
++	      if (s == htab->elf.irelplt)
++		{
++		  /* In static-pie case, there are IRELATIVE-relocs in
++		     .rela.iplt (htab->irelplt), which will later be grouped
++		     to .rela.plt.  On s390, the IRELATIVE relocations are
++		     always located in .rela.iplt - even for non-static case.
++		     Ensure that DT_JMPREL, DT_PLTRELA, DT_PLTRELASZ is added
++		     to the dynamic section even if htab->srelplt->size == 0.
++		     See _bfd_elf_add_dynamic_tags in bfd/elflink.c.  */
++		  htab->elf.dt_jmprel_required = true;
++		}
++	    }
+ 
+ 	  /* We use the reloc_count field as a counter if we need
+ 	     to copy relocs into the output file.  */
+@@ -2662,7 +2675,7 @@ elf_s390_relocate_section (bfd *output_bfd,
+ 
+ 	  /* Relocations for tls literal pool entries.  */
+ 	case R_390_TLS_IE64:
+-	  if (bfd_link_pic (info))
++	  if (bfd_link_dll (info))
+ 	    {
+ 	      Elf_Internal_Rela outrel;
+ 	      asection *sreloc;
+@@ -2690,7 +2703,7 @@ elf_s390_relocate_section (bfd *output_bfd,
+ 	  else if (h != NULL)
+ 	    {
+ 	      tls_type = elf_s390_hash_entry(h)->tls_type;
+-	      if (!bfd_link_pic (info) && h->dynindx == -1 && tls_type >= GOT_TLS_IE)
++	      if (!bfd_link_dll (info) && h->dynindx == -1 && tls_type >= GOT_TLS_IE)
+ 		r_type = R_390_TLS_LE64;
+ 	    }
+ 	  if (r_type == R_390_TLS_GD64 && tls_type >= GOT_TLS_IE)
+@@ -2801,14 +2814,14 @@ elf_s390_relocate_section (bfd *output_bfd,
+ 	      if (local_got_offsets == NULL)
+ 		abort();
+ 	      off = local_got_offsets[r_symndx];
+-	      if (bfd_link_pic (info))
++	      if (bfd_link_dll (info))
+ 		goto emit_tls_relocs;
+ 	    }
+ 	  else
+ 	    {
+ 	      off = h->got.offset;
+ 	      tls_type = elf_s390_hash_entry(h)->tls_type;
+-	      if (bfd_link_pic (info) || h->dynindx != -1 || tls_type < GOT_TLS_IE)
++	      if (bfd_link_dll (info) || h->dynindx != -1 || tls_type < GOT_TLS_IE)
+ 		goto emit_tls_relocs;
+ 	    }
+ 
+@@ -2825,7 +2838,7 @@ elf_s390_relocate_section (bfd *output_bfd,
+ 	  break;
+ 
+ 	case R_390_TLS_LDM64:
+-	  if (! bfd_link_pic (info))
++	  if (! bfd_link_dll (info))
+ 	    /* The literal pool entry this relocation refers to gets ignored
+ 	       by the optimized code of the local exec model. Do nothing
+ 	       and the value will turn out zero.  */
+@@ -2900,7 +2913,7 @@ elf_s390_relocate_section (bfd *output_bfd,
+ 	  continue;
+ 
+ 	case R_390_TLS_LDO64:
+-	  if (bfd_link_pic (info) || (input_section->flags & SEC_DEBUGGING))
++	  if (bfd_link_dll (info) || (input_section->flags & SEC_DEBUGGING))
+ 	    relocation -= dtpoff_base (info);
+ 	  else
+ 	    /* When converting LDO to LE, we must negate.  */
+@@ -2922,7 +2935,7 @@ elf_s390_relocate_section (bfd *output_bfd,
+ 
+ 	  if (r_type == R_390_TLS_LOAD)
+ 	    {
+-	      if (!bfd_link_pic (info) && (h == NULL || h->dynindx == -1))
++	      if (!bfd_link_dll (info) && (h == NULL || h->dynindx == -1))
+ 		{
+ 		  /* IE->LE transition. Four valid cases:
+ 		     lg %rx,(0,%ry)    -> sllg %rx,%ry,0
+@@ -2972,7 +2985,7 @@ elf_s390_relocate_section (bfd *output_bfd,
+ 		  invalid_tls_insn (input_bfd, input_section, rel);
+ 		  return false;
+ 		}
+-	      if (!bfd_link_pic (info) && (h == NULL || h->dynindx == -1))
++	      if (!bfd_link_dll (info) && (h == NULL || h->dynindx == -1))
+ 		{
+ 		  /* GD->LE transition.
+ 		     brasl %r14,__tls_get_addr@plt -> brcl 0,. */
+@@ -2991,7 +3004,7 @@ elf_s390_relocate_section (bfd *output_bfd,
+ 	    }
+ 	  else if (r_type == R_390_TLS_LDCALL)
+ 	    {
+-	      if (!bfd_link_pic (info))
++	      if (!bfd_link_dll (info))
+ 		{
+ 		  unsigned int insn0, insn1;
+ 
 diff --git a/bfd/elf64-x86-64.c b/bfd/elf64-x86-64.c
-index 02ca55200bb..b5718e71121 100644
+index 02ca55200bb..7cf7959cdb1 100644
 --- a/bfd/elf64-x86-64.c
 +++ b/bfd/elf64-x86-64.c
-@@ -2223,6 +2223,23 @@ elf_x86_64_scan_relocs (bfd *abfd, struct bfd_link_info *info,
+@@ -2211,16 +2211,18 @@ elf_x86_64_scan_relocs (bfd *abfd, struct bfd_link_info *info,
+ 	      else if (r_type != R_X86_64_PC32_BND
+ 		       && r_type != R_X86_64_PC64)
+ 		{
+-		  h->pointer_equality_needed = 1;
+ 		  /* At run-time, R_X86_64_64 can be resolved for both
+ 		     x86-64 and x32. But R_X86_64_32 and R_X86_64_32S
+-		     can only be resolved for x32.  */
++		     can only be resolved for x32.  Function pointer
++		     reference doesn't need PLT for pointer equality.  */
+ 		  if ((sec->flags & SEC_READONLY) == 0
+ 		      && (r_type == R_X86_64_64
+ 			  || (!ABI_64_P (abfd)
+ 			      && (r_type == R_X86_64_32
+ 				  || r_type == R_X86_64_32S))))
  		    func_pointer_ref = true;
++		  else
++		    h->pointer_equality_needed = 1;
  		}
  
-+	      if (h->pointer_equality_needed
-+		  && h->type == STT_FUNC
-+		  && eh->def_protected
-+		  && elf_has_indirect_extern_access (h->root.u.def.section->owner))
-+		{
-+		  /* Disallow non-canonical reference to canonical
-+		     protected function.  */
-+		  _bfd_error_handler
-+		    /* xgettext:c-format */
-+		    (_("%pB: non-canonical reference to canonical "
-+		       "protected function `%s' in %pB"),
-+		     abfd, h->root.root.string,
-+		     h->root.u.def.section->owner);
-+		  bfd_set_error (bfd_error_bad_value);
-+		  goto error_return;
-+		}
-+
  	      if (!func_pointer_ref)
- 		{
- 		  /* If this reloc is in a read-only section, we might
+@@ -2242,6 +2244,23 @@ elf_x86_64_scan_relocs (bfd *abfd, struct bfd_link_info *info,
+ 		  if (!h->def_regular
+ 		      || (sec->flags & (SEC_CODE | SEC_READONLY)) != 0)
+ 		    h->plt.refcount = 1;
++
++		  if (h->pointer_equality_needed
++		      && h->type == STT_FUNC
++		      && eh->def_protected
++		      && elf_has_indirect_extern_access (h->root.u.def.section->owner))
++		    {
++		      /* Disallow non-canonical reference to canonical
++			 protected function.  */
++		      _bfd_error_handler
++			/* xgettext:c-format */
++			(_("%pB: non-canonical reference to canonical "
++			   "protected function `%s' in %pB"),
++			 abfd, h->root.root.string,
++			 h->root.u.def.section->owner);
++		      bfd_set_error (bfd_error_bad_value);
++		      goto error_return;
++		    }
+ 		}
+ 	    }
+ 
 diff --git a/bfd/elflink.c b/bfd/elflink.c
 index 6fa18d92007..f8521426cad 100644
 --- a/bfd/elflink.c
@@ -8857,7 +9037,7 @@ index eb80c2c5430..3468a819220 100644
  #~ msgstr "%P: %B: непозната врста премештања „%d“ за „%T“\n"
  
 diff --git a/bfd/version.h b/bfd/version.h
-index 61221a65c3b..9458984cd19 100644
+index 61221a65c3b..a8dc5024dcf 100644
 --- a/bfd/version.h
 +++ b/bfd/version.h
 @@ -16,7 +16,7 @@
@@ -8865,7 +9045,7 @@ index 61221a65c3b..9458984cd19 100644
     In releases, the date is not included in either version strings or
     sonames.  */
 -#define BFD_VERSION_DATE 20220209
-+#define BFD_VERSION_DATE 20220418
++#define BFD_VERSION_DATE 20220502
  #define BFD_VERSION @bfd_version@
  #define BFD_VERSION_STRING  @bfd_version_package@ @bfd_version_string@
  #define REPORT_BUGS_TO @report_bugs_to@
@@ -28124,8 +28304,55 @@ index 00000000000..64e961cb3d4
 @@ -0,0 +1,2 @@
 +.*: tmpdir/protected-func-1b.o: non-canonical reference to canonical protected function `protected_func_1a' in tmpdir/libprotected-func-2b.so
 +#...
+diff --git a/ld/testsuite/ld-x86-64/protected-func-3.c b/ld/testsuite/ld-x86-64/protected-func-3.c
+new file mode 100644
+index 00000000000..bbf433b2462
+--- /dev/null
++++ b/ld/testsuite/ld-x86-64/protected-func-3.c
+@@ -0,0 +1,41 @@
++#include <stdio.h>
++
++#include "protected-func-1.h"
++
++protected_func_type protected_func_1a_ptr = protected_func_1a;
++protected_func_type protected_func_1b_ptr = protected_func_1b;
++
++int
++protected_func_1b (void)
++{
++  return 3;
++}
++
++int
++main (void)
++{
++  int res = 0;
++
++  protected_func_1a ();
++  protected_func_1b ();
++
++  /* Check if we get the same address for the protected function symbol.  */
++  if (protected_func_1a_ptr != protected_func_1a_p ())
++    {
++      puts ("'protected_func_1a' in main and shared library doesn't have same address");
++      res = 1;
++    }
++
++  /* Check if we get the different addresses for the protected function
++     symbol.  */
++  if (protected_func_1b_ptr == protected_func_1b_p ())
++    {
++      puts ("'protected_func_1b' in main and shared library has same address");
++      res = 1;
++    }
++
++  if (!res)
++    puts ("PASS");
++
++  return res;
++}
 diff --git a/ld/testsuite/ld-x86-64/x86-64.exp b/ld/testsuite/ld-x86-64/x86-64.exp
-index 3bfc5e6e467..c6d88a97f49 100644
+index 3bfc5e6e467..6135670538f 100644
 --- a/ld/testsuite/ld-x86-64/x86-64.exp
 +++ b/ld/testsuite/ld-x86-64/x86-64.exp
 @@ -1381,6 +1381,14 @@ if { [isnative] && [check_compiler_available] } {
@@ -28183,6 +28410,31 @@ index 3bfc5e6e467..c6d88a97f49 100644
  	    [list \
  		"Run pr25416-5a (GDesc -> IE -maddress-mode=short)" \
  		"$NOPIE_LDFLAGS -Wl,--no-as-needed tmpdir/pr25416-5b.so" \
+@@ -1885,6 +1892,24 @@ if { [isnative] && [check_compiler_available] } {
+ 	    "pass.out" \
+ 	    "-fPIE" \
+ 	] \
++	[list \
++	    "Run protected-func-3a without PIE" \
++	    "$NOPIE_LDFLAGS -Wl,--no-as-needed tmpdir/libprotected-func-2a.so" \
++	    "-Wa,-mx86-used-note=yes" \
++	    { protected-func-3.c } \
++	    "protected-func-3a" \
++	    "pass.out" \
++	    "$NOPIE_CFLAGS" \
++	] \
++	[list \
++	    "Run protected-func-3b with PIE" \
++	    "-Wl,--no-as-needed -pie tmpdir/libprotected-func-2a.so" \
++	    "-Wa,-mx86-used-note=yes" \
++	    { protected-func-3.c } \
++	    "protected-func-2b" \
++	    "pass.out" \
++	    "-fPIE" \
++	] \
+ 	[list \
+ 	    "Run protected-data-1a without PIE" \
+ 	    "$NOPIE_LDFLAGS -Wl,--no-as-needed tmpdir/libprotected-data-1a.so" \
 diff --git a/libctf/ctf-open.c b/libctf/ctf-open.c
 index c7ca37e5249..3f8d336f895 100644
 --- a/libctf/ctf-open.c
