@@ -19,7 +19,7 @@ set -e
 
 program=plzip
 version=1.10
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=compressors
@@ -65,13 +65,14 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CXXFLAGS+="$QICXXFLAGS" LDFLAGS="$QILDFLAGS -static" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CXXFLAGS+="$QICXXFLAGS" LDFLAGS="$QILDFLAGS -static" \
      $configure_args \
      --infodir=$infodir \
      --mandir=$mandir \
      --build="$(gcc -dumpmachine)"
 
-    make -j${jobs}
+    make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-as-lzip
 
     # Compress info documents and manual page
