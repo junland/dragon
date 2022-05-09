@@ -19,7 +19,7 @@ set -e
 
 program=udevil
 version=20150504_ce9f1c5
-release=4
+release=5
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -75,6 +75,11 @@ build()
     make -j${jobs} V=1
     make -j${jobs} libdir=/usr/lib${libSuffix} \
      DESTDIR="$destdir" install-strip
+
+    # Udev rule to enable kernel polling on removable devices
+    install -p -m 644 \
+     "${worktree}/archive/udevil/61-removable-storage-polling.rules" -D \
+     "${destdir}/etc/udev/rules.d/61-removable-storage-polling.rules"
 
     # To handle (dot) .new files via graft(1)
     touch "${destdir}/etc/udevil/.graft-config"
