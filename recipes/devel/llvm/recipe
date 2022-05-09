@@ -18,7 +18,7 @@
 set -e
 
 program=llvm
-version=13.0.0
+version=13.0.1
 release=1
 
 # Define a category for the output of the package name
@@ -84,6 +84,7 @@ build()
     # Set the SANITIZER flag to TRUE for Musl
     patch -p0 < "${worktree}/patches/llvm/compiler_rt_sanitizer.diff"
 
+    rm -rf BUILD
     mkdir BUILD
     cd BUILD
 
@@ -106,8 +107,8 @@ build()
      -DLLVM_INSTALL_UTILS=ON                                               \
      -DLLVM_ENABLE_ASSERTIONS=OFF                                          \
      -DLLVM_APPEND_VC_REV=OFF                                              \
-     -DLLVM_TARGETS_TO_BUILD="host;AMDGPU;BPF"                             \
      -DLLVM_PARALLEL_COMPILE_JOBS=$jobs                                    \
+     -DLLVM_INCLUDE_BENCHMARKS=OFF                                         \
      -G Ninja ..
 
     ninja -j${jobs}
