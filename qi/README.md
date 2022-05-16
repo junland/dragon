@@ -32,6 +32,19 @@ Requirements
 
 - Tarlz for produce binary packages: https://lzip.nongnu.org/tarlz.html
 
+Optional but highly recommended dependencies (at run-time) are:
+
+- ed(1), tar(1), unzip(1), gzip(1), bzip2(1), lzip(1), xz(1).
+
+These recommended dependencies are to support the testing and
+unpacking of tarballs, as well as compressed files in these formats.
+
+Other system utilities that are checked and expected by Qi are:
+
+- awk(1), basename(1), chmod(1), cp(1), dirname(1), find(1), fold(1),
+  grep(1), mkdir(1), mktemp(1), rm(1), rmdir(1), sed(1), sha256sum(1),
+  stat(1).
+
 ### Note
 
 Take into account when you are going to install graft, you can define some
