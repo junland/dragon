@@ -1,6 +1,7 @@
 # Recipe file for efivar.
 #
 # Copyright (c) 2022 DustDFG, <dfgdust@gmail.com>.
+# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@ set -e
 
 program=efivar
 version=38
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=boot
@@ -56,12 +57,21 @@ build() {
     patch -Np1 -i "${worktree}/patches/efivar/efivar-efisecdb-atexit.patch"
     patch -Np1 -i "${worktree}/patches/efivar/efivar-mandoc-groff.patch"
 
-    make install CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" LIBDIR="/usr/lib${libSuffix}" DESTDIR="$destdir" MANDIR="$mandir"
+    make -j${jobs} V=1 CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" LIBDIR="/usr/lib${libSuffix}" MANDIR="$mandir"
+    make -j${jobs} DESTDIR="$destdir" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" LIBDIR="/usr/lib${libSuffix}" MANDIR="$mandir" install
 
-    # Compress man pages
+    # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
     then
-        lzip -9 "${destdir}/${mandir}"/man?/*
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 {} +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
     fi
 
     # Copy documentation
