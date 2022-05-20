@@ -679,16 +679,21 @@ mode_create()
         exit 4
     fi
 
+    # If needed, assign default values for compression options
+    tarlz_compression_options="${tarlz_compression_options:=-9 --solid}"
+
     # Pass extra options to tarlz(1)
     if test -n "$SOURCE_DATE_EPOCH"
     then
-        tarlz_opts="--mtime=@${SOURCE_DATE_EPOCH}"
+        tarlz_compression_options="$tarlz_compression_options --mtime=@${SOURCE_DATE_EPOCH}"
     fi
 
-    ( umask 022 ; tarlz --solid -9 $tarlz_opts -cvf - -- * ) \
-     > "${directory}/$name"
+    echo "*************"
+    echo "tarlz_compression_options = $tarlz_compression_options"
+    echo "************"
+
+    ( umask 022 ; tarlz $tarlz_compression_options -cvf - -- * ) > "${directory}/$name"
     chkstatus_or_exit 3
-    unset -v tarlz_opts
 
     ( cd -- "$directory" && sha256sum "$name" > "${name}.sha256" )
     chkstatus_or_exit 4
@@ -1232,6 +1237,7 @@ tardir=${worktree}/sources
 outdir=/var/cache/qi/packages
 netget="wget2 -c -w1 -t3 --no-check-certificate"
 rsync="rsync -v -a -L -z -i --progress"
+tarlz_compression_options="-9 --solid"
 configure_args="--prefix=@PREFIX@ --libexecdir=@LIBEXECDIR@ --bindir=@BINDIR@ --sbindir=@SBINDIR@ --sysconfdir=@SYSCONFDIR@ --localstatedir=@LOCALSTATEDIR@"
 infodir=@INFODIR@
 mandir=@MANDIR@
@@ -1498,8 +1504,7 @@ do
     esac
     shift
 done
-unset -f \
- readconfig validate_mode validate_option validate_directory validate_digit
+unset -f readconfig validate_mode validate_option validate_directory validate_digit
 
 # When there are no arguments, show the help
 if test $# -eq 0
