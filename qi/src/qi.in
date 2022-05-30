@@ -688,10 +688,6 @@ mode_create()
         tarlz_compression_options="$tarlz_compression_options --mtime=@${SOURCE_DATE_EPOCH}"
     fi
 
-    echo "*************"
-    echo "tarlz_compression_options = $tarlz_compression_options"
-    echo "************"
-
     ( umask 022 ; tarlz $tarlz_compression_options -cvf - -- * ) > "${directory}/$name"
     chkstatus_or_exit 3
 
@@ -711,16 +707,16 @@ mode_remove()
     echo ""
     echo "{<} Removing \`$rootdir${expunge}' ..."
 
-    # Complain if the package directory does not exist
-
-    test -e "$rootdir${expunge}" || {
-        warn "Package directory '$rootdir${expunge}' does not exist."
-        exit 4
-    }
-
     # Complain if the package directory cannot be well-read
 
     is_readable "$rootdir${expunge}" || exit 4
+
+    # Validate package directory as such
+
+    test -d "$rootdir${expunge}" || {
+        warn "Package '$rootdir${expunge}' is not a valid directory."
+        exit 4
+    }
 
     # Remove package from Graft control
 
