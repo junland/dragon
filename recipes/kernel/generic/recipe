@@ -1,6 +1,6 @@
-# Build recipe for GNU Linux-libre (generic).
+# Build recipe for GNU Linux-libre (wrapper).
 #
-# Copyright (c) 2017-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,167 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Exit immediately on any error
-set -e
-
-program=linux-libre
-version=5.16.20
-release=2
-
-# Define a category for the output of the package name
-pkgcategory=kernel
-
-tarname=${program}-${version}-gnu.tar.lz
-
-# Remote source(s)
-fetch=https://linux-libre.fsfla.org/pub/linux-libre/releases/${version}-gnu/$tarname
-
-homepage=https://www.gnu.org/software/linux-libre
-
-description="
-The GNU Linux-libre kernel (image and modules).
-
-GNU Linux-libre is a project to maintain and publish 100% Free distributions of
-Linux, suitable for use in Free System Distributions, removing software that is
-included without source code, with obfuscated or obscured source code, under
-non-Free Software licenses, that do not permit you to change the software so
-that it does what you wish, and that induces or requires you to install
-additional pieces of non-Free Software.
-
-This is a custom configuration for Dragora, intended to be generic and work
-well in all environments.
-"
-
-license="GPLv2 only"
-
-build()
-{
-    unpack "${tardir}/$tarname"
-
-    cd "$srcdir"
-
-    # Set sane permissions
-    chmod -R u+w,go-w,a+rX-s .
-
-    # Support LZIP (Thanks to the friend of the house "Antonio Diaz Diaz")
-
-    patch -p1 < "${worktree}/patches/kernel/linux-5.16.11_lzip-0.diff"
-
-    # Support Reiserfs4 (Thanks to "Edward Shishkin")
-
-    patch -p1 < "${worktree}/patches/kernel/reiser4-for-5.16.patch"
-
-    make mrproper
-
-    case $arch in
-    amd64 | x32 )
-        echo "Copying config-amd64_generic ..."
-        cp -p "${worktree}/archive/kernel/config-amd64_generic" .config
-        kernel_arch=x86_64
-        ;;
-    i586 | i686 )
-        echo "Copying config-i586_generic ..."
-        cp -p "${worktree}/archive/kernel/config-i586_generic" .config
-        kernel_arch=i386
-        ;;
-    armhf)
-        echo "Copying config-c201-v12 ..."
-        cp -p "${worktree}/archive/kernel/config-c201-v12" .config
-        kernel_arch=arm
-        ;;
-    *)
-        echo "${0}: No custom configuration file detected for your architecture." 1>&2
-        exit 1;
-        ;;
-    esac
-
-    # An environment variable for config purposes
-    if test ! -z "$PRESERVE"
-    then
-        echo "PRESERVE has been set."
-        exit 99;
-    fi
-
-    make -j${jobs} ARCH=$kernel_arch bzImage
-    make -j${jobs} ARCH=$kernel_arch modules
-    make -j${jobs} ARCH=$kernel_arch \
-     INSTALL_MOD_PATH="$destdir" modules_install
-
-    # To extract the kernel string version
-    strver="$(ls -d "${destdir}"/lib/modules/*)"
-    strver="${strver##*/}"
-
-    # Install kernel images
-    mkdir -p "${destdir}/boot"
-
-    cp -p .config "${destdir}/boot/config-generic-${strver}"
-    cp -p System.map "${destdir}/boot/System.map-generic-${strver}"
-
-    if test -e "arch/${kernel_arch}/boot/bzImage"
-    then
-        cp -p "arch/${kernel_arch}/boot/bzImage" \
-              "${destdir}/boot/vmlinuz-generic-${strver}"
-    elif test -e "arch/${kernel_arch}/boot/zImage"
-    then
-        cp -p "arch/${kernel_arch}/boot/zImage" \
-              "${destdir}/boot/vmlinuz-generic-${strver}"
-    else
-        echo "${0}: No kernel image found: bzImage or zImage" 1>&2
-        exit 1;
-    fi
-
-    # Exclude files from the Graft installation,
-    # this will be copied via post-intall, since
-    # /boot could be a separated partition
-    touch "${destdir}/boot/.nograft"
-
-    # Insert post-install script manually
-
-    # This must be recreated on post-installation
-    rm -f "${destdir}"/lib/modules/${strver}/build \
-          "${destdir}"/lib/modules/${strver}/source
-
-    mkdir -p "${destdir}/var/lib/qi"
-    cat << EOF > "${destdir}/var/lib/qi/${full_pkgname}.sh"
-
-# Kernel string version
-strver=$strver
-
-# Copy kernel image from 'packagedir' to 'rootdir/boot'
-
-mkdir -p -- "\${rootdir}/boot"
-
-cp -pf -- "\$rootdir${packagedir}/${full_pkgname}/boot/System.map-generic-${strver}" \\
-          "\${rootdir}/boot/"
-
-cp -pf -- "\$rootdir${packagedir}/${full_pkgname}/boot/config-generic-${strver}" \\
-          "\${rootdir}/boot/"
-
-cp -pf -- "\$rootdir${packagedir}/${full_pkgname}/boot/vmlinuz-generic-${strver}" \\
-          "\${rootdir}/boot/"
-
-# Make generic symlinks for this kernel version
-
-srcdir="${srcdir##*/}"
-
-(
-    cd lib/modules/${strver} || exit 1
-    rm -f build source
-    ln -sf /usr/src/${srcdir} build
-    ln -sf /usr/src/${srcdir} source
-)
-
-# Generate or update the module dependency list
-chroot "\$rootdir" /sbin/depmod -a $strver
-
-EOF
-
-    # Preserve 'srcdir' in order to produce "kernel/buildtree-generic"
-    keep_srcdir=keep_srcdir
-
-    # Set ID for the recipe that will produce the package with the build tree
-    kernel_generic_has_been_built=kernel_generic_has_been_built
-
-    export keep_srcdir kernel_generic_has_been_built
-}
+# Load specific instructions for supported architectures
+case "$(uname -m)" in
+x86_64*)
+    . "${CWD}/amd64"
+    ;;
+i586 | i686 )
+    . "${CWD}/i586"
+    ;;
+*)
+    echo "${0}: There are no kernel recipe available for your architecture." 1>&2
+    echo "    Feel free to contact the developers." 1>&2
+    exit 1;
+    ;;
+esac
 

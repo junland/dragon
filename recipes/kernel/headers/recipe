@@ -18,8 +18,20 @@
 set -e
 
 program=linux-libre
-version=5.16.20
-release=2
+
+# Set 'version' and 'release' for supported architectures
+case "$(uname -m)" in
+i?86)
+    version=4.14.281
+    release=1
+    _gnu_suffix=1;	# The source name has a suffix.
+    ;;
+*)
+    version=5.16.20
+    release=2
+    _gnu_suffix=""
+    ;;
+esac
 
 # Define a category for the output of the package name
 pkgcategory=kernel
@@ -27,13 +39,13 @@ pkgcategory=kernel
 # Use a custom package name
 pkgname=linux-libre-headers
 
-tarname=${program}-${version}-gnu.tar.lz
+tarname=${program}-${version}-gnu${_gnu_suffix}.tar.lz
 
 # Remote source(s)
-fetch=https://linux-libre.fsfla.org/pub/linux-libre/releases/${version}-gnu/$tarname
+fetch=https://linux-libre.fsfla.org/pub/linux-libre/releases/${version}-gnu${_gnu_suffix}/$tarname
 
 description="
-The GNU Linux-libre headers.
+The GNU Linux-libre headers (${arch}).
 
 This package contains the Linux headers provided by the GNU Linux-libre
 project to expose the kernel's API.
@@ -45,9 +57,13 @@ license="GPLv2 only"
 # Limit parallel jobs for the compiler
 jobs=1
 
+# To match 'srcdir'
+srcdir=linux-${version}
+
 build()
 {
     unpack "${tardir}/$tarname"
+    unset -v _gnu_suffix
 
     cd "$srcdir"
 
@@ -58,7 +74,7 @@ build()
     chmod -R u+w,go-w,a+rX-s .
 
     make -j${jobs} mrproper
-    make -j${jobs} headers
+    make -j${jobs} headers || make -j${jobs} headers_check
 
     # Holy molly... the 'headers_install' target cannot be used
     # because it requires rsync(1), which is not available early.

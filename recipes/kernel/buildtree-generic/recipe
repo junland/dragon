@@ -18,8 +18,8 @@
 set -e
 
 program=linux
-version=5.16.20
-release=2
+version=$kernel_generic_version
+release=$kernel_generic_release
 
 # Define a category for the output of the package name
 pkgcategory=kernel
@@ -28,7 +28,7 @@ pkgcategory=kernel
 pkgname=linux-libre-buildtree
 
 description="
-The Linux-libre build tree directory.
+The Linux-libre build tree directory (${arch}).
 
 This is the directory tree as generated for Dragora from the 'kernel/generic'
 recipe.  Necessary for later installations of modules as well as drivers that
@@ -39,12 +39,6 @@ license="GPLv2 only"
 
 build()
 {
-    if test "$kernel_generic_has_been_built" != kernel_generic_has_been_built
-    then
-        warn 'The recipe "kernel/generic" has not been processed, this recipe will not be built.'
-        exit 4;
-    fi
-
     cd "$srcdir"
 
     # Set sane permissions
@@ -55,8 +49,7 @@ build()
     mkdir -p "${destdir}/usr/src/${srcdir}"
     mv -f ./* "${destdir}/usr/src/${srcdir}"
 
-    # Unset 'keep_srcdir' and 'kernel_generic_has_been_built'
-    # (both exported from "kernel/generic")
-    unset -v keep_srcdir kernel_generic_has_been_built
+    # Unset variables exported from "kernel/generic"
+    unset -v keep_srcdir kernel_generic_version kernel_generic_release
 }
 
