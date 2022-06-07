@@ -30,11 +30,11 @@ tarname=${program}-${version}.tar.gz
 fetch=https://github.com/facebook/zstd/releases/download/${version}/$tarname
 
 description="
-Zstandard is a fast compression algorithm.
+Zstandard (zstd) is a fast compression algorithm.
 
 Zstandard, or zstd as short version, is a fast lossless compression algorithm,
 targeting real-time compression scenarios at zlib-level and better compression
-ratios. It is backed by a very fast entropy stage, provided by Huff0 and FSE
+ratios.  It is backed by a very fast entropy stage, provided by Huff0 and FSE
 library.
 "
 
@@ -66,7 +66,6 @@ build()
      -DCMAKE_STATIC_LINKER_FLAGS="$QILDFLAGS"                              \
      -DCMAKE_INSTALL_PREFIX=/usr                                           \
      -DCMAKE_INSTALL_LIBDIR=lib${libSuffix}                                \
-     -DCMAKE_INSTALL_INFODIR=$infodir                                      \
      -DCMAKE_INSTALL_MANDIR=$mandir                                        \
      -DCMAKE_INSTALL_DOCDIR=$docsdir                                       \
      -DZSTD_BUILD_CONTRIB=OFF                                              \
@@ -84,6 +83,9 @@ build()
 
     ninja -j${jobs}
     DESTDIR="$destdir" ninja -j${jobs} install
+
+    # Switch back to the main source directory
+    cd ..
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
@@ -105,8 +107,6 @@ build()
             done
         )
     fi
-
-    cd ../
 
     # Copy documentation
     mkdir -p "${destdir}/$docsdir"
