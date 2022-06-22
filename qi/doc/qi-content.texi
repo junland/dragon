@@ -680,6 +680,24 @@ unset -v keep_srcdir keep_destdir
 This will leave the 'keep_srcdir' and 'keep_destdir' variables blank to
 continue with the rest of the recipes.
 
+The variable @samp{tarlz_compression_options} can be used to change the
+default compression options in tarlz(1), default sets to @samp{-9 --solid}.
+For example if the variable is declared as:
+
+@example
+tarlz_compression_options="-0 --bsolid"
+@end example
+
+It will change the granularity of tarlz(1) by using the @samp{--bsolid}
+option @footnote{About the @samp{--bsolid} granularity option of tarlz(1),
+@url{https://www.nongnu.org/lzip/manual/tarlz_manual.html#g_t_002d_002dbsolid}.},
+as well as increasing the compression speed by lowering the compression
+level with @samp{-0}.
+
+This is only recommended for recipes where testing, or faster processing is
+desired to create the packaged file more quickly.  It is not recommended for
+production or general distribution of binary packages.
+
 @noindent
 A typical recipe contains the following variables:
 
@@ -1136,9 +1154,9 @@ Integrity check error for compressed files.
 Compressed files means:
 
 @itemize @bullet
-@item A tarball file from tar(1).
+@item A tarball file from tar(1), typically handled by the GNU tar implementation.
 Supported extensions: .tar, .tar.gz, .tgz, .tar.Z, .tar.bz2, .tbz2, .tbz,
-.tar.xz, .txz
+.tar.xz, .txz, .tar.zst, .tzst
 
 @item A tarball file from tarlz(1).
 Supported extensions: .tar.lz, .tlz
@@ -1157,6 +1175,9 @@ Supported extension: .lz
 
 @item Xz files from xz(1).
 Supported extension: .xz
+
+@item Zstd files from zstd(1).
+Supported extension: .zst
 @end itemize
 
 @item 4

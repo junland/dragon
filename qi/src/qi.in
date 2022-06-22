@@ -249,14 +249,16 @@ mode_build()
     save_jobs="${save_jobs:=$jobs}"
     save_outdir="${save_outdir:=$outdir}"
     save_opt_nopkg="${save_opt_nopkg:=$opt_nopkg}"
+    save_tarlz_compression_options="${save_tarlz_compression_options:=$tarlz_compression_options}"
 
     # Reset variable values in case of return
     arch="$save_arch"
     jobs="$save_jobs"
     outdir="$save_outdir"
     opt_nopkg="$save_opt_nopkg"
+    tarlz_compression_options="$save_tarlz_compression_options"
 
-    # The following variables cannot be redefined on the recipe
+    # The following variables cannot be redefined on a recipe
     readonly worktree netget rsync
 
     # Import the recipe
@@ -1122,6 +1124,11 @@ unpack()
             xz -cd "$file" | tar -xpf -
             chkstatus_or_exit 3
             ;;
+        *.tar.zst | *.tzst )
+            zstd -cd "$file" | tar -tf - > /dev/null && \
+            zstd -cd "$file" | tar -xpf -
+            chkstatus_or_exit 3
+            ;;
         *.zip | *.ZIP )
             unzip -t "$file" > /dev/null && \
             unzip "$file" > /dev/null
@@ -1150,6 +1157,11 @@ unpack()
         *.xz)
             xz -t "$file" && \
             xz -cd "$file" > "$(basename -- "$file" .xz)"
+            chkstatus_or_exit 3
+            ;;
+        *.zst)
+            zstd -qt "$file" && \
+            zstd -cd "$file" > "$(basename -- "$file" .zst)"
             chkstatus_or_exit 3
             ;;
         *)
