@@ -40,6 +40,11 @@ usage()
 "Usage: $PROGRAM [OPTIONS] [FILE]...
 Builder of custom stages (cross compilers, GNU/Linux distributions).
 
+Where FILE is any shell script (as long as it is executable) from
+a stage number.  Without FILE, it loads all the found scripts from
+the stage number.  Stage numbers come from the stages directory
+(${CWD}/stages).
+
 Defaults for the options are specified in brackets.
 
 Options:
@@ -74,7 +79,7 @@ echo ""
 version()
 {
     printf '%s' \
-"$PROGRAM 3.31
+"$PROGRAM 3.32
 Copyright (C) 2014-2022 Matias Andres Fonzo.
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
 This is free software: you are free to change and redistribute it.
@@ -131,6 +136,11 @@ unpack()
             xz -cd "$file" | tar xpf -
             chkstatus_or_exit 3
             ;;
+        *.tar.zst | *.tzst )
+            zstd -cd "$file" | tar -tf - > /dev/null && \
+            zstd -cd "$file" | tar -xpf -
+            chkstatus_or_exit 3
+            ;;
         *.zip | *.ZIP )
             unzip -t "$file" > /dev/null && \
             unzip "$file" > /dev/null
@@ -159,6 +169,11 @@ unpack()
         *.xz)
             xz -t "$file" && \
             xz -cd "$file" > "$(basename -- "$file" .xz)"
+            chkstatus_or_exit 3
+            ;;
+        *.zst)
+            zstd -qt "$file" && \
+            zstd -cd "$file" > "$(basename -- "$file" .zst)"
             chkstatus_or_exit 3
             ;;
         *)
