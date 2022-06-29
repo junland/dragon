@@ -1,6 +1,7 @@
 # Build recipe for zstd.
 #
 # Copyright (c) 2022 DustDFG, <dfgdust@gmail.com>.
+# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@ set -e
 
 program=zstd
 version=1.5.2
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=compressors
@@ -54,45 +55,30 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    rm -rf BUILD
-    mkdir BUILD
+    cd build/meson
+    mkdir -p BUILD
+
+    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" \
+    LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --mandir=$mandir \
+     --buildtype=release \
+     --strip \
+     -Dbin_programs=true \
+     -Dbin_contrib=true \
+     -Dmulti_thread=enabled \
+     -Dzlib=disabled \
+     -Dlzma=disabled \
+     -Dlz4=disabled \
+     BUILD
+
     cd BUILD
-
-    cmake -DCMAKE_BUILD_TYPE=Release \
-     -DCMAKE_C_FLAGS="$QICFLAGS"                                           \
-     -DCMAKE_CXX_FLAGS="$QICXXFLAGS"                                       \
-     -DCMAKE_EXE_LINKER_FLAGS="$QILDFLAGS"                                 \
-     -DCMAKE_SHARED_LINKER_FLAGS="$QILDFLAGS"                              \
-     -DCMAKE_STATIC_LINKER_FLAGS="$QILDFLAGS"                              \
-     -DCMAKE_INSTALL_PREFIX=/usr                                           \
-     -DCMAKE_INSTALL_LIBDIR=lib${libSuffix}                                \
-     -DCMAKE_INSTALL_MANDIR=$mandir                                        \
-     -DCMAKE_INSTALL_DOCDIR=$docsdir                                       \
-     -DZSTD_BUILD_CONTRIB=OFF                                              \
-     -DZSTD_BUILD_PROGRAMS=ON                                              \
-     -DZSTD_BUILD_SHARED=ON                                                \
-     -DZSTD_BUILD_STATIC=ON                                                \
-     -DZSTD_BUILD_TESTS=OFF                                                \
-     -DZSTD_LEGACY_SUPPORT=ON                                              \
-     -DZSTD_MULTITHREAD_SUPPORT=ON                                         \
-     -DZSTD_PROGRAMS_LINK_SHARED=ON                                        \
-     -DZSTD_LZ4_SUPPORT=OFF                                                \
-     -DZSTD_LZMA_SUPPORT=OFF                                               \
-     -DZSTD_ZLIB_SUPPORT=OFF                                               \
-     -G Ninja ../build/cmake
-
     ninja -j${jobs}
     DESTDIR="$destdir" ninja -j${jobs} install
 
     # Switch back to the main source directory
-    cd ..
-
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
+    cd ../../..
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
