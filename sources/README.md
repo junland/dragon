@@ -50,7 +50,7 @@ Use the RSYNC protocol to download missing sources.
 Remember to check if everything is OK.  To check the integrity of all
 the tarballs using sha256sum(1), type:
 
-    sha256sum -c *.sha256
+    sha256sum --quiet --check *.sha256
 
 
 [1]: http://rsync.dragora.org "Browse via HTTP"
