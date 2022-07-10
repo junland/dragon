@@ -228,11 +228,12 @@ mode_build()
 
     is_readable "${CWD}/$recipe" || exit 4
 
-    # Re-create external directories
-    mkdir -p -- "${worktree}/archive" \
-                "${worktree}/patches" \
-                "${worktree}/recipes" \
-                "$tardir"
+    # Create external directories if needed
+    for directory in "${worktree}/archive" "${worktree}/patches" "${worktree}/recipes" "$tardir"
+    do
+        test -d "$directory" || mkdir -p -- "$directory"
+    done
+    unset -v directory
 
     # Variables treatment for the current and the next recipe.
     #
@@ -265,6 +266,15 @@ mode_build()
 
     . "${CWD}/$recipe"
     chkstatus_or_exit
+
+    # Check if 'opt_skiprecipe' has been declared to ignore
+    # the current recipe and continue with the next recipe
+    if test "$opt_skiprecipe" = "opt_skiprecipe"
+    then
+        unset -v opt_skiprecipe
+        warn "${recipe}: The variable 'opt_skiprecipe' has been used here."
+        return 0;
+    fi
 
     # Check for required variables
     if test -z "$program"
@@ -1224,6 +1234,7 @@ opt_skipqsts=opt_skipqsts.off
 opt_nopkg=opt_nopkg.off
 opt_prune=opt_prune.off
 verbose_level=0
+opt_skiprecipe=""
 rootdir=""
 arch=@ARCH@
 jobs=1
