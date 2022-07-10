@@ -20,7 +20,7 @@ set -e
 program=userspace-rcu
 pkgname=liburcu
 version=0.13.1
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -54,14 +54,6 @@ build()
 
     cd "$srcdir"
 
-    # The value used in the Makefiles for PWD it is set to null
-    # on the build, reason why we establish again to link against
-    # the produced library objects
-    find . -type f | xargs grep -l 'PWD' | xargs \
-     sed -i 's@$(PWD)@$(shell pwd)@g'
-
-    autoreconf -vif
-
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
@@ -77,9 +69,6 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} V=1 DESTDIR="$destdir" install
-
-    # Please refer to the full source for the documentation
-    rm -rf "${destdir}/$docsdirexamples"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
