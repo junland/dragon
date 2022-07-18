@@ -30,7 +30,7 @@ LANGUAGE=C
 export LC_ALL LANGUAGE
 
 # Get physical working directory (absolute path)
-CWD="$(CDPATH='' cd -P -- "$(dirname -- "$0")" && pwd -P)" || exit $?
+worktree="$(CDPATH='' cd -P -- "$(dirname -- "$0")" && pwd -P)" || exit $?
 
 ### Functions
 
@@ -43,7 +43,7 @@ Builder of custom stages (cross compilers, GNU/Linux distributions).
 Where FILE is any shell script (as long as it is executable) from
 a stage number.  Without FILE, it loads all the found scripts from
 the stage number.  Stage numbers come from the stages directory
-(${CWD}/stages).
+(${worktree}/stages).
 
 Defaults for the options are specified in brackets.
 
@@ -65,10 +65,10 @@ Some influential environment variables:
   BTLDFLAGS   Linker flags [${BTLDFLAGS}]
   VENDOR      Vendor name to reflect on the target triplet
 
-Available targets from ${CWD}/targets ...
+Available targets from ${worktree}/targets ...
 
 "
-for name in "${CWD}/targets"/*
+for name in "${worktree}/targets"/*
 do
     sed -e '2q;d' "$name"
 done
@@ -79,7 +79,7 @@ echo ""
 version()
 {
     printf '%s' \
-"$PROGRAM 3.32
+"$PROGRAM 3.33
 Copyright (C) 2014-2022 Matias Andres Fonzo.
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
 This is free software: you are free to change and redistribute it.
@@ -213,7 +213,6 @@ stage=0
 libSuffix=""
 arch="$(uname -m)" || chkstatus_or_exit
 jobs=1
-worktree="$CWD"
 output="${worktree}/OUTPUT.${PROGRAM}"
 TMPDIR="${TMPDIR:=${output}/sources}"
 
@@ -336,16 +335,16 @@ PATH="${crossdir}/bin:${PATH}"
 export PATH VENDOR TMPDIR
 
 # Main loop
-for file in ${CWD}/stages/${stage}/${@:-??-*}
+for file in ${worktree}/stages/${stage}/${@:-??-*}
 do
     file="${file##*/}"
 
-    if test ! -f "${CWD}/stages/${stage}/$file"
+    if test ! -f "${worktree}/stages/${stage}/$file"
     then
         warn "${PROGRAM}: ${stage}/${file}: No such file or stage number"
         exit 1
     fi
-    if test ! -x "${CWD}/stages/${stage}/$file"
+    if test ! -x "${worktree}/stages/${stage}/$file"
     then
         warn "${PROGRAM}: ${stage}/${file}: File not executable, dodging"
         continue;
@@ -400,7 +399,7 @@ do
     # Exit immediately on any error
     set -e
 
-    . "${CWD}/stages/${stage}/$file"
+    . "${worktree}/stages/${stage}/$file"
 
     # Deactivate shell option(s)
     set +e
@@ -420,6 +419,6 @@ do
     fi
 
     # Back to the current working directory
-    cd -- "$CWD" || chkstatus_or_exit
+    cd -- "$worktree" || chkstatus_or_exit
 done
 
