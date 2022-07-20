@@ -17,6 +17,8 @@
     - [ ] Java, OpenJDK support?.
     - [ ] Free software web browser (GNU IceCat?).
     - [ ] Cryptsetup.
+      - [x] Cryptsetup initial support
+      - [ ] Solve problems with libssh
     - [ ] EFI support.
     - [ ] Complement spacefm (plugins, extra support for it).
     - [ ] Qire inclusion in Dragora.
