@@ -19,6 +19,7 @@
     - [ ] Cryptsetup.
       - [x] Cryptsetup initial support
       - [ ] Solve problems with libssh
+      - [ ] Add or provide rc instructions on startup/shutdown
     - [ ] EFI support.
     - [ ] Complement spacefm (plugins, extra support for it).
     - [ ] Qire inclusion in Dragora.
