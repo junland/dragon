@@ -1262,13 +1262,6 @@ infodir=@INFODIR@
 mandir=@MANDIR@
 docdir=@DOCDIR@
 
-# Store (default) directory locations
-QI_TARGETDIR=$targetdir
-QI_PACKAGEDIR=$packagedir
-QI_WORKTREE=$worktree
-QI_TARDIR=$tardir
-QI_OUTDIR=$outdir
-
 ### Parse commands and options
 
 validate_mode()
@@ -1486,12 +1479,13 @@ do
         verbose_level=2
         ;;
     --show-location | -L )
+        readconfig
         printf '%s\n' \
-         "QI_TARGETDIR=$QI_TARGETDIR"   \
-         "QI_PACKAGEDIR=$QI_PACKAGEDIR" \
-         "QI_WORKTREE=$QI_WORKTREE"     \
-         "QI_TARDIR=$QI_TARDIR"         \
-         "QI_OUTDIR=$QI_OUTDIR"
+         "QI_TARGETDIR=$targetdir"    \
+         "QI_PACKAGEDIR=$packagedir"  \
+         "QI_WORKTREE=$worktree"      \
+         "QI_TARDIR=$tardir"          \
+         "QI_OUTDIR=$outdir"
         exit 0
         ;;
     --help | --hel | --he | --h | '--?' | -help | -hel | -he | -h | '-?' | \
@@ -1646,7 +1640,9 @@ fi
 if test ! -d "$TMPDIR"
 then
     mkdir -p -- "$TMPDIR" || chkstatus_or_exit
+    echo "mkdir: created directory '$TMPDIR'"
 fi
+
 readonly TMPDIR packagedir targetdir
 
 # Process each package or recipe provided on the command-line
