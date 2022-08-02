@@ -54,5 +54,5 @@ the tarballs using sha256sum(1), type:
 
 
 [1]: http://rsync.dragora.org "Browse via HTTP"
-[2]: /wiki?name=Mirrors
+[2]: https://dragora.org/en/mirrors.html
 
