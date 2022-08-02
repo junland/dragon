@@ -231,7 +231,11 @@ mode_build()
     # Create external directories if needed
     for directory in "${worktree}/archive" "${worktree}/patches" "${worktree}/recipes" "$tardir"
     do
-        test -d "$directory" || mkdir -p -- "$directory"
+        if test ! -d "$directory"
+        then
+            mkdir -p -- "$directory" || chkstatus_or_exit
+            echo "mkdir: created directory '$directory'"
+        fi
     done
     unset -v directory
 
@@ -1640,7 +1644,6 @@ fi
 if test ! -d "$TMPDIR"
 then
     mkdir -p -- "$TMPDIR" || chkstatus_or_exit
-    echo "mkdir: created directory '$TMPDIR'"
 fi
 
 readonly TMPDIR packagedir targetdir
