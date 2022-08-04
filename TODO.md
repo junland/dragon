@@ -9,7 +9,7 @@
       - [ ] Mercurial
       - [ ] CVS
       - [ ] Fossil
-      - [ ] RCS
+      - [x] RCS
     - [ ] Printing support.
     - [ ] Scanning support.
     - [ ] Bluetooth support.
