@@ -321,6 +321,7 @@ mode_build()
     pkgname="${pkgname:=$program}"
     pkgversion="${pkgversion:=$version}"
     srcdir="${srcdir:=${program}-$version}"
+    srcdir="${TMPDIR}/$srcdir"
     destdir="${destdir:=${TMPDIR}/package-$pkgname}"
 
     # If 'pkgcategory' has been defined, prefix it using the "at" symbol
@@ -482,10 +483,10 @@ mode_build()
 
     if test -z "$keep_srcdir"
     then
-        if test -e "${TMPDIR}/$srcdir"
+        if test -e "$srcdir"
         then
-            rm -rf -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
-            echo "removed directory: '${TMPDIR}/$srcdir'"
+            rm -rf -- "$srcdir" || chkstatus_or_exit
+            echo "removed directory: '$srcdir'"
         fi
     else
         warn \
@@ -631,11 +632,10 @@ mode_build()
     then
         if test -z "$keep_srcdir"
         then
-            srcdir="${srcdir%%/*}";	# Directory name without parents.
-            if test -e "${TMPDIR}/$srcdir"
+            if test -e "$srcdir"
             then
-                rm -rf -- "${TMPDIR:?}/$srcdir" || chkstatus_or_exit
-                echo "removed directory: '${TMPDIR}/$srcdir'"
+                rm -rf -- "$srcdir" || chkstatus_or_exit
+                echo "removed directory: '$srcdir'"
             fi
         fi
         if test -z "$keep_destdir"
@@ -649,7 +649,7 @@ mode_build()
     else
         warn \
          "    The following directories will be preserved:"  \
-         "${TMPDIR}/$srcdir"                                 \
+         "$srcdir"                                           \
          "$destdir"                                          \
          ""                                                  \
          "The '--keep' option has been used."
