@@ -31,8 +31,8 @@ datarootdir	= $(prefix)/share
 infodir		= $(datarootdir)/info
 mandir		= $(datarootdir)/man
 docdir		= $(datarootdir)/doc
-packagedir	= /usr/local/pkgs
-targetdir	= /usr/local
+packagedir	= $(prefix)/pkgs
+targetdir	= $(prefix)
 arch		= $(shell uname -m)
 ##
 DISTNAME	= ${project}-${version}
