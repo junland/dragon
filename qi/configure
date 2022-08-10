@@ -36,9 +36,10 @@ Options:
   --infodir=DIR        info documentation [${infodir}]
   --mandir=DIR         man documentation [${mandir}]
   --docdir=DIR         documentation root [${docdir}]
-  --packagedir=DIR     set directory for package installations [${packagedir}]
-  --targetdir=DIR      set target directory for symbolic links [${targetdir}]
-  --arch=name          set default package architecture [${arch}]
+  --arch=NAME          architecture name to build packages [${arch}]
+  --packagedir=DIR     directory for package installations [${packagedir}]
+  --targetdir=DIR      target directory for symbolic links [${targetdir}]
+  --outdir=DIR         output directory for binary packages [${outdir}]
 
 "
 }
@@ -55,9 +56,10 @@ datarootdir='$(prefix)/share'
 infodir='$(datarootdir)/info'
 mandir='$(datarootdir)/man'
 docdir='$(datarootdir)/doc'
+arch="$(uname -m)"
 packagedir='$(prefix)/pkgs'
 targetdir='$(prefix)'
-arch="$(uname -m)"
+outdir='$(localstatedir)/cache/qi/packages'
 
 return_variables()
 {
@@ -73,9 +75,10 @@ return_variables()
      "infodir = $infodir"              \
      "mandir = $mandir"                \
      "docdir = $docdir"                \
+     "arch = $arch"                    \
      "packagedir = $packagedir"        \
      "targetdir = $targetdir"          \
-     "arch = $arch"                    \
+     "outdir = $outdir"                \
      ""
 }
 
@@ -160,6 +163,13 @@ do
     --docdir=*)
         docdir="${1#*=}"
         ;;
+    --arch)
+        arch="$2"
+        shift
+        ;;
+    --arch=*)
+        arch="${1#*=}"
+        ;;
     --packagedir)
         packagedir="$2"
         shift
@@ -174,12 +184,12 @@ do
     --targetdir=*)
         targetdir="${1#*=}"
         ;;
-    --arch)
-        arch="$2"
+    --outdir)
+        outdir="$2"
         shift
         ;;
-    --arch=*)
-        arch="${1#*=}"
+    --outdir=*)
+        outdir="${1#*=}"
         ;;
     --help | --hel | --he | --h | '--?' | -help | -hel | -he | -h | '-?' )
         usage

@@ -31,9 +31,10 @@ datarootdir	= $(prefix)/share
 infodir		= $(datarootdir)/info
 mandir		= $(datarootdir)/man
 docdir		= $(datarootdir)/doc
+arch		= $(shell uname -m)
 packagedir	= $(prefix)/pkgs
 targetdir	= $(prefix)
-arch		= $(shell uname -m)
+outdir		= $(localstatedir)/cache/qi/packages
 ##
 DISTNAME	= ${project}-${version}
 
@@ -71,9 +72,10 @@ src/$(project) : src/$(project).in
 	  -e "s|@INFODIR@|$(infodir)|g" \
 	  -e "s|@MANDIR@|$(mandir)|g" \
 	  -e "s|@DOCDIR@|$(docdir)|g" \
+	  -e "s|@ARCH@|$(arch)|g" \
 	  -e "s|@PACKAGEDIR@|$(packagedir)|g" \
 	  -e "s|@TARGETDIR@|$(targetdir)|g" \
-	  -e "s|@ARCH@|$(arch)|g" \
+	  -e "s|@OUTDIR@|$(outdir)|g" \
 	 $< > $@ && \
 	 chmod 755 $@
 
@@ -92,9 +94,10 @@ etc/$(project)rc : etc/$(project)rc.in
 	  -e "s|@INFODIR@|$(infodir)|g" \
 	  -e "s|@MANDIR@|$(mandir)|g" \
 	  -e "s|@DOCDIR@|$(docdir)|g" \
+	  -e "s|@ARCH@|$(arch)|g" \
 	  -e "s|@PACKAGEDIR@|$(packagedir)|g" \
 	  -e "s|@TARGETDIR@|$(targetdir)|g" \
-	  -e "s|@ARCH@|$(arch)|g" \
+	  -e "s|@OUTDIR@|$(outdir)|g" \
 	 $< > $@ && \
 	chmod 644 $@
 
