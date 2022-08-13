@@ -21,28 +21,19 @@ cd -- "${worktree}/qi"
 make -j1 clean
 
 ./configure \
- --prefix=/tools \
+ --prefix=/usr \
+ --sysconfdir=/etc \
+ --localstatedir=/var \
  --packagedir=/usr/pkg \
  --targetdir=/ \
  --arch=$package_arch
 
-make -j1 install
+make -j1 DESTDIR=/tools install
 
 # Clean up the source repository
 
 rm -f config.mak
 make -j1 clean
-
-# Make "usr/pkg" directory and output
-# directory for packages available
-mkdir -p -- "${rootdir}/usr/pkg" "${rootdir}/var/cache/qi/packages"
-
-# Adjust prefixes in config for final system installation
-sed -i \
- -e 's|/tools|/usr|g'   \
- -e 's|/usr/etc|/etc|'  \
- -e 's|/usr/var|/var|'  \
- /tools/etc/qirc
 
 # Set default compiler options for Dragora
 case $arch in
