@@ -462,11 +462,11 @@ mode_build()
                 ( cd -- "$tardir" && sha256sum -c "${_source}.sha256" )
                 chkstatus_or_exit
                 continue;
-            else
-                warn "    Checksum file \`${_source}.sha256' does not exist"
             fi
 
-            # Download source or resume if allowed
+            warn "    Checksum file \`${_source}.sha256' does not exist"
+
+            # Download source or resume, if allowed
 
             if test ! -e "${tardir}/$_source"
             then
@@ -813,7 +813,7 @@ mode_install()
     _packagedir="$2"
     _packagedir="${_packagedir:=$packagedir}"
 
-    if ! test -d "$rootdir${_packagedir}/$name"
+    if test ! -d "$rootdir${_packagedir}/$name"
     then
         mkdir -p -- "$rootdir${_packagedir}/$name" || chkstatus_or_exit
         echo "mkdir: created directory '$rootdir${_packagedir}/$name'"
@@ -884,7 +884,7 @@ mode_install()
             do
                 for replace in "$rootdir${_packagedir}/${line%%_*}"_*
                 do
-                    if ! test -e "$replace"
+                    if test ! -e "$replace"
                     then
                         warn "    Declared package \`${replace}' to be replaced does not exist.  [Ignored]"
                         continue;
