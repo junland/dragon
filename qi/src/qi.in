@@ -171,6 +171,26 @@ readconfig()
     unset -v _readconfig
 }
 
+validate_file()
+{
+    # Complain if the file cannot be well-read
+    is_readable "$1" || exit 4
+
+    # Complain if the file does not end at expected extension
+    if ! fnmatch "*.${2}" "$1"
+    then
+        echo "${PROGRAM}: \`${1}' does not end in .${2}" 1>&2
+        exit 4
+    fi
+
+    # Complain if the file is not regular
+    if test ! -f "$1"
+    then
+        echo "${PROGRAM}: \`${1}' is not a regular file." 1>&2
+        exit 4
+    fi
+}
+
 ### Mode functions
 
 mode_build()
@@ -778,22 +798,12 @@ mode_remove()
 
 mode_install()
 {
-    # Complain if the package cannot be well-read
+    validate_file "$1" tlz
 
-    is_readable "$1" || exit 4
-
-    # Complain if the package does not end in .tlz
-
-    if ! fnmatch '*.tlz' "$1"
-    then
-        warn "\`${1}' does not end in .tlz"
-        exit 4
-    fi
-
-    # Make preparations to install the package
+    name="$(basename -- "$1" .tlz)"
 
     echo ""
-    echo "{>} Installing $1 ..."
+    echo "{>} Installing package \`${name}.tlz' ..."
 
     echo "=== Checking tarball integrity ..."
     tarlz --missing-crc -tf "$1" > /dev/null
@@ -802,10 +812,6 @@ mode_install()
     # To accept random directory from the upgrade mode
     _packagedir="$2"
     _packagedir="${_packagedir:=$packagedir}"
-
-    # Create package directory using 'name'
-
-    name="$(basename -- "$1" .tlz)";		# Get the file name.
 
     if ! test -d "$rootdir${_packagedir}/$name"
     then
@@ -916,17 +922,7 @@ mode_install()
 
 mode_order()
 {
-    # Complain if the file cannot be well-read
-
-    is_readable "$1" || exit 4
-
-    # Complain if the file does not end in .order
-
-    if ! fnmatch '*.order' "$1"
-    then
-        warn "\`${1}' does not end in .order"
-        exit 4
-    fi
+    validate_file "$1" order
 
     # Get a clean list of the file while printing its contents in
     # reverse order.  Last awk(1) in the pipeline eliminates
@@ -942,24 +938,12 @@ mode_order()
 
 mode_upgrade()
 {
-    # Complain if the package cannot be well-read
+    validate_file "$1" tlz
 
-    is_readable "$1" || exit 4
-
-    # Complain if the package does not end in .tlz
-
-    if ! fnmatch '*.tlz' "$1"
-    then
-        warn "\`${1}' does not end in .tlz"
-        exit 4
-    fi
-
-    # Make preparations to upgrade the package
+    incoming="$(basename -- "$1" .tlz)"
 
     echo ""
-    echo "{^} Upgrading $1 ..."
-
-    incoming="$(basename -- "$1" .tlz)";	# Get the file name.
+    echo "{^} Upgrading to package \`${incoming}.tlz' ..."
 
     # Check package pre-existence
     if test "$opt_force" != opt_force && \
@@ -1044,42 +1028,24 @@ mode_upgrade()
 
 mode_warn()
 {
-    # Complain if the package cannot be well-read
+    validate_file "$1" tlz
 
-    is_readable "$1" || exit 4
-
-    # Complain if the package does not end in .tlz
-
-    if ! fnmatch '*.tlz' "$1"
-    then
-        warn "\`${1}' does not end in .tlz"
-        exit 4
-    fi
+    echo ""
+    echo "{!} Warning about the content of \`$(basename -- "$1")' ..."
 
     # List content of files excluding directories
-    while test -f "$1"
-    do
-        tarlz -tvvf "$1" | awk '!/^drwx/'
-        chkstatus_or_exit 3
-        shift;
-    done
-    return 0
+    tarlz -tvvf "$1" | awk '!/^drwx/'
+    chkstatus_or_exit 3
 }
 
 mode_extract()
 {
-    # Perform sanity checks before package extraction
-
-    is_readable "$1" || exit 4
-
-    test -f "$1" || {
-        warn "\`${1}' is not a regular file."
-        exit 4
-    }
-
-    # Preparations to extract the package
+    validate_file "$1" tlz
 
     name="$(basename -- "$1" .tlz)"
+
+    echo ""
+    echo "{-} Extracting from package \`${name}.tlz' ..."
 
     # Set random directory under 'TMPDIR' using 'name'
     PRVDIR=$(mktemp -dp "$TMPDIR" ${name}.XXXXXXXXXXXX) || exit 2
@@ -1091,9 +1057,6 @@ mode_extract()
     ( umask 077 ; mkdir -- "$PRVDIR" )
     mkdir -p -- "$PRVDIR"
     chmod 700 -- "$PRVDIR"
-
-    echo ""
-    echo "{-} Extracting package \`${name}' ..."
 
     ( umask 000 ; cd -- "$PRVDIR" && tarlz -xvf - ) < "$1"
     if test $? -ne 0
