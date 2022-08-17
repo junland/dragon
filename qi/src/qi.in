@@ -191,6 +191,17 @@ validate_file()
     fi
 }
 
+make_directory()
+{
+    if test ! -d "$1"
+    then
+        (
+          umask 022 ; mkdir -p -- "$1" || exit $?
+          echo "mkdir: created directory '$1'"
+        ); chkstatus_or_exit
+    fi
+}
+
 ### Mode functions
 
 mode_build()
@@ -251,11 +262,7 @@ mode_build()
     # Create external directories if needed
     for directory in "${worktree}/archive" "${worktree}/patches" "${worktree}/recipes" "$tardir"
     do
-        if test ! -d "$directory"
-        then
-            mkdir -p -- "$directory" || chkstatus_or_exit
-            echo "mkdir: created directory '$directory'"
-        fi
+        make_directory "$directory"
     done
     unset -v directory
 
@@ -520,15 +527,10 @@ mode_build()
             rm -r -- "$destdir" || chkstatus_or_exit
             echo "removed directory: '$destdir'"
         fi
-        mkdir -p -- "$destdir" || chkstatus_or_exit
-        echo "mkdir: created directory '$destdir'"
+        make_directory "$destdir"
     fi
 
-    if test ! -e "$outdir"
-    then
-        mkdir -p -- "$outdir" || chkstatus_or_exit
-        echo "mkdir: created directory '$outdir'"
-    fi
+    make_directory "$outdir"
 
     echo "=== Changing to '${TMPDIR}' ..."
     cd -- "$TMPDIR" || chkstatus_or_exit
@@ -592,7 +594,7 @@ mode_build()
              ed "${CWD}/$recipe" || chkstatus_or_exit
         fi
 
-        mkdir -p -- "${destdir}/var/lib/qi" || chkstatus_or_exit
+        make_directory "${destdir}/var/lib/qi"
 
         # Include a copy of the recipe into the package
         cp -p "${CWD}/$recipe" \
@@ -813,11 +815,7 @@ mode_install()
     _packagedir="$2"
     _packagedir="${_packagedir:=$packagedir}"
 
-    if test ! -d "$rootdir${_packagedir}/$name"
-    then
-        mkdir -p -- "$rootdir${_packagedir}/$name" || chkstatus_or_exit
-        echo "mkdir: created directory '$rootdir${_packagedir}/$name'"
-    fi
+    make_directory "$rootdir${_packagedir}/$name"
 
     # Scan for possible conflicts, stop if arise
     if test "$opt_prune" != opt_prune
@@ -1610,10 +1608,7 @@ fi
 
 # Ensure 'TMPDIR' creation to prefix temporary files
 
-if test ! -d "$TMPDIR"
-then
-    mkdir -p -- "$TMPDIR" || chkstatus_or_exit
-fi
+make_directory "$TMPDIR"
 
 readonly TMPDIR packagedir targetdir
 
