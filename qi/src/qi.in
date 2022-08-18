@@ -413,42 +413,43 @@ mode_build()
              "    Probably nothing has changed."                         \
              ""
 
-            # In non-interactive mode, the user is asked about
-            # rebuilding the package.  In interactive mode,
-            # the user need to pass the option explicitly
-            if test ! -t 0
+            # In non-interactive mode the user is asked about
+            # rebuilding the package; on interactive mode,
+            # the user need to pass the option explicitly.
+
+            if test -t 0
             then
-                printf '%s\n' \
-                 "Do you want to rebuild this package?"   \
-                 "1) Yes, built it"                       \
-                 "2) No, skip it [default]"               \
-                 "3) Resume, skipping completed recipes"  \
-                 "Enter an option number:" > /dev/tty
-                IFS= read -r ANSWER < /dev/tty || exit 2;
-                case $ANSWER in
-                1*)
-                    echo "$ANSWER" > /dev/tty
-                    unset -v ANSWER
-                    ;;
-                3*)
-                    unset -v ANSWER
-                    echo "=== Building unprocessed or recently modified recipe(s) ..." > /dev/tty
-                    echo ""
-                    opt_skipqsts=opt_skipqsts
-                    readonly opt_skipqsts
-                    return 0
-                    ;;
-                *)
-                    unset -v ANSWER
-                    echo "Recipe for '${full_pkgname}.tlz':  Cancelled." > /dev/tty
-                    echo ""
-                    return 0
-                    ;;
-                esac
-            else
                 warn "Use the --force option to reprocess ${CWD}/${recipe}." ""
                 return 6;
             fi
+
+            printf '%s\n' \
+             "Do you want to rebuild this package? ..."  \
+             "(1) Yes, built it"                         \
+             "(2) No, skip it. [Default]"                \
+             "(3) Resume (skipping completed recipes)"   \
+             "Enter an option number:" > /dev/tty
+            IFS= read -r ANSWER < /dev/tty || exit 2;
+            case $ANSWER in
+            1*)
+                echo "$ANSWER" > /dev/tty
+                unset -v ANSWER
+                ;;
+            3*)
+                unset -v ANSWER
+                echo "=== Building unprocessed or recently modified recipe(s) ..." > /dev/tty
+                echo ""
+                opt_skipqsts=opt_skipqsts
+                readonly opt_skipqsts
+                return 0
+                ;;
+            *)
+                unset -v ANSWER
+                echo "Recipe for '${full_pkgname}.tlz':  Cancelled." > /dev/tty
+                echo ""
+                return 0
+                ;;
+            esac
         fi
     fi
 
