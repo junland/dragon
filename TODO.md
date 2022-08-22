@@ -8,7 +8,7 @@
     - [ ] Version control systems:
       - [ ] Mercurial
       - [ ] CVS
-      - [ ] Fossil
+      - [x] Fossil
       - [x] RCS
     - [ ] Printing support.
     - [ ] Scanning support.
