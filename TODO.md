@@ -7,7 +7,7 @@
     - [x] Add GNU Xorriso (for .iso creation support).
     - [ ] Version control systems:
       - [ ] Mercurial
-      - [ ] CVS
+      - [x] CVS
       - [x] Fossil
       - [x] RCS
     - [ ] Printing support.
