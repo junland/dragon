@@ -19,7 +19,7 @@
 set -e
 
 program=Python
-version=3.10.7
+version=3.9.14
 short_version="${version%.*}"
 release=1
 
@@ -58,6 +58,11 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # Add compatible support of Python modules to work with LibreSSL
+
+    patch -p0 < "${worktree}/patches/python/patch-Modules__hashopenssl_c"
+    patch -p0 < "${worktree}/patches/python/patch-Modules__ssl_c"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .

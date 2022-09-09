@@ -5,7 +5,7 @@
     - [x] Add libusb-compat.
     - [x] Add the zstd compressor.
     - [x] Add GNU Xorriso (for .iso creation support).
-    - [ ] Solve SSL support in Python (related to LibreSSL compatibility)
+    - [x] Solve SSL support in Python (related to LibreSSL compatibility)
     - [ ] Version control systems:
       - [ ] Mercurial
       - [x] CVS
