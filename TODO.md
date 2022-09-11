@@ -6,8 +6,8 @@
     - [x] Add the zstd compressor.
     - [x] Add GNU Xorriso (for .iso creation support).
     - [x] Solve SSL support in Python (related to LibreSSL compatibility)
-    - [ ] Version control systems:
-      - [ ] Mercurial
+    - [x] Version control systems:
+      - [x] Mercurial
       - [x] CVS
       - [x] Fossil
       - [x] RCS
