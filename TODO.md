@@ -11,7 +11,7 @@
       - [x] CVS
       - [x] Fossil
       - [x] RCS
-    - [ ] Printing support.
+    - [~IN PROGRESS~] Printing support.
     - [ ] Scanning support.
     - [ ] Bluetooth support.
     - [ ] Complement the Trinity Desktop Environment.
