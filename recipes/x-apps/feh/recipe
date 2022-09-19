@@ -19,7 +19,7 @@
 set -e
 
 program=feh
-version=3.8
+version=3.9.1
 release=1
 
 # Define a category for the output of the package name
@@ -61,11 +61,14 @@ build()
     # Replace default C flags with the ones provided by Qi
     sed -i "s/-g -O2/$QICFLAGS/" config.mk
 
-    make -j${jobs} V=1 PREFIX=/usr
+    make -j${jobs} V=1 PREFIX=/usr \
+     curl=1 exif=1 inotify=1 stat64=1 magic=1
+
     make -j${jobs} V=1 \
      PREFIX=/usr \
      doc_dir="$destdir/$docsdir" \
      example_dir="$destdir/${docsdir}/examples" \
+     curl=1 exif=1 inotify=1 stat64=1 magic=1 \
      DESTDIR="$destdir" install
 
     strip --strip-unneeded "${destdir}/usr/bin/feh"
