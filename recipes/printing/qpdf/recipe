@@ -1,0 +1,109 @@
+# Build recipe for qpdf.
+#
+# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Exit immediately on any error
+set -e
+
+program=qpdf
+version=11.0.0
+release=1
+
+# Define a category for the output of the package name
+pkgcategory=printing
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=https://github.com/qpdf/qpdf/releases/download/v${version}/$tarname
+
+description="
+Command-line programs and PDF transformation library.
+
+The qpdf package contains command-line programs and a library that does
+structural, content-preserving transformations on PDF files.
+"
+
+homepage=https://qpdf.sourceforge.io
+license="Artistic License v2.0 | Apache License v2.0"
+
+# Source documentation
+docs="Artistic-* ChangeLog* LICENSE.txt NOTICE.md README* TODO"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    rm -rf BUILD
+    mkdir BUILD
+    cd BUILD
+
+    cmake -DCMAKE_BUILD_TYPE=Release \
+     -DCMAKE_C_FLAGS="$QICFLAGS"               \
+     -DCMAKE_CXX_FLAGS="$QICXXFLAGS"           \
+     -DCMAKE_EXE_LINKER_FLAGS="$QILDFLAGS"     \
+     -DCMAKE_SHARED_LINKER_FLAGS="$QILDFLAGS"  \
+     -DCMAKE_STATIC_LINKER_FLAGS="$QILDFLAGS"  \
+     -DCMAKE_INSTALL_PREFIX=/usr               \
+     -DCMAKE_INSTALL_LIBDIR=lib${libSuffix}    \
+     -DCMAKE_INSTALL_MANDIR=$mandir            \
+     -DCMAKE_INSTALL_DOCDIR=$docsdir           \
+     -DBUILD_STATIC_LIBS=OFF                   \
+     -DUSE_IMPLICIT_CRYPTO=0                   \
+     -DREQUIRE_CRYPTO_GNUTLS=1                 \
+     -G Ninja ..
+
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
+
+    # Switch back to the main source directory
+    cd ..
+
+    # Install available Shell completions
+
+    install -p -m 644 completions/bash/qpdf -D \
+     "${destdir}/usr/share/bash-completion/completions/qpdf"
+
+    install -p -m 644 completions/zsh/_qpdf -D \
+     "${destdir}/usr/share/zsh/site-functions/_qpdf"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 {} +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}/$docsdir"
+    cp -p $docs "${destdir}/$docsdir"
+
+    # Remove junk from the documentation
+    rm -f "${destdir}/${docsdir}/README-windows.md"
+}
+
