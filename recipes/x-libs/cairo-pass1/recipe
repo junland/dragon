@@ -19,7 +19,7 @@ set -e
 
 program=cairo
 version=1.17.6
-release=1
+release=2
 
 pkgname=cairo-pass1
 
@@ -50,6 +50,13 @@ build()
     unpack "${tardir}/$tarname"
     
     cd "$srcdir"
+
+    # Adapt this package for binutils-2.39 or later (Thanks to BLFS!)
+    sed -e 's/PTR/void */' -i util/cairo-trace/lookup-symbol.c
+
+    # Fix a pkg-config file that may cause errors later (Thanks to BLFS!)
+    sed -e "/@prefix@/a exec_prefix=@exec_prefix@" \
+        -i util/cairo-script/cairo-script-interpreter.pc.in
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
