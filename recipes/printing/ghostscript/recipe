@@ -25,9 +25,15 @@ release=1
 pkgcategory=printing
 
 tarname=${program}-${version}.tar.gz
+tarname_fonts_one=ghostscript-fonts-std-8.11.tar.gz
+tarname_fonts_two=gnu-gs-fonts-other-6.0.tar.gz
 
 # Remote source(s)
-fetch=https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs1000/$tarname
+fetch="
+ https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs1000/$tarname
+ https://downloads.sourceforge.net/gs-fonts/$tarname_fonts_one
+ https://downloads.sourceforge.net/gs-fonts/$tarname_fonts_two
+"
 
 description="
 An interpreter for the PostScript language and PDF files.
@@ -53,10 +59,10 @@ build()
 
     cd "$srcdir"
 
-    # Apply patch to fix the build (patch borrowed from "Alpine Linux" :-)
+    # Apply patch to fix the build (Patch borrowed from "Alpine Linux")
     patch -Np1 -i "${worktree}/patches/ghostscript/fix-sprintf.patch"
 
-    # Apply patch to pick up the external zlib library
+    # Apply patch to pick up the external zlib library ("Alpine Linux")
     patch -Np1 -i "${worktree}/patches/ghostscript/ghostscript-system-zlib.patch"
 
     # Set sane permissions
@@ -82,6 +88,20 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" soinstall
+
+    # Install more headers, making symlink for compatibility
+
+    install -p -m 644 base/*.h "${destdir}/usr/include/ghostscript"
+    ( cd "${destdir}/usr/include" && ln -sf ghostscript ps )
+
+    # Ship additional fonts
+    (
+        cd "${destdir}/usr/share/ghostscript"
+        unpack "${tardir}"/$tarname_fonts_one
+        unpack "${tardir}"/$tarname_fonts_two
+        chmod -R u+w,go-w,a+rX-s .
+    )
+    unset -v tarname_fonts_one tarname_fonts_two
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"
