@@ -1,4 +1,4 @@
-# Build recipe for ghostscript (ijs).
+# Build recipe for ijs (ghostscript).
 #
 # Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
 #
@@ -18,9 +18,12 @@
 set -e
 
 program=ghostscript
-pkgname=ghostscript-ijs
 version=10.0.0
 release=1
+
+# Set custom package name and package version
+pkgname=ijs-ghostscript
+pkgversion=0.35
 
 # Define a category for the output of the package name
 pkgcategory=printing
@@ -41,49 +44,29 @@ license=MIT
 
 # Source documentation
 docs="README"
-docsdir="${docdir}/${pkgname}-${version}"
+docsdir="${docdir}/${pkgname}-${pkgversion}"
 
 build()
 {
     unpack "${tardir}/$tarname"
 
-    cd "$srcdir"
-
-    # Apply patch to fix the build (patch borrowed from "Alpine Linux" :-)
-    patch -Np1 -i "${worktree}/patches/ghostscript/fix-sprintf.patch"
-
-    # Apply patch to pick up the external zlib library
-    patch -Np1 -i "${worktree}/patches/ghostscript/ghostscript-system-zlib.patch"
+    cd "${srcdir}"/ijs
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
-
-    # Build 'ijs' using external libraries
-    rm -rf cups/libs freetype lcms2mt jpeg libpng openjpeg tiff zlib
-
-    cd ijs
 
     sh ./autogen.sh CPPFLAGS="$QICPPFLAGS" \
     CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
-     --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --htmldir=${docsdir}/html \
      --enable-shared=yes \
      --enable-static=no \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
-
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
