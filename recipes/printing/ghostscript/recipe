@@ -19,7 +19,7 @@ set -e
 
 program=ghostscript
 version=10.0.0
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=printing
@@ -80,6 +80,7 @@ build()
      --docdir=$docsdir \
      --htmldir=${docsdir}/html \
      --enable-dynamic \
+     --enable-cups \
      --disable-compile-inits \
      --with-fontpath=/usr/share/fonts/X11/TTF:/usr/share/fonts/X11/Type1:/usr/share/fonts \
      --with-system-libtiff \
@@ -87,6 +88,8 @@ build()
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
+    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1 so
     make -j${jobs} DESTDIR="$destdir" soinstall
 
     # Install more headers, making symlink for compatibility
