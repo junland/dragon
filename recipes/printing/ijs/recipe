@@ -1,4 +1,4 @@
-# Build recipe for ijs (ghostscript).
+# Build recipe for ijs.
 #
 # Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
 #
@@ -17,21 +17,17 @@
 # Exit immediately on any error
 set -e
 
-program=ghostscript
-version=10.0.0
+program=ijs
+version=0.35
 release=1
-
-# Set custom package name and package version
-pkgname=ijs-ghostscript
-pkgversion=0.35
 
 # Define a category for the output of the package name
 pkgcategory=printing
 
-tarname=${program}-${version}.tar.gz
+tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch=https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs1000/$tarname
+fetch=https://www.openprinting.org/download/ijs/download/$tarname
 
 description="
 IJS (InkJet Server) drivers.
@@ -39,23 +35,30 @@ IJS (InkJet Server) drivers.
 This package is required by ghostscript.
 "
 
-homepage=https://www.ghostscript.com
+homepage=http://linuxprinting.org/ijs
 license=MIT
 
 # Source documentation
 docs="README"
-docsdir="${docdir}/${pkgname}-${pkgversion}"
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
     unpack "${tardir}/$tarname"
 
-    cd "${srcdir}"/ijs
+    cd "$srcdir"
+
+    # Update config detection for hosts
+    cp -f "${worktree}/archive/common/config.guess" .
+    cp -f "${worktree}/archive/common/config.sub" .
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    sh ./autogen.sh CPPFLAGS="$QICPPFLAGS" \
+    # Regeneration of the build system is needed here
+    autoreconf -vif
+
+    ./configure CPPFLAGS="$QICPPFLAGS" \
     CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
