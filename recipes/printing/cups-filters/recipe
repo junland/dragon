@@ -19,7 +19,7 @@ set -e
 
 program=cups-filters
 version=1.28.16
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=printing
@@ -78,9 +78,23 @@ build()
     make -j${jobs} check
     make -j${jobs} DESTDIR="$destdir" install
 
+    # Install CUPS-BROWSED perp service
+
+    mkdir -p "${destdir}/etc/perp/cups-browsed"
+
+    cp -p "${worktree}/archive/cups-filters/rc.log" \
+          "${worktree}/archive/cups-filters/rc.main" \
+          "${destdir}/etc/perp/cups-browsed/"
+
+    chmod 755 "${destdir}"/etc/perp/cups-browsed/rc.*
+
+    # Do not enable cups-browsed by default
+    chmod -t "${destdir}/etc/perp/cups-browsed"
+
     # To handle (dot) .new files via graft(1)
 
-    touch "${destdir}/etc/cups/.graft-config"
+    touch "${destdir}/etc/perp/cups-browsed/.graft-config" \
+          "${destdir}/etc/cups/.graft-config"
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"

@@ -1,0 +1,41 @@
+#! /bin/sh -
+#
+# cups-browsed/rc.main
+#
+# A daemon for browsing the Bonjour broadcasts of shared, remote CUPS printers.
+#
+
+# Redirects the standard error to the standard output
+exec 2>&1
+
+TARGET="$1"
+SVNAME="${2:-cups-browsed}"
+
+start()
+{
+    echo "*** ${SVNAME}: Starting cups-browsed ..."
+
+    # Check first if 'cupsd' is running before to run 'cups-browsed'
+    perpok cupsd || exit $?
+
+    exec /usr/sbin/cups-browsed -d
+}
+
+reset()
+{
+    case $3 in
+    exit)
+        echo "*** ${SVNAME}: Exited status $4"
+        ;;
+    signal)
+        echo "*** ${SVNAME}: Killed on signal $5"
+        ;;
+    *)
+        echo "*** ${SVNAME}: Stopped (${3})"
+        ;;
+    esac
+}
+
+# Branch to target
+eval ${TARGET} "$@"
+
