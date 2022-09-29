@@ -25,3 +25,9 @@
     - [ ] Complement spacefm (plugins, extra support for it).
     - [ ] Qire inclusion in Dragora.
     - [x] Complement wget/wget2.
+    - [ ] Braille support.
+      - [x] Liblouis.
+      - [x] Liblouisutdml.
+      - [ ] Check 'antiword'.
+      - [ ] Check 'docx2txt'.
+      - [ ] Check 'brltty'.
