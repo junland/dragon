@@ -13,6 +13,8 @@
       - [x] RCS
     - [~IN PROGRESS~] Printing support.
     - [ ] Scanning support.
+      - [ ] sane-backends.
+      - [ ] sane-frontends.
     - [ ] Bluetooth support.
     - [ ] Complement the Trinity Desktop Environment.
     - [ ] Java, OpenJDK support?.
