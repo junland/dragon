@@ -1,0 +1,37 @@
+#! /bin/sh -
+#
+# snmpd/rc.main
+#
+# Daemon to respond to SNMP request packets.
+#
+
+# Redirects the standard error to the standard output
+exec 2>&1
+
+TARGET="$1"
+SVNAME="${2:-snmpd}"
+
+start()
+{
+    echo "*** ${SVNAME}: Starting snmpd ..."
+    exec /usr/sbin/snmpd -A -a -c /etc/snmp/snmpd.conf
+}
+
+reset()
+{
+    case $3 in
+    exit)
+        echo "*** ${SVNAME}: Exited status $4"
+        ;;
+    signal)
+        echo "*** ${SVNAME}: Killed on signal $5"
+        ;;
+    *)
+        echo "*** ${SVNAME}: Stopped (${3})"
+        ;;
+    esac
+}
+
+# Branch to target
+eval ${TARGET} "$@"
+
