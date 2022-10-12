@@ -19,8 +19,8 @@
       - [ ] xsane (needs gimp to be full)
     - [ ] GIMP:
       - [x] json-glib
-      - [ ] babl
-      - [ ] gelg
+      - [x] babl
+      - [ ] gegl
     - [ ] Bluetooth support.
     - [ ] Complement the Trinity Desktop Environment.
     - [ ] Java, OpenJDK support?.
