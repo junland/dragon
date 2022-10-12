@@ -11,13 +11,16 @@
       - [x] CVS
       - [x] Fossil
       - [x] RCS
-    - [~IN PROGRESS~] Printing support.
+    - [~IN PROGRESS~] Printing support:
       - [ ] gutenprint (requires gimp)
-    - [ ] Scanning support.
-      - [x] sane-backends.
+      - [ ] hplip
+    - [ ] Scanning support:
+      - [x] sane-backends
       - [ ] xsane (needs gimp to be full)
-    - [ ] GIMP.
+    - [ ] GIMP:
       - [x] json-glib
+      - [ ] babl
+      - [ ] gelg
     - [ ] Bluetooth support.
     - [ ] Complement the Trinity Desktop Environment.
     - [ ] Java, OpenJDK support?.
@@ -30,9 +33,9 @@
     - [ ] Complement spacefm (plugins, extra support for it).
     - [ ] Qire inclusion in Dragora.
     - [x] Complement wget/wget2.
-    - [ ] Braille support.
-      - [x] Liblouis.
-      - [x] Liblouisutdml.
-      - [ ] Check 'antiword'.
-      - [ ] Check 'docx2txt'.
-      - [ ] Check 'brltty'.
+    - [ ] Braille support:
+      - [x] Liblouis
+      - [x] Liblouisutdml
+      - [ ] Check 'antiword'
+      - [ ] Check 'docx2txt'
+      - [ ] Check 'brltty'
