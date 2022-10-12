@@ -15,6 +15,8 @@
     - [ ] Scanning support.
       - [ ] sane-backends.
       - [ ] sane-frontends.
+    - GIMP.
+      - [x] json-glib.
     - [ ] Bluetooth support.
     - [ ] Complement the Trinity Desktop Environment.
     - [ ] Java, OpenJDK support?.
