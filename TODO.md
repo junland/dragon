@@ -12,11 +12,12 @@
       - [x] Fossil
       - [x] RCS
     - [~IN PROGRESS~] Printing support.
+      - [ ] gutenprint (requires gimp)
     - [ ] Scanning support.
-      - [ ] sane-backends.
-      - [ ] sane-frontends.
-    - GIMP.
-      - [x] json-glib.
+      - [x] sane-backends.
+      - [ ] xsane (needs gimp to be full)
+    - [ ] GIMP.
+      - [x] json-glib
     - [ ] Bluetooth support.
     - [ ] Complement the Trinity Desktop Environment.
     - [ ] Java, OpenJDK support?.
