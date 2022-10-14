@@ -21,6 +21,8 @@
       - [x] json-glib
       - [x] babl
       - [ ] gegl
+    - [ ] Add Rust.
+    - [ ] Upgrade librsvg to latest version (requires Rust).
     - [ ] Bluetooth support.
     - [ ] Complement the Trinity Desktop Environment.
     - [ ] Java, OpenJDK support?.
