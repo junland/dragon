@@ -8,7 +8,7 @@ based on the concepts of simplicity and elegance, it offers a user-friendly
 Unix-like environment with emphasis on stability and security for long-term
 durability.
 
-- Website: ``https://www.dragora.org``
-- List: ``https://lists.nongnu.org/mailman/listinfo/dragora-users``
+- Website: <https://www.dragora.org>
+- Mailing List: <https://lists.nongnu.org/mailman/listinfo/dragora-users>
 
 For real-time feeback, join us on IRC (`#dragora` on `irc.libera.chat`).
