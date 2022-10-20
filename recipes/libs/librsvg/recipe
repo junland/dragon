@@ -19,7 +19,7 @@
 set -e
 
 program=librsvg
-version=2.40.21
+version=2.54.5
 release=1
 
 # Define a category for the output of the package name
@@ -41,7 +41,7 @@ homepage=https://wiki.gnome.org/Projects/LibRsvg
 license="GPLv2+, LGPLv2+"
 
 # Source documentation
-docs="AUTHORS COPYING* NEWS README"
+docs="AUTHORS CONTRIBUTING.md COPYING* NEWS README.md code-of-conduct.md"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -50,16 +50,12 @@ build()
 
     cd "$srcdir"
 
-    # Apply patches from Debian (Thanks!)
-    patch -Np1 -i "${worktree}/patches/librsvg/10_rsvg-gz.patch"
-    patch -Np1 -i "${worktree}/patches/librsvg/remove-tests.patch"
-    patch -Np1 -i "${worktree}/patches/librsvg/hide-private-symbol.patch"
-
     ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" \
     LDFLAGS="$QILDFLAGS -Wl,--no-keep-memory,-z,defs -Wl,-O1 -Wl,--as-needed" \
     $configure_args \
-    --mandir=$mandir \
     --libdir=/usr/lib${libSuffix} \
+    --mandir=$mandir \
+    --docdir=$docsdir \
     --enable-static=no \
     --enable-shared=yes \
     --enable-pixbuf-loader \
@@ -88,5 +84,7 @@ build()
     # Copy documentation
     mkdir -p "${destdir}/$docsdir"
     cp -p $docs "${destdir}/$docsdir"
+    rm "${destdir}/${docsdir}"/COMPILING.md;	# Unnecessary here.
+
 }
 
