@@ -1,0 +1,99 @@
+# Build recipe for ccache.
+#
+# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Exit immediately on any error
+set -e
+
+program=ccache
+version=4.7.1
+release=1
+
+# Define a category for the output of the package name
+pkgcategory=devel
+
+tarname=${program}-${version}.tar.gz
+
+# Remote source(s)
+fetch=https://github.com/ccache/ccache/releases/download/v${version}/$tarname
+
+description="
+A fast C/C++ compiler cache.
+
+Ccache is a compiler cache.  It speeds up recompilation by caching
+previous compilations and detecting when the same compilation is
+being done again.  Ccache is free software, released under the
+GNU General Public License version 3 or later.
+"
+
+homepage=https://ccache.dev/
+license="GPLv3+, LGPLv3+"
+
+# Source documentation
+docs="ARCHITECTURE.md CONTRIBUTING.md LGPL* GPL* README.md doc/AUTHORS* doc/NEWS*"
+docsdir="${docdir}/${program}-${version}"
+
+build()
+{
+    unpack "${tardir}/$tarname"
+
+    cd "$srcdir"
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
+
+    rm -rf BUILD
+    mkdir BUILD
+    cd BUILD
+
+    cmake -DCMAKE_BUILD_TYPE=Release \
+     -DCMAKE_C_FLAGS="$QICFLAGS"                                           \
+     -DCMAKE_CXX_FLAGS="$QICXXFLAGS"                                       \
+     -DCMAKE_EXE_LINKER_FLAGS="$QILDFLAGS"                                 \
+     -DCMAKE_SHARED_LINKER_FLAGS="$QILDFLAGS"                              \
+     -DCMAKE_STATIC_LINKER_FLAGS="$QILDFLAGS"                              \
+     -DCMAKE_INSTALL_PREFIX=/usr                                           \
+     -DCMAKE_INSTALL_LIBDIR=lib${libSuffix}                                \
+     -DCMAKE_INSTALL_INFODIR=$infodir                                      \
+     -DCMAKE_INSTALL_MANDIR=$mandir                                        \
+     -DCMAKE_INSTALL_DOCDIR=$docsdir                                       \
+     -DREDIS_STORAGE_BACKEND=OFF                                           \
+     -G Ninja ..
+
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
+
+    # Switch back to the main source directory
+    cd ..
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 {} +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
+
+    # Copy documentation
+    mkdir -p "${destdir}/$docsdir"
+    cp -p $docs "${destdir}/$docsdir"
+}
+
