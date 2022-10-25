@@ -20,7 +20,7 @@
     - [ ] GIMP:
       - [x] json-glib
       - [x] babl
-      - [ ] gegl
+      - [x] gegl
     - [x] Add Rust.
     - [x] Upgrade librsvg to latest version (requires Rust).
     - [ ] Bluetooth support.
