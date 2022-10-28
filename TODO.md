@@ -21,6 +21,7 @@
       - [x] json-glib
       - [x] babl
       - [x] gegl
+      - [x] glib-networking
     - [x] Add Rust.
     - [x] Upgrade librsvg to latest version (requires Rust).
     - [ ] Bluetooth support.
