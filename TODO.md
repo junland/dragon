@@ -22,6 +22,8 @@
       - [x] babl
       - [x] gegl
       - [x] glib-networking
+      - [x] exiv2 set
+      - [ ] mypaint-brushes, libmypaint
     - [x] Add Rust.
     - [x] Upgrade librsvg to latest version (requires Rust).
     - [ ] Bluetooth support.
