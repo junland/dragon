@@ -1,6 +1,6 @@
 # Build recipe for make.
 #
-# Copyright (c) 2016-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2020, 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=make
-version=4.3
+version=4.4
 release=1
 
 # Define a category for the output of the package name
@@ -27,7 +27,10 @@ pkgcategory=devel
 tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
-fetch=ftp://ftp.gnu.org/gnu/make/$tarname
+fetch="
+  https://mirror.cedia.org.ec/gnu/make/$tarname
+  ftp://ftp.gnu.org/gnu/make/$tarname
+"
 
 description="
 The weighted make.
@@ -58,7 +61,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
@@ -95,10 +99,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}/$docsdir"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}/$docsdir"
-    done
+    cp -p $docs "${destdir}/$docsdir"
 }
 
