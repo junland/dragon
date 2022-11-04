@@ -1,0 +1,37 @@
+From 02670b9418632d6d5c7143a6336d03fb4a05999e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Sl=C3=A1vek=20Banko?= <slavek.banko@axis.cz>
+Date: Fri, 4 Nov 2022 16:15:24 +0100
+Subject: Fix FTBFS when backtrace is not found.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+If backtrace is not found - for example, with Musl C library,
+then Backtrace_LIBRARY instead of empty value contains
+Backtrace_LIBRARY-NOT_FOUND. This results in all libraries
+listed in LINK_PRIVATE for tdecore-shared are ignored.
+
+This resolves FTBFS on Dragora and issue TDE/tde-packaging-gentoo#277.
+
+Signed-off-by: Slávek Banko <slavek.banko@axis.cz>
+---
+ CMakeLists.txt | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 6733ad83..38ce5f04 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -377,6 +377,9 @@ else ()
+   find_package( Backtrace )
+   if ( Backtrace_FOUND )
+     set ( HAVE_BACKTRACE 1 )
++  else ()
++    set ( Backtrace_LIBRARY "" )
++    set ( Backtrace_HEADER "" )
+   endif ()
+ endif ()
+ check_cxx_source_compiles( "#include <cxxabi.h>
+-- 
+cgit v1.2.1
+
