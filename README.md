@@ -10,5 +10,6 @@ durability.
 
 - Website: <https://www.dragora.org>
 - Mailing List: <https://lists.nongnu.org/mailman/listinfo/dragora-users>
+- Issue Tracker: <https://notabug.org/dragora/dragora/issues>
 
 For real-time feeback, join us on IRC (`#dragora` on `irc.libera.chat`).
