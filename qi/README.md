@@ -26,7 +26,7 @@ Requirements
 - A POSIX-compliant shell.
 
 - Graft for handling symlinks: https://peters.gormand.com.au/Home/tools
-  Alternatively from https://rsync.dragora.org/current/sources/
+  Alternatively from Dragora mirrors at https://www.dragora.org/
 
 - Perl in order to run Graft: https://www.perl.org
 
