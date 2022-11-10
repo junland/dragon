@@ -19,24 +19,24 @@ set -e
 
 program=rustc
 pkgname=rust
-version=1.63.0
+version=1.65.0
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=devel
 
-tarname=${program}-${version}-src.tar.xz
+tarname=${program}-${version}-src.tar.gz
 
 # Set remote source(s) according to the architecture/platform
 fetch=https://static.rust-lang.org/dist/$tarname
 
-RUSTFETCH_DATE=2022-06-30
+RUSTFETCH_DATE=2022-09-22
 
 case $arch in
 amd64 | x32 )
-    tarname_rust_std_platform=rust-std-1.62.0-x86_64-unknown-linux-musl.tar.xz
-    tarname_rustc_platform=rustc-1.62.0-x86_64-unknown-linux-musl.tar.xz
-    tarname_cargo_platform=cargo-1.62.0-x86_64-unknown-linux-musl.tar.xz
+    tarname_rust_std_platform=rust-std-1.64.0-x86_64-unknown-linux-musl.tar.xz
+    tarname_rustc_platform=rustc-1.64.0-x86_64-unknown-linux-musl.tar.xz
+    tarname_cargo_platform=cargo-1.64.0-x86_64-unknown-linux-musl.tar.xz
 
     fetch="
 $fetch
@@ -96,11 +96,12 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # Patches taken from "Void Linux", thanks!
     for file in "${worktree}"/patches/rust/*.patch
     do
         if test -f "$file"
         then
-            echo "Applying patch $file ..."
+            echo "    Applying patch $file ..."
             patch -Np1 -i "$file"
         fi
     done
@@ -126,8 +127,22 @@ build()
          -e "s|@docsdir@|$docsdir|" \
          -i config.toml
 
+    # Set flags prior to build
+
+    CPPFLAGS="$QICPPFLAGS"
+    CFLAGS="$QICFLAGS"
+    CXXFLAGS="$QICXXFLAGS"
+    LDFLAGS="$QILDFLAGS"
+
+    export CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
+
+    # Build and install Rust
+
     python3 ./x.py build
     DESTDIR="$destdir" python3 x.py install
+
+    unset -v CPPFLAGS CFLAGS CXXFLAGS LDFLAGS \
+     RUSTFETCH_DATE tarname_rust_std_platform tarname_rustc_platform tarname_cargo_platform
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
@@ -142,8 +157,5 @@ build()
             done
         )
     fi
-
-    # Unset established variables (previously)
-    unset -v RUSTFETCH_DATE tarname_rust_std_platform tarname_rustc_platform tarname_cargo_platform
 }
 
