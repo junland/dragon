@@ -19,7 +19,7 @@ set -e
 
 program=glib
 version=2.74.1
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -54,9 +54,18 @@ build()
 
     cd "$srcdir"
 
+    # Apply a fix from "Alpine Linux"
+    patch -Np1 -i "${worktree}/patches/glib2/0001-gquark-fix-initialization-with-c-constructors.patch"
+
     # Apply patch from "Beyond Linux From Scratch" to support 'GLIB_LOG_LEVEL'
     # which enables several warnings levels (Thank you!)
     patch -Np1 -i "${worktree}/patches/glib2/glib-2.74.0-skip_warnings-1.patch"
+
+    # Apply a fix from "Alpine Linux"
+    patch -Np1 -i "${worktree}/patches/glib2/0001-gslice-remove-slice-allocator.patch"
+
+    # Apply a fix from "Fedora"
+    patch -Np1 -i "${worktree}/patches/glib2/glib-2.74.1-revert-fd-handling.patch"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -75,6 +84,8 @@ build()
      -Dman=false \
      -Dgtk_doc=false \
      -Dselinux=disabled \
+     -Dtests=false \
+     -Dinstalled_tests=false \
      ..
 
     ninja -j${jobs}
