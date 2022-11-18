@@ -60,6 +60,10 @@ build()
 
     cd "$srcdir"
 
+    # Update for hosts based on musl
+    cp -f "${worktree}/archive/common/config.guess" config.guess
+    cp -f "${worktree}/archive/common/config.sub" config.sub
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
@@ -69,9 +73,11 @@ build()
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --without-krb5 \
+     --without-tcl \
      --with-interactive-spellcheck=aspell \
      --enable-quotas \
-     --enable-debug=no
+     --enable-debug=no \
+     --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
