@@ -30,7 +30,7 @@ tarname=${program}-${version}-src.tar.gz
 # Set remote source(s) according to the architecture/platform
 fetch=https://static.rust-lang.org/dist/$tarname
 
-RUSTFETCH_DATE=2022-09-22
+rustfetch_date=2022-09-22
 
 case $arch in
 amd64 | x32 )
@@ -40,9 +40,9 @@ amd64 | x32 )
 
     fetch="
 $fetch
-https://static.rust-lang.org/dist/${RUSTFETCH_DATE}/$tarname_rust_std_platform
-https://static.rust-lang.org/dist/${RUSTFETCH_DATE}/$tarname_rustc_platform
-https://static.rust-lang.org/dist/${RUSTFETCH_DATE}/$tarname_cargo_platform
+https://static.rust-lang.org/dist/${rustfetch_date}/$tarname_rust_std_platform
+https://static.rust-lang.org/dist/${rustfetch_date}/$tarname_rustc_platform
+https://static.rust-lang.org/dist/${rustfetch_date}/$tarname_cargo_platform
 "
     ;;
 i586)
@@ -52,9 +52,9 @@ i586)
 
     fetch="
 $fetch
-https://static.rust-lang.org/dist/${RUSTFETCH_DATE}/$tarname_rust_std_platform
-https://static.rust-lang.org/dist/${RUSTFETCH_DATE}/$tarname_rustc_platform
-https://static.rust-lang.org/dist/${RUSTFETCH_DATE}/$tarname_cargo_platform
+https://static.rust-lang.org/dist/${rustfetch_date}/$tarname_rust_std_platform
+https://static.rust-lang.org/dist/${rustfetch_date}/$tarname_rustc_platform
+https://static.rust-lang.org/dist/${rustfetch_date}/$tarname_cargo_platform
 "
     ;;
 esac
@@ -86,12 +86,12 @@ build()
 
     cd "$srcdir"
 
-    mkdir -p build/cache/$RUSTFETCH_DATE
+    mkdir -p build/cache/$rustfetch_date
     cp -f \
      "${tardir}/$tarname_rust_std_platform" \
      "${tardir}/$tarname_rustc_platform" \
      "${tardir}/$tarname_cargo_platform" \
-     build/cache/$RUSTFETCH_DATE
+     build/cache/$rustfetch_date
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -133,16 +133,17 @@ build()
     CFLAGS="$QICFLAGS"
     CXXFLAGS="$QICXXFLAGS"
     LDFLAGS="$QILDFLAGS"
+    RUST_BACKTRACE=1
 
-    export CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
+    export CPPFLAGS CFLAGS CXXFLAGS LDFLAGS RUST_BACKTRACE
 
     # Build and install Rust
 
     python3 ./x.py build
     DESTDIR="$destdir" python3 x.py install
 
-    unset -v CPPFLAGS CFLAGS CXXFLAGS LDFLAGS \
-     RUSTFETCH_DATE tarname_rust_std_platform tarname_rustc_platform tarname_cargo_platform
+    unset -v CPPFLAGS CFLAGS CXXFLAGS LDFLAGS RUST_BACKTRACE \
+     rustfetch_date tarname_rust_std_platform tarname_rustc_platform tarname_cargo_platform
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
