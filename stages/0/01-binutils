@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version=2.38
+version=2.38.20220801_dc2474e7d20
 
 cd -- "$TMPDIR"
 rm -rf binutils-${version}
@@ -44,7 +44,10 @@ patch -Np1 -i "${worktree}/patches/binutils/2.38/binutils-section-type.patch"
 patch -Np1 -i "${worktree}/patches/binutils/2.38/binutils-gas-loc-view.patch"
 patch -Np1 -i "${worktree}/patches/binutils/2.38/binutils-do-not-use-debuginfod.patch"
 
-patch -Np1 -i "${worktree}/patches/binutils/branch-updates.diff"
+# Binutils ships an outdated copy of libtool in the tarball.  It lacks sysroot support,
+# so the produced binaries will be mistakenly linked to libraries from the host distro.
+# (Thanks to "Linux From Scratch" for this!)
+#sed '6009s/$add_dir//' -i ltmain.sh
 
 # Build in a separate directory
 rm -rf ../binutils-build
@@ -66,6 +69,9 @@ CFLAGS="$BTCFLAGS" CXXFLAGS="$BTCXXFLAGS" LDFLAGS="$BTLDFLAGS" \
  --disable-nls \
  --disable-ppl-version-check \
  --disable-cloog-version-check \
+ --disable-gprofng \
+ --disable-gdb \
+ --with-mmap \
  --with-sysroot="${crossdir}/$target" \
  $multilib_options
 
