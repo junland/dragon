@@ -18,7 +18,7 @@
 set -e
 
 program=llvm
-version=13.0.1
+version=15.0.6
 release=1
 
 # Define a category for the output of the package name
@@ -27,12 +27,16 @@ pkgcategory=devel
 tarname=${program}-${version}.src.tar.xz
 tarname_clang=clang-${version}.src.tar.xz
 tarname_compilerrt=compiler-rt-${version}.src.tar.xz
+tarname_cmake=cmake-${version}.src.tar.xz
+tarname_libunwind=libunwind-${version}.src.tar.xz
 
 # Remote source(s)
 fetch="
  https://github.com/llvm/llvm-project/releases/download/llvmorg-${version}/$tarname
  https://github.com/llvm/llvm-project/releases/download/llvmorg-${version}/$tarname_clang
  https://github.com/llvm/llvm-project/releases/download/llvmorg-${version}/$tarname_compilerrt
+ https://github.com/llvm/llvm-project/releases/download/llvmorg-${version}/$tarname_cmake
+ https://github.com/llvm/llvm-project/releases/download/llvmorg-${version}/$tarname_libunwind
 "
 
 homepage=https://llvm.org
@@ -60,6 +64,9 @@ build()
 {
     unpack "${tardir}/$tarname"
 
+    unpack "${tardir}/$tarname_cmake"
+    mv -f cmake-${version}.src cmake
+
     cd "$srcdir"
 
     cd tools
@@ -72,8 +79,11 @@ build()
     unpack "${tardir}/$tarname_compilerrt"
     mv compiler-rt-${version}.src compiler-rt
 
+    unpack "${tardir}/$tarname_libunwind"
+    mv libunwind-${version}.src libunwind
+
     cd ..
-    unset -v tarname_clang tarname_compilerrt
+    unset -v tarname_clang tarname_compilerrt tarname_cmake tarname_libunwind
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -81,26 +91,53 @@ build()
     # Make sure to point to Python version 3 (Thanks to BLFS!)
     grep -rl '#!.*python' | xargs sed -i '1s/python$/python3/'
 
-    # Set the SANITIZER flag to TRUE for Musl
-    patch -p0 < "${worktree}/patches/llvm/compiler_rt_sanitizer.diff"
+    # Apply a patch from "Alpine Linux"
+    patch -p2 < "${worktree}/patches/llvm/0001-Disable-dynamic-lib-tests-for-musl-s-dlclose-is-noop.patch"
+
+    # Another patch from "Alpine Linux" in order to set the installation prefix, *sigh*
+    patch -p2 < "${worktree}/patches/llvm/install-prefix.patch"
+
+    # Enable SSP in Clang by default (Thanks to BLFS!)
+    (
+        cd tools/clang && \
+         patch -Np2 < "${worktree}/patches/llvm/clang-15.0.6-enable_default_ssp-1.patch"
+    )
+
+    # More patches taken from "Chimera Linux" in order to fix ("hell of") build issues
+    (
+        cd projects && \
+         patch -p1 < "${worktree}/patches/llvm/chimera/0022-HACK-force-link-sanitizers-with-libexecinfo.patch"
+    )
 
     rm -rf BUILD
     mkdir BUILD
     cd BUILD
 
-    cmake CC=gcc CXX=g++ \
+    # Thanks to "Slackware Linux" for this instructions
+    mkdir -p include
+    # Copy this LLVM libunwind header or it won't be found:
+    cp -Rpf ../projects/libunwind/include/mach-o include
+    # Nuke LLVM libunwind as it conflicts with the one already on the system:
+    rm -r ../projects/libunwind
+
+    cmake \
+     -DCMAKE_C_COMPILER="gcc"                                              \
+     -DCMAKE_CXX_COMPILER="g++"                                            \
      -DCMAKE_C_FLAGS_RELEASE:STRING="$QICFLAGS"                            \
      -DCMAKE_CXX_FLAGS_RELEASE:STRING="$QICXXFLAGS"                        \
-     -DCMAKE_EXE_LINKER_FLAGS:STRING="$QILDFLAGS -Wl,--no-keep-memory"     \
-     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$QILDFLAGS -Wl,--no-keep-memory"  \
+     -DCMAKE_EXE_LINKER_FLAGS:STRING="$QILDFLAGS"                          \
+     -DCMAKE_SHARED_LINKER_FLAGS:STRING="$QILDFLAGS"                       \
      -DCMAKE_INSTALL_PREFIX=/usr                                           \
      -DLLVM_LIBDIR_SUFFIX=${libSuffix}                                     \
      -DLLVM_BINUTILS_INCDIR=/usr/include                                   \
+     -DLLVM_TARGETS_TO_BUILD="host;AMDGPU;BPF"                             \
+     -DLLVM_USE_LINKER=gold                                                \
      -DCMAKE_INSTALL_MANDIR=$mandir                                        \
      -DCMAKE_INSTALL_DOCDIR=$docsdir                                       \
      -DCMAKE_BUILD_TYPE=Release                                            \
      -DLLVM_BUILD_LLVM_DYLIB=ON                                            \
      -DLLVM_LINK_LLVM_DYLIB=ON                                             \
+     -DCLANG_LINK_CLANG_DYLIB=ON                                           \
      -DLLVM_ENABLE_FFI=ON                                                  \
      -DLLVM_ENABLE_RTTI=ON                                                 \
      -DLLVM_ENABLE_ZLIB=ON                                                 \
@@ -109,6 +146,7 @@ build()
      -DLLVM_APPEND_VC_REV=OFF                                              \
      -DLLVM_PARALLEL_COMPILE_JOBS=$jobs                                    \
      -DLLVM_INCLUDE_BENCHMARKS=OFF                                         \
+     -DCOMPILER_RT_BUILD_LIBFUZZER=OFF                                     \
      -G Ninja ..
 
     ninja -j${jobs}
