@@ -1,7 +1,7 @@
 # Build recipe for mesa.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2021 Matias Fonzo <selk@dragora.org>.
+# Copyright (c) 2017-2022 Matias Fonzo <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 set -e
 
 program=mesa
-version=21.2.5
-release=3
+version=22.3.0
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=xorg_mesa
@@ -41,7 +41,7 @@ homepage=https://www.mesa3d.org/
 license=MIT
 
 # Source documentation
-docs="README* REVIEWERS VERSION"
+docs="CODEOWNERS README.rst VERSION"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -50,16 +50,8 @@ build()
 
     cd "$srcdir"
 
-    # To increment compatibility with Musl (Thanks to "Alpine Linux")
-    patch -p1 < "${worktree}/patches/mesa/musl-fix-includes.patch"
-    patch -p1 < "${worktree}/patches/mesa/add-use-elf-tls.patch"
-
     # To provide a few xdemos (Thanks to BLFS!)
-    patch -p1 < "${worktree}/patches/mesa/mesa-21.2.4-add_xdemos-1.patch"
-
-    MESA_GIT_SHA1_OVERRIDE='53b2b224dc2de982c37915a0ad218e33365ff75e'
-    export MESA_GIT_SHA1_OVERRIDE
-    python3 bin/git_sha1_gen.py --output include/git_sha1.h
+    patch -p1 < "${worktree}/patches/mesa/mesa-22.2.4-add_xdemos-1.patch"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -80,23 +72,21 @@ build()
      --libdir /usr/lib${libSuffix} \
      --buildtype=release \
      --strip \
+     -Ddri-drivers-path=/usr/lib${libSuffix}/dri \
      -Dplatforms=x11 \
-     -Ddri-drivers="i915,i965,r100,r200,nouveau" \
-     -Dgallium-drivers="nouveau,r300,r600,svga,radeonsi,swrast,virgl,iris,crocus" \
-     -Dglx=dri \
-     -Dosmesa=true \
-     -Dllvm=enabled \
-     -Dshared-llvm=enabled \
-     -Dgallium-xvmc=enabled \
-     -Dgallium-va=enabled \
-     -Dgallium-xa=disabled \
-     -Dgallium-vdpau=enabled \
+     -Dgallium-drivers=auto \
+     -Dvulkan-drivers="" \
+     -Dlmsensors=enabled \
      -Dgles1=enabled \
      -Dgles2=enabled \
+     -Dosmesa=true \
      -Dopengl=true \
-     -Dlmsensors=enabled \
      -Dgallium-nine=true \
+     -Dllvm=enabled \
+     -Dshared-llvm=enabled \
+     -Dshared-glapi=enabled \
      -Dvalgrind=disabled \
+     -Dlibunwind=disabled \
      $_extra_options \
      ..
 
