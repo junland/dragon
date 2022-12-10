@@ -19,7 +19,7 @@ set -e
 
 program=rustc
 pkgname=rust
-version=1.65.0
+version=1.64.0
 release=1
 
 # Define a category for the output of the package name
@@ -30,14 +30,13 @@ tarname=${program}-${version}-src.tar.gz
 # Set remote source(s) according to the architecture/platform
 fetch=https://static.rust-lang.org/dist/$tarname
 
-rustfetch_date=2022-09-22
+rustfetch_date=2022-08-11
 
 case $arch in
 amd64 | x32 )
-    tarname_rust_std_platform=rust-std-1.64.0-x86_64-unknown-linux-musl.tar.xz
-    tarname_rustc_platform=rustc-1.64.0-x86_64-unknown-linux-musl.tar.xz
-    tarname_cargo_platform=cargo-1.64.0-x86_64-unknown-linux-musl.tar.xz
-
+    tarname_rust_std_platform=rust-std-1.63.0-x86_64-unknown-linux-musl.tar.xz
+    tarname_rustc_platform=rustc-1.63.0-x86_64-unknown-linux-musl.tar.xz
+    tarname_cargo_platform=cargo-1.63.0-x86_64-unknown-linux-musl.tar.xz
     fetch="
 $fetch
 https://static.rust-lang.org/dist/${rustfetch_date}/$tarname_rust_std_platform
@@ -96,8 +95,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Patches taken from "Void Linux", thanks!
-    for file in "${worktree}"/patches/rust/*.patch
+    # Apply patches taken from "Void Linux" (Thanks!)
+    for file in "${worktree}"/patches/rust/void/*.patch
     do
         if test -f "$file"
         then
@@ -133,17 +132,25 @@ build()
     CFLAGS="$QICFLAGS"
     CXXFLAGS="$QICXXFLAGS"
     LDFLAGS="$QILDFLAGS"
-    RUST_BACKTRACE=1
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+    RUST_BACKTRACE=full
 
-    export CPPFLAGS CFLAGS CXXFLAGS LDFLAGS RUST_BACKTRACE
+    RUSTFLAGS="$RUSTFLAGS -C link-args=-lffi"
+
+    export CPPFLAGS CFLAGS CXXFLAGS LDFLAGS SSL_CERT_FILE RUST_BACKTRACE RUSTFLAGS
 
     # Build and install Rust
 
     python3 ./x.py build
     DESTDIR="$destdir" python3 x.py install
 
-    unset -v CPPFLAGS CFLAGS CXXFLAGS LDFLAGS RUST_BACKTRACE \
+    unset -v CPPFLAGS CFLAGS CXXFLAGS LDFLAGS SSL_CERT_FILE RUST_BACKTRACE RUSTFLAGS \
      rustfetch_date tarname_rust_std_platform tarname_rustc_platform tarname_cargo_platform
+
+    # Strip remaining binaries and libraries
+    find "$destdir" -type f | xargs file | \
+     awk '/ELF/ && /executable/ || /shared object/' | \
+      cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
