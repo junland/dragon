@@ -18,7 +18,7 @@
 set -e
 
 program=alsa-plugins
-version=1.2.6
+version=1.2.7.1
 release=1
 
 # Define a category for the output of the package name
@@ -27,7 +27,7 @@ pkgcategory=libs
 tarname=${program}-${version}.tar.bz2
 
 # Remote source(s)
-fetch=ftp://ftp.alsa-project.org/pub/plugins/$tarname
+fetch=https://www.alsa-project.org/files/pub/plugins/$tarname
 
 description="
 Plugins for ALSA.
@@ -52,8 +52,9 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     $configure_args --build="$(gcc -dumpmachine)"
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+     CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+      $configure_args --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install

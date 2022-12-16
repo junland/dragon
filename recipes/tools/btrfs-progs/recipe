@@ -18,8 +18,8 @@
 set -e
 
 program=btrfs-progs
-version=5.16
-release=2
+version=6.0.2
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -53,9 +53,6 @@ build()
 
     cd "$srcdir"
 
-    # Fix conflict with the sysinfo definition under Musl
-    patch -Np1 -i "${worktree}/patches/btrfs-progs/sysinfo-glibc.patch"
-
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
@@ -68,7 +65,9 @@ build()
      --docdir=$docsdir \
      --enable-zstd \
      --disable-backtrace \
+     --disable-documentation \
      --with-convert=ext2 \
+     --with-crypto=libgcrypt \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
