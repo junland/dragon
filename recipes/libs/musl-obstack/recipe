@@ -1,6 +1,6 @@
 # Build recipe for musl-obstack.
 #
-# Copyright (c) 2020-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2020-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=musl-obstack
-version=1.2.2
+version=1.2.3
 release=1
 
 # Define a category for the output of the package name
@@ -55,10 +55,11 @@ build()
 
     sh ./bootstrap.sh
 
-   ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS -fPIC" LDFLAGS="$QILDFLAGS" \
-     $configure_args \
-     --libdir=/usr/lib${libSuffix} \
-     --build="$(gcc -dumpmachine)"
+   ./configure CPPFLAGS="$QICPPFLAGS" \
+   CFLAGS="$QICFLAGS -fPIC" LDFLAGS="$QILDFLAGS" \
+    $configure_args \
+    --libdir=/usr/lib${libSuffix} \
+    --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install-strip

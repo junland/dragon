@@ -1,6 +1,7 @@
 # Build recipe for mpfr.
 #
 # Copyright (c) 2015-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +19,8 @@
 set -e
 
 program=mpfr
-version=4.1.0
-release=2
+version=4.1.1
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -63,11 +64,8 @@ build()
         fi
     done
 
-    # Avoid texinfo usage, we do not provide it on the early process
-    touch doc/mpfr.info
-
-    ./configure \
-    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
     MAKEINFO="true" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
@@ -78,9 +76,8 @@ build()
      --enable-thread-safe \
      --build="$(gcc -dumpmachine)"
 
-    make -j${jobs} MAKEINFO="true"
-    make -j${jobs} check
-    make -j${jobs} MAKEINFO="true" DESTDIR="$destdir" install-strip
+    make -j${jobs}
+    make -j${jobs} DESTDIR="$destdir" install-strip
 
     # Compress info documents deleting index file for the package
     if test -d "${destdir}/$infodir"

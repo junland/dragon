@@ -1,6 +1,7 @@
 # Build recipe for libaio.
 #
 # Copyright (c) 2018-2020 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,13 +19,13 @@
 set -e
 
 program=libaio
-version=0.3.112
-release=3
+version=0.3.113
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=libs
 
-tarname=${program}_${version}.orig.tar.xz
+tarname=${program}_${version}.orig.tar.gz
 
 # Remote source(s)
 fetch=https://ftp.debian.org/debian/pool/main/liba/libaio/$tarname
@@ -55,20 +56,13 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Apply patches from Debian, upstream to refresh this source
-    while read -r line
-    do
-        case $line in
-        *.patch)
-            patch -Np1 -i "${worktree}/patches/libaio/${line}"
-            ;;
-        esac
-    done < "${worktree}/patches/libaio/series"
-
-    make CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS -fno-stack-protector" LDFLAGS="$QILDFLAGS" \
-         prefix="${destdir}/usr" \
-         libdir="${destdir}/usr/lib${libSuffix}" \
-         install
+    make \
+     CPPFLAGS="$QICPPFLAGS" \
+     CFLAGS="$QICFLAGS -fno-stack-protector" \
+     LDFLAGS="$QILDFLAGS" \
+     prefix="${destdir}/usr" \
+     libdir="${destdir}/usr/lib${libSuffix}" \
+     install
 
     # Copy documentation
     mkdir -p "${destdir}/$docsdir"
