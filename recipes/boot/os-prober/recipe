@@ -1,6 +1,7 @@
 # Build recipe for os-prober.
 #
 # Copyright (c) 2019, 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +19,7 @@
 set -e
 
 program=os-prober
-version=1.79
+version=1.81
 release=1
 
 # Define a category for the output of the package name
@@ -43,9 +44,6 @@ license=GPLv2+
 docs="README TODO debian/changelog debian/copyright"
 docsdir="${docdir}/${program}-${version}"
 
-# The source directory has a custom name
-srcdir=${program}
-
 build()
 {
     unpack "${tardir}/$tarname"
@@ -54,18 +52,17 @@ build()
 
     # Import patches from Fedora to make os-prober more reliable
     patch -Np1 -i "${worktree}/patches/os-prober/os-prober-no-dummy-mach-kernel.patch"
+
     # Sent upstream
     patch -Np1 -i "${worktree}/patches/os-prober/os-prober-mdraidfix.patch"
     patch -Np1 -i "${worktree}/patches/os-prober/os-prober-btrfsfix.patch"
     patch -Np1 -i "${worktree}/patches/os-prober/os-prober-bootpart-name-fix.patch"
     patch -Np1 -i "${worktree}/patches/os-prober/os-prober-mounted-partitions-fix.patch"
     patch -Np1 -i "${worktree}/patches/os-prober/os-prober-factor-out-logger.patch"
+
     # To be sent upstream
     patch -Np1 -i "${worktree}/patches/os-prober/os-prober-factored-logger-efi-fix.patch"
     patch -Np1 -i "${worktree}/patches/os-prober/os-prober-umount-fix.patch"
-    patch -Np1 -i "${worktree}/patches/os-prober/os-prober-grub2-parsefix.patch"
-    patch -Np1 -i "${worktree}/patches/os-prober/os-prober-grepfix.patch"
-    patch -Np1 -i "${worktree}/patches/os-prober/os-prober-gentoo-fix.patch"
 
     # Use 'libsuffix' if defined
     if test -n "$libSuffix"

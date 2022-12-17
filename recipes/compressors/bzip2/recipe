@@ -1,6 +1,7 @@
 # Build recipe for bzip2.
 #
 # Copyright (c) 2016-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +19,8 @@
 set -e
 
 program=bzip2
-version=1.0.6
-release=2
+version=1.0.8
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=compressors
@@ -28,8 +29,9 @@ tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
 fetch="
-https://mirror.fsf.org/dragora/v3/sources/$tarname
-https://www.bzip.org/${version}/$tarname
+ https://sourceware.org/pub/bzip2/$tarname
+ https://mirror.fsf.org/dragora/v3/sources/$tarname
+ https://www.bzip.org/${version}/$tarname
 "
 
 description="
@@ -74,24 +76,24 @@ build()
     # Build bzip2.
     #
     # Provide shared libraries for third party programs
-    make -f Makefile-libbz2_so
+    make CFLAGS="-fpic -fPIC -Wall -Winline $QICFLAGS -D_FILE_OFFSET_BITS=64" -f Makefile-libbz2_so
     make clean
 
     # Recompile program for static linking
-    make LDFLAGS="$QILDFLAGS -static"
+    make CFLAGS="-fpic -fPIC -Wall -Winline $QICFLAGS -D_FILE_OFFSET_BITS=64" LDFLAGS="$QILDFLAGS -static"
     make PREFIX="${destdir}/usr" install
 
     # Copy shared libraries into package destination
     cp -f -p libbz2.so* "${destdir}/usr/lib${libSuffix}"
 
     # Library measurement
-    strip -s "${destdir}/usr/lib${libSuffix}/libbz2.so.1.0.6"
+    strip -s "${destdir}/usr/lib${libSuffix}/libbz2.so.${version}"
 
     # Make soft links providing compatibility
     (
         cd "${destdir}/usr/lib${libSuffix}" || exit 1
-        ln -sf libbz2.so.1.0.6 libbz2.so.1.0
-        ln -sf libbz2.so.1.0.6 libbz2.so
+        ln -sf libbz2.so.${version} libbz2.so.1.0
+        ln -sf libbz2.so.${version} libbz2.so
     )
 
     # Compress and link man pages (if needed)
@@ -110,10 +112,6 @@ build()
 
     # Copy the rest of the documentation
     mkdir -p "${destdir}/$docsdir"
-
-    for file in $docs
-    do
-        cp -p $file "${destdir}/$docsdir"
-    done
+    cp -p $docs "${destdir}/$docsdir"
 }
 

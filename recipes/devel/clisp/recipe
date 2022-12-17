@@ -19,7 +19,7 @@
 set -e
 
 program=clisp
-version=20210628_de01f0f47;	# From https://gitlab.com/gnu-clisp/clisp
+version=20221021_1d0d0e998;	# From https://gitlab.com/gnu-clisp/clisp
 release=1
 
 # Define a category for the output of the package name
@@ -57,6 +57,9 @@ license=GPLv2+
 docs="ANNOUNCE COPYRIGHT GNU-GPL HACKING SUMMARY"
 docsdir="${docdir}/${program}-${version}"
 
+# Limit parallel jobs of this build, otherwise ends in error
+jobs=1
+
 build()
 {
     unpack "${tardir}/$tarname"
@@ -71,6 +74,9 @@ build()
     mkdir BUILD
     cd BUILD
 
+    # Bogus files in order to continue with the build
+    touch clisp.pdf clisp-link.pdf
+
     ../configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" \
     LDFLAGS="$QILDFLAGS" \
     FORCE_UNSAFE_CONFIGURE=1 \
@@ -79,16 +85,19 @@ build()
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --docdir=$docsdir \
-     --disable-rpath \
      --with-dynamic-ffi \
      --with-module=berkeley-db \
      --with-module=gdbm \
      --with-module=pcre \
      --with-module=zlib \
+     --disable-mmap \
      --build="$(gcc -dumpmachine)"
 
-    make -j${jobs} V=1
+    make -j${jobs} V=1 all
     make -j${jobs} DESTDIR="$destdir" install
+
+    # Remove previous bogus files from the documentation
+    rm -f "${destdir}/$docsdir"/*.pdf
 
     cd ..
 
