@@ -1,6 +1,6 @@
 # Build recipe for iptables.
 #
-# Copyright (c) 2017-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=iptables
-version=1.8.7
+version=1.8.8
 release=1
 
 # Define a category for the output of the package name
@@ -56,10 +56,15 @@ build()
 
     cd "$srcdir"
 
+    # Apply fixes from "Alpine Linux" in order to build IPTables against Musl
+    patch -Np1 -i "${worktree}/patches/iptables/fix-u_int16_t.patch"
+    patch -Np1 -i "${worktree}/patches/iptables/fix-xtables.patch"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS -D_GNU_SOURCE" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --docdir=$docsdir \
