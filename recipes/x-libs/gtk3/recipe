@@ -19,7 +19,7 @@
 set -e
 
 program=gtk+
-version=3.24.31
+version=3.24.36
 release=1
 
 # Define a category for the output of the package name
@@ -39,15 +39,15 @@ fetch="
 description="
 The version 3 of the GTK+ toolkit.
 
-The GTK+3 package contains libraries used for creating graphical user
-interfaces for applications.
+The GTK+3 package contains libraries used for creating graphical
+user interfaces for applications.
 "
 
 homepage=https://www.gtk.org
 license=GPLv2+
 
 # Copy documentation
-docs="AUTHORS COPYING NEWS README* HACKING"
+docs="CONTRIBUTING.md COPYING NEWS README.md"
 docsdir="${docdir}/${pkgname}-${version}"
 
 build()
@@ -63,8 +63,6 @@ build()
     mkdir BUILD
     cd BUILD
 
-    # TODO: cups: -Dprint_backends="file,lpr,cups"
-
     CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
     meson setup $configure_args \
      --libdir=lib${libSuffix} \
@@ -78,6 +76,7 @@ build()
      -Dbroadway_backend=true \
      -Dwayland_backend=false \
      -Dxinerama=yes \
+     -Dprint_backends="file,lpr,cups" \
      ..
 
     ninja -j${jobs}

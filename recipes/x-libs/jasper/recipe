@@ -18,7 +18,7 @@
 set -e
 
 program=jasper
-version=2.0.33
+version=4.0.0
 release=1
 
 # Define a category for the output of the package name
@@ -27,7 +27,7 @@ pkgcategory=x-libs
 tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
-fetch=https://github.com/jasper-software/jasper/releases/download/version-${version}/$tarname
+fetch=https://github.com/jasper-software/jasper/releases/download/version-${version}-rc1/$tarname
 
 description="
 Jasper image processing toolkit.
@@ -40,7 +40,7 @@ homepage=https://www.ece.uvic.ca/~frodo/jasper/
 license=Custom
 
 # Source documentation
-docs="COPYRIGHT LICENSE README"
+docs="COPYRIGHT.txt LICENSE.txt NEWS.txt README.md"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -48,10 +48,6 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
-
-    # Fix a problem that happens due to cmake-3.22
-    # Thanks to "Beyond Linux From Scratch"
-    sed -i '/GLUT_glut_LIBRARY/s/^/#/' build/cmake/modules/JasOpenGL.cmake
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
