@@ -19,14 +19,14 @@
 set -e
 
 program=xkeyboard-config
-version=2.34
+version=2.37
 arch=noarch
-release=2
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=xorg_data
 
-tarname=${program}-${version}.tar.bz2
+tarname=${program}-${version}.tar.xz
 
 # Remote source(s)
 fetch=https://www.x.org/releases/individual/data/xkeyboard-config/$tarname
@@ -41,7 +41,7 @@ homepage=https://www.x.org
 license="MIT X Consortium"
 
 # Source documentation
-docs="AUTHORS COPYING ChangeLog NEWS README"
+docs="AUTHORS COPYING ChangeLog NEWS README*"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -53,14 +53,24 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure $configure_args \
-     --docdir=$docsdir \
-     --enable-compat-rules \
-     --with-xkb-base=/etc/X11/xkb \
-     --with-xkb-rules-symlink=xfree86,xorg
+    rm -rf BUILD
+    mkdir BUILD
+    cd BUILD
 
-    make -j${jobs} V=1
-    make -j${jobs} DESTDIR="$destdir" install
+    CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    meson setup $configure_args \
+     --libdir /usr/lib${libSuffix} \
+     --buildtype=release \
+     --strip \
+     -Dxkb-base=/etc/X11/xkb \
+     -Dcompat-rules=true \
+     -Dxorg-rules-symlinks=true \
+     ..
+
+    ninja -j${jobs}
+    DESTDIR="$destdir" ninja -j${jobs} install
+
+    cd ..
 
     # To manage .new files via graft(1)
     find "${destdir}"/etc/X11/xkb -type d -print | while read -r directory

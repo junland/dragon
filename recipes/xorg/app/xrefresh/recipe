@@ -1,7 +1,7 @@
 # Build recipe for xrefresh.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2018 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018, 2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,13 +19,13 @@
 set -e
 
 program=xrefresh
-version=1.0.6
+version=1.0.7
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=xorg_app
 
-tarname=${program}-${version}.tar.bz2
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
 fetch=https://www.x.org/releases/individual/app/$tarname
@@ -33,15 +33,15 @@ fetch=https://www.x.org/releases/individual/app/$tarname
 description="
 Refresh all or part of an X screen.
 
-xrefresh is a simple X program that causes all or part of your screen
-to be repainted.
+xrefresh is a simple X program that causes all or part
+of your screen to be repainted.
 "
 
 homepage=https://www.x.org
 license="MIT X Consortium"
 
 # Source documentation
-docs="COPYING ChangeLog README"
+docs="COPYING ChangeLog README.md"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -53,7 +53,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
@@ -87,13 +88,6 @@ build()
 
     # Copy documentation
     mkdir -p "${destdir}/$docsdir"
-
-    for file in $docs
-    do
-        if test -e $file
-        then
-            cp -p $file "${destdir}/$docsdir"
-        fi
-    done
+    cp -p $docs "${destdir}/$docsdir"
 }
 
