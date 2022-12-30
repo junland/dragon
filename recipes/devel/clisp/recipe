@@ -1,7 +1,7 @@
 # Build recipe for clisp.
 #
 # Copyright (c) 2017 MMPG, <mmpg@vp.pl>.
-# Copyright (c) 2017, 2019-2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017, 2019-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 set -e
 
 program=clisp
-version=20221021_1d0d0e998;	# From https://gitlab.com/gnu-clisp/clisp
+version=20221228_957c79a25;	# From https://gitlab.com/gnu-clisp/clisp
 release=1
 
 # Define a category for the output of the package name
@@ -83,8 +83,10 @@ build()
      --srcdir=../ \
      --prefix=/usr \
      --libdir=/usr/lib${libSuffix} \
+     --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --disable-rpath \
      --with-dynamic-ffi \
      --with-module=berkeley-db \
      --with-module=gdbm \
@@ -93,13 +95,20 @@ build()
      --disable-mmap \
      --build="$(gcc -dumpmachine)"
 
-    make -j${jobs} V=1 all
-    make -j${jobs} DESTDIR="$destdir" install
+    make -j${jobs} V=1 mandir=$mandir infodir=$infodir all
+    make -j${jobs} mandir=$mandir infodir=$infodir DESTDIR="$destdir" install
 
     # Remove previous bogus files from the documentation
     rm -f "${destdir}/$docsdir"/*.pdf
 
     cd ..
+
+    # Compress info documents deleting index file for the package
+    if test -d "${destdir}/$infodir"
+    then
+        rm -f "${destdir}/${infodir}/dir"
+        lzip -9 "${destdir}/${infodir}"/*
+    fi
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
