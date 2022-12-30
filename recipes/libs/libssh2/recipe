@@ -1,6 +1,6 @@
 # Build recipe for libssh2.
 #
-# Copyright (c) 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2021-2022 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 
 program=libssh2
 version=1.10.0
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -30,10 +30,10 @@ tarname=${program}-${version}.tar.gz
 fetch=https://www.libssh2.org/download/$tarname
 
 description="
-A SSH library.
+A SSH (version 2) library.
 
 The libssh2 package is a client-side C library implementing
-the SSH2 protocol.
+the SSH (version 2) protocol.
 "
 
 homepage=https://www.libssh2.org
@@ -49,6 +49,10 @@ build()
 
     cd "$srcdir"
 
+    # Apply a patch to fix incompatibility with recent OpenSSH releases
+    # Thanks to "Beyond Linux From Scratch"!
+    patch -Np1 -i "${worktree}/patches/libssh2/libssh2-1.10.0-upstream_fix-1.patch"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
@@ -61,6 +65,8 @@ build()
      --docdir=$docsdir \
      --enable-static=yes \
      --enable-shared=yes \
+     --with-crypto=libgcrypt \
+     --with-libz \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
