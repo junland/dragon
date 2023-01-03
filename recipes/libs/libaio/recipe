@@ -20,7 +20,7 @@ set -e
 
 program=libaio
 version=0.3.113
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -53,16 +53,23 @@ build()
 
     cd "$srcdir"
 
+    # Apply patches from "Alpine Linux" in order to improve it
+    # A huge thanks to the authors of the patches
+    patch -Np1 -i "${worktree}/patches/libaio/libaio-cppflags.patch"
+    patch -Np1 -i "${worktree}/patches/libaio/libaio-errno.patch"
+    patch -Np1 -i "${worktree}/patches/libaio/test.patch"
+    patch -Np1 -i "${worktree}/patches/libaio/test-poll.patch"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    make \
-     CPPFLAGS="$QICPPFLAGS" \
-     CFLAGS="$QICFLAGS -fno-stack-protector" \
-     LDFLAGS="$QILDFLAGS" \
-     prefix="${destdir}/usr" \
-     libdir="${destdir}/usr/lib${libSuffix}" \
-     install
+    make V=1 -j${jobs} \
+     prefix=/usr \
+     libdir=/usr/lib${libSuffix} \
+     DESTDIR="$destdir" install
+
+    strip --strip-unneeded "${destdir}/usr/lib${libSuffix}"/*.so || true
+    strip --strip-debug "${destdir}/usr/lib${libSuffix}"/*.a || true
 
     # Copy documentation
     mkdir -p "${destdir}/$docsdir"
