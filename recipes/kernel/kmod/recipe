@@ -1,7 +1,7 @@
 # Build recipe for kmod.
 #
 # Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
-# Copyright (c) 2021-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2021-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 
 program=kmod
 version=29
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=kernel
@@ -54,16 +54,10 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Add support for Kernel modules compressed with LZIP
-    patch -p1 < "${worktree}/patches/kmod/kmod-29_lzip-0.diff"
-
-    autoreconf -vif
-
     # --enable-static is not supported by kmod
 
     ./configure CPPFLAGS="$QICPPFLAGS" \
     CFLAGS="$QICFLAGS" LDFLAGS="$QILDFLAGS" \
-     lzlib_LIBS="-llz" lzlib_CFLAGS="-llz" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
@@ -75,8 +69,6 @@ build()
      --with-rootlibdir=/usr/lib${libSuffix} \
      --with-openssl \
      --with-zlib \
-     --with-lzlib \
-     --without-xz \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
