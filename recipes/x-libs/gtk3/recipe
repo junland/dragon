@@ -1,7 +1,7 @@
 # Build recipe for GTK+3.
 #
 # Copyright (C) 2018, MMPG <mmpg@vp.pl>
-# Copyright (C) 2018-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2018-2019, 2021-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 
 program=gtk+
 version=3.24.36
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=x-libs
@@ -59,6 +59,14 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
+    # Set default backends, detect CUPS
+    print_backends=file,lpr
+
+    if type cupsd
+    then
+        print_backends=file,lpr,cups
+    fi
+
     rm -rf BUILD
     mkdir BUILD
     cd BUILD
@@ -76,9 +84,10 @@ build()
      -Dbroadway_backend=true \
      -Dwayland_backend=false \
      -Dxinerama=yes \
-     -Dprint_backends="file,lpr,cups" \
+     -Dprint_backends="$print_backends" \
      ..
 
+    unset -v print_backends
     ninja -j${jobs}
     DESTDIR="$destdir" ninja -j${jobs} install
 
