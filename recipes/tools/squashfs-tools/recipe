@@ -1,6 +1,6 @@
 # Build recipe for squashfs-tools.
 #
-# Copyright (c) 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2021, 2023 Matias Fonzo, <selk@dragora.org>.
 # Copyright (c) 2022 DustDFG, <dfgdust@gmail.com>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,18 +18,21 @@
 # Exit immediately on any error
 set -e
 
-program=squashfs
-pkgname=squashfs-tools
-version=4.5
+program=squashfs-tools
+version=20221209_c901403
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=tools
 
-tarname=${program}${version}.tar.gz
+tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
-fetch=https://downloads.sourceforge.net/project/squashfs/squashfs/squashfs${version}/$tarname
+#fetch=https://downloads.sourceforge.net/project/squashfs/squashfs/squashfs${version}/$tarname
+fetch="
+ https://dragora.mirror.garr.it/current/sources/$tarname
+ rsync://rsync.dragora.org/current/sources/$tarname
+"
 
 description="
 Tools to create and extract Squashfs filesystems.
@@ -42,13 +45,10 @@ license=GPLv2+
 
 # Source documentation
 docs="
-  ACKNOWLEDGEMENTS ACTIONS-README CHANGES COPYING README-${version} USAGE
+  ACKNOWLEDGEMENTS ACTIONS-README CHANGES COPYING README* USAGE
   RELEASE-READMEs/DONATIONS RELEASE-READMEs/pseudo-file.example
 "
-docsdir="${docdir}/${pkgname}-${version}"
-
-# The source has a custom directory
-srcdir=${pkgname}-${version}
+docsdir="${docdir}/${program}-${version}"
 
 build()
 {
@@ -57,7 +57,7 @@ build()
     cd "$srcdir"
 
     # Apply a patch to include LZIP support
-    patch -p1 < "${worktree}/patches/squashfs-tools/squashfs-tools-4.5_lzip-0.diff"
+    patch -p1 < "${worktree}/patches/squashfs-tools/squashfs-tools-20221209_c901403_lzip-0.diff"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -68,9 +68,9 @@ build()
      GZIP_SUPPORT=1 \
      LZIP_SUPPORT=1 \
      XZ_SUPPORT=1 \
-     LZO_SUPPORT=0 \
+     LZO_SUPPORT=1 \
      LZ4_SUPPORT=0 \
-     ZSTD_SUPPORT=0 \
+     ZSTD_SUPPORT=1 \
      COMP_DEFAULT=lzip \
      XATTR_SUPPORT=1 \
      install INSTALL_DIR="${destdir}/usr/bin"
