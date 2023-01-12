@@ -1,6 +1,6 @@
 # Build recipe for lzlib.
 #
-# Copyright (c) 2017-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 
 program=lzlib
 version=1.13
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -69,6 +69,24 @@ build()
     make -j${jobs}
     make -j${jobs} DESTDIR="$destdir" install
     make -j${jobs} DESTDIR="$destdir" install-bin;	# Install "minilzip".
+
+    # Write a pkg-config file to satisfy "kmod" (oh, touch me!)
+    mkdir -p "${destdir}/usr/lib${libSuffix}/pkgconfig"
+    cat << EOF >> "${destdir}/usr/lib${libSuffix}/pkgconfig/lzlib.pc"
+prefix=/usr
+exec_prefix=\${prefix}
+libdir=/usr/lib\${libSuffix}
+sharedlibdir=\${libdir}
+includedir=\${prefix}/include
+
+Name: lzlib
+Description: a compression library for the lzip file format
+Version: $version
+
+Requires:
+Libs: -L\${libdir} -L\${sharedlibdir} -llz
+Cflags: -I\${includedir}
+EOF
 
     # Compress texinfo documents
 
