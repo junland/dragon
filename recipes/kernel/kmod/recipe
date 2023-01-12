@@ -19,8 +19,8 @@
 set -e
 
 program=kmod
-version=29
-release=2
+version=30
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=kernel
@@ -42,7 +42,7 @@ homepage=https://git.kernel.org/?p=utils/kernel/kmod/kmod.git
 license=LGPLv2.1
 
 # Source documentation
-docs="COPYING NEWS README TODO"
+docs="COPYING NEWS README* TODO"
 docsdir="${docdir}/${program}-${version}"
 
 build()
@@ -50,6 +50,9 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # Add support for Kernel modules compressed with LZIP
+    patch -p1 < "${worktree}/patches/kmod/kmod-30_lzip-0.diff"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
@@ -69,6 +72,9 @@ build()
      --with-rootlibdir=/usr/lib${libSuffix} \
      --with-openssl \
      --with-zlib \
+     --with-lzlib \
+     --with-xz \
+     --with-zstd \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
