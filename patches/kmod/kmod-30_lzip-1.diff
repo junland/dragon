@@ -1,0 +1,214 @@
+diff -urdN kmod-30/Makefile.am kmod-30.new/Makefile.am
+--- kmod-30/Makefile.am	2022-06-30 01:04:59.000000000 +0200
++++ kmod-30.new/Makefile.am	2023-01-19 00:17:00.465954251 +0100
+@@ -105,7 +105,7 @@
+ 	${top_srcdir}/libkmod/libkmod.sym
+ libkmod_libkmod_la_LIBADD = \
+ 	shared/libshared.la \
+-	${libzstd_LIBS} ${liblzma_LIBS} ${zlib_LIBS} ${libcrypto_LIBS}
++	${libzstd_LIBS} ${liblzma_LIBS} -llz ${zlib_LIBS} ${libcrypto_LIBS}
+ 
+ noinst_LTLIBRARIES += libkmod/libkmod-internal.la
+ libkmod_libkmod_internal_la_SOURCES = $(libkmod_libkmod_la_SOURCES)
+diff -urdN kmod-30/Makefile.in kmod-30.new/Makefile.in
+--- kmod-30/Makefile.in	2022-06-30 17:18:23.000000000 +0200
++++ kmod-30.new/Makefile.in	2023-01-19 00:17:00.465954251 +0100
+@@ -1068,7 +1068,7 @@
+ 
+ libkmod_libkmod_la_LIBADD = \
+ 	shared/libshared.la \
+-	${libzstd_LIBS} ${liblzma_LIBS} ${zlib_LIBS} ${libcrypto_LIBS}
++	${libzstd_LIBS} ${liblzma_LIBS} -llz ${zlib_LIBS} ${libcrypto_LIBS}
+ 
+ libkmod_libkmod_internal_la_SOURCES = $(libkmod_libkmod_la_SOURCES)
+ libkmod_libkmod_internal_la_LDFLAGS = $(AM_LDFLAGS) \
+diff -urdN kmod-30/README.md kmod-30.new/README.md
+--- kmod-30/README.md	2022-06-29 09:04:17.000000000 +0200
++++ kmod-30.new/README.md	2023-01-18 23:04:27.355954251 +0100
+@@ -50,6 +50,7 @@
+ 
+ Optional dependencies:
+ 	- ZLIB library
++	- LZLIB library
+ 	- LZMA library
+ 	- ZSTD library
+ 	- OPENSSL library (signature handling in modinfo)
+diff -urdN kmod-30/configure kmod-30.new/configure
+--- kmod-30/configure	2022-06-30 17:18:23.000000000 +0200
++++ kmod-30.new/configure	2023-01-19 00:17:00.475954251 +0100
+@@ -18438,7 +18438,7 @@
+ 	tools:			${enable_tools}
+ 	python bindings:	${enable_python}
+ 	logging:		${enable_logging}
+-	compression:		zstd=${with_zstd}  xz=${with_xz}  zlib=${with_zlib}
++	compression:		zstd=${with_zstd}  xz=${with_xz}  lzlib=yes  zlib=${with_zlib}
+ 	debug:			${enable_debug}
+ 	coverage:		${enable_coverage}
+ 	doc:			${enable_gtk_doc}
+@@ -18467,7 +18467,7 @@
+ 	tools:			${enable_tools}
+ 	python bindings:	${enable_python}
+ 	logging:		${enable_logging}
+-	compression:		zstd=${with_zstd}  xz=${with_xz}  zlib=${with_zlib}
++	compression:		zstd=${with_zstd}  xz=${with_xz}  lzlib=yes  zlib=${with_zlib}
+ 	debug:			${enable_debug}
+ 	coverage:		${enable_coverage}
+ 	doc:			${enable_gtk_doc}
+diff -urdN kmod-30/configure.ac kmod-30.new/configure.ac
+--- kmod-30/configure.ac	2022-06-30 00:57:35.000000000 +0200
++++ kmod-30.new/configure.ac	2023-01-19 00:17:00.465954251 +0100
+@@ -320,7 +320,7 @@
+ 	tools:			${enable_tools}
+ 	python bindings:	${enable_python}
+ 	logging:		${enable_logging}
+-	compression:		zstd=${with_zstd}  xz=${with_xz}  zlib=${with_zlib}
++	compression:		zstd=${with_zstd}  xz=${with_xz}  lzlib=yes  zlib=${with_zlib}
+ 	debug:			${enable_debug}
+ 	coverage:		${enable_coverage}
+ 	doc:			${enable_gtk_doc}
+diff -urdN kmod-30/libkmod/libkmod-file.c kmod-30.new/libkmod/libkmod-file.c
+--- kmod-30/libkmod/libkmod-file.c	2020-09-11 06:55:01.000000000 +0200
++++ kmod-30.new/libkmod/libkmod-file.c	2023-01-19 00:17:00.475954251 +0100
+@@ -37,6 +37,7 @@
+ #endif
+ 
+ #include <shared/util.h>
++#include <lzlib.h>
+ 
+ #include "libkmod.h"
+ #include "libkmod-internal.h"
+@@ -54,6 +55,7 @@
+ #ifdef ENABLE_XZ
+ 	bool xz_used;
+ #endif
++	bool lz_used;
+ #ifdef ENABLE_ZLIB
+ 	gzFile gzf;
+ #endif
+@@ -310,6 +312,86 @@
+ static const char magic_xz[] = {0xfd, '7', 'z', 'X', 'Z', 0};
+ #endif
+ 
++#ifndef min
++  #define min(x,y) ((x) <= (y) ? (x) : (y))
++#endif
++
++static int load_lzlib(struct kmod_file *file)
++{
++	uint8_t in_buf[16384];
++	int err = 0;
++	off_t did = 0, total = 0;
++	_cleanup_free_ unsigned char *p = NULL;
++
++	struct LZ_Decoder *lzd = LZ_decompress_open();
++	if (!lzd || LZ_decompress_errno( lzd ) != LZ_ok)
++		{ LZ_decompress_close(lzd); return -ENOMEM; }
++
++	for (;;) {
++		int rd;
++		const int size = min(LZ_decompress_write_size(lzd),
++				     (int)sizeof in_buf);
++
++		if (did == total) {
++			const int realloc_step = 4 * 1024 * 1024;
++			void *tmp = realloc(p, total + realloc_step);
++			if (tmp == NULL) {
++				err = -ENOMEM;
++				goto error;
++			}
++			total += realloc_step;
++			p = tmp;
++		}
++
++		if (size > 0) {
++			rd = read(file->fd, in_buf, size);
++			if (rd < 0) {
++				err = -errno;
++				goto error;
++			}
++			if (rd == 0)
++				LZ_decompress_finish(lzd);
++			else if (LZ_decompress_write(lzd, in_buf, rd) != rd) {
++				err = -EINVAL;
++				goto error;
++			}
++		}
++		rd = LZ_decompress_read(lzd, p + did, total - did);
++		if (rd < 0) {
++			const char *lz_errmsg =
++				LZ_strerror(LZ_decompress_errno(lzd));
++
++			ERR(file->ctx, "lzip: %s\n", lz_errmsg);
++			err = -EINVAL;
++			goto error;
++		}
++		did += rd;
++		if (LZ_decompress_finished(lzd) == 1)
++			break;
++	}
++
++	if (LZ_decompress_close(lzd) < 0)
++		return -EINVAL;
++	file->lz_used = true;
++	file->memory = p;
++	file->size = did;
++	p = NULL;
++	return 0;
++
++error:
++	LZ_decompress_close(lzd);
++	return err;
++}
++
++static void unload_lzlib(struct kmod_file *file)
++{
++	if (!file->lz_used)
++		return;
++	free(file->memory);
++}
++
++static const char magic_lzlib[] = { 0x4C, 0x5A, 0x49, 0x50 }; /* "LZIP" */
++
+ #ifdef ENABLE_ZLIB
+ #define READ_STEP (4 * 1024 * 1024)
+ static int load_zlib(struct kmod_file *file)
+@@ -385,6 +467,7 @@
+ #ifdef ENABLE_XZ
+ 	{sizeof(magic_xz), magic_xz, {load_xz, unload_xz}},
+ #endif
++	{sizeof(magic_lzlib), magic_lzlib, {load_lzlib, unload_lzlib}},
+ #ifdef ENABLE_ZLIB
+ 	{sizeof(magic_zlib), magic_zlib, {load_zlib, unload_zlib}},
+ #endif
+diff -urdN kmod-30/libkmod/libkmod.pc.in kmod-30.new/libkmod/libkmod.pc.in
+--- kmod-30/libkmod/libkmod.pc.in	2020-09-11 06:55:01.000000000 +0200
++++ kmod-30.new/libkmod/libkmod.pc.in	2023-01-19 00:17:00.475954251 +0100
+@@ -7,5 +7,5 @@
+ Description: Library to deal with kernel modules
+ Version: @VERSION@
+ Libs: -L${libdir} -lkmod
+-Libs.private: @libzstd_LIBS@ @liblzma_LIBS@ @zlib_LIBS@
++Libs.private: @libzstd_LIBS@ @liblzma_LIBS@ -llz @zlib_LIBS@
+ Cflags: -I${includedir}
+diff -urdN kmod-30/shared/util.c kmod-30.new/shared/util.c
+--- kmod-30/shared/util.c	2022-06-27 08:23:46.000000000 +0200
++++ kmod-30.new/shared/util.c	2023-01-19 00:17:00.475954251 +0100
+@@ -43,6 +43,7 @@
+ #ifdef ENABLE_ZLIB
+ 	{".ko.gz", sizeof(".ko.gz") - 1},
+ #endif
++	{".ko.lz", sizeof(".ko.lz") - 1},
+ #ifdef ENABLE_XZ
+ 	{".ko.xz", sizeof(".ko.xz") - 1},
+ #endif
+diff -urdN kmod-30/testsuite/test-util.c kmod-30.new/testsuite/test-util.c
+--- kmod-30/testsuite/test-util.c	2022-06-27 08:23:46.000000000 +0200
++++ kmod-30.new/testsuite/test-util.c	2023-01-19 00:17:00.475954251 +0100
+@@ -154,6 +154,7 @@
+ #ifdef ENABLE_ZLIB
+ 		{ "/bla.ko.gz", true },
+ #endif
++		{ "/bla.ko.lz", true },
+ #ifdef ENABLE_XZ
+ 		{ "/bla.ko.xz", true },
+ #endif
