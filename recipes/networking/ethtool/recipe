@@ -1,6 +1,6 @@
 # Build recipe for ethtool.
 #
-# Copyright (c) 2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019, 2021-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=ethtool
-version=5.16
+version=6.1
 release=1
 
 # Define a category for the output of the package name
@@ -55,6 +55,9 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # In order to build against Musl, apply a patch from "Alpine Linux"
+    patch -Np1 -i "${worktree}/patches/ethtool/uint32.patch"
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
