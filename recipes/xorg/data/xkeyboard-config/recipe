@@ -1,7 +1,7 @@
 # Build recipe for xkeyboard-config.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019, 2021-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 set -e
 
 program=xkeyboard-config
-version=2.37
+version=2.38
 arch=noarch
 release=1
 
@@ -62,7 +62,6 @@ build()
      --libdir /usr/lib${libSuffix} \
      --buildtype=release \
      --strip \
-     -Dxkb-base=/etc/X11/xkb \
      -Dcompat-rules=true \
      -Dxorg-rules-symlinks=true \
      ..
@@ -72,11 +71,19 @@ build()
 
     cd ..
 
-    # To manage .new files via graft(1)
-    find "${destdir}"/etc/X11/xkb -type d -print | while read -r directory
-    do
-        ( cd -- "$directory" && touch .graft-config )
-    done
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 {} +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
 
     # Copy documentation
     mkdir -p "${destdir}/$docsdir"
