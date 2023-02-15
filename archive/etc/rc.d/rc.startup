@@ -2,7 +2,7 @@
 #
 # Boot-time system initialization script
 #
-# Copyright (c) 2017-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -107,9 +107,6 @@ hwclock --hctosys --localtime
 echo "${RC}: Performing file system checks"
 if test ! -f /fastboot
 then
-    # Limit number of filesystem checkers using the max. number of processors
-    FSCK_MAX_INST=$(nproc 2> /dev/null) || FSCK_MAX_INST=1
-
     # Force checks if the regular file '/forcefsck' exists
     test -f /forcefsck && forcefsck_flag=-f
 
@@ -133,7 +130,7 @@ If you do not know how to correct the file system errors,
 please see the filesystem-specific checker manual pages for
 further details.
 '
-                unset -v FSCK_MAX_INST forcefsck_flag status
+                unset -v forcefsck_flag status
                 sulogin || {
                     echo "Executing \`/bin/sh' as emergency shell ..." 1>&2
                     /bin/sh -
@@ -151,7 +148,7 @@ further details.
     echo "*** Checking local file system(s)"
     fsck $forcefsck_flag -A -C -R -T -a
 
-    unset -v FSCK_MAX_INST forcefsck_flag
+    unset -v forcefsck_flag
 else
     echo "WARNING: /fastboot is present: Ignoring checks" 1>&2
 fi
