@@ -25,17 +25,16 @@ LC_ALL=C
 
 ### Mount virtual file systems
 
-echo "${RC}: Mounting kernel based file systems"
-mount -v -n -o nosuid,noexec,nodev -t proc proc /proc
-mount -v -n -o nosuid,noexec,nodev -t sysfs sysfs /sys
-if ! mountpoint -q /dev
-then
-    mount -v -n -t devtmpfs devtmpfs /dev
-fi
+echo "${RC}: Mounting kernel based file systems ..."
+mountpoint -q /proc || mount -v -n -o nosuid,noexec,nodev -t proc proc /proc
+mountpoint -q /sys || mount -v -n -o nosuid,noexec,nodev -t sysfs sysfs /sys
+mountpoint -q /dev || mount -v -n -t devtmpfs devtmpfs /dev
+
 mkdir -p /dev/pts /dev/shm /run
 mount -v -n -o mode=0620,gid=5 -t devpts devpts /dev/pts
 mount -v -n -o defaults -t tmpfs devshm /dev/shm
 mount -v -n -o defaults -t tmpfs tmpfs /run
+
 mkdir -p /run/lock
 chmod 1777 /run/lock /dev/shm
 
@@ -150,7 +149,7 @@ further details.
 
     unset -v forcefsck_flag
 else
-    echo "WARNING: /fastboot is present: Ignoring checks" 1>&2
+    echo "WARNING: /fastboot file is present: Ignoring fsck(8) checks." 1>&2
 fi
 
 ### ^ End Of 'Perform file system checks'
