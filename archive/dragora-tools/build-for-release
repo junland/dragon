@@ -1,7 +1,7 @@
 #! /bin/bash -
 # Specific script for the final Dragora release process.
 #
-# Copyright (c) 2021-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2021-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,13 +14,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 #
-## ChangeLog (current version is 0.2).
+## ChangeLog.
+#
+#= Version 0.4:
+#
+# - Build the final system using real cores (instead of threads,
+#   if possible) to try to guarantee an error-free compilation.
+#   Instructions taken from https://stackoverflow.com/questions/6481005/how-to-obtain-the-number-of-cpus-cores-in-linux-from-the-command-line
 #
 #= Version 0.3:
 #
-# - Use the -f (force) option when building on the phase1.
+# - Use the -f (force) option when building on 'phase-1'.
 #
 #= Version 0.2:
 #
@@ -61,8 +66,9 @@ qi order /usr/src/qi/recipes/*.order | \
 # Parallel jobs for the final system (phase-2)
 #
 # The default is to use the maximum number of
-# processors (physical/threading)
-JOBS="${JOBS:-$(nproc)}"
+# installed processors (this should work on
+# hyperthreading and non-hyperthreading systems)
+JOBS="${JOBS:-$(awk -F: '/^physical/ && !ID[$2] { P++; ID[$2]=1 }; /^cpu cores/ { CORES=$2 };  END { print CORES*P }' /proc/cpuinfo)}"
 
 # Declare recipes that do not require reconstruction:
 exclude_list='!/pass-?|^data\/|docbook\/|xorg\/doc\/|xorg\/font\/|tde\/tde-i18n|devel\/fortify-headers|kernel\/headers|kernel\/generic|kernel\/buildtree-generic|kernel\/firmware|tools\/dragora-installer/'
