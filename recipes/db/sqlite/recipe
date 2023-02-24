@@ -1,6 +1,6 @@
 # Build recipe for sqlite.
 #
-# Copyright (c) 2019-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 set -e
 
 program=sqlite
-version=3400000
-pkgversion=3.40.0
+version=3400100
+pkgversion=3.40.1
 release=1
 
 # Define a category for the output of the package name
@@ -56,21 +56,22 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure LDFLAGS="$QILDFLAGS" \
+    ./configure CFLAGS="$QICFLAGS" \
+    LDFLAGS="$QILDFLAGS" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --mandir=$mandir \
      --docdir=$docsdir \
      --build="$(gcc -dumpmachine)" \
      --enable-fts5 \
-      CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS \
-       -DSQLITE_ENABLE_FTS3=1             \
-       -DSQLITE_ENABLE_FTS4=1             \
-       -DSQLITE_ENABLE_COLUMN_METADATA=1  \
-       -DSQLITE_ENABLE_UNLOCK_NOTIFY=1    \
-       -DSQLITE_ENABLE_DBSTAT_VTAB=1      \
-       -DSQLITE_SECURE_DELETE=1           \
-       -DSQLITE_ENABLE_FTS3_TOKENIZER=1"
+     --enable-session \
+     CPPFLAGS="-DSQLITE_ENABLE_FTS3=1 \
+               -DSQLITE_ENABLE_FTS4=1 \
+               -DSQLITE_ENABLE_COLUMN_METADATA=1 \
+               -DSQLITE_ENABLE_UNLOCK_NOTIFY=1 \
+               -DSQLITE_ENABLE_DBSTAT_VTAB=1 \
+               -DSQLITE_SECURE_DELETE=1 \
+               -DSQLITE_ENABLE_FTS3_TOKENIZER=1"
 
     make -j${jobs} V=1 && make -j${jobs} check
     make -j${jobs} DESTDIR="$destdir" install-strip
