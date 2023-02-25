@@ -151,26 +151,6 @@ _mkbtrfs()
     sleep 4
 }
 
-_mkreiser4()
-{
-    # Check if the device name is a SDD
-    case $1 in
-    *nvme*)
-        reiser_sdd=-d
-        ;;
-    esac
-
-    dialog --clear
-
-    echo "Making reiser4 filesystem for $1 ..."
-    echo ""
-
-    mkfs.reiser4 -yf $reiser_sdd -o create=reg40,node=node41 "$1"
-    sleep 4
-
-    unset -v reiser_sdd
-}
-
 _mkxfs()
 {
     dialog --clear
@@ -194,7 +174,6 @@ formatMenu()
 "ext3"     "Third  extended filesystem"       "ext3 is suitable for both 32-bit and 64-bit systems" \
 "ext4"     "Fourth extended filesystem"       "We suggest using it more for a 64-bit system than for a 32-bit system" \
 "btrfs"    "Btrfs filesystem"                 "A modern copy on write (CoW) filesystem for GNU/Linux" \
-"reiser4"  "Reiser4 filesystem"               "Reiser4 is a successor of ReiserFS (a general-purpose, journaling file system)" \
 "xfs"      "XFS filesystem"                   "XFS is a high-performance 64-bit journaling file system suitable for real-time applications" \
     2> "${SUBTMPDIR}/return-MakeFS_formatMenu" || _status=$?
 
@@ -220,9 +199,6 @@ formatMenu()
         ;;
     btrfs)
         _mkbtrfs "$1"
-        ;;
-    reiser4)
-        _mkreiser4 "$1"
         ;;
     xfs)
         _mkxfs "$1"
