@@ -1,6 +1,6 @@
 # Build recipe for gptfdisk.
 #
-# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2022-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 
 program=gptfdisk
 version=1.0.9
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -56,17 +56,22 @@ build()
     # This patch modifies the Makefile file
     # so that it provides an install target.
     # Thanks to "Beyond Linux From Scratch"
-    patch -Np1 -i \
-     "${worktree}/patches/gptfdisk/gptfdisk-1.0.9-convenience-1.patch"
+    patch -Np1 -i "${worktree}/patches/gptfdisk/gptfdisk-1.0.9-convenience-1.patch"
 
     # Build with ICU support
     patch -Np1 -i "${worktree}/patches/gptfdisk/Makefile-ICU.diff"
 
-    # Set sane permissions
-    chmod -R u+w,go-w,a+rX-s .
-
+    # To accommodate paths
     sed -i 's|ncursesw/||' gptcurses.cc
     sed -i 's|sbin|usr/sbin|' Makefile
+
+    # To build against libuuid and to make a succesful build
+    # (Thanks again to "Beyond Linux From Scratch")
+    sed -i '/UUID_H/s/^.*$/#if defined (_UUID_UUID_H) || defined (_UL_LIBUUID_UUID_H)/' guid.cc
+    sed -i "/device =/s/= \(.*\);/= strdup(\1);/" gptcl.cc
+
+    # Set sane permissions
+    chmod -R u+w,go-w,a+rX-s .
 
     make -j${jobs} V=1 CPPFLAGS="$QICPPFLAGS" \
      CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS"
