@@ -18,19 +18,23 @@
 set -e
 
 program=eudev
-version=3.2.11
+version=20230218_9bcbc131a
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=boot
 
-tarname=${program}-${version}.tar.gz
+tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
 fetch="
-  https://github.com/eudev-project/eudev/releases/download/v${version}/$tarname
-  https://dev.gentoo.org/~blueness/eudev/$tarname
+ https://dragora.mirror.garr.it/current/sources/$tarname
+ rsync://rsync.dragora.org/current/sources/$tarname
 "
+#fetch="
+#  https://github.com/eudev-project/eudev/releases/download/v${version}/$tarname
+#  https://dev.gentoo.org/~blueness/eudev/$tarname
+#"
 
 description="
 Dynamic device management.
@@ -57,6 +61,9 @@ build()
     unpack "${tardir}/$tarname"
 
     cd "$srcdir"
+
+    # To re-generate source taken from repo
+    sh ./autogen.sh
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
