@@ -1,6 +1,6 @@
 # Build recipe for xf86-video-vboxvideo.
 #
-# Copyright (c) 2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019, 2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 
 program=xf86-video-vboxvideo
 version=1.0.0
-release=2
+release=3
 
 # Define a category for the output of the package name
 pkgcategory=xorg_driver
@@ -51,12 +51,14 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    ./configure CPPFLAGS="$QICPPFLAGS" CFLAGS="$QICFLAGS " LDFLAGS="$QILDFLAGS -Wl,-z,lazy" \
+    ./configure CPPFLAGS="$QICPPFLAGS" \
+    CFLAGS="$QICFLAGS " LDFLAGS="$QILDFLAGS -Wl,-z,lazy" \
      $configure_args \
      --libdir=/usr/lib${libSuffix} \
      --infodir=$infodir \
      --mandir=$mandir \
      --docdir=$docsdir \
+     --disable-selective-werror \
      || true
 
     make -j${jobs} V=1

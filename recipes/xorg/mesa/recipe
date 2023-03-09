@@ -19,7 +19,7 @@
 set -e
 
 program=mesa
-version=22.3.6
+version=22.3.7
 release=1
 
 # Define a category for the output of the package name
@@ -56,29 +56,26 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    case $arch in
-    amd64 | x32 | i?86 )
-        _extra_options="-Dglx-read-only-text=true"
-        ;;
-    esac
-
     rm -rf BUILD
     mkdir BUILD
     cd BUILD
 
-    CPPFLAGS="$QICPPFLAGS -D_XOPEN_SOURCE=700" \
+    CPPFLAGS="$QICPPFLAGS" \
     CFLAGS="$QICFLAGS" CXXFLAGS="$QICXXFLAGS" LDFLAGS="$QILDFLAGS" \
     meson setup $configure_args \
      --libdir /usr/lib${libSuffix} \
      --buildtype=release \
      --strip \
      -Ddri-drivers-path=/usr/lib${libSuffix}/dri \
+     -Dglx=dri \
      -Dplatforms=x11 \
      -Dgallium-drivers=auto \
      -Dvulkan-drivers="" \
      -Dlmsensors=enabled \
+     -Degl=enabled \
      -Dgles1=enabled \
      -Dgles2=enabled \
+     -Ddri3=enabled \
      -Dosmesa=true \
      -Dopengl=true \
      -Dgallium-nine=true \
@@ -86,14 +83,12 @@ build()
      -Dshared-llvm=enabled \
      -Dshared-glapi=enabled \
      -Dvalgrind=disabled \
-     -Dlibunwind=disabled \
-     $_extra_options \
      ..
 
     ninja -j${jobs}
     DESTDIR="$destdir" ninja -j${jobs} install
 
-    unset -v MESA_GIT_SHA1_OVERRIDE _extra_options
+    unset -v MESA_GIT_SHA1_OVERRIDE
 
     cd ../
 
