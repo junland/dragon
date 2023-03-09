@@ -1,7 +1,7 @@
 # Build recipe for dhcpcd.
 #
 # Copyright (c) 2017 MMPG, <mmpg@vp.pl>.
-# Copyright (c) 2017-2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019, 2021-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 
 program=dhcpcd
 version=9.4.1
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=networking
@@ -60,10 +60,16 @@ build()
      --libdir=/usr/lib${libSuffix} \
      --libexecdir=/usr/libexec/dhcpcd \
      --dbdir=/var/lib/dhcpcd \
+     --privsepuser=dhcpcd \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs}
     make -j${jobs} DESTDIR="$destdir" install
+
+    # Adjust ownerships/permissions to use privilege separation
+
+    chmod 700 "${destdir}/var/lib/dhcpcd"
+    chown dhcpcd:dhcpcd "${destdir}/var/lib/dhcpcd"
 
     # Install dhcpcd perp service(s)
 
