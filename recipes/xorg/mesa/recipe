@@ -20,7 +20,7 @@ set -e
 
 program=mesa
 version=22.3.7
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=xorg_mesa
@@ -53,6 +53,12 @@ build()
     # To provide a few xdemos (Thanks to BLFS!)
     patch -p1 < "${worktree}/patches/mesa/mesa-22.2.4-add_xdemos-1.patch"
 
+    # Apply patches to increment compatibility with Musl
+    patch -Np1 -i "${worktree}/patches/mesa/musl-endian.patch"
+    patch -Np1 -i "${worktree}/patches/mesa/musl.patch"
+    patch -Np1 -i "${worktree}/patches/mesa/musl-stacksize.patch"
+    patch -Np1 -i "${worktree}/patches/mesa/megadriver-symlinks.patch"
+
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
@@ -71,6 +77,7 @@ build()
      -Dplatforms=x11 \
      -Dgallium-drivers=auto \
      -Dvulkan-drivers="" \
+     -Dgallium-xa=enabled \
      -Dlmsensors=enabled \
      -Degl=enabled \
      -Dgles1=enabled \
@@ -83,6 +90,8 @@ build()
      -Dshared-llvm=enabled \
      -Dshared-glapi=enabled \
      -Dvalgrind=disabled \
+     -Db_lto=false \
+     -Dcpp_std=gnu++14 \
      ..
 
     ninja -j${jobs}
