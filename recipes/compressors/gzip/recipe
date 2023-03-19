@@ -1,7 +1,7 @@
 # Build recipe for gzip.
 #
 # Copyright (c) 2016-2018, 2020 Matias Fonzo, <selk@dragora.org>.
-# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2022-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 
 program=gzip
 version=1.12
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=compressors
@@ -69,9 +69,10 @@ build()
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
 
-    # No, no hard links for the package size
-    ( cd "${destdir}/usr/bin" && ln -sf gunzip uncompress )
+    # This is provided by the ncompress package
+    rm -f "${destdir}/usr/bin/uncompress"
 
+    # Override hard-links with soft-links for package size
     (
         cd "${destdir}/${mandir}/man1" || exit 1
         ln -sf gzip.1    gunzip.1

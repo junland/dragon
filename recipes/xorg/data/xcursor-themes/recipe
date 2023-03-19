@@ -1,7 +1,7 @@
 # Build recipe for xcursor-themes.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2019 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2019, 2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,14 +19,14 @@
 set -e
 
 program=xcursor-themes
-version=1.0.6
+version=1.0.7
 arch=noarch
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=xorg_data
 
-tarname=${program}-${version}.tar.bz2
+tarname=${program}-${version}.tar.gz
 
 # Remote source(s)
 fetch=https://www.x.org/releases/individual/data/$tarname
@@ -62,13 +62,6 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
-
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"

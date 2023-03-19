@@ -19,8 +19,8 @@
 set -e
 
 program=xorg-server
-version=1.20.14
-release=3
+version=21.1.7
+release=1
 
 # Define a category for the output of the package name
 pkgcategory=xorg_xserver
@@ -53,11 +53,8 @@ build()
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
 
-    # Adjust headers
+    # Adjust headers (thanks to our team mate "mprodrigues")
     sed -i 's#termio.h#termios.h#' hw/xfree86/os-support/xf86_OSlib.h
-
-    # Apply a fix from "Alpine Linux"
-    patch -p1 < "${worktree}/patches/xserver/link-libshadow.patch"
 
     rm -rf BUILD
     mkdir BUILD
@@ -74,7 +71,6 @@ build()
      -Dxnest=true \
      -Dglamor=true \
      -Dbuilder_addr='dragora-users@nongnu.org' \
-     -Dos_vendor="Dragora GNU/Linux-Libre" \
      -Dmodule_dir=/usr/lib${libSuffix}/xorg/modules \
      -Ddefault_font_path="/usr/share/fonts/X11/misc,/usr/share/fonts/X11/Type1,/usr/share/fonts/X11/100dpi:unscaled,/usr/share/fonts/X11/75dpi:unscaled,/usr/share/fonts/X11/cyrillic,/usr/share/fonts/X11/TTF,/usr/share/fonts/X11/OTF" \
      -Dglx=true \
@@ -101,9 +97,6 @@ build()
     DESTDIR="$destdir" ninja -j${jobs} install
 
     cd ..
-
-    # Required symlink
-    ln -s Xorg "${destdir}"/usr/bin/X
 
     # Allow old behavior to terminate server keystroke
     cp -p "${worktree}/archive/xserver/00-keyboard.conf" \
