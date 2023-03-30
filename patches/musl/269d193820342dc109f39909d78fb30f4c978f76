@@ -1,0 +1,250 @@
+From 269d193820342dc109f39909d78fb30f4c978f76 Mon Sep 17 00:00:00 2001
+From: Rich Felker <dalias@aerifal.cx>
+Date: Thu, 9 Feb 2023 11:52:44 -0500
+Subject: fix wrong sigaction syscall ABI on mips*, or1k, microblaze, riscv64
+
+we wrongly defined a dummy SA_RESTORER flag on these archs, despite
+the kernel interface not actually having such a feature. on archs
+which lack SA_RESTORER, the kernel sigaction structure also lacks the
+restorer function pointer member, which means the signal mask appears
+at a different offset. the kernel was thereby interpreting the bits of
+the code address as part of the signal set to be masked while handling
+the signal.
+
+this patch removes the erroneous SA_RESTORER definitions from archs
+which do not have it, makes access to the member conditional on
+whether SA_RESTORER is defined for the arch, and removes the
+now-unused asm for the affected archs.
+
+because there are reportedly versions of qemu-user which also use the
+wrong ABI here, the old ksigaction struct size is preserved with an
+unused member at the end. this is harmless and mitigates the risk of
+such a bug turning into a buffer overflow onto the sigaction
+function's stack.
+---
+ arch/microblaze/bits/signal.h |  1 -
+ arch/mips/bits/signal.h       |  1 -
+ arch/mips/ksigaction.h        |  5 +----
+ arch/mips64/bits/signal.h     |  1 -
+ arch/mips64/ksigaction.h      |  2 +-
+ arch/mipsn32/bits/signal.h    |  1 -
+ arch/mipsn32/ksigaction.h     |  2 +-
+ arch/or1k/bits/signal.h       |  1 -
+ arch/riscv64/bits/signal.h    |  1 -
+ src/internal/ksigaction.h     |  5 +++++
+ src/signal/mips/restore.s     | 15 ---------------
+ src/signal/mips64/restore.s   | 11 -----------
+ src/signal/mipsn32/restore.s  | 11 -----------
+ src/signal/sigaction.c        |  5 ++++-
+ 14 files changed, 12 insertions(+), 50 deletions(-)
+ delete mode 100644 src/signal/mips/restore.s
+ delete mode 100644 src/signal/mips64/restore.s
+ delete mode 100644 src/signal/mipsn32/restore.s
+
+diff --git a/arch/microblaze/bits/signal.h b/arch/microblaze/bits/signal.h
+index 490f83bf..f25b7c6a 100644
+--- a/arch/microblaze/bits/signal.h
++++ b/arch/microblaze/bits/signal.h
+@@ -46,7 +46,6 @@ typedef struct __ucontext {
+ #define SA_RESTART    0x10000000
+ #define SA_NODEFER    0x40000000
+ #define SA_RESETHAND  0x80000000
+-#define SA_RESTORER   0x04000000
+ 
+ #endif
+ 
+diff --git a/arch/mips/bits/signal.h b/arch/mips/bits/signal.h
+index 1b69e762..a3b3857a 100644
+--- a/arch/mips/bits/signal.h
++++ b/arch/mips/bits/signal.h
+@@ -66,7 +66,6 @@ typedef struct __ucontext {
+ #define SA_RESTART    0x10000000
+ #define SA_NODEFER    0x40000000
+ #define SA_RESETHAND  0x80000000
+-#define SA_RESTORER   0x04000000
+ 
+ #undef SIG_BLOCK
+ #undef SIG_UNBLOCK
+diff --git a/arch/mips/ksigaction.h b/arch/mips/ksigaction.h
+index 63fdfab0..485abf75 100644
+--- a/arch/mips/ksigaction.h
++++ b/arch/mips/ksigaction.h
+@@ -4,10 +4,7 @@ struct k_sigaction {
+ 	unsigned flags;
+ 	void (*handler)(int);
+ 	unsigned long mask[4];
+-	/* The following field is past the end of the structure the
+-	 * kernel will read or write, and exists only to avoid having
+-	 * mips-specific preprocessor conditionals in sigaction.c. */
+-	void (*restorer)();
++	void *unused;
+ };
+ 
+ hidden void __restore(), __restore_rt();
+diff --git a/arch/mips64/bits/signal.h b/arch/mips64/bits/signal.h
+index 4f91c9fc..ffec7fd0 100644
+--- a/arch/mips64/bits/signal.h
++++ b/arch/mips64/bits/signal.h
+@@ -85,7 +85,6 @@ typedef struct __ucontext {
+ #define SA_RESTART    0x10000000
+ #define SA_NODEFER    0x40000000
+ #define SA_RESETHAND  0x80000000
+-#define SA_RESTORER   0x04000000
+ 
+ #undef SIG_BLOCK
+ #undef SIG_UNBLOCK
+diff --git a/arch/mips64/ksigaction.h b/arch/mips64/ksigaction.h
+index c16e4731..b4d0fa5f 100644
+--- a/arch/mips64/ksigaction.h
++++ b/arch/mips64/ksigaction.h
+@@ -4,7 +4,7 @@ struct k_sigaction {
+ 	unsigned flags;
+ 	void (*handler)(int);
+ 	unsigned long mask[2];
+-	void (*restorer)();
++	void *unused;
+ };
+ 
+ hidden void __restore(), __restore_rt();
+diff --git a/arch/mipsn32/bits/signal.h b/arch/mipsn32/bits/signal.h
+index 4f91c9fc..ffec7fd0 100644
+--- a/arch/mipsn32/bits/signal.h
++++ b/arch/mipsn32/bits/signal.h
+@@ -85,7 +85,6 @@ typedef struct __ucontext {
+ #define SA_RESTART    0x10000000
+ #define SA_NODEFER    0x40000000
+ #define SA_RESETHAND  0x80000000
+-#define SA_RESTORER   0x04000000
+ 
+ #undef SIG_BLOCK
+ #undef SIG_UNBLOCK
+diff --git a/arch/mipsn32/ksigaction.h b/arch/mipsn32/ksigaction.h
+index b565f1fc..485abf75 100644
+--- a/arch/mipsn32/ksigaction.h
++++ b/arch/mipsn32/ksigaction.h
+@@ -4,7 +4,7 @@ struct k_sigaction {
+ 	unsigned flags;
+ 	void (*handler)(int);
+ 	unsigned long mask[4];
+-	void (*restorer)();
++	void *unused;
+ };
+ 
+ hidden void __restore(), __restore_rt();
+diff --git a/arch/or1k/bits/signal.h b/arch/or1k/bits/signal.h
+index be576d1d..c45be676 100644
+--- a/arch/or1k/bits/signal.h
++++ b/arch/or1k/bits/signal.h
+@@ -43,7 +43,6 @@ typedef struct __ucontext {
+ #define SA_RESTART    0x10000000
+ #define SA_NODEFER    0x40000000
+ #define SA_RESETHAND  0x80000000
+-#define SA_RESTORER   0x04000000
+ 
+ #endif
+ 
+diff --git a/arch/riscv64/bits/signal.h b/arch/riscv64/bits/signal.h
+index 287367db..fd6157a3 100644
+--- a/arch/riscv64/bits/signal.h
++++ b/arch/riscv64/bits/signal.h
+@@ -76,7 +76,6 @@ typedef struct __ucontext
+ #define SA_RESTART   0x10000000
+ #define SA_NODEFER   0x40000000
+ #define SA_RESETHAND 0x80000000
+-#define SA_RESTORER  0x04000000
+ 
+ #endif
+ 
+diff --git a/src/internal/ksigaction.h b/src/internal/ksigaction.h
+index 8ebd5938..ef333f33 100644
+--- a/src/internal/ksigaction.h
++++ b/src/internal/ksigaction.h
+@@ -6,8 +6,13 @@
+ struct k_sigaction {
+ 	void (*handler)(int);
+ 	unsigned long flags;
++#ifdef SA_RESTORER
+ 	void (*restorer)(void);
++#endif
+ 	unsigned mask[2];
++#ifndef SA_RESTORER
++	void *unused;
++#endif
+ };
+ 
+ hidden void __restore(), __restore_rt();
+diff --git a/src/signal/mips/restore.s b/src/signal/mips/restore.s
+deleted file mode 100644
+index b6dadce0..00000000
+--- a/src/signal/mips/restore.s
++++ /dev/null
+@@ -1,15 +0,0 @@
+-.set noreorder
+-
+-.global __restore_rt
+-.hidden __restore_rt
+-.type   __restore_rt,@function
+-__restore_rt:
+-	li $2, 4193
+-	syscall
+-
+-.global __restore
+-.hidden __restore
+-.type   __restore,@function
+-__restore:
+-	li $2, 4119
+-	syscall
+diff --git a/src/signal/mips64/restore.s b/src/signal/mips64/restore.s
+deleted file mode 100644
+index 401f8e73..00000000
+--- a/src/signal/mips64/restore.s
++++ /dev/null
+@@ -1,11 +0,0 @@
+-.set	noreorder
+-.global	__restore_rt
+-.global	__restore
+-.hidden __restore_rt
+-.hidden __restore
+-.type	__restore_rt,@function
+-.type	__restore,@function
+-__restore_rt:
+-__restore:
+-	li	$2,5211
+-	syscall
+diff --git a/src/signal/mipsn32/restore.s b/src/signal/mipsn32/restore.s
+deleted file mode 100644
+index 4cd4e1b4..00000000
+--- a/src/signal/mipsn32/restore.s
++++ /dev/null
+@@ -1,11 +0,0 @@
+-.set	noreorder
+-.global	__restore_rt
+-.global	__restore
+-.hidden __restore_rt
+-.hidden __restore
+-.type	__restore_rt,@function
+-.type	__restore,@function
+-__restore_rt:
+-__restore:
+-	li	$2,6211
+-	syscall
+diff --git a/src/signal/sigaction.c b/src/signal/sigaction.c
+index 2203471b..e45308fa 100644
+--- a/src/signal/sigaction.c
++++ b/src/signal/sigaction.c
+@@ -44,8 +44,11 @@ int __libc_sigaction(int sig, const struct sigaction *restrict sa, struct sigact
+ 			}
+ 		}
+ 		ksa.handler = sa->sa_handler;
+-		ksa.flags = sa->sa_flags | SA_RESTORER;
++		ksa.flags = sa->sa_flags;
++#ifdef SA_RESTORER
++		ksa.flags |= SA_RESTORER;
+ 		ksa.restorer = (sa->sa_flags & SA_SIGINFO) ? __restore_rt : __restore;
++#endif
+ 		memcpy(&ksa.mask, &sa->sa_mask, _NSIG/8);
+ 	}
+ 	int r = __syscall(SYS_rt_sigaction, sig, sa?&ksa:0, old?&ksa_old:0, _NSIG/8);
+-- 
+cgit v1.2.1
+

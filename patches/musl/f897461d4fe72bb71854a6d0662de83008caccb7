@@ -1,0 +1,88 @@
+From f897461d4fe72bb71854a6d0662de83008caccb7 Mon Sep 17 00:00:00 2001
+From: Rich Felker <dalias@aerifal.cx>
+Date: Wed, 18 Jan 2023 10:32:14 -0500
+Subject: fix debugger tracking of shared libraries on mips with PIE main
+ program
+
+mips has its own mechanisms for DT_DEBUG because it makes _DYNAMIC
+read-only, and the original mechanism, DT_MIPS_RLD_MAP, was
+PIE-incompatible. DT_MIPS_RLD_MAP_REL was added to remedy this, but we
+never implemented support for it. add it now using the same idioms for
+mips-specific ldso logic.
+---
+ arch/mips/reloc.h      | 1 +
+ arch/mips64/reloc.h    | 1 +
+ arch/mipsn32/reloc.h   | 1 +
+ ldso/dynlink.c         | 4 ++++
+ src/internal/dynlink.h | 4 ++++
+ 5 files changed, 11 insertions(+)
+
+diff --git a/arch/mips/reloc.h b/arch/mips/reloc.h
+index 88d23639..f4023b16 100644
+--- a/arch/mips/reloc.h
++++ b/arch/mips/reloc.h
+@@ -29,6 +29,7 @@
+ 
+ #define NEED_MIPS_GOT_RELOCS 1
+ #define DT_DEBUG_INDIRECT DT_MIPS_RLD_MAP
++#define DT_DEBUG_INDIRECT_REL DT_MIPS_RLD_MAP_REL
+ #define ARCH_SYM_REJECT_UND(s) (!((s)->st_other & STO_MIPS_PLT))
+ 
+ #define CRTJMP(pc,sp) __asm__ __volatile__( \
+diff --git a/arch/mips64/reloc.h b/arch/mips64/reloc.h
+index fdb5edc9..145d8b0b 100644
+--- a/arch/mips64/reloc.h
++++ b/arch/mips64/reloc.h
+@@ -38,6 +38,7 @@
+ 
+ #define NEED_MIPS_GOT_RELOCS 1
+ #define DT_DEBUG_INDIRECT DT_MIPS_RLD_MAP
++#define DT_DEBUG_INDIRECT_REL DT_MIPS_RLD_MAP_REL
+ #define ARCH_SYM_REJECT_UND(s) (!((s)->st_other & STO_MIPS_PLT))
+ 
+ #define CRTJMP(pc,sp) __asm__ __volatile__( \
+diff --git a/arch/mipsn32/reloc.h b/arch/mipsn32/reloc.h
+index 47c6e591..bf00bd6a 100644
+--- a/arch/mipsn32/reloc.h
++++ b/arch/mipsn32/reloc.h
+@@ -29,6 +29,7 @@
+ 
+ #define NEED_MIPS_GOT_RELOCS 1
+ #define DT_DEBUG_INDIRECT DT_MIPS_RLD_MAP
++#define DT_DEBUG_INDIRECT_REL DT_MIPS_RLD_MAP_REL
+ #define ARCH_SYM_REJECT_UND(s) (!((s)->st_other & STO_MIPS_PLT))
+ 
+ #define CRTJMP(pc,sp) __asm__ __volatile__( \
+diff --git a/ldso/dynlink.c b/ldso/dynlink.c
+index 09f3b0a8..fde5f346 100644
+--- a/ldso/dynlink.c
++++ b/ldso/dynlink.c
+@@ -1992,6 +1992,10 @@ void __dls3(size_t *sp, size_t *auxv)
+ 			size_t *ptr = (size_t *) app.dynv[i+1];
+ 			*ptr = (size_t)&debug;
+ 		}
++		if (app.dynv[i]==DT_DEBUG_INDIRECT_REL) {
++			size_t *ptr = (size_t *)((size_t)&app.dynv[i] + app.dynv[i+1]);
++			*ptr = (size_t)&debug;
++		}
+ 	}
+ 
+ 	/* This must be done before final relocations, since it calls
+diff --git a/src/internal/dynlink.h b/src/internal/dynlink.h
+index 830354eb..06f41d09 100644
+--- a/src/internal/dynlink.h
++++ b/src/internal/dynlink.h
+@@ -92,6 +92,10 @@ struct fdpic_dummy_loadmap {
+ #define DT_DEBUG_INDIRECT 0
+ #endif
+ 
++#ifndef DT_DEBUG_INDIRECT_REL
++#define DT_DEBUG_INDIRECT_REL 0
++#endif
++
+ #define AUX_CNT 32
+ #define DYN_CNT 37
+ 
+-- 
+cgit v1.2.1
+

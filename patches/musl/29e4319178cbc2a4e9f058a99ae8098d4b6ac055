@@ -1,0 +1,28 @@
+From 29e4319178cbc2a4e9f058a99ae8098d4b6ac055 Mon Sep 17 00:00:00 2001
+From: Rich Felker <dalias@aerifal.cx>
+Date: Thu, 10 Nov 2022 09:02:02 -0500
+Subject: fix double-processing of DT_RELR relocations in ldso relocating
+ itself
+
+this is analogous to skip_relative logic in do_relocs -- because
+relative relocations for the dynamic linker itself were already
+performed at entry (stage 1), they must not be applied again.
+---
+ ldso/dynlink.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/ldso/dynlink.c b/ldso/dynlink.c
+index 7b47b163..8068fb37 100644
+--- a/ldso/dynlink.c
++++ b/ldso/dynlink.c
+@@ -552,6 +552,7 @@ static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stri
+ 
+ static void do_relr_relocs(struct dso *dso, size_t *relr, size_t relr_size)
+ {
++	if (dso == &ldso) return; /* self-relocation was done in _dlstart */
+ 	unsigned char *base = dso->base;
+ 	size_t *reloc_addr;
+ 	for (; relr_size; relr++, relr_size-=sizeof(size_t))
+-- 
+cgit v1.2.1
+
