@@ -1,6 +1,6 @@
 # Build script for musl.
 #
-# Copyright (c) 2014-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2014-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +24,21 @@ unpack "${worktree}/sources/musl-${version}.tar.gz"
 cd musl-${version}
 
 #patch -Np1 -i "${worktree}/patches/musl/branch-updates.diff"
+
+# Fix debugger tracking of shared libraries on mips with PIE main program
+patch -Np1 -i "${worktree}/patches/musl/f897461d4fe72bb71854a6d0662de83008caccb7"
+
+# Fix wrong sigaction syscall ABI on mips*, or1k, microblaze, riscv64
+patch -Np1 -i "${worktree}/patches/musl/269d193820342dc109f39909d78fb30f4c978f76"
+
+# Support DT_RELR relative relocation format
+patch -Np1 -i "${worktree}/patches/musl/d32dadd60efb9d3b255351a3b532f8e4c3dd0db1"
+
+# Process DT_RELR relocations in ldso-startup/static-pie
+patch -Np1 -i "${worktree}/patches/musl/6f3ead0ae16deb9f0004b275e29a276c9712ee3c"
+
+# Fix double-processing of DT_RELR relocations in ldso relocating itself
+patch -Np1 -i "${worktree}/patches/musl/29e4319178cbc2a4e9f058a99ae8098d4b6ac055"
 
 ./configure CC="${target}-gcc" CROSS_COMPILE="${target}-" \
  CFLAGS="$BTCFLAGS" \
