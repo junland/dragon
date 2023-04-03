@@ -19,7 +19,7 @@ set -e
 
 program=gptfdisk
 version=1.0.9
-release=3
+release=4
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -54,6 +54,11 @@ build()
 
     cd "$srcdir"
 
+    # Update in order to build against latest popt package
+    patch -Np1 -i "${worktree}/patches/gptfdisk/popt-1.19.patch"
+    patch -Np1 -i "${worktree}/patches/gptfdisk/popt-1.19-follow-up.patch"
+
+    # Update in order to build against util-linux 2.38
     patch -Np1 -i "${worktree}/patches/gptfdisk/util-linux-2.38.patch"
 
     # This patch modifies the Makefile file
@@ -67,11 +72,6 @@ build()
     # To accommodate paths
     sed -i 's|ncursesw/||' gptcurses.cc
     sed -i 's|sbin|usr/sbin|' Makefile
-
-    # To build against libuuid and to make a succesful build
-    # (Thanks again to "Beyond Linux From Scratch")
-    sed -i '/UUID_H/s/^.*$/#if defined (_UUID_UUID_H) || defined (_UL_LIBUUID_UUID_H)/' guid.cc
-    sed -i "/device =/s/= \(.*\);/= strdup(\1);/" gptcl.cc
 
     # Set sane permissions
     chmod -R u+w,go-w,a+rX-s .
