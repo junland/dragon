@@ -1,7 +1,7 @@
 # Build recipe for listres.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2018, 2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2018, 2022-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 
 program=listres
 version=1.0.5
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=xorg_app
@@ -33,8 +33,8 @@ fetch=https://www.x.org/releases/individual/app/$tarname
 description="
 List resources in widgets.
 
-The listres program enerates a list of X resources for a widget in
-an X client written using a toolkit based on libXt.
+The listres program generates a list of X resources for a
+widget in an X client written using a toolkit based on libXt.
 "
 
 homepage=https://www.x.org
@@ -64,13 +64,6 @@ build()
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
-
-    # Compress info documents deleting index file for the package
-    if test -d "${destdir}/$infodir"
-    then
-        rm -f "${destdir}/${infodir}/dir"
-        lzip -9 "${destdir}/${infodir}"/*
-    fi
 
     # Compress and link man pages (if needed)
     if test -d "${destdir}/$mandir"
