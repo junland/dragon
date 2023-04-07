@@ -1,6 +1,6 @@
 # This file is part of the 'dragora-installer'.
 #
-# Purpose: Set Linux partition(s) and mount points.
+# Purpose: Set Linux partition(s) and mount-points.
 
 # Add or refresh list of partitions taking initial
 # list of partitions and temporary fstab into account
@@ -15,7 +15,7 @@ makeMenu()
         device="${line%% *}"
         size="$(lsblk --noheadings --nodeps --output SIZE "$device")"
 
-        # Get device mount point and file system type
+        # Get device mount-point and file system type
 
         devpoint="$(awk -v patr="$device" '$1 == patr { print $2 }' \
                      "${SUBTMPDIR}/fstab" 2> /dev/null)"
@@ -29,7 +29,7 @@ makeMenu()
 
         # Write entry to be showed on the MakeFS menu
 
-        echo "\"${device}\" \"${formatfs:-Linux}${size} $devpoint\" \\" \
+        echo "\"${device}\" \"${formatfs:-Linux} $size $devpoint\" \\" \
          >> "${SUBTMPDIR}/MakeFS"
 
     done < "${SUBTMPDIR}/partitions"
@@ -39,7 +39,7 @@ makeMenu()
      >> "${SUBTMPDIR}/MakeFS"
 }
 
-# Ask to assign a valid mount point
+# Ask to assign a valid mount-point
 askMountPoint()
 {
     dialog --colors \
@@ -47,9 +47,10 @@ askMountPoint()
      --title "MOUNT POINT" \
      --no-cancel --ok-label "Continue" \
      --cr-wrap --inputbox \
-"A mount point can be assigned to the partition.
+"A mount-point can be assigned to the partition.
 
 * Consider declaring a complete path such as \"/storage\".
+
 * If you declare the single slash \"/\" it will be
   designated for the (main) system partition.
 
@@ -57,8 +58,10 @@ Note: If you use directory names that contain spaces,
 the same will be converted using the octal character
 040, which is interpreted by the file system table.
 
-Enter a mount point for \"${1}\":
-(If you leave this blank, any previous entries will be deleted)." 20 62 \
+Enter a mount-point for \"${1}\":
+
+(If you leave this blank, any previous entries will be deleted)" \
+$((LINES - 4)) $((COLUMNS - 8)) \
      2> "${SUBTMPDIR}/return-MakeFS_askMountPoint" || return 0
 
     # We remove possible single/double quotes from the answer.
@@ -135,7 +138,7 @@ $(fdisk -l "$devname" | head -n 1)" 13 55 1 \
     else
         $helper -F -F $devname
     fi
-    sleep 4
+    sleep 3
 
     unset -v helper devname
 }
@@ -148,7 +151,7 @@ _mkbtrfs()
     echo ""
 
     mkfs.btrfs -f -d single -m single "$1"
-    sleep 4
+    sleep 3
 }
 
 _mkxfs()
@@ -159,7 +162,7 @@ _mkxfs()
     echo ""
 
     mkfs.xfs -f "$1"
-    sleep 4
+    sleep 3
 }
 
 formatMenu()
@@ -212,7 +215,7 @@ while true
 do
     cat << EOF > "${SUBTMPDIR}/MakeFS"
 dialog --colors \\
- --backtitle "\\ZbPartitions and mount points" \\
+ --backtitle "\\ZbPartitions and mount-points" \\
  --title "Setting Linux partitions" \\
  --ok-button "Establish" --extra-button \\
  --extra-label "Done" \\
@@ -220,9 +223,10 @@ dialog --colors \\
 "The following Linux partitions has been detected:
 
     Selecting a partition gives you the possibility to set up
-a file system or a mount point for the boot stage of the system.
+a file system or a mount-point for the boot stage of the system.
+
 Once this has been established, choose the \\"Done\\" button
-to continue with the installation." 16 65 5 \\
+to continue with the installation." 18 66 6 \\
 EOF
     makeMenu && . "${SUBTMPDIR}/MakeFS"
     case "${_code:-$?}" in
@@ -238,18 +242,18 @@ EOF
         if test -n "$(blkid -s TYPE -o value "$partition" 2> /dev/null)"
         then
             dialog --colors \
-             --backtitle "\\ZbPartitions and mount points" \
+             --backtitle "\\ZbPartitions and mount-points" \
              --title "$partition" \
              --no-cancel --cr-wrap --menu \
 "Selected device already contains a file system!
 
-You can assign a mount point for system startup, you also
+You can assign a mount-point for system startup, you also
 have the ability to re-format the partition.  If you choose
 the latter, you will lose all your data and will be asked
 for a mounting point.
 
 What would you like to do for '${partition}'?" 17 64 3 \
-             "0" "Assign a mount point" \
+             "0" "Assign a mount-point" \
              "1" "Format again (data loss risk)" \
              "<" "Return to previous menu" \
             2> "${SUBTMPDIR}/return-MakeFS_case" || continue;
@@ -263,20 +267,20 @@ What would you like to do for '${partition}'?" 17 64 3 \
         fi
         ;;
     3)
-        # To verify the existence of the designated system mount point
+        # To verify the existence of the designated system mount-point
         if grep -qs -m 1 '/ ' "${SUBTMPDIR}/fstab"
         then
             break;
         else
             dialog --colors \
-             --backtitle "\\ZbPartitions and mount points: Unknown mount point for root partition" \
+             --backtitle "\\ZbPartitions and mount-points: Unknown mount-point for root partition" \
              --title "NO MOUNT POINT FOR MAIN SYSTEM" \
              --ok-label "Return" --cr-wrap --msgbox \
 "
-There is no declared mount point for the root partition.
+There is no declared mount-point for the root partition.
 
-    Please go back and assign a mount point for the
-root partition.  Remember that the mount point must
+    Please go back and assign a mount-point for the
+root partition.  Remember that the mount-point must
 be declared as \"/\" (without quotes and spaces).
 " 11 60 || { unset -v _code ; continue; }
         fi
