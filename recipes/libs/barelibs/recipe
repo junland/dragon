@@ -1,6 +1,6 @@
 # Build recipe for barelibs (dragora).
 #
-# Copyright (c) 2021 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2021, 2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 
 program=barelibs
 version=dragora
-pkgversion=20211101
+pkgversion=20230407
 release=1
 
 # Define a category for the output of the package name
@@ -29,10 +29,10 @@ description="
 Set of various libraries that will be required by many programs.
 
 This package is composed of many (shared) libraries from different
-packages, which will be used by many programs.  That is, in case you
-have not installed or do not have installed the package containing the
-required library; once the package containing the library included here
-is installed, your part will be replaced by the installed package.
+packages, which will be used by many programs.  In case you have not
+installed or do not have installed the package containing the required
+library.  The part of the shared library will be replaced by the
+corresponding software package, once installed.
 "
 
 homepage=https://www.dragora.org
@@ -47,21 +47,22 @@ build()
 
     # Read list of file names declared on the 'tracked-names' list.
     #
-    # This list is intended to be general, and is based on the
+    # This list is intended to be general, is based on the
     # "Slackware Linux" list(s), which is now a big distribution.
+    #
     # It makes sense, since we do not want to be missing a shared
     # library necessary for the execution of some program within
-    # the system.  Thanks.  :^)
+    # the system (or at the beginning of the system installation).
+    #
+    # Thanks.  :^)
     #
     while read -r name
     do
         for file in $(find /usr/lib${libSuffix} -name "${name}*")
         do
             # We are looking for a file, not for a directory
-            if test -d "$file"
-            then
-                continue;
-            fi
+            test -f "$file" || continue
+
             # Ignore libtool, static libraries and other extensions
             case "${file##*.}" in
             a | la | pc | spec )
