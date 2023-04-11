@@ -1,5 +1,5 @@
 #! /bin/sh -
-# Copyright (C) 2016-2022 Matias Fonzo <selk@dragora.org>
+# Copyright (C) 2016-2023 Matias Fonzo <selk@dragora.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -158,17 +158,13 @@ chkstatus_or_exit()
 
 readconfig()
 {
-    if test "${_readconfig:-readconfig}" = readconfig
+    if is_readable "$HOME/.qirc" 2> /dev/null
     then
-        if is_readable "$HOME/.qirc" 2> /dev/null
-        then
-            _rcfile="$HOME/.qirc"
-        fi
-
-        echo "Importing configuration file from \`${_rcfile}' ..."
-        . "$_rcfile" || chkstatus_or_exit 5
+        _rcfile="$HOME/.qirc"
     fi
-    unset -v _readconfig
+
+    echo "Importing configuration file from \`${_rcfile}' ..."
+    . "$_rcfile" || chkstatus_or_exit 5
 }
 
 validate_file()
@@ -203,6 +199,9 @@ make_directory()
 
 mode_build()
 {
+    # Read configuration file if --no-rc is not passed
+    test "$opt_readrc" = opt_readrc && readconfig
+
     recipe=$1
 
     echo ""
@@ -739,6 +738,9 @@ mode_create()
 
 mode_remove()
 {
+    # Read configuration file if --no-rc is not passed
+    test "$opt_readrc" = opt_readrc && readconfig
+
     expunge="${packagedir}/$(basename -- "$1" .tlz)"
 
     echo ""
@@ -800,6 +802,9 @@ mode_remove()
 mode_install()
 {
     validate_file "$1" tlz
+
+    # Read configuration file if --no-rc is not passed
+    test "$opt_readrc" = opt_readrc && readconfig
 
     name="$(basename -- "$1" .tlz)"
 
@@ -936,6 +941,9 @@ mode_order()
 mode_upgrade()
 {
     validate_file "$1" tlz
+
+    # Read configuration file if --no-rc is not passed
+    test "$opt_readrc" = opt_readrc && readconfig
 
     incoming="$(basename -- "$1" .tlz)"
 
@@ -1195,6 +1203,7 @@ packagedir=@PACKAGEDIR@
 targetdir=@TARGETDIR@
 blacklist="perl5 graft tarlz plzip musl glibc coreutils bash mksh"
 _rcfile=@SYSCONFDIR@/qirc
+opt_readrc=opt_readrc
 opt_install=opt_install.off
 opt_upgrade=opt_upgrade.off
 opt_force=opt_force.off
@@ -1296,17 +1305,14 @@ do
         ;;
     install)
         validate_mode install
-        readconfig
         mode=mode_install
         ;;
     remove)
         validate_mode remove
-        readconfig
         mode=mode_remove
         ;;
     upgrade)
         validate_mode upgrade
-        readconfig
         mode=mode_upgrade
         ;;
     extract)
@@ -1323,11 +1329,10 @@ do
         ;;
     build)
         validate_mode build
-        readconfig
         mode=mode_build
         ;;
     --no-rc | -N )
-        _readconfig=readconfig.off
+        opt_readrc=opt_readrc.off
         ;;
     --install | -i )
         opt_install=opt_install
@@ -1449,7 +1454,7 @@ do
         verbose_level=2
         ;;
     --show-location | -L )
-        readconfig
+        test "$opt_readrc" = opt_readrc && readconfig
         printf '%s\n' \
          "QI_TARGETDIR=$targetdir"    \
          "QI_PACKAGEDIR=$packagedir"  \
@@ -1487,7 +1492,7 @@ do
     esac
     shift
 done
-unset -f readconfig validate_mode validate_option validate_directory validate_digit
+unset -f validate_mode validate_option validate_directory validate_digit
 
 # When there are no arguments, show the help
 if test $# -eq 0
@@ -1601,18 +1606,16 @@ then
         warn "${PROGRAM}: Root directory \`${rootdir}' is not fully qualified"
         exit 4
     fi
-    readonly rootdir
     export rootdir
 fi
 
 # Ensure 'TMPDIR' creation to prefix temporary files
-
 make_directory "$TMPDIR"
 
-readonly TMPDIR packagedir targetdir
+# Do not allow the following variables to be modified
+readonly TMPDIR rootdir packagedir targetdir opt_readrc
 
-# Process each package or recipe provided on the command-line
-
+# Process each package or recipe provided on the command-line.
 for package in "$@"
 do
     $mode "$package"
