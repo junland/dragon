@@ -1,7 +1,7 @@
 # Build recipe for espeak.
 #
 # Copyright (c) 2018 Thiago Seus, <thiago.seus@yahoo.com.br>.
-# Copyright (c) 2020, 2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2020, 2022-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ set -e
 
 program=espeak
 version=1.48.04
-release=3
+release=4
 
 # Define a category for the output of the package name
 pkgcategory=tools
@@ -55,7 +55,8 @@ build()
     # Use the PortAudio (sound interface library) version 19
     ln -sf portaudio19.h portaudio.h
 
-    make -j${jobs} CXXFLAGS="$QICXXFLAGS -Wno-narrowing" LDFLAGS="$QILDFLAGS" \
+    make -j${jobs} CXX="${CXX:-g++}" \
+     CXXFLAGS="$QICXXFLAGS -Wno-narrowing" LDFLAGS="$QILDFLAGS" \
      PREFIX=/usr LIBDIR=/usr/lib${libSuffix}
 
     make -j${jobs} PREFIX=/usr LIBDIR=/usr/lib${libSuffix} \
