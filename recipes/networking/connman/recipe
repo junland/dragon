@@ -1,6 +1,6 @@
 # Build recipe for connman.
 #
-# Copyright (c) 2019, 2021-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2019, 2021-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,16 +18,20 @@
 set -e
 
 program=connman
-version=1.41
+version=20230411_24180d12
 release=1
 
 # Define a category for the output of the package name
 pkgcategory=networking
 
-tarname=${program}-${version}.tar.gz
+tarname=${program}-${version}.tar.lz
 
 # Remote source(s)
-fetch=https://mirrors.edge.kernel.org/pub/linux/network/connman/$tarname
+#fetch=https://mirrors.edge.kernel.org/pub/linux/network/connman/$tarname
+fetch="
+ https://dragora.mirror.garr.it/current/sources/$tarname
+ rsync://rsync.dragora.org/current/sources/$tarname
+"
 
 description="
 A connection manager.
@@ -68,10 +72,13 @@ build()
      --docdir=$docsdir \
      --enable-static=no \
      --enable-shared=yes \
+     --enable-loopback=builtin \
      --enable-pie \
      --enable-iwd \
      --disable-wispr \
      --disable-wireguard \
+     --disable-iospm \
+     --disable-hh2serial-gps \
      --with-firewall=iptables \
      --with-dns-backend=internal \
      --build="$(gcc -dumpmachine)"
