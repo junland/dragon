@@ -1,6 +1,6 @@
 # Build recipe for libexecinfo.
 #
-# Copyright (c) 2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2022-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 
 program=libexecinfo
 version=1.1
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=libs
@@ -60,7 +60,9 @@ build()
     patch -Np1 -i "${worktree}/patches/libexecinfo/03-define-gnu-source.patch"
     patch -Np1 -i "${worktree}/patches/libexecinfo/libexecinfo_pc.patch"
 
-    make -j${jobs} V=1 CFLAGS="$QICFLAGS -fno-stack-protector" LDFLAGS="$QILDFLAGS"
+    make -j${jobs} V=1 \
+     CFLAGS="$QICFLAGS -fno-stack-protector" \
+     LDFLAGS="$(echo "$QILDFLAGS" | sed 's/-s//')"
 
     sed -e "/Version:/s@version@${version}@" -i libexecinfo.pc
 
@@ -78,9 +80,6 @@ build()
     done
     unset -v library
     chmod 644 "${destdir}/usr/lib${libSuffix}"/*.a
-
-    strip --strip-debug "${destdir}/usr/lib${libSuffix}"/*.a
-    strip --strip-unneeded "${destdir}/usr/lib${libSuffix}"/*.so* || true
 
     install -p -m 644 libexecinfo.pc "${destdir}/usr/lib${libSuffix}/pkgconfig"
 
