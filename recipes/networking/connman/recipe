@@ -59,6 +59,9 @@ build()
     # A patch to compile under Musl (Thanks to "Alpine Linux")
     patch -Np1 -i "${worktree}/patches/connman/libresolv.patch"
 
+    # Another patch to fix Connman (Thanks to "Alpine Linux")
+    patch -Np1 -i "${worktree}/patches/connman/implicit.patch"
+
     autoreconf -vif
 
     # Set sane permissions
@@ -81,7 +84,8 @@ build()
      --disable-hh2serial-gps \
      --with-firewall=iptables \
      --with-dns-backend=internal \
-     --build="$(gcc -dumpmachine)"
+     --build="$(gcc -dumpmachine)" \
+     ac_cv_header_execinfo_h=no
 
     make -j${jobs} V=1
     make -j${jobs} DESTDIR="$destdir" install
