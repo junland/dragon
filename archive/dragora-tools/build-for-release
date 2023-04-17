@@ -17,11 +17,16 @@
 #
 ## ChangeLog.
 #
+#= Version 0.6:
+#
+# - Adjusted the PATH in order to avoid possible influence of
+#   the temporary system at /tools.
+#
 #= Version 0.5:
 #
-# - Added 'barelibs' package to the $exclude_list on phase-2.
+# - Added "libs/barelibs" recipe to the $exclude_list on 'phase-2'.
 #   Thus shared libraries provided in barelibs must be replaced
-#   with the installation of the proper packages.
+#   with the installation of the proper software packages.
 #
 #= Version 0.4:
 #
@@ -85,16 +90,24 @@ echo ""
 echo "Using $JOBS parallel job(s) for the compiler."
 echo ""
 
+# In order to cover a purest build, avoid influence of /tools
+
+export PATH=/bin:/usr/bin:/sbin:/usr/sbin:/opt/trinity/bin
+
 if test -d /tools
 then
     mv -f /tools /tools-to-be-renamed
     sync
 fi
 
+# Start to build the final phase (phase-2)
+
 qi order /usr/src/qi/recipes/*.order | awk "$exclude_list" | \
  qi build -f -j${JOBS} -p -u - 2>&1 | tee build-phase2-log.txt
 
 unset -v JOBS exclude_list
+
+# Restore /tools for `enter-chroot`
 
 if test -d /tools-to-be-renamed
 then
