@@ -17,6 +17,11 @@
 #
 ## ChangeLog.
 #
+#= Version 0.7:
+#
+# - Change of strategy to build the 'phase-2' using a for loop,
+#   this also makes the awk filter to exclude recipes work.
+#
 #= Version 0.6:
 #
 # - Adjusted the PATH in order to avoid possible influence of
@@ -102,10 +107,14 @@ fi
 
 # Start to build the final phase (phase-2)
 
-qi order /usr/src/qi/recipes/*.order | awk "$exclude_list" | \
- qi build -f -j${JOBS} -p -u - 2>&1 | tee build-phase2-log.txt
+: > build-phase2-log.txt
+for i in $(qi order /usr/src/qi/recipes/*.order | awk "$exclude_list")
+do
+    echo "building -> $i"
+    qi build -f -j${JOBS} -p -u "$i" 2>&1
+done | tee -a build-phase2-log.txt
 
-unset -v JOBS exclude_list
+unset -v JOBS exclude_list i
 
 # Restore /tools for `enter-chroot`
 
