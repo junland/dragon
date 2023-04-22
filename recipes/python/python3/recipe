@@ -1,7 +1,7 @@
 # Build recipe for python3.
 #
 # Copyright (c) 2017 Mateus P. Rodrigues <mprodrigues@dragora.org>.
-# Copyright (c) 2017-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2017-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ set -e
 program=Python
 version=3.9.16
 short_version="${version%.*}"
-release=1
+release=2
 
 # Define a category for the output of the package name
 pkgcategory=python
@@ -78,11 +78,10 @@ build()
      --enable-shared \
      --enable-loadable-sqlite-extensions \
      --enable-ipv6 \
-     --enable-optimizations \
      --with-system-expat \
      --with-system-ffi \
-     --with-ensurepip=yes \
      --with-dbmliborder=gdbm:ndbm \
+     --with-ensurepip=no \
      --build="$(gcc -dumpmachine)"
 
     make -j${jobs} V=1
@@ -92,7 +91,7 @@ build()
     ( cd "${destdir}/usr/bin" && ln -sf python3 python )
 
     # Include the Python tools under site-packages
-    TOOL_DIR=/usr/lib/python${short_version}
+    TOOL_DIR=/usr/lib/python${short_version}/site-packages
     (
         cd Tools || exit 2
 
