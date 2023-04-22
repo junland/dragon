@@ -1,6 +1,6 @@
 # Build recipe for mercurial.
 #
-# Copyright (C) 2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (C) 2022-2023 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 set -e
 
 program=mercurial
-version=6.3.1
+version=6.4.2
 release=1
 
 # Define a category for the output of the package name
@@ -87,6 +87,20 @@ EOF
 
     # To handle config file(s)
     touch "${destdir}/etc/mercurial/.graft-config"
+
+    # Compress and link man pages (if needed)
+    if test -d "${destdir}/$mandir"
+    then
+        (
+            cd "${destdir}/$mandir"
+            find . -type f -exec lzip -9 {} +
+            find . -type l | while read -r file
+            do
+                ln -sf "$(readlink -- "$file").lz" "${file}.lz"
+                rm -- "$file"
+            done
+        )
+    fi
 
     # Copy documentation
     mkdir -p "${destdir}/$docsdir"
