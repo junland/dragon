@@ -1,5 +1,6 @@
-## packages/ - Contains binary packages.
+## packages/ - Contains software packages.
 
-This directory contains (or will contain) the Dragora binary packages
-generated through the Qi package manager.
+This directory contains the software packages distributed for the official
+architectures supported (and provided) by Dragora.  Binary packages that
+are generated and updated through the Qi package manager.
 
