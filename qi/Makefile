@@ -1,6 +1,6 @@
 # Makefile for Qi.
 #
-# Copyright (c) 2015-2023 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2015-2024 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # limitations under the License.
 
 project		= qi
-version		= 2.12-rc2
+version		= 2.12
 
 ## DO NOT MAKE CHANGES HERE.
 #
@@ -35,6 +35,10 @@ arch		= $(shell uname -m)
 packagedir	= $(prefix)/pkgs
 targetdir	= $(prefix)
 outdir		= $(localstatedir)/cache/qi/packages
+qi_cflags	= -O2
+qi_cxxflags	= -O2
+qi_ldflags	=
+qi_cppflags	=
 ##
 DISTNAME	= ${project}-${version}
 
@@ -76,6 +80,10 @@ src/$(project) : src/$(project).in
 	  -e "s|@PACKAGEDIR@|$(packagedir)|g" \
 	  -e "s|@TARGETDIR@|$(targetdir)|g" \
 	  -e "s|@OUTDIR@|$(outdir)|g" \
+	  -e "s|@QICFLAGS@|$(qi_cflags)|g" \
+	  -e "s|@QICXXFLAGS@|$(qi_cxxflags)|g" \
+	  -e "s|@QILDFLAGS@|$(qi_ldflags)|g" \
+	  -e "s|@QICPPFLAGS@|$(qi_cppflags)|g" \
 	 $< > $@ && \
 	 chmod 755 $@
 
@@ -98,6 +106,10 @@ etc/$(project)rc : etc/$(project)rc.in
 	  -e "s|@PACKAGEDIR@|$(packagedir)|g" \
 	  -e "s|@TARGETDIR@|$(targetdir)|g" \
 	  -e "s|@OUTDIR@|$(outdir)|g" \
+	  -e "s|@QICFLAGS@|$(qi_cflags)|g" \
+	  -e "s|@QICXXFLAGS@|$(qi_cxxflags)|g" \
+	  -e "s|@QILDFLAGS@|$(qi_ldflags)|g" \
+	  -e "s|@QICPPFLAGS@|$(qi_cppflags)|g" \
 	 $< > $@ && \
 	chmod 644 $@
 
@@ -206,7 +218,7 @@ install-man :
 	@echo "* Installing manual pages on $(DESTDIR)${mandir}/man1 ..."
 	if [ ! -d "$(DESTDIR)${mandir}/man1" ] ; then \
 	    $(INSTALL_DIR) "$(DESTDIR)${mandir}/man1" ; \
-	fi                  
+	fi
 
 	$(INSTALL_DATA) doc/$(project).1 "$(DESTDIR)${mandir}/man1"
 

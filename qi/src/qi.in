@@ -1,5 +1,5 @@
 #! /bin/sh -
-# Copyright (C) 2016-2023 Matias Fonzo <selk@dragora.org>
+# Copyright (C) 2016-2024 Matias Fonzo <selk@dragora.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1088,68 +1088,55 @@ unpack()
     do
         case $file in
         *.tar)
-            tar -tf "$file" > /dev/null && \
-            tar -xpf "$file"
+            tar -tf "$file" > /dev/null && tar -xpf "$file"
             chkstatus_or_exit 3
             ;;
         *.tar.gz | *.tgz | *.tar.Z )
-            gzip -cd "$file" | tar -tf - > /dev/null && \
-            gzip -cd "$file" | tar -xpf -
+            gzip -cd "$file" | tar -tf - > /dev/null && gzip -cd "$file" | tar -xpf -
             chkstatus_or_exit 3
             ;;
         *.tar.bz2 | *.tbz2 | *.tbz )
-            bzip2 -cd "$file" | tar -tf - > /dev/null && \
-            bzip2 -cd "$file" | tar -xpf -
+            bzip2 -cd "$file" | tar -tf - > /dev/null && bzip2 -cd "$file" | tar -xpf -
             chkstatus_or_exit 3
             ;;
         *.tar.lz | *.tlz )
-            lzip -cd "$file" | tar -tf - > /dev/null && \
-            lzip -cd "$file" | tar -xpf -
+            lzip -cd "$file" | tar -tf - > /dev/null && lzip -cd "$file" | tar -xpf -
             chkstatus_or_exit 3
             ;;
         *.tar.xz | *.txz )
-            xz -cd "$file" | tar -tf - > /dev/null && \
-            xz -cd "$file" | tar -xpf -
+            xz -cd "$file" | tar -tf - > /dev/null && xz -cd "$file" | tar -xpf -
             chkstatus_or_exit 3
             ;;
         *.tar.zst | *.tzst )
-            zstd -cd "$file" | tar -tf - > /dev/null && \
-            zstd -cd "$file" | tar -xpf -
+            zstd -cd "$file" | tar -tf - > /dev/null && zstd -cd "$file" | tar -xpf -
             chkstatus_or_exit 3
             ;;
         *.zip | *.ZIP )
-            unzip -t "$file" > /dev/null && \
-            unzip "$file" > /dev/null
+            unzip -t "$file" > /dev/null && unzip "$file" > /dev/null
             chkstatus_or_exit 3
             ;;
         *.gz)
-            gzip -t "$file" && \
-            gzip -cd "$file" > "$(basename -- "$file" .gz)"
+            gzip -t "$file" && gzip -cd "$file" > "$(basename -- "$file" .gz)"
             chkstatus_or_exit 3
             ;;
         *.Z)
-            gzip -t "$file" && \
-            gzip -cd "$file" > "$(basename -- "$file" .Z)"
+            gzip -t "$file" && gzip -cd "$file" > "$(basename -- "$file" .Z)"
             chkstatus_or_exit 3
             ;;
         *.bz2)
-            bzip2 -t "$file" && \
-            bzip2 -cd "$file" > "$(basename -- "$file" .bz2)"
+            bzip2 -t "$file" && bzip2 -cd "$file" > "$(basename -- "$file" .bz2)"
             chkstatus_or_exit 3
             ;;
         *.lz)
-            lzip -t "$file" && \
-            lzip -cd "$file" > "$(basename -- "$file" .lz)"
+            lzip -t "$file" && lzip -cd "$file" > "$(basename -- "$file" .lz)"
             chkstatus_or_exit 3
             ;;
         *.xz)
-            xz -t "$file" && \
-            xz -cd "$file" > "$(basename -- "$file" .xz)"
+            xz -t "$file" && xz -cd "$file" > "$(basename -- "$file" .xz)"
             chkstatus_or_exit 3
             ;;
         *.zst)
-            zstd -qt "$file" && \
-            zstd -cd "$file" > "$(basename -- "$file" .zst)"
+            zstd -qt "$file" && zstd -cd "$file" > "$(basename -- "$file" .zst)"
             chkstatus_or_exit 3
             ;;
         *)
@@ -1226,10 +1213,10 @@ _isUpgrade=_isUpgrade.off
 keep_srcdir=""
 keep_destdir=""
 TMPDIR="${TMPDIR:-/usr/src/qi/build}"
-QICFLAGS="${QICFLAGS:--O2}"
-QICXXFLAGS="${QICXXFLAGS:--O2}"
-QILDFLAGS="${QILDFLAGS:-}"
-QICPPFLAGS="${QICPPFLAGS:-}"
+QICFLAGS="${QICFLAGS:-@QICFLAGS@}"
+QICXXFLAGS="${QICXXFLAGS:-@QICXXFLAGS@}"
+QILDFLAGS="${QILDFLAGS:-@QILDFLAGS@}"
+QICPPFLAGS="${QICPPFLAGS:-@QICPPFLAGS@}"
 worktree=/usr/src/qi
 tardir=${worktree}/sources
 outdir=@OUTDIR@
@@ -1463,8 +1450,7 @@ do
          "QI_OUTDIR=$outdir"
         exit 0
         ;;
-    --help | --hel | --he | --h | '--?' | -help | -hel | -he | -h | '-?' | \
-     help )
+    --help | --hel | --he | --h | '--?' | -help | -hel | -he | -h | '-?' | help )
         usage
         exit 0
         ;;

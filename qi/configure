@@ -2,7 +2,7 @@
 #
 # Simple "configure" script for Qi.
 #
-# Copyright (c) 2016-2018, 2020-2022 Matias Fonzo, <selk@dragora.org>.
+# Copyright (c) 2016-2018, 2020-2022, 2024 Matias Fonzo, <selk@dragora.org>.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,22 +25,25 @@ usage() {
 Defaults for the options are specified in brackets.
 
 Options:
-  --prefix=DIR         install files in DIR [${prefix}]
-  --exec-prefix=DIR    base DIR for arch-dependent files [${exec_prefix}]
-  --bindir=DIR         user executables [${bindir}]
-  --sbindir=DIR        system admin executables [${sbindir}]
-  --libexecdir=DIR     program executables [${libexecdir}]
-  --sysconfdir=DIR     read-only single-machine data [${sysconfdir}]
-  --localstatedir=DIR  modifiable single-machine data [${localstatedir}]
-  --datarootdir=DIR    read-only arch-independent data root [${datarootdir}]
-  --infodir=DIR        info documentation [${infodir}]
-  --mandir=DIR         man documentation [${mandir}]
-  --docdir=DIR         documentation root [${docdir}]
-  --arch=NAME          architecture name to build packages [${arch}]
-  --packagedir=DIR     directory for package installations [${packagedir}]
-  --targetdir=DIR      target directory for symbolic links [${targetdir}]
-  --outdir=DIR         output directory for binary packages [${outdir}]
-
+  --prefix=DIR            install files in DIR [${prefix}]
+  --exec-prefix=DIR       base DIR for arch-dependent files [${exec_prefix}]
+  --bindir=DIR            user executables [${bindir}]
+  --sbindir=DIR           system admin executables [${sbindir}]
+  --libexecdir=DIR        program executables [${libexecdir}]
+  --sysconfdir=DIR        read-only single-machine data [${sysconfdir}]
+  --localstatedir=DIR     modifiable single-machine data [${localstatedir}]
+  --datarootdir=DIR       read-only arch-independent data root [${datarootdir}]
+  --infodir=DIR           info documentation [${infodir}]
+  --mandir=DIR            man documentation [${mandir}]
+  --docdir=DIR            documentation root [${docdir}]
+  --arch=NAME             architecture name to build packages [${arch}]
+  --packagedir=DIR        directory for package installations [${packagedir}]
+  --targetdir=DIR         target directory for symbolic links [${targetdir}]
+  --outdir=DIR            output directory for binary packages [${outdir}]
+  --qi-cflags=CFLAGS      default Qi C flags for compiler [${qi_cflags}]
+  --qi-cxxflags=CXXFLAGS  default Qi C++ flags for compiler [${qi_cxxflags}]
+  --qi-ldflags=LDFLAGS    default Qi flags for linker [${qi_ldflags}]
+  --qi-cppflags=CPPFLAGS  default Qi C/C++ preprocessor flags [${qi_cppflags}]
 "
 }
 
@@ -60,6 +63,10 @@ arch="$(uname -m)"
 packagedir='$(prefix)/pkgs'
 targetdir='$(prefix)'
 outdir='$(localstatedir)/cache/qi/packages'
+qi_cflags='-O2'
+qi_cxxflags='-O2'
+qi_ldflags=''
+qi_cppflags=''
 
 return_variables()
 {
@@ -79,6 +86,10 @@ return_variables()
      "packagedir = $packagedir"        \
      "targetdir = $targetdir"          \
      "outdir = $outdir"                \
+     "qi_cflags = $qi_cflags"          \
+     "qi_cxxflags = $qi_cxxflags"      \
+     "qi_ldflags = $qi_ldflags"        \
+     "qi_cppflags = $qi_cppflags"      \
      ""
 }
 
@@ -190,6 +201,34 @@ do
         ;;
     --outdir=*)
         outdir="${1#*=}"
+        ;;
+    --qi-cflags)
+        qi_cflags="$2"
+        shift
+        ;;
+    --qi-cflags=*)
+        qi_cflags="${1#*=}"
+        ;;
+    --qi-cxxflags)
+        qi_cxxflags="$2"
+        shift
+        ;;
+    --qi-cxxflags=*)
+        qi_cxxflags="${1#*=}"
+        ;;
+    --qi-ldflags)
+        qi_ldflags="$2"
+        shift
+        ;;
+    --qi-ldflags=*)
+        qi_ldflags="${1#*=}"
+        ;;
+    --qi-cppflags)
+        qi_cppflags="$2"
+        shift
+        ;;
+    --qi-cppflags=*)
+        qi_cppflags="${1#*=}"
         ;;
     --help | --hel | --he | --h | '--?' | -help | -hel | -he | -h | '-?' )
         usage
